@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Split the MVP out of monolithic `main.ts` into scene, object, constants, and economy modules.
+- Added common/rare/super rare wallet state and UI.
+- Added baby age-stage tracking and active-play age progression.
+- Added placed-fish selling and regression coverage for selling.
 - Added shared mechanics types and initial JSON content tables for fish, food, and decorations.
 - Added dependency-free content validation and wired it into `npm test`.
 - Refactored the MVP scene to read fish, food, and decoration content from data tables.

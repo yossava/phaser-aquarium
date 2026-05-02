@@ -238,25 +238,30 @@ async function clickGame(cdp, gameX, gameY) {
 }
 
 async function runRegression(cdp) {
-  await waitFor(cdp, (state) => state.coins === 120 && state.foodInventory === 3, "Initial HUD state did not load.");
+  await waitFor(
+    cdp,
+    (state) => state.wallet.common === 120 && state.wallet.rare === 0 && state.wallet.superRare === 0 && state.foodInventory === 3,
+    "Initial HUD state did not load."
+  );
 
   await clickGame(cdp, 145, 629);
-  let state = await waitFor(cdp, (current) => current.coins === 85 && current.placementMode === "fish", "Buying a goldfish failed.");
+  let state = await waitFor(cdp, (current) => current.wallet.common === 85 && current.placementMode === "fish", "Buying a goldfish failed.");
   assert(state.fishCount === 0, "Fish should stay in inventory until placed.");
 
   await clickGame(cdp, 215, 260);
   state = await waitFor(cdp, (current) => current.fishCount === 1 && current.placementMode === "none", "Placing a fish failed.");
   assert(state.fish[0].state === "happy", "New fish should start happy.");
+  assert(state.fish[0].ageStage === "baby", "New fish should start as a baby.");
 
   await clickGame(cdp, 215, 586);
   state = await waitFor(cdp, (current) => current.activeTab === "food", "Food tab did not activate.");
 
   await clickGame(cdp, 114, 642);
-  state = await waitFor(cdp, (current) => current.coins === 80 && current.foodInventory === 4 && current.placementMode === "food", "Buying food failed.");
+  state = await waitFor(cdp, (current) => current.wallet.common === 80 && current.foodInventory === 4 && current.placementMode === "food", "Buying food failed.");
 
   await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 218, 248)");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 92, 100)");
-  await clickGame(cdp, 220, 250);
+  await clickGame(cdp, 260, 250);
   state = await waitFor(
     cdp,
     (current) => current.foodInventory === 3 && current.foodCount === 0 && current.fish[0].hunger < 70,
@@ -265,14 +270,25 @@ async function runRegression(cdp) {
 
   await evaluate(cdp, "window.__aquariumTest.forceCoinReady(0)");
   state = await waitFor(cdp, (current) => current.coinDropCount === 1, "Happy fish did not drop a coin.");
+  assert(state.coinsWaiting[0].coinType === "common", "Goldfish should produce common coins.");
   await clickGame(cdp, state.coinsWaiting[0].x, state.coinsWaiting[0].y);
-  state = await waitFor(cdp, (current) => current.coins === 85 && current.coinDropCount === 0, "Collecting a coin failed.");
+  state = await waitFor(cdp, (current) => current.wallet.common === 85 && current.coinDropCount === 0, "Collecting a coin failed.");
+
+  const sellValue = state.fish[0].sellValue;
+  await clickGame(cdp, 82, 586);
+  state = await waitFor(cdp, (current) => current.activeTab === "fish", "Fish tab did not activate before selling.");
+  await clickGame(cdp, 215, 742);
+  state = await waitFor(
+    cdp,
+    (current) => current.fishCount === 0 && current.wallet.common === 85 + sellValue,
+    "Selling a placed fish failed."
+  );
 
   await clickGame(cdp, 349, 586);
   state = await waitFor(cdp, (current) => current.activeTab === "decor", "Decor tab did not activate.");
 
   await clickGame(cdp, 145, 629);
-  state = await waitFor(cdp, (current) => current.coins === 65 && current.placementMode === "decoration", "Buying plant decoration failed.");
+  state = await waitFor(cdp, (current) => current.wallet.common === 85 + sellValue - 20 && current.placementMode === "decoration", "Buying plant decoration failed.");
 
   await clickGame(cdp, 215, 476);
   state = await waitFor(cdp, (current) => current.decorationCount === 1 && current.placementMode === "none", "Placing plant decoration failed.");

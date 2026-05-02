@@ -6,7 +6,9 @@
 
 ## Phase 1: Foundations
 
-- [ ] Split current MVP into data, systems, scenes, and UI modules.
+- [x] Extract current MVP from monolithic `main.ts` into constants, economy helpers, objects, and scene modules.
+- [ ] Split remaining UI rendering into focused UI modules.
+- [ ] Split gameplay orchestration into focused systems.
 - [x] Add initial data-driven content tables for fish, food, and decorations.
 - [x] Add shared mechanics types: `Rarity`, `CoinType`, `AgeStage`, `FishState`, `FoodType`, `Wallet`, and `Price`.
 - [x] Add content validation for unique IDs, rarity, prices, food references, production tables, and core numeric fields.
@@ -18,8 +20,8 @@
 
 ## Phase 2: Economy And Store
 
-- [ ] Replace single coin counter with common, rare, and super rare coins.
-- [ ] Add wallet UI for all three coin types.
+- [x] Replace single coin counter with common, rare, and super rare wallet state.
+- [x] Add wallet UI for all three coin types.
 - [ ] Add coin production tables by fish type, age, rarity, mood, health, cleanliness, compatibility, decoration, and event modifiers.
 - [ ] Add production caps for per-fish uncollected coins and per-tank offline earnings.
 - [ ] Add visual merging for many pending coin drops.
@@ -30,13 +32,15 @@
 
 ## Phase 3: Fish Lifecycle
 
-- [ ] Make all fish start as babies.
-- [ ] Add age stages: baby, juvenile, adult, elder, and master.
-- [ ] Add age-up rules during active play and offline progress.
+- [x] Make all fish start as babies.
+- [x] Add age stages: baby, juvenile, adult, elder, and master.
+- [x] Add active-play age-up rules.
+- [ ] Add offline age-up rules.
 - [ ] Add age-based size, food need, mood cycle, production table, sell value, and compatibility tolerance.
 - [ ] Add clear age-up visual moment.
 - [ ] Add fish details view with age, rarity, mood, hunger, health, food need, production, compatibility, and sell value.
-- [ ] Add fish selling from tank and inventory.
+- [x] Add fish selling from tank.
+- [ ] Add fish selling from inventory.
 - [ ] Add sell confirmation for rare, super rare, and event-only fish.
 - [ ] Protect the final tutorial fish from being sold.
 
@@ -97,7 +101,8 @@
 ## Phase 8: QA And Regression
 
 - [ ] Expand regression tests for multi-currency wallet and coin collection.
-- [ ] Expand regression tests for fish selling and sell protections.
+- [x] Expand regression tests for wallet, baby fish, common coin production, and placed-fish selling.
+- [ ] Expand regression tests for sell protections.
 - [ ] Expand regression tests for age-up and age-based production.
 - [ ] Expand regression tests for wrong-food rejection.
 - [ ] Expand regression tests for species compatibility effects.
