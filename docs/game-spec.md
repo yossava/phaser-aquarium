@@ -1,0 +1,384 @@
+# Game Spec
+
+## Working Title
+
+Phaser Aquarium
+
+## Product Goal
+
+Create a portrait mobile aquarium care game that players keep installed for months because it feels calm, personal, collectible, and always slightly alive.
+
+The game should be habit-forming through affection, progress, discovery, and expression. It should avoid hostile retention patterns such as punishing missed sessions, excessive notification pressure, or mechanics that make players feel trapped.
+
+## Target Platform
+
+- Mobile first.
+- Portrait orientation.
+- Short sessions: 30 seconds to 5 minutes.
+- Longer decoration and collection sessions: 5 to 15 minutes.
+- Playable offline for core care and collection.
+
+## Player Fantasy
+
+The player owns a growing aquarium that becomes more beautiful, rare, and personal over time. Fish feel like tiny pets with needs, moods, growth, and rewards. The tank becomes a living collection and a self-expression space.
+
+## Core Pillars
+
+- Care: Fish need food, clean water, health, and attention.
+- Collection: Many fish species, color variants, decorations, themes, rarity tiers, and rare finds.
+- Growth: Fish mature visually and economically over time.
+- Expression: Players arrange decorations and build a tank that feels like theirs.
+- Calm Reward: The game feels soothing, generous, and satisfying to check.
+- Lightweight Strategy: Food choices, tank layout, fish compatibility, and decoration bonuses matter.
+
+## Core Loop
+
+1. Open the aquarium.
+2. Collect coins dropped by happy fish.
+3. Check fish needs and tank state.
+4. Feed or treat fish.
+5. Buy fish, food, decorations, or upgrades.
+6. Place and arrange items in the tank.
+7. Watch fish interact, grow, and produce rewards.
+8. Return later to see progress and collect new rewards.
+
+## Long-Term Loop
+
+1. Complete daily care goals.
+2. Unlock new fish tiers and decoration sets.
+3. Breed or discover fish variants.
+4. Upgrade tank capacity, filters, lighting, and themes.
+5. Complete collection albums.
+6. Build themed aquariums.
+7. Participate in weekly events.
+8. Acquire event-only fish.
+9. Share or visit tanks.
+
+## MVP Scope
+
+The current MVP should prove:
+
+- Player can buy fish.
+- Player can sell fish.
+- Player can place fish in the tank.
+- Player can buy and drop food.
+- Hungry fish seek and eat food.
+- Fish have visible states: happy, hungry, ill.
+- Happy fish drop coins.
+- Player can collect coins.
+- Fish grow over time with a cap per fish type.
+- Player can buy and place decorations.
+- Game is portrait mobile and touch-first.
+- Regression test covers the core loop.
+
+## Near-Term V1 Scope
+
+- Persistent save/load.
+- Better fish state UI.
+- Tank cleanliness.
+- Fish medicine.
+- Decoration happiness bonuses.
+- More fish types.
+- More decorations.
+- Fish selling.
+- Fish rarity: common, rare, and super rare.
+- Three coin types: common, rare, and super rare.
+- Shop categories and prices based on coin type.
+- Species-specific food needs.
+- Basic tank compatibility rules.
+- Basic upgrade progression.
+- Daily goals.
+- Offline coin accrual with caps.
+- Mobile safe-area support.
+
+## Retention Design
+
+### Day 1
+
+- Player gets a free starter fish.
+- First fish grows visibly within minutes.
+- Player earns enough coins to buy food and one decoration.
+- The game teaches by doing, not through long text.
+
+### Day 2-3
+
+- Unlock a second fish species.
+- Introduce tank cleanliness.
+- Add a simple daily care bonus.
+- Give the player a reason to personalize the tank.
+
+### Day 4-7
+
+- Unlock fish variants or rarity.
+- Introduce upgrade choices.
+- Add a small collection album.
+- Add a weekly decoration theme.
+
+### Long-Term
+
+- Seasonal fish and decorations.
+- Fish breeding or discovery.
+- Event-only fish that cannot be purchased directly.
+- Multiple tanks.
+- Rare cosmetic mutations.
+- Species mastery and collection album bonuses.
+- Tank compatibility puzzles.
+- Collection milestones.
+- Optional social visits.
+
+## Ethical Engagement Rules
+
+- Do not punish players harshly for being away.
+- Fish should become unhappy or paused, not permanently die from absence.
+- Offline rewards should be capped but meaningful.
+- Notifications should be useful and sparse.
+- Monetization, if added later, should be cosmetic or convenience-focused.
+- Do not hide core care behind ads.
+
+## Economy Direction
+
+Use three coin types:
+
+- Common coins: produced mostly by common fish, spent on basic food, common fish, basic decorations, and early upgrades.
+- Rare coins: produced mostly by rare fish, spent on rare fish, rare foods, better decorations, and mid-tier upgrades.
+- Super rare coins: produced by super rare or event fish, spent on high-tier in-game items, super rare habitats, special food, and high-tier upgrades.
+
+Shop items are categorized by the same rarity as the coin type:
+
+- Common shop items cost common coins.
+- Rare shop items cost rare coins.
+- Super rare shop items cost super rare coins.
+
+Fish can produce more than one coin type. Production depends on fish species, rarity, age, mood, health, habitat, compatibility, and event bonuses.
+
+The MVP currently only uses one coin counter, but the target economy should support all three.
+
+## Collection And Rarity
+
+Fish should feel almost countless over time through a mix of species, rarity, age, color variant, pattern variant, event source, and personality.
+
+Rarity tiers:
+
+- Common: easy to buy, produces common coins, simple care needs.
+- Rare: unlocked through progression, produces rare coins, has more specific needs.
+- Super rare: expensive, event-gated, or discovered, produces super rare coins, has strict habitat or compatibility needs.
+
+All fish start as babies. The player grows them into juveniles, adults, and elder/master fish. Age changes size, food needs, mood cycle, production type, production rate, and selling value.
+
+## Species And Compatibility
+
+Fish species should vary meaningfully:
+
+- Each species has a food type it prefers or requires.
+- Some species can share tanks peacefully.
+- Some species dislike specific species, sizes, or habitats.
+- Some species require matching water type, decoration type, or tank cleanliness.
+- Incompatible species affect health, mood, growth, and production rate.
+
+Compatibility should create interesting tank-building decisions without making the player feel punished for experimenting. The game should warn players before placing incompatible fish.
+
+## Acquisition Rules
+
+Fish acquisition should come from several sources:
+
+- Store purchase.
+- Daily or weekly event rewards.
+- Collection milestone rewards.
+- Growth or mastery rewards.
+- Discovery through special tank conditions.
+- Later: breeding or expedition systems.
+
+Some fish cannot be purchased. They are acquired only from events, milestones, or discoveries.
+
+## Selling Fish
+
+Players can sell fish to manage tank space and recover value.
+
+Selling value should depend on:
+
+- Species.
+- Rarity.
+- Age.
+- Health.
+- Happiness.
+- Growth progress.
+- Event exclusivity.
+
+Event-only fish should be sellable only with an extra confirmation later, because players may regret selling them.
+
+## Visual Direction
+
+- Cozy, bright, readable mobile UI.
+- Aquarium should occupy the emotional center of the screen.
+- Fish need expressive silhouettes and clear state feedback.
+- Decorations should make the tank look meaningfully different.
+- UI should feel like a game tool tray, not a web dashboard.
+
+## Audio Direction
+
+- Gentle water ambience.
+- Light coin pickup sound.
+- Soft feeding sound.
+- Happy fish sparkle or bubble sound.
+- Ill fish should be clear but not alarming.
+
+## Success Metrics
+
+- Player understands what to do without instructions.
+- Player can complete the first loop in under 60 seconds.
+- Player wants to buy a second fish.
+- Player notices fish growth.
+- Player returns to collect coins.
+- Player feels the tank is becoming more personal.
+
+## Production Release Criteria
+
+The game is production-ready only when these are true:
+
+- Core loop is playable without developer knowledge.
+- Save/load is stable across app restarts and app updates.
+- Offline progress is capped, understandable, and resistant to obvious clock abuse.
+- The first session gives the player a baby fish, teaches feeding, teaches coin collection, and gives one meaningful decoration choice.
+- All shop purchases have clear prices, owned counts, currency type, and placement behavior.
+- All sell actions show value, currency type, and confirmation when needed.
+- Fish state changes are visually readable on a phone screen.
+- The game supports common portrait phone sizes and safe areas.
+- Performance stays smooth on mid-tier mobile devices.
+- Regression tests cover the economy, fish care, placement, selling, offline progress, and compatibility rules.
+- Content data can be expanded without editing core gameplay code.
+- No player can lose event-only fish by accident.
+
+## Required Screens
+
+Production needs these screens or overlays:
+
+- Tank screen: main play area, HUD, fish, decorations, coins, food drops.
+- Store: fish, food, decorations, upgrades, event items, rarity lanes.
+- Inventory: owned fish, food, decorations, and locked items.
+- Fish details: age, rarity, mood, hunger, health, food need, production, compatibility, sell value.
+- Placement confirmation: warns about incompatibility or tank limits.
+- Sell confirmation: shows payout and extra warning for event-only fish.
+- Collection album: owned, locked, event-only, mastery, and discovery hints.
+- Daily goals: short care tasks and rewards.
+- Offline return summary: coins earned, fish needs, cleanliness changes.
+- Settings: sound, music, notifications, language, privacy, restore/reset save.
+
+## First-Time User Experience
+
+The first session should be playable in under one minute:
+
+1. Player receives one free common baby fish.
+2. Player places it in the tank.
+3. Fish becomes hungry.
+4. Player receives free micro/basic food.
+5. Player drops food and watches the fish eat.
+6. Fish becomes happy and drops a common coin.
+7. Player collects the coin.
+8. Player buys or places one starter decoration.
+
+The tutorial should use highlights, arrows, and short labels only. Avoid long text boxes.
+
+## Content Strategy
+
+Fish catalog should scale through data:
+
+- Species.
+- Rarity.
+- Age stages.
+- Color variants.
+- Pattern variants.
+- Personality variants.
+- Event source.
+- Food type.
+- Habitat preference.
+- Production table.
+
+Initial production target:
+
+- 12 common fish.
+- 8 rare fish.
+- 4 super rare fish.
+- 3 event-only fish.
+- 12 decorations.
+- 5 food types.
+- 3 tank upgrades.
+
+Later content can expand through events without changing the core systems.
+
+## Notification Strategy
+
+Notifications are optional and gentle:
+
+- Fish are hungry.
+- Tank needs cleaning.
+- Offline rewards are ready.
+- Event is ending soon.
+
+Rules:
+
+- Ask permission only after the player understands why notifications help.
+- Never send more than one routine notification per day by default.
+- Do not use guilt language.
+- Do not imply fish will die while the player is away.
+
+## Accessibility And Localization
+
+Production must support:
+
+- Large touch targets.
+- High-contrast readable UI.
+- Color plus icon/state labels, not color alone.
+- Reduced motion option.
+- Separate music and sound controls.
+- Text that can be localized without layout breakage.
+- Short strings for small mobile screens.
+- Left/right hand friendly bottom controls where possible.
+
+## Performance Targets
+
+Production targets:
+
+- 60 FPS target, 30 FPS acceptable floor on older devices.
+- Initial load under 5 seconds on normal mobile network after install.
+- No unbounded particles, coin drops, food objects, or fish path calculations.
+- Memory stable during 15-minute session.
+- Offline calculation completes instantly for typical saves.
+
+## Analytics And Balancing
+
+Analytics should be privacy-conscious and gameplay-focused:
+
+- First session completion.
+- Fish bought.
+- Fish sold.
+- Fish placed.
+- Food dropped.
+- Coin collected by type.
+- Fish aged up.
+- Fish became ill.
+- Compatibility warning shown.
+- Compatibility warning ignored.
+- Daily goal completed.
+- Offline reward claimed.
+- Store item bought by category and rarity.
+
+Do not collect sensitive personal data for core gameplay.
+
+## Production Risks
+
+- Too many currencies too early can confuse new players.
+- Species incompatibility can feel unfair if not explained before placement.
+- Event-only fish can create fear of missing out if they never return.
+- Offline progress can break economy if uncapped.
+- Selling can cause regret if rare fish are not protected.
+- Large fish catalogs can overwhelm store browsing without filters.
+- Babies that need too much feeding can feel needy rather than cute.
+
+## Non-Goals For Now
+
+- Real-money purchases.
+- Social accounts.
+- Cloud sync.
+- Complex breeding genetics in the near term.
+- Multiple tanks in the MVP.
+- Heavy tutorial system.

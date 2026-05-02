@@ -1,0 +1,20 @@
+{
+  "name": "phaser-aquarium",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "npm run build && npm run test:regression",
+    "test:regression": "node scripts/regression-test.mjs"
+  },
+  "dependencies": {
+    "phaser": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^8.0.10"
+  }
+}
