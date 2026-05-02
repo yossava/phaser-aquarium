@@ -1,34 +1,13 @@
 import Phaser from "phaser";
 import "./styles.css";
+import { basicFood, decorationTypes, fishTypes } from "./data/content";
+import type { DecorationType, FishState, FishType, StoreTab } from "./types/mechanics";
 
-type FishState = "hungry" | "ill" | "happy";
 type PlacementMode =
   | { kind: "none" }
   | { kind: "fish"; fishTypeId: string }
   | { kind: "food" }
   | { kind: "decoration"; decorationTypeId: string };
-type StoreTab = "fish" | "food" | "decor";
-
-type FishType = {
-  id: string;
-  name: string;
-  price: number;
-  baseScale: number;
-  maxScale: number;
-  growthPerSecond: number;
-  speed: number;
-  hungerPerSecond: number;
-  coinDropSeconds: number;
-  coinValue: number;
-  tint: number;
-};
-
-type DecorationType = {
-  id: string;
-  name: string;
-  price: number;
-  texture: string;
-};
 
 type AquariumTestSnapshot = {
   coins: number;
@@ -68,54 +47,6 @@ const tankBounds = new Phaser.Geom.Rectangle(18, 84, 394, 430);
 const controlPanelTop = 558;
 const toastX = gameWidth / 2;
 const toastY = 548;
-
-const fishTypes: FishType[] = [
-  {
-    id: "goldfish",
-    name: "Goldfish",
-    price: 35,
-    baseScale: 0.62,
-    maxScale: 1.18,
-    growthPerSecond: 0.0015,
-    speed: 54,
-    hungerPerSecond: 2.9,
-    coinDropSeconds: 8,
-    coinValue: 5,
-    tint: 0xffb23c
-  },
-  {
-    id: "angelfish",
-    name: "Angelfish",
-    price: 70,
-    baseScale: 0.72,
-    maxScale: 1.34,
-    growthPerSecond: 0.0011,
-    speed: 46,
-    hungerPerSecond: 2.3,
-    coinDropSeconds: 10,
-    coinValue: 10,
-    tint: 0x74d3ff
-  },
-  {
-    id: "koi",
-    name: "Koi",
-    price: 120,
-    baseScale: 0.82,
-    maxScale: 1.55,
-    growthPerSecond: 0.0009,
-    speed: 42,
-    hungerPerSecond: 1.9,
-    coinDropSeconds: 13,
-    coinValue: 18,
-    tint: 0xf35f55
-  }
-];
-
-const decorationTypes: DecorationType[] = [
-  { id: "plant", name: "Plant", price: 20, texture: "decor-plant" },
-  { id: "rock", name: "Rock", price: 25, texture: "decor-rock" },
-  { id: "castle", name: "Castle", price: 60, texture: "decor-castle" }
-];
 
 class Fish {
   public sprite: Phaser.GameObjects.Sprite;
@@ -470,7 +401,7 @@ class AquariumScene extends Phaser.Scene {
       for (const fishType of fishTypes) {
         this.addControlRow(
           y,
-          `${fishType.name} $${fishType.price}`,
+          `${fishType.name} $${fishType.price.amount}`,
           `Place x${this.getFishInventory(fishType.id)}`,
           () => this.buyFish(fishType),
           () => this.selectFish(fishType.id),
@@ -483,7 +414,16 @@ class AquariumScene extends Phaser.Scene {
 
     if (this.activeTab === "food") {
       this.tabControls.push(
-        this.createButton(20, controlPanelTop + 62, 188, 44, "Buy Food $5", () => this.buyFood(), 0x256f95, 15),
+        this.createButton(
+          20,
+          controlPanelTop + 62,
+          188,
+          44,
+          `Buy Food $${basicFood.price.amount}`,
+          () => this.buyFood(),
+          0x256f95,
+          15
+        ),
         this.createButton(222, controlPanelTop + 62, 188, 44, `Drop Food x${this.foodInventory}`, () => this.selectFood(), 0x356a35, 15)
       );
       this.tabControls.push(
@@ -496,7 +436,7 @@ class AquariumScene extends Phaser.Scene {
     for (const decorationType of decorationTypes) {
       this.addControlRow(
         y,
-        `${decorationType.name} $${decorationType.price}`,
+        `${decorationType.name} $${decorationType.price.amount}`,
         `Place x${this.getDecorationInventory(decorationType.id)}`,
         () => this.buyDecoration(decorationType),
         () => this.selectDecoration(decorationType.id),
@@ -556,7 +496,7 @@ class AquariumScene extends Phaser.Scene {
   }
 
   private buyFish(fishType: FishType): void {
-    if (!this.spend(fishType.price)) {
+    if (!this.spend(fishType.price.amount)) {
       return;
     }
 
@@ -567,7 +507,7 @@ class AquariumScene extends Phaser.Scene {
   }
 
   private buyFood(): void {
-    if (!this.spend(5)) {
+    if (!this.spend(basicFood.price.amount)) {
       return;
     }
 
@@ -578,7 +518,7 @@ class AquariumScene extends Phaser.Scene {
   }
 
   private buyDecoration(decorationType: DecorationType): void {
-    if (!this.spend(decorationType.price)) {
+    if (!this.spend(decorationType.price.amount)) {
       return;
     }
 

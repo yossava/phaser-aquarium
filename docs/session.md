@@ -40,3 +40,6 @@
 - Added long-term game spec and mechanics docs focused on mobile retention.
 - Expanded game and mechanics specs with rarity, multi-currency economy, fish selling, age-based attributes, species food requirements, compatibility, event-only fish, and additional long-term systems.
 - Double-reviewed specs for production coverage and added release criteria, required screens, FTUE, content strategy, accessibility, localization, performance, analytics, data contracts, save/load, migrations, content validation, edge cases, and QA matrix.
+- Reorganized tasks into mechanics-aligned production phases from foundations through QA.
+- Started foundation implementation by adding shared mechanics types, JSON content tables, content validation, and data-driven MVP store content.
+- Verified with `npm test` and visual browser QA.

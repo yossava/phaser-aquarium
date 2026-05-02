@@ -1,0 +1,27 @@
+[
+  {
+    "id": "basic",
+    "name": "Basic Food",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 5 },
+    "nutrition": 46,
+    "acceptedByDefault": true
+  },
+  {
+    "id": "micro",
+    "name": "Micro Food",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 6 },
+    "nutrition": 40,
+    "acceptedByDefault": true
+  },
+  {
+    "id": "premium",
+    "name": "Premium Food",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 1 },
+    "nutrition": 70,
+    "acceptedByDefault": false
+  }
+]
+

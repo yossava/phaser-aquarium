@@ -1,0 +1,30 @@
+[
+  {
+    "id": "plant",
+    "name": "Plant",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 20 },
+    "texture": "decor-plant",
+    "habitatTags": ["plant", "freshwater"],
+    "happinessBonus": 3
+  },
+  {
+    "id": "rock",
+    "name": "Rock",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 25 },
+    "texture": "decor-rock",
+    "habitatTags": ["rock", "freshwater"],
+    "happinessBonus": 2
+  },
+  {
+    "id": "castle",
+    "name": "Castle",
+    "rarity": "rare",
+    "price": { "coinType": "common", "amount": 60 },
+    "texture": "decor-castle",
+    "habitatTags": ["shelter", "fantasy"],
+    "happinessBonus": 6
+  }
+]
+

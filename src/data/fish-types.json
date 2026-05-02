@@ -1,0 +1,205 @@
+[
+  {
+    "id": "goldfish",
+    "name": "Goldfish",
+    "speciesFamily": "community",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 35 },
+    "acquisitionSources": ["store"],
+    "sellBaseValue": { "coinType": "common", "amount": 12 },
+    "requiredFoodTypes": ["micro", "basic"],
+    "preferredFoodTypes": ["basic"],
+    "habitatTags": ["freshwater", "plant"],
+    "compatibleSpecies": ["goldfish", "angelfish", "koi"],
+    "incompatibleSpecies": [],
+    "waterRequirement": "freshwater",
+    "illnessResistance": 0.7,
+    "ageCurve": {
+      "baby": {
+        "durationSeconds": 180,
+        "scale": 0.62,
+        "hungerMultiplier": 1.2,
+        "moodCycleSeconds": 70,
+        "production": [{ "coinType": "common", "amount": 5, "intervalSeconds": 8, "chance": 1 }]
+      },
+      "juvenile": {
+        "durationSeconds": 480,
+        "scale": 0.82,
+        "hungerMultiplier": 1,
+        "moodCycleSeconds": 90,
+        "production": [{ "coinType": "common", "amount": 7, "intervalSeconds": 8, "chance": 1 }]
+      },
+      "adult": {
+        "durationSeconds": 1200,
+        "scale": 1,
+        "hungerMultiplier": 0.9,
+        "moodCycleSeconds": 120,
+        "production": [{ "coinType": "common", "amount": 9, "intervalSeconds": 8, "chance": 1 }]
+      },
+      "elder": {
+        "durationSeconds": 2400,
+        "scale": 1.12,
+        "hungerMultiplier": 0.85,
+        "moodCycleSeconds": 150,
+        "production": [{ "coinType": "common", "amount": 12, "intervalSeconds": 9, "chance": 1 }]
+      },
+      "master": {
+        "durationSeconds": 0,
+        "scale": 1.18,
+        "hungerMultiplier": 0.8,
+        "moodCycleSeconds": 180,
+        "production": [{ "coinType": "common", "amount": 15, "intervalSeconds": 10, "chance": 1 }]
+      }
+    },
+    "baseScale": 0.62,
+    "maxScale": 1.18,
+    "growthPerSecond": 0.0015,
+    "speed": 54,
+    "hungerPerSecond": 2.9,
+    "coinDropSeconds": 8,
+    "coinValue": 5,
+    "tint": 16757308
+  },
+  {
+    "id": "angelfish",
+    "name": "Angelfish",
+    "speciesFamily": "community",
+    "rarity": "rare",
+    "price": { "coinType": "common", "amount": 70 },
+    "acquisitionSources": ["store"],
+    "sellBaseValue": { "coinType": "common", "amount": 24 },
+    "requiredFoodTypes": ["micro", "premium"],
+    "preferredFoodTypes": ["premium", "coral"],
+    "habitatTags": ["freshwater", "plant"],
+    "compatibleSpecies": ["goldfish", "angelfish"],
+    "incompatibleSpecies": [],
+    "waterRequirement": "freshwater",
+    "illnessResistance": 0.55,
+    "ageCurve": {
+      "baby": {
+        "durationSeconds": 240,
+        "scale": 0.72,
+        "hungerMultiplier": 1.15,
+        "moodCycleSeconds": 80,
+        "production": [{ "coinType": "common", "amount": 10, "intervalSeconds": 10, "chance": 1 }]
+      },
+      "juvenile": {
+        "durationSeconds": 600,
+        "scale": 0.94,
+        "hungerMultiplier": 1,
+        "moodCycleSeconds": 110,
+        "production": [{ "coinType": "common", "amount": 12, "intervalSeconds": 10, "chance": 1 }]
+      },
+      "adult": {
+        "durationSeconds": 1400,
+        "scale": 1.08,
+        "hungerMultiplier": 0.9,
+        "moodCycleSeconds": 140,
+        "production": [
+          { "coinType": "common", "amount": 14, "intervalSeconds": 10, "chance": 1 },
+          { "coinType": "rare", "amount": 1, "intervalSeconds": 45, "chance": 0.15 }
+        ]
+      },
+      "elder": {
+        "durationSeconds": 2800,
+        "scale": 1.22,
+        "hungerMultiplier": 0.85,
+        "moodCycleSeconds": 170,
+        "production": [
+          { "coinType": "common", "amount": 16, "intervalSeconds": 11, "chance": 1 },
+          { "coinType": "rare", "amount": 1, "intervalSeconds": 36, "chance": 0.25 }
+        ]
+      },
+      "master": {
+        "durationSeconds": 0,
+        "scale": 1.34,
+        "hungerMultiplier": 0.82,
+        "moodCycleSeconds": 200,
+        "production": [
+          { "coinType": "common", "amount": 20, "intervalSeconds": 12, "chance": 1 },
+          { "coinType": "rare", "amount": 2, "intervalSeconds": 36, "chance": 0.35 }
+        ]
+      }
+    },
+    "baseScale": 0.72,
+    "maxScale": 1.34,
+    "growthPerSecond": 0.0011,
+    "speed": 46,
+    "hungerPerSecond": 2.3,
+    "coinDropSeconds": 10,
+    "coinValue": 10,
+    "tint": 7656447
+  },
+  {
+    "id": "koi",
+    "name": "Koi",
+    "speciesFamily": "pond",
+    "rarity": "superRare",
+    "price": { "coinType": "common", "amount": 120 },
+    "acquisitionSources": ["store"],
+    "sellBaseValue": { "coinType": "common", "amount": 42 },
+    "requiredFoodTypes": ["micro", "protein"],
+    "preferredFoodTypes": ["protein", "premium"],
+    "habitatTags": ["freshwater", "rock", "plant"],
+    "compatibleSpecies": ["goldfish", "koi"],
+    "incompatibleSpecies": [],
+    "waterRequirement": "freshwater",
+    "illnessResistance": 0.8,
+    "ageCurve": {
+      "baby": {
+        "durationSeconds": 300,
+        "scale": 0.82,
+        "hungerMultiplier": 1.1,
+        "moodCycleSeconds": 90,
+        "production": [{ "coinType": "common", "amount": 18, "intervalSeconds": 13, "chance": 1 }]
+      },
+      "juvenile": {
+        "durationSeconds": 720,
+        "scale": 1,
+        "hungerMultiplier": 1,
+        "moodCycleSeconds": 120,
+        "production": [{ "coinType": "common", "amount": 22, "intervalSeconds": 13, "chance": 1 }]
+      },
+      "adult": {
+        "durationSeconds": 1600,
+        "scale": 1.18,
+        "hungerMultiplier": 0.9,
+        "moodCycleSeconds": 150,
+        "production": [
+          { "coinType": "common", "amount": 26, "intervalSeconds": 13, "chance": 1 },
+          { "coinType": "rare", "amount": 2, "intervalSeconds": 42, "chance": 0.25 }
+        ]
+      },
+      "elder": {
+        "durationSeconds": 3200,
+        "scale": 1.38,
+        "hungerMultiplier": 0.84,
+        "moodCycleSeconds": 190,
+        "production": [
+          { "coinType": "common", "amount": 30, "intervalSeconds": 14, "chance": 1 },
+          { "coinType": "rare", "amount": 2, "intervalSeconds": 34, "chance": 0.35 }
+        ]
+      },
+      "master": {
+        "durationSeconds": 0,
+        "scale": 1.55,
+        "hungerMultiplier": 0.8,
+        "moodCycleSeconds": 230,
+        "production": [
+          { "coinType": "common", "amount": 35, "intervalSeconds": 15, "chance": 1 },
+          { "coinType": "rare", "amount": 3, "intervalSeconds": 30, "chance": 0.45 },
+          { "coinType": "superRare", "amount": 1, "intervalSeconds": 120, "chance": 0.08 }
+        ]
+      }
+    },
+    "baseScale": 0.82,
+    "maxScale": 1.55,
+    "growthPerSecond": 0.0009,
+    "speed": 42,
+    "hungerPerSecond": 1.9,
+    "coinDropSeconds": 13,
+    "coinValue": 18,
+    "tint": 15949653
+  }
+]
+

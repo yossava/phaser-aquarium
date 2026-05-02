@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added shared mechanics types and initial JSON content tables for fish, food, and decorations.
+- Added dependency-free content validation and wired it into `npm test`.
+- Refactored the MVP scene to read fish, food, and decoration content from data tables.
+- Reorganized task list into mechanics-aligned production phases.
 - Added production-readiness coverage to specs: release criteria, required screens, FTUE, content strategy, notifications, accessibility, localization, performance, analytics, risks, data contracts, save/load, migrations, content validation, and QA matrix.
 - Expanded specs with fish selling, large fish catalog, baby-to-adult growth, rarity tiers, multi-currency production, shop rarity lanes, age attributes, species food needs, compatibility rules, and event-only fish.
 - Added long-term interest systems: personalities, biomes, collection album, mastery, discovery recipes, visitor fish, decoration sets, photo moments, and rescue events.
