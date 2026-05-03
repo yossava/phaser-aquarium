@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added food calories and density levels, with Store cards showing density and calories instead of a flat nutrition stat.
+- Changed hunger and feeding so fish calorie needs scale with age-rooted size: bigger fish become hungry faster and need denser food to get the same fullness benefit.
+- Updated auto-feeder food choice so larger hungry fish can prefer higher-calorie compatible food when stocked.
+- Increased displayed fish length scale by 10x so Book labels read like `59 cm` instead of `5.9 cm`, with weight still derived from age-rooted length.
+- Added age-rooted fish length and weight stats to Book fish cards, fish details, sell confirmation, and regression snapshots.
+- Added a `book-fish-length-weight.png` visual regression artifact for the Book statistics page.
 - Removed shop-side Use, Place, Stats, and No Evo secondary buttons so store cards focus on buying only.
 - Added visual regression coverage for buy-only shop cards.
 - Added a Reset button to food bulk-buy cards so accumulated quantities can return to x1 quickly.

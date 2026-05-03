@@ -70,6 +70,8 @@ export type FoodType = {
   rarity: Rarity;
   price: Price;
   nutrition: number;
+  calories: number;
+  densityLevel: number;
   acceptedByDefault: boolean;
 };
 

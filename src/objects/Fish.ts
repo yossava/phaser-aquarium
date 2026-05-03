@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { gameWidth, tankBounds } from "../game/constants";
 import { fishFoodTintFor, rarityStarCount, rarityTintFor } from "../game/visuals";
-import type { AgeStage, CoinProduction, FishGender, FishState, FishType } from "../types/mechanics";
+import type { AgeStage, CoinProduction, FishGender, FishState, FishType, FoodType } from "../types/mechanics";
 import { FoodPellet } from "./FoodPellet";
 
 const ageStageOrder: AgeStage[] = ["baby", "juvenile", "adult", "elder", "master"];
@@ -16,6 +16,8 @@ const earlyGrowthSeconds = 6 * secondsPerFishMonth;
 const minimumGrowthWidthRatio = 0.24;
 const maximumGrowthWidthRatio = 0.5;
 const happyEmojiDurationMs = 3200;
+const fishLengthDisplayMultiplier = 10;
+const baselineMealCalories = 46;
 export const fatalCareSeconds = 60 * 60;
 
 export class Fish {
@@ -78,7 +80,7 @@ export class Fish {
     const isMedicated = this.scene.time.now < this.medicatedUntil;
     const hungerGrowthMultiplier = isMedicated ? 0.35 : 1;
     this.hunger = Phaser.Math.Clamp(
-      this.hunger + this.type.hungerPerSecond * this.currentAgeCurve().hungerMultiplier * hungerGrowthMultiplier * deltaSeconds,
+      this.hunger + this.hungerPerSecond() * hungerGrowthMultiplier * deltaSeconds,
       0,
       100
     );
@@ -108,7 +110,7 @@ export class Fish {
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
       const accepted = this.acceptsFood(closestFood);
       if (accepted) {
-        this.hunger = Phaser.Math.Clamp(this.hunger - closestFood.nutrition, 0, 100);
+        this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromFood(closestFood), 0, 100);
         this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
         this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
       } else {
@@ -230,6 +232,27 @@ export class Fish {
     return Phaser.Math.Linear(1, 0.46, growthRatio);
   }
 
+  public calorieNeedMultiplier(): number {
+    const speciesSizeRatio = Phaser.Math.Clamp((this.adultLengthCm() / fishLengthDisplayMultiplier - 8) / 24, 0, 1);
+    const speciesMultiplier = Phaser.Math.Linear(0.95, 1.18, speciesSizeRatio);
+    return Phaser.Math.Linear(0.72, 3.8, this.biologicalGrowthRatio()) * speciesMultiplier;
+  }
+
+  public hungerPerSecond(): number {
+    return this.type.hungerPerSecond * this.currentAgeCurve().hungerMultiplier * this.calorieNeedMultiplier();
+  }
+
+  public mealCaloriesNeeded(): number {
+    return baselineMealCalories * this.calorieNeedMultiplier();
+  }
+
+  public hungerReductionFromFood(food: FoodPellet | FoodType): number {
+    const foodType = food instanceof FoodPellet ? food.foodType : food;
+    const preferredMultiplier = this.type.preferredFoodTypes.includes(foodType.id) ? 1.08 : 1;
+    const medicineMultiplier = foodType.id === "medicine" ? 0.55 : 1;
+    return (foodType.calories * preferredMultiplier * medicineMultiplier) / this.calorieNeedMultiplier();
+  }
+
   public canEvolve(): boolean {
     return this.evolutionStage < 3;
   }
@@ -294,6 +317,32 @@ export class Fish {
 
   public growthCapAgeYears(): number {
     return growthCapYears;
+  }
+
+  public lengthCm(): number {
+    const adultLengthCm = this.adultLengthCm();
+    const startingLengthCm = adultLengthCm * 0.32;
+    return Phaser.Math.Linear(startingLengthCm, adultLengthCm * veryBigScaleMultiplier, this.biologicalGrowthRatio());
+  }
+
+  public weightGrams(): number {
+    const maxLengthCm = this.adultLengthCm() * veryBigScaleMultiplier;
+    const lengthRatio = Phaser.Math.Clamp(this.lengthCm() / Math.max(1, maxLengthCm), 0, 1);
+    const maxWeightGrams = Math.pow(maxLengthCm, 3) * 0.012;
+    return Math.max(0.1, maxWeightGrams * Math.pow(lengthRatio, 3));
+  }
+
+  public lengthLabel(): string {
+    return `${this.lengthCm().toFixed(1)} cm`;
+  }
+
+  public weightLabel(): string {
+    const grams = this.weightGrams();
+    if (grams >= 1000) {
+      return `${(grams / 1000).toFixed(1)} kg`;
+    }
+
+    return `${grams.toFixed(1)} g`;
   }
 
   public veryBigScaleCap(): number {
@@ -365,6 +414,34 @@ export class Fish {
 
   private desiredAgeScale(): number {
     return Math.min(this.uncappedAgeScale(), this.tankGrowthScaleCap());
+  }
+
+  private adultLengthCm(): number {
+    const speciesScaleRatio = Phaser.Math.Clamp((this.type.maxScale - 1.17) / 0.56, 0, 1);
+    return Phaser.Math.Linear(8, 32, speciesScaleRatio) * fishLengthDisplayMultiplier;
+  }
+
+  private biologicalGrowthRatio(): number {
+    const babyScale = this.type.ageCurve.baby.scale;
+    const maxScale = this.type.maxScale * veryBigScaleMultiplier;
+    return Phaser.Math.Clamp((this.rawUncappedAgeScale() - babyScale) / Math.max(0.01, maxScale - babyScale), 0, 1);
+  }
+
+  private rawUncappedAgeScale(): number {
+    const ageSeconds = Math.max(0, this.ageSeconds);
+    if (ageSeconds <= earlyGrowthSeconds) {
+      return Phaser.Math.Linear(
+        this.type.ageCurve.baby.scale,
+        this.type.ageCurve.adult.scale,
+        Phaser.Math.Clamp(ageSeconds / earlyGrowthSeconds, 0, 1)
+      );
+    }
+
+    return Phaser.Math.Linear(
+      this.type.ageCurve.adult.scale,
+      this.type.maxScale * veryBigScaleMultiplier,
+      Phaser.Math.Clamp((ageSeconds - earlyGrowthSeconds) / Math.max(1, growthCapSeconds - earlyGrowthSeconds), 0, 1)
+    );
   }
 
   private uncappedAgeScale(): number {

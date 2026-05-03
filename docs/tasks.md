@@ -54,6 +54,8 @@
 - [x] Retune age-only fish sizing so four-month fish are much larger than new fish.
 - [x] Add tank-size growth caps so fish pause growth in tanks that are too small.
 - [x] Add growth-blocked indicators and upgrade prompts for capped fish.
+- [x] Add age-rooted fish length and weight stats to Book fish cards.
+- [x] Scale hunger growth and meal calorie need from age-rooted fish size.
 - [ ] Add age-based size, food need, mood cycle, production table, sell value, and comfort tolerance.
 - [x] Add owned fish gender.
 - [x] Remove player-facing fish size category labels: baby, small, med, big, and max.
@@ -76,6 +78,8 @@
 
 - [x] Add food types: micro, basic, premium, herb, protein, coral, medicine, and event.
 - [x] Add species-specific required and preferred food types.
+- [x] Add food density levels and calorie values.
+- [x] Make higher-calorie food satisfy larger fish better than starter food.
 - [x] Add wrong-food rejection and wrong-food partial effects.
 - [x] Add food cleanup cleanliness penalty.
 - [x] Add right-side food tool toggles so a selected food drops on the next tank tap.
@@ -140,6 +144,7 @@
 - [x] Add required MVP screens: tank, store, care/inventory, fish details, sell confirmation, collection album, daily goals, offline summary, and settings.
 - [x] Add owned fish statistics page under Book/Album.
 - [x] Show compact fish age on Book/Album owned fish cards.
+- [x] Show fish length and weight on Book/Album owned fish cards.
 - [x] Make the tank the full-screen primary play surface in portrait mode.
 - [x] Replace tab-like global navigation with individual icon buttons for Store, Care, Album, Goals, and Settings.
 - [x] Remove risky/incompatible placement confirmation from the current community-tank flow.

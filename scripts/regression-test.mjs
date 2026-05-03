@@ -412,6 +412,9 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].ageStage === undefined && state.fish[0].ageCategory === undefined, "Fish snapshot should not expose size or age-stage categories.");
   assert(state.fish[0].ageLabel === "0d", "New fish should expose fish-time age days instead of real seconds.");
   assert(state.fish[0].ageMonths < 0.01 && state.fish[0].growthCapAgeYears === 50, "Fish age should use 1 real hour per fish month and cap growth at 50 years.");
+  assert(state.fish[0].lengthCm > 0 && state.fish[0].weightGrams > 0, "Fish snapshot should expose age-rooted length and weight.");
+  assert(state.fish[0].lengthCm >= 20, "Fish length labels should use the larger 10x fantasy centimeter scale.");
+  assert(state.fish[0].lengthLabel.endsWith(" cm") && / (g|kg)$/.test(state.fish[0].weightLabel), "Fish size labels should use readable metric units.");
   assert(state.fish[0].evolutionStage === 0, "New fish should start at evolution stage zero.");
   assert(state.fish[0].statusBars.visible, "Fish hunger and mood bars should be visible.");
   assert(state.fish[0].statusBars.y < state.fish[0].y, "Fish hunger and mood bars should sit above the fish.");
@@ -423,6 +426,11 @@ async function runRegression(cdp, appUrl) {
   const freshMovementSizeMultiplier = state.fish[0].movementSizeMultiplier;
   assert(freshMovementSizeMultiplier > 0.95, "New fish should move at nearly full size-based speed.");
   const freshScale = state.fish[0].scale;
+  const freshLengthCm = state.fish[0].lengthCm;
+  const freshWeightGrams = state.fish[0].weightGrams;
+  const freshCalorieNeedMultiplier = state.fish[0].calorieNeedMultiplier;
+  const freshMealCaloriesNeeded = state.fish[0].mealCaloriesNeeded;
+  assert(freshCalorieNeedMultiplier > 0 && freshMealCaloriesNeeded > 0, "Fresh fish should expose a size-based food calorie need.");
   const freshSellValue = state.fish[0].sellValue;
   assert(freshSellValue < 35, "Freshly bought fish should sell below purchase price.");
 
@@ -432,9 +440,12 @@ async function runRegression(cdp, appUrl) {
     (current) =>
       current.fish[0].ageLabel === "4mo" &&
       Math.round(current.fish[0].ageMonths) === 4 &&
-      current.fish[0].scale > freshScale * 1.3,
-    "Four-month fish should look visibly larger than a new fish."
+      current.fish[0].scale > freshScale * 1.3 &&
+      current.fish[0].lengthCm > freshLengthCm * 1.3 &&
+      current.fish[0].weightGrams > freshWeightGrams * 2,
+    "Four-month fish should look visibly larger than a new fish and expose larger age-rooted size stats."
   );
+  assert(state.fish[0].calorieNeedMultiplier > freshCalorieNeedMultiplier, "Larger fish should need more food calories than age-zero fish.");
   await evaluate(cdp, "window.__aquariumTest.setScreen('tank')");
   state = await waitFor(cdp, (current) => current.activeScreen === "tank", "Returning to tank for 4-month age visual failed.");
   await delay(1200);
@@ -469,6 +480,9 @@ async function runRegression(cdp, appUrl) {
       current.tankNeedIndicator.includes("needs L2") &&
       current.fish[0].statusBars.emoji === "😣" &&
       current.fish[0].statusBars.emojiBubbleVisible &&
+      current.fish[0].lengthCm > freshLengthCm * 3 &&
+      current.fish[0].weightGrams > freshWeightGrams * 20 &&
+      current.fish[0].mealCaloriesNeeded > freshMealCaloriesNeeded * 3 &&
       current.fish[0].movementSizeMultiplier < freshMovementSizeMultiplier * 0.7,
     "Oversized fish should stop growing when the current tank is too small and ask for a tank upgrade."
   );
@@ -548,6 +562,7 @@ async function runRegression(cdp, appUrl) {
       current.fish[0].statusBars.emojiBubbleVisible,
     "Hungry fish did not eat dropped food."
   );
+  const freshBasicFedHunger = state.fish[0].hunger;
   await captureNamedScreenshot(cdp, "fish-happy-after-eat-bubble.png");
   await delay(3600);
   state = await waitFor(
@@ -555,6 +570,21 @@ async function runRegression(cdp, appUrl) {
     (current) => current.fish[0].state === "happy" && !current.fish[0].statusBars.emojiVisible && !current.fish[0].statusBars.emojiBubbleVisible,
     "Happy emoji should disappear a few seconds after eating."
   );
+
+  await evaluate(cdp, "window.__aquariumTest.clearFoods()");
+  await evaluate(cdp, `window.__aquariumTest.forceFishAge(0, ${fullyGrownAgeSeconds})`);
+  await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 218, 248)");
+  await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 92, 100)");
+  await evaluate(cdp, "window.__aquariumTest.dropFoodForTest('basic', 218, 248)");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.foodCount === 0 &&
+      current.fish[0].calorieNeedMultiplier > freshCalorieNeedMultiplier * 3 &&
+      current.fish[0].hunger > freshBasicFedHunger + 35,
+    "Same basic food should satisfy a very large fish much less than an age-zero fish."
+  );
+  await evaluate(cdp, "window.__aquariumTest.forceFishAge(0, 0)");
 
   await evaluate(cdp, "window.__aquariumTest.addFood('basic', 1)");
   await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 110, 248)");
@@ -773,7 +803,8 @@ async function runRegression(cdp, appUrl) {
       (current.foodInventoryByType.basic ?? 0) === basicBeforeAutoFeed - 1 &&
       (current.foodInventoryByType.protein ?? 0) === proteinBeforeAutoFeed - 1 &&
       current.foodInventory === totalFoodBeforeAutoFeed - 2 &&
-      current.foods.every((food) => food.y >= 138 && food.y <= 260),
+      current.foods.every((food) => food.y >= 138 && food.y <= 260) &&
+      current.foods.every((food) => food.calories > 0 && food.densityLevel >= 1),
     "Auto feeder did not drop each needed fish food type from the top while decrementing inventory.",
     3500
   );
@@ -910,6 +941,8 @@ async function runRegression(cdp, appUrl) {
 
   await evaluate(cdp, "window.__aquariumTest.setScreen('album')");
   state = await waitFor(cdp, (current) => current.activeScreen === "album", "Fish stats page did not open from the album screen.");
+  assert(state.fish[0].lengthLabel.endsWith(" cm") && / (g|kg)$/.test(state.fish[0].weightLabel), "Book fish stats should have readable length and weight labels.");
+  await captureNamedScreenshot(cdp, "book-fish-length-weight.png");
   await evaluate(cdp, "window.__aquariumTest.addFood('evolve', 1)");
   const evolutionFee = state.fish[0].evolutionFee;
   await evaluate(cdp, `window.__aquariumTest.addWallet('${evolutionFee.coinType}', ${evolutionFee.amount})`);

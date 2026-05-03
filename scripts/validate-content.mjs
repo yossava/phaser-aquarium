@@ -191,6 +191,14 @@ function validateFoodTypes(foodTypesData) {
     if (!Number.isFinite(food.nutrition) || food.nutrition <= 0) {
       fail(`food-types/${food.id}: nutrition must be positive.`);
     }
+
+    if (!Number.isFinite(food.calories) || food.calories <= 0) {
+      fail(`food-types/${food.id}: calories must be positive.`);
+    }
+
+    if (!Number.isInteger(food.densityLevel) || food.densityLevel < 1 || food.densityLevel > 5) {
+      fail(`food-types/${food.id}: densityLevel must be an integer from 1 to 5.`);
+    }
   }
 }
 

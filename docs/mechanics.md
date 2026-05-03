@@ -244,6 +244,7 @@ Age uses fish-time rather than literal wall-clock labels:
 - 12 real hours equals 1 fish year.
 - Fish visual size is based solely on exact age: early months grow fast enough to be visibly readable, reaching the main species size around 6 months, then long-tail growth continues until 50 fish-years and reaches the very-big cap.
 - Tank size can cap visible growth. Smaller tanks stop oversized fish before their natural age size; upgrading increases the growth allowance up to roughly half the screen width at the highest tank level.
+- Biological length and weight are derived from exact fish-time age and species scale. Displayed length uses a 10x fantasy centimeter scale, so a biological readout that would feel like `5.9 cm` is shown as `59 cm`. They do not use visible tank-capped size, so the Book can still show the fish's true age-rooted size when the tank is too small for visible growth.
 - Growth-blocked fish should show a compact marker above their status bars and should make the tank need indicator recommend a bigger tank.
 - Player-facing UI should not show size categories such as baby, small, medium, big, or max.
 
@@ -402,13 +403,15 @@ Hunger increases over time.
 
 MVP tuning should be gentle enough for short mobile idle sessions: a newly fed age-zero fish should stay comfortable for roughly a minute or more before becoming hungry, and health loss should start only at severe hunger.
 
+Hunger is driven by calorie need, not a flat timer. A fish's calorie need scales from exact age-rooted size and species scale, so larger and older fish burn hunger faster than small age-zero fish. Tank size can pause visible growth, but calorie need still follows the fish's biological age-rooted size.
+
 Suggested scale:
 
 - 0-39: full.
 - 40-69: hungry soon.
 - 70-100: hungry.
 
-Food lowers hunger. Better food can also increase happiness or health.
+Food lowers hunger by providing calories. The same food gives less fullness to a larger fish because the fish needs more calories for a full meal. Higher-density food costs more and gives more calories per pellet.
 
 ## Mood Cycle
 
@@ -441,16 +444,16 @@ Mood should drift slowly, not flicker every frame. Use smoothing or state timers
 
 Food types:
 
-- Basic flakes: cheap, lowers hunger.
-- Premium flakes: lowers hunger more and improves happiness.
+- Micro food: low-density food for tiny or age-zero fish.
+- Basic flakes: cheap density-1 food for starter care.
+- Premium flakes: density-3 general food with more calories per pellet.
 - Medicine food: lowers hunger slightly and improves health.
 - Medicine drops should render as green pill-shaped treatment pellets, not generic food dots.
 - Favorite snacks: bonus effect for specific fish types.
-- Herb food: required by plant-eating species.
-- Protein food: required by predator or fast-growing species.
-- Micro food: required by babies and tiny species.
-- Coral food: required by reef species.
-- Event food: temporary food for event-only fish.
+- Herb food: density-2 food required by plant-eating species.
+- Protein food: density-3 food required by predator or fast-growing species.
+- Coral food: density-2 food required by reef species.
+- Event food: high-density temporary food for event-only fish.
 
 Food behavior:
 
@@ -463,6 +466,7 @@ Food behavior:
 - Wrong food may reduce hunger slightly but give no happiness bonus.
 - Strict species may not eat incompatible food at all.
 - Medicine is handled through the same food tool flow as a treatment pellet; ill fish seek it and recover only after eating it.
+- Store food cards show density level and calories, and better food should cost more for its higher calorie value.
 
 Food edge cases:
 
@@ -471,6 +475,7 @@ Food edge cases:
 - Multiple fish can target the same food, but only one consumes it.
 - Age-zero fish prefer micro food, even if their older species form prefers another food.
 - Medicine should restore health and reduce hunger only slightly, so it does not become the best everyday food.
+- Auto Feeder should pick from stocked compatible foods using the target fish's calorie need, so larger fish can receive denser food when available.
 
 Timed care rentals:
 

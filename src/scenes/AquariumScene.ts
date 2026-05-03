@@ -61,6 +61,8 @@ const autoCollectorPrice: FishType["price"] = { coinType: "common", amount: 22 }
 const evolvePillFoodTypeId: FoodTypeId = "evolve";
 const maxEvolutionStage = 3;
 const foodBulkBuyQuantities = [1, 10, 20, 30, 50];
+const fishStatsCardHeight = 96;
+const fishStatsCardRowHeight = 104;
 const tankUpgradePrices: Record<number, FishType["price"]> = {
   2: { coinType: "common", amount: 100 },
   3: { coinType: "common", amount: 420 },
@@ -153,6 +155,10 @@ type AquariumTestSnapshot = {
     ageMonths: number;
     ageYears: number;
     growthCapAgeYears: number;
+    lengthCm: number;
+    weightGrams: number;
+    lengthLabel: string;
+    weightLabel: string;
     naturalAgeScale: number;
     tankGrowthScaleCap: number;
     growthBlockedByTank: boolean;
@@ -168,6 +174,9 @@ type AquariumTestSnapshot = {
     scale: number;
     veryBigScaleCap: number;
     movementSizeMultiplier: number;
+    calorieNeedMultiplier: number;
+    hungerPerSecond: number;
+    mealCaloriesNeeded: number;
     bodyTint: number;
     sellValue: number;
     nextCoinDropInMs: number;
@@ -188,7 +197,7 @@ type AquariumTestSnapshot = {
       emojiBubbleVisible: boolean;
     };
   }>;
-  foods: Array<{ x: number; y: number; foodType: FoodTypeId; textureKey: string; visualTint: number; sinkSpeed: number }>;
+  foods: Array<{ x: number; y: number; foodType: FoodTypeId; textureKey: string; visualTint: number; sinkSpeed: number; calories: number; densityLevel: number }>;
   helperCreatures: Array<{ typeId: string; typeName: string; x: number; y: number; speed: number; sellPrice: FishType["price"]; feedSeconds?: number }>;
   maxCoinDrops: number;
   coinsWaiting: Array<{
@@ -242,6 +251,7 @@ declare global {
       openSellOldest: () => void;
       sellFishAt: (index: number) => void;
       addFood: (foodTypeId: FoodTypeId, count: number) => void;
+      dropFoodForTest: (foodTypeId: FoodTypeId, x: number, y: number) => void;
       addWallet: (coinType: CoinType, amount: number) => void;
       addCoin: (coinType: CoinType, value: number, x: number, y: number) => void;
       clearCoins: () => void;
@@ -959,8 +969,8 @@ export class AquariumScene extends Phaser.Scene {
         width: 188,
         height: 132,
         title: foodType.name,
-        meta: `${this.rarityLabel(foodType.rarity)} | N${formatNumber(foodType.nutrition)} | Own ${formatNumber(owned)}`,
-        detail: foodType.id === evolvePillFoodTypeId ? "50% evolve chance" : foodType.id === "medicine" ? "Heals sick fish" : foodType.acceptedByDefault ? "General food" : "Species food",
+        meta: `${this.rarityLabel(foodType.rarity)} | D${formatNumber(foodType.densityLevel)} | ${formatNumber(foodType.calories)} cal | Own ${formatNumber(owned)}`,
+        detail: foodType.id === evolvePillFoodTypeId ? "50% evolve chance" : foodType.id === "medicine" ? "Low-cal heal pill" : foodType.acceptedByDefault ? "General calories" : "Species calories",
         buyLabel: `Buy ${formatPrice(totalPrice)}`,
         onBuy: () => this.buyFood(foodType, buyQuantity),
         accent: foodTintFor(foodType.id),
@@ -1223,9 +1233,9 @@ export class AquariumScene extends Phaser.Scene {
 
   private addFishStatsCard(targetFish: Fish, index: number): void {
     const x = 20 + (index % 2) * 202;
-    const y = controlPanelTop + 84 + Math.floor(index / 2) * 92;
+    const y = controlPanelTop + 84 + Math.floor(index / 2) * fishStatsCardRowHeight;
     const width = 188;
-    const height = 84;
+    const height = fishStatsCardHeight;
     const accent = fishFoodTintFor(targetFish.type);
     const background = this.add.rectangle(width / 2, height / 2, width, height, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
     const stripe = this.add.rectangle(4, height / 2, 4, height - 8, accent, 1);
@@ -1249,13 +1259,19 @@ export class AquariumScene extends Phaser.Scene {
       color: "#cfeeff",
       fixedWidth: width - 24
     });
-    const worth = this.add.text(12, 49, `Worth ${formatPrice({ coinType: targetFish.type.sellBaseValue.coinType, amount: targetFish.getSellValue() })}`, {
+    const size = this.add.text(12, 49, `Len ${targetFish.lengthLabel()} | Wt ${targetFish.weightLabel()}`, {
       fontFamily: "Arial",
       fontSize: "9px",
       color: "#cfeeff",
       fixedWidth: width - 24
     });
-    const card = this.add.container(x, y, [background, stripe, title, meta, detail, worth]).setDepth(71);
+    const worth = this.add.text(12, 62, `Worth ${formatPrice({ coinType: targetFish.type.sellBaseValue.coinType, amount: targetFish.getSellValue() })}`, {
+      fontFamily: "Arial",
+      fontSize: "9px",
+      color: "#cfeeff",
+      fixedWidth: width - 24
+    });
+    const card = this.add.container(x, y, [background, stripe, title, meta, detail, size, worth]).setDepth(71);
     this.tabControls.push(card);
 
     this.tabControls.push(
@@ -1267,7 +1283,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private renderHelperStatsSection(): void {
     const fishRows = Math.max(1, Math.ceil(this.fish.length / 2));
-    const startY = controlPanelTop + 84 + fishRows * 92 + 14;
+    const startY = controlPanelTop + 84 + fishRows * fishStatsCardRowHeight + 14;
     this.tabControls.push(
       this.createInfoLine(
         20,
@@ -2045,7 +2061,7 @@ export class AquariumScene extends Phaser.Scene {
 
       currentFish.setAgeSeconds(currentFish.ageSeconds + elapsedSeconds);
       currentFish.hunger = Phaser.Math.Clamp(
-        currentFish.hunger + Math.min(52, currentFish.type.hungerPerSecond * elapsedSeconds * 0.045),
+        currentFish.hunger + Math.min(52, currentFish.hungerPerSecond() * elapsedSeconds * 0.045),
         0,
         100
       );
@@ -2752,18 +2768,32 @@ export class AquariumScene extends Phaser.Scene {
       ...foodTypes.filter((foodType) => foodType.acceptedByDefault).map((foodType) => foodType.id)
     ];
 
-    for (const foodTypeId of choices) {
-      if (foodTypeId === "medicine" || !this.isDroppableFood(foodTypeId) || this.getFoodInventory(foodTypeId) <= 0) {
-        continue;
-      }
+    const candidates = choices
+      .map((foodTypeId) => foodTypes.find((item) => item.id === foodTypeId))
+      .filter((foodType): foodType is FoodType =>
+        foodType !== undefined &&
+        foodType.id !== "medicine" &&
+        this.isDroppableFood(foodType.id) &&
+        this.getFoodInventory(foodType.id) > 0
+      );
 
-      const foodType = foodTypes.find((item) => item.id === foodTypeId);
-      if (foodType) {
-        return foodType;
-      }
+    return this.chooseBestCalorieFood(targetFish, candidates);
+  }
+
+  private chooseBestCalorieFood(targetFish: Fish, candidates: FoodType[]): FoodType | undefined {
+    const uniqueCandidates = [...new Map(candidates.map((foodType) => [foodType.id, foodType])).values()];
+    if (uniqueCandidates.length === 0) {
+      return undefined;
     }
 
-    return undefined;
+    const targetReduction = Phaser.Math.Clamp(targetFish.hunger, 18, 64);
+    return uniqueCandidates.sort((first, second) => {
+      const firstReduction = targetFish.hungerReductionFromFood(first);
+      const secondReduction = targetFish.hungerReductionFromFood(second);
+      const firstMiss = firstReduction >= targetReduction ? firstReduction - targetReduction : targetReduction - firstReduction + 100;
+      const secondMiss = secondReduction >= targetReduction ? secondReduction - targetReduction : targetReduction - secondReduction + 100;
+      return firstMiss - secondMiss || second.calories - first.calories;
+    })[0];
   }
 
   private getFeedableFoodTypes(): FoodType[] {
@@ -2868,6 +2898,8 @@ export class AquariumScene extends Phaser.Scene {
       [
         `${"*".repeat(rarityStarCount(targetFish.type.rarity))} ${targetFish.type.rarity} | Tank L${formatNumber(this.getFishTankLevel(targetFish.type))} | Age ${targetFish.ageLabel()} | ${targetFish.state}`,
         `Gender ${targetFish.gender} | Evo ${formatNumber(targetFish.evolutionStage)}/${formatNumber(maxEvolutionStage)} | Sell ${formatPrice({ coinType: targetFish.type.sellBaseValue.coinType, amount: targetFish.getSellValue() })}`,
+        `Length ${targetFish.lengthLabel()} | Weight ${targetFish.weightLabel()}`,
+        `Food need ${formatNumber(Math.round(targetFish.mealCaloriesNeeded()))} cal | Burn x${targetFish.calorieNeedMultiplier().toFixed(1)}`,
         `Hunger ${formatNumber(Math.round(targetFish.hunger))} | Health ${formatNumber(Math.round(targetFish.health))} | Evolve ${formatPrice(this.evolutionFee(targetFish))}`,
         `Eats ${requiredFood}; prefers ${preferredFood}`,
         `Produces ${formatNumber(production.amount)} ${production.coinType} every ${formatNumber(production.intervalSeconds)}s`,
@@ -2910,6 +2942,7 @@ export class AquariumScene extends Phaser.Scene {
       [
         `${targetFish.type.name} will leave this tank.`,
         `Rarity: ${targetFish.type.rarity} | Age ${targetFish.ageLabel()}`,
+        `Length ${targetFish.lengthLabel()} | Weight ${targetFish.weightLabel()}`,
         ...(protectedRarity ? ["Rare and event fish require extra care before selling."] : []),
         `You receive ${formatPrice({ coinType: targetFish.type.sellBaseValue.coinType, amount: targetFish.getSellValue() })}.`
       ],
@@ -3175,6 +3208,10 @@ export class AquariumScene extends Phaser.Scene {
             ageMonths: currentFish.ageMonths(),
             ageYears: currentFish.ageYears(),
             growthCapAgeYears: currentFish.growthCapAgeYears(),
+            lengthCm: currentFish.lengthCm(),
+            weightGrams: currentFish.weightGrams(),
+            lengthLabel: currentFish.lengthLabel(),
+            weightLabel: currentFish.weightLabel(),
             naturalAgeScale: currentFish.naturalAgeScale() * this.tankViewScaleForLevel(),
             tankGrowthScaleCap: currentFish.tankGrowthScaleCap() * this.tankViewScaleForLevel(),
             growthBlockedByTank: currentFish.isGrowthLimitedByTank(),
@@ -3190,6 +3227,9 @@ export class AquariumScene extends Phaser.Scene {
             scale: currentFish.sprite.scaleX * this.tankViewScaleForLevel(),
             veryBigScaleCap: currentFish.veryBigScaleCap() * this.tankViewScaleForLevel(),
             movementSizeMultiplier: currentFish.movementSizeMultiplier(),
+            calorieNeedMultiplier: currentFish.calorieNeedMultiplier(),
+            hungerPerSecond: currentFish.hungerPerSecond(),
+            mealCaloriesNeeded: currentFish.mealCaloriesNeeded(),
             bodyTint: currentFish.sprite.tintTopLeft,
             sellValue: currentFish.getSellValue(),
             nextCoinDropInMs: Math.max(0, currentFish.nextCoinDropAt - this.time.now),
@@ -3208,7 +3248,9 @@ export class AquariumScene extends Phaser.Scene {
           foodType: food.foodType.id,
           textureKey: food.sprite.texture.key,
           visualTint: food.visualTint,
-          sinkSpeed: food.sinkSpeed * this.tankViewScaleForLevel()
+          sinkSpeed: food.sinkSpeed * this.tankViewScaleForLevel(),
+          calories: food.foodType.calories,
+          densityLevel: food.foodType.densityLevel
         })),
         helperCreatures: this.helperCreatures.map((helper) => ({
           typeId: helper.type.id,
@@ -3436,6 +3478,22 @@ export class AquariumScene extends Phaser.Scene {
       addFood: (foodTypeId: FoodTypeId, count: number) => {
         this.foodInventory.set(foodTypeId, this.getFoodInventory(foodTypeId) + Math.max(0, Math.floor(count)));
         this.createFoodDock();
+        this.refreshUi();
+      },
+      dropFoodForTest: (foodTypeId: FoodTypeId, x: number, y: number) => {
+        const foodType = foodTypes.find((item) => item.id === foodTypeId);
+        if (!foodType) {
+          return;
+        }
+
+        const pellet = new FoodPellet(
+          this,
+          Phaser.Math.Clamp(x, tankBounds.left + 18, tankBounds.right - 18),
+          Phaser.Math.Clamp(y, tankBounds.top + 18, tankBounds.bottom - 18),
+          foodType
+        );
+        pellet.addToContainer(this.tankLayer);
+        this.foods.push(pellet);
         this.refreshUi();
       },
       addWallet: (coinType: CoinType, amount: number) => {

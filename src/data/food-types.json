@@ -3,72 +3,117 @@
     "id": "basic",
     "name": "Basic Food",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 5 },
+    "price": {
+      "coinType": "common",
+      "amount": 5
+    },
     "nutrition": 46,
-    "acceptedByDefault": true
+    "acceptedByDefault": true,
+    "calories": 46,
+    "densityLevel": 1
   },
   {
     "id": "micro",
     "name": "Micro Food",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 6 },
+    "price": {
+      "coinType": "common",
+      "amount": 6
+    },
     "nutrition": 40,
-    "acceptedByDefault": true
+    "acceptedByDefault": true,
+    "calories": 34,
+    "densityLevel": 1
   },
   {
     "id": "premium",
     "name": "Premium Food",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 1 },
+    "price": {
+      "coinType": "rare",
+      "amount": 1
+    },
     "nutrition": 70,
-    "acceptedByDefault": false
+    "acceptedByDefault": true,
+    "calories": 96,
+    "densityLevel": 3
   },
   {
     "id": "herb",
     "name": "Herb Flakes",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 8 },
+    "price": {
+      "coinType": "common",
+      "amount": 8
+    },
     "nutrition": 44,
-    "acceptedByDefault": false
+    "acceptedByDefault": false,
+    "calories": 58,
+    "densityLevel": 2
   },
   {
     "id": "protein",
     "name": "Protein Bites",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 1 },
+    "price": {
+      "coinType": "rare",
+      "amount": 1
+    },
     "nutrition": 76,
-    "acceptedByDefault": false
+    "acceptedByDefault": false,
+    "calories": 112,
+    "densityLevel": 3
   },
   {
     "id": "coral",
     "name": "Coral Dust",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 2 },
+    "price": {
+      "coinType": "rare",
+      "amount": 2
+    },
     "nutrition": 62,
-    "acceptedByDefault": false
+    "acceptedByDefault": false,
+    "calories": 74,
+    "densityLevel": 2
   },
   {
     "id": "medicine",
     "name": "Medicine",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 18 },
+    "price": {
+      "coinType": "common",
+      "amount": 18
+    },
     "nutrition": 12,
-    "acceptedByDefault": true
+    "acceptedByDefault": true,
+    "calories": 10,
+    "densityLevel": 1
   },
   {
     "id": "evolve",
     "name": "Evolve Pill",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 2 },
+    "price": {
+      "coinType": "rare",
+      "amount": 2
+    },
     "nutrition": 1,
-    "acceptedByDefault": false
+    "acceptedByDefault": false,
+    "calories": 1,
+    "densityLevel": 5
   },
   {
     "id": "event",
     "name": "Event Treat",
     "rarity": "superRare",
-    "price": { "coinType": "superRare", "amount": 1 },
+    "price": {
+      "coinType": "superRare",
+      "amount": 1
+    },
     "nutrition": 90,
-    "acceptedByDefault": false
+    "acceptedByDefault": false,
+    "calories": 150,
+    "densityLevel": 4
   }
 ]

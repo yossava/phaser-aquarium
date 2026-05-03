@@ -164,3 +164,7 @@
 - Changed tank upgrades to increase fish capacity by level, from 10 fish at L1 up to 30 fish at L5.
 - Removed visible fish size/age categories from Book, tank HUD, sell confirmations, add-to-tank copy, and regression snapshots; fish size now follows exact age directly.
 - Added tank-size growth caps so oversized fish pause growth in small tanks, show a capped-growth marker, and resume toward full size after tank upgrades.
+- Added age-rooted fish length and weight to Book fish cards, fish details, sell confirmation, snapshots, and visual regression coverage.
+- Increased displayed fish length labels by 10x so the Book reads at a more satisfying fantasy-aquarium scale.
+- Added food calorie density: bigger fish burn hunger faster, need more calories per meal, and get less fullness from low-calorie starter food.
+- Updated Store food cards, fish details, auto-feeder choice, content validation, and regression coverage for size-based calorie needs.

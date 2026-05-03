@@ -65,6 +65,9 @@
 - Large in-game numbers should abbreviate visually with one decimal digit, such as `24.7K` or `67.8M`.
 - Each tank level increase should zoom the aquarium view out so the tank feels bigger.
 - Adult fish should grow larger linearly with age, capped at very big, and Book should show fish age.
+- Book fish statistics should also show age-rooted fish length and weight.
+- Fish length labels should be 10x larger for readability and game feel, such as `59 cm` instead of `5.9 cm`.
+- Food and hunger need should scale from fish size like calories: bigger fish need more calories, and denser, more expensive foods should satisfy them better.
 - Each tank level should have a distinct background pattern.
 - Aquarium decorations should be draggable for repositioning and removable by dragging to trash.
 - Add purchasable bottom creatures like shrimp, shell, and crab that are not upgradeable and help collect coins and clean wasted food/medicine.

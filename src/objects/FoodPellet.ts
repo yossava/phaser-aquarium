@@ -18,7 +18,7 @@ export class FoodPellet {
   }
 
   public get nutrition(): number {
-    return this.foodType.nutrition;
+    return this.foodType.calories;
   }
 
   public get visualTint(): number {

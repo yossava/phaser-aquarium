@@ -168,7 +168,7 @@ Rarity tiers:
 - Rare: unlocked through progression, produces rare coins, has more specific needs.
 - Super rare: expensive, event-gated, or discovered, produces super rare coins, and has strict care or habitat needs.
 
-All fish start at age zero. Fish age uses fish-time: 1 real hour equals 1 fish month, real minutes convert into fish-days, and 12 real hours equals 1 fish year. Fish stats should show exact age, not player-facing categories like baby, medium, big, or max. Age changes size, food needs, mood cycle, production type, production rate, and selling value. Fish visual size is based solely on exact age: early months should be visibly readable, reaching the main species size around 6 months, and long-tail growth continues until 50 fish-years, when it reaches the very-big cap. If the tank is too small, visible growth pauses and the player is prompted to upgrade.
+All fish start at age zero. Fish age uses fish-time: 1 real hour equals 1 fish month, real minutes convert into fish-days, and 12 real hours equals 1 fish year. Fish stats should show exact age, age-rooted length, and age-rooted weight, not player-facing categories like baby, medium, big, or max. Age changes size, calorie need, mood cycle, production type, production rate, and selling value. Fish visual size is based solely on exact age: early months should be visibly readable, reaching the main species size around 6 months, and long-tail growth continues until 50 fish-years, when it reaches the very-big cap. If the tank is too small, visible growth pauses and the player is prompted to upgrade, while biological length, weight, and food need continue to reflect age.
 
 Fish also have gender and up to three evolution stages. Evolution spends an Evolve Pill and a fee, has a 50% success / 50% death risk in the current design, and successful evolution resets age to zero. Same-species male/female breeding creates an age-zero fish: 70% same species and 30% random rare species available to the current tank level.
 
@@ -260,8 +260,8 @@ Production needs these screens or overlays:
 - Tank screen: main play area, HUD, fish, decorations, coins, food drops.
 - Store: fish, food, decorations, helper creatures, upgrades, event items, rarity lanes.
 - Inventory: owned fish, food, decorations, and locked items.
-- Book statistics: owned fish grid showing type, exact age, worth, gender, evolution stage, and quick actions for sell, evolve, and breed; owned helper creature grid with sell actions for cleanup.
-- Fish details: age, rarity, mood, hunger, health, food need, production, community status, sell value.
+- Book statistics: owned fish grid showing type, exact age, age-rooted length and weight, worth, gender, evolution stage, and quick actions for sell, evolve, and breed; owned helper creature grid with sell actions for cleanup.
+- Fish details: age, length, weight, rarity, mood, hunger, health, calorie need, food compatibility, production, community status, sell value.
 - Placement confirmation: warns about tank limits where needed.
 - Sell confirmation: shows payout and extra warning for event-only fish.
 - Collection album: owned, locked, event-only, mastery, and discovery hints.
