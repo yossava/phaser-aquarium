@@ -60,6 +60,7 @@ const autoFeederPrice: FishType["price"] = { coinType: "common", amount: 18 };
 const autoCollectorPrice: FishType["price"] = { coinType: "common", amount: 22 };
 const evolvePillFoodTypeId: FoodTypeId = "evolve";
 const maxEvolutionStage = 3;
+const foodBulkBuyQuantities = [1, 10, 20, 30, 50];
 const tankUpgradePrices: Record<number, FishType["price"]> = {
   2: { coinType: "common", amount: 100 },
   3: { coinType: "common", amount: 420 },
@@ -180,6 +181,11 @@ type AquariumTestSnapshot = {
       rarityStars: number;
       fullyGrown: boolean;
       growthBlockedByTank: boolean;
+      emoji: string;
+      emojiVisible: boolean;
+      emojiX: number;
+      emojiY: number;
+      emojiBubbleVisible: boolean;
     };
   }>;
   foods: Array<{ x: number; y: number; foodType: FoodTypeId; textureKey: string; visualTint: number; sinkSpeed: number }>;
@@ -222,6 +228,8 @@ declare global {
       buyFish: (fishTypeId: string) => void;
       buyFood: (foodTypeId?: FoodTypeId) => void;
       setFoodBuyQuantity: (foodTypeId: FoodTypeId, quantity: number) => void;
+      addFoodBuyQuantity: (foodTypeId: FoodTypeId, quantity: number) => void;
+      resetFoodBuyQuantity: (foodTypeId: FoodTypeId) => void;
       buyDecoration: (decorationTypeId: string) => void;
       buyHelperCreature: (creatureTypeId: string) => void;
       addHelperCreatureForTest: (creatureTypeId: string, x: number) => void;
@@ -932,11 +940,8 @@ export class AquariumScene extends Phaser.Scene {
         meta: `L${formatNumber(this.getFishTankLevel(fishType))} ${this.rarityStarsLabel(fishType.rarity)} ${this.rarityLabel(fishType.rarity)} | ${formatPrice(fishType.price)} | Own ${formatNumber(owned)}`,
         detail: canUseTank ? `Eats ${fishType.preferredFoodTypes.slice(0, 2).join(", ")}` : "Upgrade tank first",
         buyLabel,
-        actionLabel: `Place ${owned}`,
         onBuy: () => this.buyFish(fishType),
-        onAction: () => this.selectFish(fishType.id),
-        accent: fishFoodTintFor(fishType),
-        actionFill: owned > 0 && canUseTank ? 0x356a35 : 0x254d68
+        accent: fishFoodTintFor(fishType)
       });
     });
   }
@@ -950,22 +955,20 @@ export class AquariumScene extends Phaser.Scene {
       const totalPrice = this.quantityPrice(foodType.price, buyQuantity);
       this.addShopCard({
         x: 20 + (index % 2) * 202,
-        y: controlPanelTop + 136 + Math.floor(index / 2) * 112,
+        y: controlPanelTop + 136 + Math.floor(index / 2) * 140,
         width: 188,
-        height: 104,
+        height: 132,
         title: foodType.name,
         meta: `${this.rarityLabel(foodType.rarity)} | N${formatNumber(foodType.nutrition)} | Own ${formatNumber(owned)}`,
         detail: foodType.id === evolvePillFoodTypeId ? "50% evolve chance" : foodType.id === "medicine" ? "Heals sick fish" : foodType.acceptedByDefault ? "General food" : "Species food",
         buyLabel: `Buy ${formatPrice(totalPrice)}`,
-        actionLabel: foodType.id === evolvePillFoodTypeId ? `Stats ${formatNumber(owned)}` : `Use ${formatNumber(owned)}`,
         onBuy: () => this.buyFood(foodType, buyQuantity),
-        onAction: () => foodType.id === evolvePillFoodTypeId ? this.openScreen("album") : this.toggleFoodTool(foodType.id),
         accent: foodTintFor(foodType.id),
-        actionFill: owned > 0 ? 0x356a35 : 0x254d68,
         quantity: {
           label: `x${formatNumber(buyQuantity)}`,
-          onDecrease: () => this.changeFoodBuyQuantity(foodType.id, -1),
-          onIncrease: () => this.changeFoodBuyQuantity(foodType.id, 1)
+          onReset: () => this.resetFoodBuyQuantity(foodType.id),
+          presets: foodBulkBuyQuantities,
+          onAdd: (quantity) => this.addFoodBuyQuantity(foodType.id, quantity)
         }
       });
     });
@@ -985,11 +988,8 @@ export class AquariumScene extends Phaser.Scene {
         meta: `${this.rarityLabel(decorationType.rarity)} | +${formatNumber(decorationType.happinessBonus)} happy | Own ${formatNumber(owned)}`,
         detail: decorationType.habitatTags.slice(0, 2).join(", "),
         buyLabel: `Buy ${formatPrice(decorationType.price)}`,
-        actionLabel: `Place ${formatNumber(owned)}`,
         onBuy: () => this.buyDecoration(decorationType),
-        onAction: () => this.selectDecoration(decorationType.id),
-        accent: this.rarityCatalogAccent(decorationType.rarity),
-        actionFill: owned > 0 ? 0x584f86 : 0x254d68
+        accent: this.rarityCatalogAccent(decorationType.rarity)
       });
     });
   }
@@ -1010,11 +1010,8 @@ export class AquariumScene extends Phaser.Scene {
           ? `Feeds fish | every ${formatNumber(creatureType.feedSeconds)}s`
           : `Cleans food | coins ${formatNumber(creatureType.coinCollectSeconds)}s`,
         buyLabel: "Buy",
-        actionLabel: "No Evo",
         onBuy: () => this.buyHelperCreature(creatureType),
-        onAction: () => this.floatText("Helpers do not evolve", toastX, toastY, "#d7f4ff"),
-        accent: this.rarityCatalogAccent(creatureType.rarity),
-        actionFill: 0x254d68
+        accent: this.rarityCatalogAccent(creatureType.rarity)
       });
     });
   }
@@ -1132,16 +1129,14 @@ export class AquariumScene extends Phaser.Scene {
     meta: string;
     detail: string;
     buyLabel: string;
-    actionLabel: string;
     onBuy: () => void;
-    onAction: () => void;
     accent: number;
-    actionFill: number;
     compact?: boolean;
     quantity?: {
       label: string;
-      onDecrease: () => void;
-      onIncrease: () => void;
+      onReset: () => void;
+      presets?: number[];
+      onAdd?: (quantity: number) => void;
     };
   }): void {
     const background = this.add
@@ -1173,20 +1168,36 @@ export class AquariumScene extends Phaser.Scene {
     this.tabControls.push(card);
 
     if (options.quantity) {
-      const quantityY = options.y + options.height - 52;
+      const quantityY = options.y + options.height - 76;
       this.tabControls.push(
-        this.createButton(options.x + 12, quantityY, 28, 20, "-", options.quantity.onDecrease, 0x254d68, 12),
-        this.createButton(options.x + 44, quantityY, 58, 20, options.quantity.label, () => undefined, 0x17364a, 10),
-        this.createButton(options.x + 106, quantityY, 28, 20, "+", options.quantity.onIncrease, 0x254d68, 12)
+        this.createButton(options.x + 12, quantityY, 108, 20, `Qty ${options.quantity.label}`, () => undefined, 0x17364a, 10),
+        this.createButton(options.x + 124, quantityY, 52, 20, "Reset", options.quantity.onReset, 0x76512d, 8)
       );
+
+      if (options.quantity.presets && options.quantity.onAdd) {
+        const presetY = options.y + options.height - 50;
+        options.quantity.presets.forEach((quantity, index) => {
+          this.tabControls.push(
+            this.createButton(
+              options.x + 12 + index * 33,
+              presetY,
+              29,
+              20,
+              `x${formatNumber(quantity)}`,
+              () => options.quantity?.onAdd?.(quantity),
+              0x254d68,
+              8
+            )
+          );
+        });
+      }
     }
 
     const buttonY = options.y + options.height - (options.compact ? 12 : 24);
     const buttonHeight = options.compact ? 17 : 20;
-    const buttonWidth = options.compact ? 52 : 78;
+    const buttonWidth = options.compact ? 76 : options.width - 24;
     this.tabControls.push(
-      this.createButton(options.x + options.width - buttonWidth * 2 - 12, buttonY, buttonWidth, buttonHeight, options.buyLabel, options.onBuy, 0x256f95, options.compact ? 8 : 9),
-      this.createButton(options.x + options.width - buttonWidth - 6, buttonY, buttonWidth, buttonHeight, options.actionLabel, options.onAction, options.actionFill, options.compact ? 8 : 9)
+      this.createButton(options.x + 12, buttonY, buttonWidth, buttonHeight, options.buyLabel, options.onBuy, 0x256f95, options.compact ? 8 : 9)
     );
   }
 
@@ -2264,8 +2275,27 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi(false);
   }
 
+  private addFoodBuyQuantity(foodTypeId: FoodTypeId, quantityToAdd: number): void {
+    const currentQuantity = this.getFoodBuyQuantity(foodTypeId);
+    const nextQuantity = this.foodBuyQuantities.has(foodTypeId) ? currentQuantity + quantityToAdd : quantityToAdd;
+    this.foodBuyQuantities.set(foodTypeId, Phaser.Math.Clamp(Math.floor(nextQuantity), 1, 99));
+    this.renderTabControls();
+    this.refreshUi(false);
+  }
+
   private setFoodBuyQuantity(foodTypeId: FoodTypeId, quantity: number): void {
+    if (quantity <= 0) {
+      this.resetFoodBuyQuantity(foodTypeId);
+      return;
+    }
+
     this.foodBuyQuantities.set(foodTypeId, Phaser.Math.Clamp(Math.floor(quantity), 1, 99));
+    this.renderTabControls();
+    this.refreshUi(false);
+  }
+
+  private resetFoodBuyQuantity(foodTypeId: FoodTypeId): void {
+    this.foodBuyQuantities.delete(foodTypeId);
     this.renderTabControls();
     this.refreshUi(false);
   }
@@ -3135,6 +3165,7 @@ export class AquariumScene extends Phaser.Scene {
           const fishPosition = this.tankToScreenPoint(currentFish.sprite.x, currentFish.sprite.y);
           const statusBars = currentFish.getStatusBarsSnapshot();
           const statusPosition = this.tankToScreenPoint(statusBars.x, statusBars.y);
+          const emojiPosition = this.tankToScreenPoint(statusBars.emojiX, statusBars.emojiY);
           return {
             typeId: currentFish.type.id,
             typeName: currentFish.type.name,
@@ -3165,7 +3196,9 @@ export class AquariumScene extends Phaser.Scene {
             statusBars: {
               ...statusBars,
               x: statusPosition.x,
-              y: statusPosition.y
+              y: statusPosition.y,
+              emojiX: emojiPosition.x,
+              emojiY: emojiPosition.y
             }
           };
         }),
@@ -3335,6 +3368,16 @@ export class AquariumScene extends Phaser.Scene {
       setFoodBuyQuantity: (foodTypeId: FoodTypeId, quantity: number) => {
         if (foodTypes.some((item) => item.id === foodTypeId)) {
           this.setFoodBuyQuantity(foodTypeId, quantity);
+        }
+      },
+      addFoodBuyQuantity: (foodTypeId: FoodTypeId, quantity: number) => {
+        if (foodTypes.some((item) => item.id === foodTypeId)) {
+          this.addFoodBuyQuantity(foodTypeId, quantity);
+        }
+      },
+      resetFoodBuyQuantity: (foodTypeId: FoodTypeId) => {
+        if (foodTypes.some((item) => item.id === foodTypeId)) {
+          this.resetFoodBuyQuantity(foodTypeId);
         }
       },
       buyDecoration: (decorationTypeId: string) => {

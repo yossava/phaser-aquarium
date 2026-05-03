@@ -64,6 +64,7 @@ The current MVP should prove:
 - Player can buy and drop food.
 - Hungry fish seek and eat food.
 - Fish have visible states: happy, hungry, ill.
+- Fish can show compact chat-bubble emoji feedback: hungry until eating, happy briefly after eating, sick until healed, and not-enough-space-to-grow until the tank is upgraded.
 - Happy fish drop coins.
 - Player can collect coins.
 - Fish grow over time with a cap per fish type.

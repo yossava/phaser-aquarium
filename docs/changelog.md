@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Removed shop-side Use, Place, Stats, and No Evo secondary buttons so store cards focus on buying only.
+- Added visual regression coverage for buy-only shop cards.
+- Added a Reset button to food bulk-buy cards so accumulated quantities can return to x1 quickly.
+- Removed food shop minus/plus quantity controls; bulk chips now add to the current quantity directly.
+- Changed food bulk-buy chips so repeated taps accumulate, such as x1 five times for x5 and x10 five times for x50.
+- Added one-tap food bulk-buy presets for x1, x10, x20, x30, and x50 on food shop cards.
+- Added regression and visual artifact coverage for the food bulk-buy catalog controls.
+- Changed fish state emoji into chat bubbles with timed happy feedback after eating and persistent hungry, sick, and room-blocked warnings.
+- Added regression and visual artifact coverage for hungry and post-eat happy chat bubbles.
+- Added fish state emoji above each fish for happy, sick, and tank-too-small growth-blocked states.
+- Added regression and visual artifact coverage for happy, sick, and growth-blocked fish state emoji.
 - Added tank-size growth limits: fish stop growing when the current tank is too small and resume after upgrading.
 - Added growth-blocked tank need text plus a visual marker above capped fish.
 - Added regression and visual artifact coverage for tank-blocked fish growth and post-upgrade full growth.

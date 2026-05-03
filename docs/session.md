@@ -25,6 +25,7 @@
 - Fish stats should show exact age, not size categories like baby, small, medium, big, or max.
 - Fish sizing should make early months visually readable, reaching the main species size around 6 months, then slowing into a long-tail 50-year growth curve.
 - If a fish outgrows the current tank's growth allowance, its visible growth pauses and the tank need indicator should prompt an upgrade.
+- Fish can show compact chat-bubble emoji above their status bars: hungry persists until eating, happy appears briefly after eating, sick persists until healed, and not-enough-space persists until tank upgrade.
 
 ## Session Progress
 
@@ -36,6 +37,7 @@
   - Drop food into the tank.
   - Fish move around, get hungry, seek food, eat, grow, become ill, and become happy.
   - Happy fish drop collectible coins.
+  - Fish show emoji feedback for happy, sick, and growth-blocked states.
 - Verified production build with `npm run build`.
 - Converted the MVP from desktop landscape to mobile portrait layout.
 - Added bottom tab controls for fish, food, and decorations.
@@ -141,8 +143,11 @@
   - Baby fish keep their full listed movement speed.
   - Fully grown fish taper down to a slower size multiplier so large fish cruise more heavily while still chasing food.
 - Added food shop quantity controls:
-  - Each food card now has minus/plus controls with an x-count.
+  - Each food card now has quick additive bulk-buy buttons for x1, x10, x20, x30, and x50.
+  - Repeated taps accumulate quantity, so tapping x10 five times selects x50.
+  - Reset returns the card to the default x1 quantity.
   - Buying food charges the multiplied price and adds the selected quantity to stock.
+- Removed secondary Use/Place actions from Store cards; bought items are handled by tank tools, the Book, or auto-add behavior after purchase.
 - Increased rental duration controls so Auto Feeder and Auto Coin Collector can be rented for up to 60 minutes.
 - Changed active rental purchases to extend the current timer instead of being ignored.
 - Added the owned fish statistics page under Book/Album with type, gender, exact age, worth, evolution, and Sell/Evo/Breed controls.

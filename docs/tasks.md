@@ -85,7 +85,7 @@
 - [ ] Add food expiration over time.
 - [ ] Add mood cycle separate from hunger and health.
 - [ ] Add mood smoothing so state does not flicker.
-- [ ] Add clearer fish state indicators for happy, hungry, and ill.
+- [x] Add chat-bubble fish state emoji for hungry, timed post-eat happy, sick, and not-enough-space-to-grow states.
 
 ## Phase 5: Tank Systems
 
@@ -186,6 +186,10 @@
 - [x] Added store MVP for fish, fish food, and decorations.
 - [x] Added common, rare, and super rare Store lane filters with balanced item pricing.
 - [x] Added food shop quantity controls for multi-buy purchases.
+- [x] Added one-tap food bulk-buy presets for x1, x10, x20, x30, and x50.
+- [x] Changed food bulk-buy presets into additive buttons and removed plus/minus quantity controls.
+- [x] Added a food bulk-buy reset button that returns quantity to x1.
+- [x] Removed shop-side Use, Place, Stats, and No Evo secondary buttons.
 - [x] Allowed fish placement inside the tank.
 - [x] Implemented fish states: hungry, ill, happy.
 - [x] Implemented fish movement around the tank.

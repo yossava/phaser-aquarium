@@ -230,6 +230,7 @@ Fish visual language:
 - Food drops and food shop cards should use the same color language.
 - Fish rarity should be visible as one, two, or three small stars near the fish status bars.
 - Fully grown fish should show a compact max-growth marker near the status bars.
+- Fish should show compact chat-bubble emoji feedback above their status bars: hungry persists until eating, happy appears briefly after eating, sick persists until healed, and tank-too-small-to-grow persists until upgrading.
 - Sick fish should keep a recognizable body color with mild desaturation instead of turning colorless gray.
 
 ## Age Stages
@@ -690,6 +691,7 @@ Store UX:
 - Large touch targets.
 - Clear owned count.
 - Clear price.
+- Food cards should support additive bulk purchase buttons such as x1, x10, x20, x30, and x50, where repeated taps accumulate the selected purchase quantity; a Reset button returns the card to x1.
 - Fish purchases auto-add an age-zero fish to the tank when capacity allows it.
 - Helper creature purchases auto-add a non-upgradeable bottom crawler to the tank.
 - Mixed species never require a risky/incompatible confirmation.

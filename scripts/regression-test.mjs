@@ -339,6 +339,7 @@ async function runRegression(cdp, appUrl) {
     (current) => current.activeScreen === "store" && current.activeTab === "fish" && current.storeCoinFilter === "common" && current.visibleStoreCatalogCount === 10,
     "Store should open on the common fish lane."
   );
+  await captureNamedScreenshot(cdp, "store-buy-only-fish-catalog.png");
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('rare')");
   state = await waitFor(
     cdp,
@@ -418,6 +419,7 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].statusBars.tailTint === 0xffb13b, "Goldfish tail should use the same visual color as its preferred basic food.");
   assert(state.fish[0].statusBars.rarityStars === 1, "Common fish should render a one-star rarity badge.");
   assert(!state.fish[0].statusBars.fullyGrown, "New fish should not show the fully grown marker.");
+  assert(!state.fish[0].statusBars.emojiVisible && !state.fish[0].statusBars.emojiBubbleVisible, "Happy emoji should not show until the fish eats.");
   const freshMovementSizeMultiplier = state.fish[0].movementSizeMultiplier;
   assert(freshMovementSizeMultiplier > 0.95, "New fish should move at nearly full size-based speed.");
   const freshScale = state.fish[0].scale;
@@ -465,6 +467,8 @@ async function runRegression(cdp, appUrl) {
       current.fish[0].naturalAgeScale > current.fish[0].tankGrowthScaleCap &&
       Math.abs(current.fish[0].scale - current.fish[0].tankGrowthScaleCap) < 0.02 &&
       current.tankNeedIndicator.includes("needs L2") &&
+      current.fish[0].statusBars.emoji === "😣" &&
+      current.fish[0].statusBars.emojiBubbleVisible &&
       current.fish[0].movementSizeMultiplier < freshMovementSizeMultiplier * 0.7,
     "Oversized fish should stop growing when the current tank is too small and ask for a tank upgrade."
   );
@@ -496,6 +500,25 @@ async function runRegression(cdp, appUrl) {
 
   await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 3)");
   state = await waitFor(cdp, (current) => current.foodBuyQuantities.basic === 3, "Food buy quantity did not update.");
+  await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 0)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 1)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 1)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 1)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 1)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 1)");
+  state = await waitFor(cdp, (current) => current.foodBuyQuantities.basic === 5, "Tapping x1 five times should build a quantity of five.");
+  await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 0)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 10)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 10)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 10)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 10)");
+  await evaluate(cdp, "window.__aquariumTest.addFoodBuyQuantity('basic', 10)");
+  state = await waitFor(cdp, (current) => current.foodBuyQuantities.basic === 50, "Tapping x10 five times should build a quantity of fifty.");
+  await evaluate(cdp, "window.__aquariumTest.resetFoodBuyQuantity('basic')");
+  state = await waitFor(cdp, (current) => current.foodBuyQuantities.basic === 1, "Resetting food bulk quantity should return the card to x1.");
+  await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 30)");
+  state = await waitFor(cdp, (current) => current.foodBuyQuantities.basic === 30, "Food bulk quantity catalog setup did not update to 30.");
+  await captureNamedScreenshot(cdp, "food-bulk-buy-catalog.png");
   await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 1)");
 
   await evaluate(cdp, "window.__aquariumTest.buyFood('basic')");
@@ -504,11 +527,33 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 218, 248)");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 92, 100)");
   await evaluate(cdp, "window.__aquariumTest.setScreen('tank')");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.fish[0].state === "hungry" &&
+      current.fish[0].statusBars.emoji === "😫" &&
+      current.fish[0].statusBars.emojiVisible &&
+      current.fish[0].statusBars.emojiBubbleVisible,
+    "Hungry fish should show a persistent hungry chat bubble until eating."
+  );
+  await captureNamedScreenshot(cdp, "fish-hungry-bubble.png");
   await clickGame(cdp, 260, 250);
   state = await waitFor(
     cdp,
-    (current) => current.foodInventoryByType.basic === 3 && current.foodCount === 0 && current.fish[0].hunger < 70,
+    (current) =>
+      current.foodInventoryByType.basic === 3 &&
+      current.foodCount === 0 &&
+      current.fish[0].hunger < 70 &&
+      current.fish[0].statusBars.emoji === "😊" &&
+      current.fish[0].statusBars.emojiBubbleVisible,
     "Hungry fish did not eat dropped food."
+  );
+  await captureNamedScreenshot(cdp, "fish-happy-after-eat-bubble.png");
+  await delay(3600);
+  state = await waitFor(
+    cdp,
+    (current) => current.fish[0].state === "happy" && !current.fish[0].statusBars.emojiVisible && !current.fish[0].statusBars.emojiBubbleVisible,
+    "Happy emoji should disappear a few seconds after eating."
   );
 
   await evaluate(cdp, "window.__aquariumTest.addFood('basic', 1)");
@@ -532,11 +577,14 @@ async function runRegression(cdp, appUrl) {
       current.fish[0].state === "ill" &&
       current.coinDropCount === 1 &&
       current.coinsWaiting[0]?.value === 1 &&
+      current.fish[0].statusBars.emoji === "🤒" &&
+      current.fish[0].statusBars.emojiBubbleVisible &&
       current.fish[0].nextCoinDropInMs >= 20000,
     "Ill fish did not produce a slower reduced +1 coin."
   );
   assert(state.fish[0].bodyTint !== 0x95a1a6, "Ill fish should keep a desaturated body color instead of turning colorless gray.");
   assert(state.fish[0].statusBars.tailTint === 0xffb13b, "Ill fish should keep its preferred-food tail color.");
+  await captureNamedScreenshot(cdp, "fish-sick-emoji.png");
   state = await waitFor(
     cdp,
     (current) => current.coinsWaiting[0]?.atBottom && current.coinsWaiting[0].y >= current.coinsWaiting[0].bottomY - 0.5,
@@ -632,13 +680,16 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].nextCoinDropInMs < 10000, "Happy fish coin timer should stay faster than sick fish timer.");
   state = await waitFor(
     cdp,
-    (current) => current.coinsWaiting[0]?.atBottom && current.coinsWaiting[0].y >= current.coinsWaiting[0].bottomY - 0.5,
+    (current) => current.coinsWaiting.some((coin) => coin.atBottom && coin.y >= coin.bottomY - 0.5),
     "Happy fish coin did not sink all the way to the tank bottom.",
     7000
   );
   const walletBeforeHappyCoinCollection = state.wallet.common;
-  await clickGame(cdp, state.coinsWaiting[0].x, state.coinsWaiting[0].y);
-  state = await waitFor(cdp, (current) => current.wallet.common === walletBeforeHappyCoinCollection + 5 && current.coinDropCount === 0, "Collecting a coin failed.");
+  const settledHappyCoin = state.coinsWaiting.find((coin) => coin.atBottom && coin.y >= coin.bottomY - 0.5) ?? state.coinsWaiting[0];
+  await clickGame(cdp, settledHappyCoin.x, settledHappyCoin.y);
+  state = await waitFor(cdp, (current) => current.wallet.common === walletBeforeHappyCoinCollection + settledHappyCoin.value, "Collecting a coin failed.");
+  await evaluate(cdp, "window.__aquariumTest.clearCoins()");
+  state = await waitFor(cdp, (current) => current.coinDropCount === 0, "Happy coin cleanup failed.");
   const walletAfterHappyCoinCollection = state.wallet.common;
 
   await evaluate(cdp, "window.__aquariumTest.saveNow()");

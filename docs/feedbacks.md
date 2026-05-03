@@ -50,7 +50,11 @@
 - Show a tank indicator when a useful purchase or upgrade is needed.
 - Store, Care, Album, Goals, and Settings should open as their own pages instead of overlaying the tank.
 - Bigger fish should move slower than smaller fish.
-- Food shop purchases should have minus/plus quantity controls.
+- Food shop purchases should have intuitive bulk quantity controls.
+- Food shop bulk buying should be more intuitive for common quantities like 20, 30, and 50.
+- Food shop no longer needs plus/minus controls; quantity buttons should accumulate when tapped repeatedly.
+- Food shop bulk quantity needs a reset button.
+- Shop cards should not show Use or Place secondary buttons.
 - Rental duration maximum should be 60 minutes.
 - Renting an active Auto Feeder or Auto Coin Collector should add duration to the current timer.
 - Add a fish statistics page showing owned fish type, age, worth, and gender.

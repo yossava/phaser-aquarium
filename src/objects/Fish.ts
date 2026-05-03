@@ -15,6 +15,7 @@ const growthCapSeconds = growthCapYears * monthsPerFishYear * secondsPerFishMont
 const earlyGrowthSeconds = 6 * secondsPerFishMonth;
 const minimumGrowthWidthRatio = 0.24;
 const maximumGrowthWidthRatio = 0.5;
+const happyEmojiDurationMs = 3200;
 export const fatalCareSeconds = 60 * 60;
 
 export class Fish {
@@ -33,6 +34,9 @@ export class Fish {
   public evolutionStage: number;
   private statusBars: Phaser.GameObjects.Graphics;
   private tailMark: Phaser.GameObjects.Graphics;
+  private stateBubble: Phaser.GameObjects.Graphics;
+  private stateEmoji: Phaser.GameObjects.Text;
+  private happyEmojiUntil = 0;
 
   public constructor(
     private scene: Phaser.Scene,
@@ -51,6 +55,17 @@ export class Fish {
     this.tailMark.setDepth(9);
     this.statusBars = scene.add.graphics();
     this.statusBars.setDepth(12);
+    this.stateBubble = scene.add.graphics();
+    this.stateBubble.setDepth(12);
+    this.stateEmoji = scene.add
+      .text(x, y, "", {
+        fontFamily: "Arial",
+        fontSize: "18px",
+        stroke: "#061725",
+        strokeThickness: 3
+      })
+      .setOrigin(0.5)
+      .setDepth(13);
     this.pickWanderTarget();
     this.updateTailMark();
     this.updateStatusBars();
@@ -95,6 +110,7 @@ export class Fish {
       if (accepted) {
         this.hunger = Phaser.Math.Clamp(this.hunger - closestFood.nutrition, 0, 100);
         this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
+        this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
       } else {
         this.hunger = Phaser.Math.Clamp(this.hunger + 8, 0, 100);
         this.health = Phaser.Math.Clamp(this.health - 8, 0, 100);
@@ -148,7 +164,7 @@ export class Fish {
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {
-    container.add([this.sprite, this.tailMark, this.statusBars]);
+    container.add([this.sprite, this.tailMark, this.statusBars, this.stateBubble, this.stateEmoji]);
   }
 
   public primaryProduction(): CoinProduction {
@@ -304,6 +320,8 @@ export class Fish {
   public destroy(): void {
     this.tailMark.destroy();
     this.statusBars.destroy();
+    this.stateBubble.destroy();
+    this.stateEmoji.destroy();
     this.sprite.destroy();
   }
 
@@ -317,6 +335,11 @@ export class Fish {
     rarityStars: number;
     fullyGrown: boolean;
     growthBlockedByTank: boolean;
+    emoji: string;
+    emojiVisible: boolean;
+    emojiX: number;
+    emojiY: number;
+    emojiBubbleVisible: boolean;
   } {
     return {
       visible: this.statusBars.visible,
@@ -327,7 +350,12 @@ export class Fish {
       tailTint: this.tailTint(),
       rarityStars: rarityStarCount(this.type.rarity),
       fullyGrown: this.isFullyGrown(),
-      growthBlockedByTank: this.isGrowthLimitedByTank()
+      growthBlockedByTank: this.isGrowthLimitedByTank(),
+      emoji: this.stateEmoji.text,
+      emojiVisible: this.stateEmoji.visible,
+      emojiX: this.stateEmoji.x,
+      emojiY: this.stateEmoji.y,
+      emojiBubbleVisible: this.stateBubble.visible
     };
   }
 
@@ -537,7 +565,58 @@ export class Fish {
     this.statusBars.lineStyle(1, 0xd7f4ff, 0.28);
     this.statusBars.strokeRoundedRect(-1, barY - 1, barWidth + 2 + rarityStarCount(this.type.rarity) * 6, barHeight * 2 + gap + 2, 2);
     this.drawRarityStars(barWidth + 5, barY + 4);
+    this.updateStateEmoji(y);
     this.updateTailMark();
+  }
+
+  private updateStateEmoji(statusY: number): void {
+    const emoji = this.currentStateEmoji();
+    const visible = emoji.length > 0;
+    this.stateEmoji.setText(emoji);
+    this.stateEmoji.setVisible(visible);
+    this.stateBubble.setVisible(visible);
+    this.stateEmoji.setPosition(
+      Math.round(this.sprite.x),
+      Math.round(Math.max(tankBounds.top + 16, statusY - 18))
+    );
+
+    this.drawStateBubble();
+  }
+
+  private currentStateEmoji(): string {
+    if (this.isGrowthLimitedByTank()) {
+      return "😣";
+    }
+
+    if (this.state === "ill") {
+      return "🤒";
+    }
+
+    if (this.scene.time.now < this.happyEmojiUntil) {
+      return "😊";
+    }
+
+    if (this.state === "hungry") {
+      return "😫";
+    }
+
+    return "";
+  }
+
+  private drawStateBubble(): void {
+    this.stateBubble.clear();
+    if (!this.stateBubble.visible) {
+      return;
+    }
+
+    this.stateBubble.setPosition(this.stateEmoji.x, this.stateEmoji.y);
+    this.stateBubble.fillStyle(0xf7fbff, 0.92);
+    this.stateBubble.fillRoundedRect(-16, -15, 32, 25, 8);
+    this.stateBubble.fillTriangle(-5, 8, 0, 15, 6, 8);
+    this.stateBubble.lineStyle(1, 0x0c3144, 0.46);
+    this.stateBubble.strokeRoundedRect(-16, -15, 32, 25, 8);
+    this.stateBubble.lineBetween(-5, 8, 0, 15);
+    this.stateBubble.lineBetween(0, 15, 6, 8);
   }
 
   private currentMoodRatio(): number {
