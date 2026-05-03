@@ -134,6 +134,7 @@ Each fish type should define:
 - Required or preferred food type.
 - Mood cycle profile.
 - Base movement speed.
+- Size-based movement multiplier where larger growth stages move slower.
 - Coin production table.
 - Favorite food.
 - Preferred decoration or habitat.

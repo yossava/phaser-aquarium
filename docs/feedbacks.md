@@ -48,3 +48,8 @@
 - Require tank upgrades before higher-level fish can enter the tank.
 - Allow lower-level fish in higher-level tanks, but block higher-level fish in lower-level tanks.
 - Show a tank indicator when a useful purchase or upgrade is needed.
+- Store, Care, Album, Goals, and Settings should open as their own pages instead of overlaying the tank.
+- Bigger fish should move slower than smaller fish.
+- Food shop purchases should have minus/plus quantity controls.
+- Rental duration maximum should be 60 minutes.
+- Renting an active Auto Feeder or Auto Coin Collector should add duration to the current timer.

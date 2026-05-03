@@ -72,7 +72,7 @@ export class Fish {
     }
 
     const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier() : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
-    this.moveTowardTarget(deltaSeconds, this.type.speed * speedMultiplier);
+    this.moveTowardTarget(deltaSeconds, this.type.speed * speedMultiplier * this.movementSizeMultiplier());
     this.setStateTint();
 
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
@@ -178,6 +178,12 @@ export class Fish {
     const babyResaleCap = Math.floor(this.type.price.amount * 0.82);
     const cappedValue = this.ageStage === "baby" ? Math.min(rawValue, babyResaleCap) : rawValue;
     return Math.max(1, Math.floor(cappedValue));
+  }
+
+  public movementSizeMultiplier(): number {
+    const growthRange = Math.max(0.01, this.type.maxScale - this.type.baseScale);
+    const growthRatio = Phaser.Math.Clamp((this.sprite.scaleX - this.type.baseScale) / growthRange, 0, 1);
+    return Phaser.Math.Linear(1, 0.58, growthRatio);
   }
 
   public destroy(): void {

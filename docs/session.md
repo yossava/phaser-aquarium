@@ -115,3 +115,15 @@
   - Added a saved tank level, L1-L5 upgrade pricing, and store controls for browsing fish by level.
   - Blocked higher-level fish from purchase or placement until the tank is upgraded while keeping lower-level fish valid in higher-level tanks.
   - Added total wealth and tank need indicator copy to the tank HUD/status area.
+- Converted menu screens into full-page views:
+  - Store, Care, Album, Goals, and Settings now use an opaque full-canvas page instead of overlaying the tank.
+  - Tank and food side buttons are hidden while on pages, with a Tank button returning to gameplay.
+  - Buying food or decorations from the shop returns to the tank with the relevant placement tool active.
+- Tuned fish movement so growth affects feel:
+  - Baby fish keep their full listed movement speed.
+  - Fully grown fish taper down to a slower size multiplier so large fish cruise more heavily while still chasing food.
+- Added food shop quantity controls:
+  - Each food card now has minus/plus controls with an x-count.
+  - Buying food charges the multiplied price and adds the selected quantity to stock.
+- Increased rental duration controls so Auto Feeder and Auto Coin Collector can be rented for up to 60 minutes.
+- Changed active rental purchases to extend the current timer instead of being ignored.

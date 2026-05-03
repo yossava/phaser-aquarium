@@ -132,6 +132,8 @@
 - [x] Expand regression tests for save/load.
 - [x] Expand regression tests for offline progress caps.
 - [x] Expand regression tests for timed auto feeder and auto coin collector rentals, including selected duration and scaled prices.
+- [x] Raise timed rental duration cap to 60 minutes.
+- [x] Allow active rental purchases to extend existing Auto Feeder and Auto Coin Collector timers.
 - [ ] Expand regression tests for old save migration.
 - [x] Add content validation to `npm test`.
 - [x] Keep visual browser QA as part of every UI/gameplay change.
@@ -146,9 +148,11 @@
 - [x] Created the main tank scene.
 - [x] Added player coin economy MVP.
 - [x] Added store MVP for fish, fish food, and decorations.
+- [x] Added food shop quantity controls for multi-buy purchases.
 - [x] Allowed fish placement inside the tank.
 - [x] Implemented fish states: hungry, ill, happy.
 - [x] Implemented fish movement around the tank.
+- [x] Tuned fish movement so larger grown fish move slower than babies.
 - [x] Allowed player to drop food into the tank.
 - [x] Made hungry fish seek and eat food.
 - [x] Added coin drops from fish.

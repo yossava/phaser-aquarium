@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Changed Auto Feeder and Auto Coin Collector rentals so buying again while active adds duration to the current timer.
+- Increased Auto Feeder and Auto Coin Collector rental duration caps to 60 minutes.
+- Added minus/plus quantity controls to food shop cards so players can buy multiple food items at once.
+- Slowed fish movement as they grow, so bigger fish cruise more heavily than babies.
+- Changed Store, Care, Album, Goals, and Settings into full-page views with a Tank return button instead of tank overlays.
 - Added total wealth to the tank HUD, counting wallet, fish, inventory, and waiting coin value.
 - Expanded the store fish catalog to 50 fish with ten fish per tank level.
 - Added tank level progression from L1-L5; higher-level fish require the matching tank upgrade before purchase or placement.

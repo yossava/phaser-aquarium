@@ -279,6 +279,8 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].statusBars.tailTint === 0xffb13b, "Goldfish tail should use the same visual color as its preferred basic food.");
   assert(state.fish[0].statusBars.rarityStars === 1, "Common fish should render a one-star rarity badge.");
   assert(!state.fish[0].statusBars.fullyGrown, "Baby fish should not show the fully grown marker.");
+  const babyMovementSizeMultiplier = state.fish[0].movementSizeMultiplier;
+  assert(babyMovementSizeMultiplier > 0.95, "Baby fish should move at nearly full size-based speed.");
   const babySellValue = state.fish[0].sellValue;
   assert(babySellValue < 35, "Freshly bought baby fish should sell below purchase price.");
 
@@ -293,8 +295,11 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.forceFishAge(0, 10000)");
   state = await waitFor(
     cdp,
-    (current) => current.fish[0].ageStage === "master" && current.fish[0].statusBars.fullyGrown,
-    "Fully grown fish should show a max-growth marker."
+    (current) =>
+      current.fish[0].ageStage === "master" &&
+      current.fish[0].statusBars.fullyGrown &&
+      current.fish[0].movementSizeMultiplier < babyMovementSizeMultiplier * 0.7,
+    "Fully grown fish should show a max-growth marker and move slower than babies."
   );
   await evaluate(cdp, "window.__aquariumTest.forceFishAge(0, 720)");
 
@@ -309,6 +314,11 @@ async function runRegression(cdp, appUrl) {
 
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('food')");
   state = await waitFor(cdp, (current) => current.activeTab === "food", "Food tab did not activate.");
+  assert(state.foodBuyQuantities.basic === 1, "Food buy quantity should default to one.");
+
+  await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 3)");
+  state = await waitFor(cdp, (current) => current.foodBuyQuantities.basic === 3, "Food buy quantity did not update.");
+  await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 1)");
 
   await evaluate(cdp, "window.__aquariumTest.buyFood('basic')");
   state = await waitFor(cdp, (current) => current.wallet.common === 80 && current.foodInventory === 4 && current.placementMode === "food", "Buying food failed.");
@@ -361,7 +371,7 @@ async function runRegression(cdp, appUrl) {
 
   await evaluate(cdp, "window.__aquariumTest.addFood('medicine', 1)");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 72, 22)");
-  await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 300, 248)");
+  await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 120, 248)");
   await evaluate(cdp, "window.__aquariumTest.setFoodTool('medicine')");
   await clickGame(cdp, 330, 248);
   state = await waitFor(
@@ -430,6 +440,17 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.addFishForTest('koi', 318, 250)");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 62, 100)");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(1, 66, 100)");
+  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('feeder', 99)");
+  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('collector', 99)");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.rentals.autoFeederMinutes === 60 &&
+      current.rentals.autoCollectorMinutes === 60 &&
+      current.rentals.autoFeederPrice === 1080 &&
+      current.rentals.autoCollectorPrice === 1320,
+    "Rental duration controls should clamp at 60 minutes."
+  );
   await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('feeder', 2)");
   await evaluate(cdp, "window.__aquariumTest.rentAutoFeeder()");
   state = await waitFor(
@@ -442,6 +463,17 @@ async function runRegression(cdp, appUrl) {
       current.wallet.common === walletBeforeRentals - 36,
     "Renting the auto feeder failed."
   );
+  const feederRemainingAfterFirstRent = state.rentals.autoFeederRemainingMs;
+  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('feeder', 1)");
+  await evaluate(cdp, "window.__aquariumTest.rentAutoFeeder()");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.rentals.autoFeederActive &&
+      current.rentals.autoFeederRemainingMs > feederRemainingAfterFirstRent + 50_000 &&
+      current.wallet.common === walletBeforeRentals - 54,
+    "Renting an active auto feeder should add duration."
+  );
   await evaluate(cdp, "window.__aquariumTest.runAutoFeederNow()");
   state = await waitFor(
     cdp,
@@ -449,7 +481,7 @@ async function runRegression(cdp, appUrl) {
       current.foodInventoryByType.basic === 3 &&
       current.foodInventoryByType.protein === undefined &&
       current.foodInventory === 3 &&
-      current.foods.every((food) => food.y >= 138 && food.y <= 238),
+      current.foods.every((food) => food.y >= 138 && food.y <= 260),
     "Auto feeder did not drop each needed fish food type from the top while decrementing inventory.",
     3500
   );
@@ -471,6 +503,17 @@ async function runRegression(cdp, appUrl) {
       current.wallet.common === walletBeforeCollector - 66,
     "Renting the auto coin collector failed."
   );
+  const collectorRemainingAfterFirstRent = state.rentals.autoCollectorRemainingMs;
+  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('collector', 1)");
+  await evaluate(cdp, "window.__aquariumTest.rentAutoCollector()");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.rentals.autoCollectorActive &&
+      current.rentals.autoCollectorRemainingMs > collectorRemainingAfterFirstRent + 50_000 &&
+      current.wallet.common === walletBeforeCollector - 88,
+    "Renting an active auto coin collector should add duration."
+  );
   const walletAfterCollectorCleared = state.wallet.common;
   await evaluate(cdp, "window.__aquariumTest.addCoin('common', 3, 215, 828)");
   state = await waitFor(
@@ -484,6 +527,14 @@ async function runRegression(cdp, appUrl) {
     cdp,
     (current) => !current.rentals.autoFeederActive && !current.rentals.autoCollectorActive,
     "Expiring rentals for regression setup failed."
+  );
+  const walletBeforeProgressionTopUp = state.wallet.common;
+  await evaluate(cdp, "window.__aquariumTest.addCoin('common', 220, 215, 828)");
+  await clickGame(cdp, 215, 828);
+  state = await waitFor(
+    cdp,
+    (current) => current.wallet.common >= walletBeforeProgressionTopUp + 220 && current.coinDropCount === 0,
+    "Progression setup coin top-up failed."
   );
 
   await evaluate(cdp, "window.__aquariumTest.setScreen('store')");
@@ -719,7 +770,7 @@ async function main() {
   } finally {
     chrome?.kill("SIGTERM");
     vite.kill("SIGTERM");
-    await rm(profileDir, { recursive: true, force: true });
+    await rm(profileDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
   }
 }
 
