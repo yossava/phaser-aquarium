@@ -100,11 +100,16 @@ function validateCoinProduction(collectionName, item, production, context) {
 
 function validateFishTypes(fishTypesData) {
   validateUniqueIds("fish-types", fishTypesData);
+  const fishIds = new Set(fishTypesData.map((fish) => fish.id));
 
   for (const fish of fishTypesData) {
     validateRarity("fish-types", fish);
     validatePrice("fish-types", fish);
     validateFoodRefs("fish-types", fish, ["requiredFoodTypes", "preferredFoodTypes"]);
+
+    if (!Number.isInteger(fish.tankLevel) || fish.tankLevel < 1 || fish.tankLevel > 5) {
+      fail(`fish-types/${fish.id}: tankLevel must be an integer from 1 to 5.`);
+    }
 
     if (!fish.sellBaseValue || !coinTypes.has(fish.sellBaseValue.coinType)) {
       fail(`fish-types/${fish.id}: invalid sellBaseValue coin type.`);
@@ -112,6 +117,23 @@ function validateFishTypes(fishTypesData) {
 
     if (!Array.isArray(fish.acquisitionSources) || fish.acquisitionSources.length === 0) {
       fail(`fish-types/${fish.id}: acquisitionSources must not be empty.`);
+    }
+
+    for (const key of ["compatibleSpecies", "incompatibleSpecies"]) {
+      if (!Array.isArray(fish[key])) {
+        fail(`fish-types/${fish.id}: ${key} must be an array.`);
+        continue;
+      }
+
+      if (key === "incompatibleSpecies" && fish[key].length > 0) {
+        fail(`fish-types/${fish.id}: incompatibleSpecies must stay empty because all fish are community-safe.`);
+      }
+
+      for (const fishId of fish[key]) {
+        if (!fishIds.has(fishId)) {
+          fail(`fish-types/${fish.id}: unknown fish id "${fishId}" in ${key}.`);
+        }
+      }
     }
 
     if (!fish.ageCurve || typeof fish.ageCurve !== "object") {
@@ -201,6 +223,17 @@ validateFishTypes(fishTypesData);
 validateFoodTypes(foodTypesData);
 validateDecorationTypes(decorationTypesData);
 
+if (fishTypesData.length < 50) {
+  fail(`fish-types: expected at least 50 fish, found ${fishTypesData.length}.`);
+}
+
+for (let level = 1; level <= 5; level += 1) {
+  const count = fishTypesData.filter((fish) => fish.tankLevel === level).length;
+  if (count < 10) {
+    fail(`fish-types: expected at least 10 fish for tankLevel ${level}, found ${count}.`);
+  }
+}
+
 if (errors.length > 0) {
   console.error("Content validation failed:");
   for (const error of errors) {
@@ -212,4 +245,3 @@ if (errors.length > 0) {
 console.log(
   `Content validation passed: ${fishTypesData.length} fish, ${foodTypesData.length} food, ${decorationTypesData.length} decorations.`
 );
-

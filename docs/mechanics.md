@@ -47,7 +47,7 @@ Production data files should exist for:
 - Upgrade types.
 - Events.
 - Daily goal templates.
-- Compatibility rules.
+- Community tank rules.
 - Economy balance constants.
 
 The game code should consume these tables rather than hard-coding shop and fish behavior.
@@ -60,10 +60,17 @@ There are three production currencies:
 - Rare coins.
 - Super rare coins.
 
+Coin visuals:
+
+- Common coins use gold sprite and label colors.
+- Rare coins use aqua-blue sprite and label colors.
+- Super rare coins use magenta-purple sprite and label colors.
+- Coin type color must remain readable over the tank floor and water.
+
 Currency rules:
 
 - Fish can produce one or more coin types.
-- Coin production depends on species, rarity, age, mood, health, hunger, cleanliness, compatibility, and decorations.
+- Coin production depends on species, rarity, age, mood, health, hunger, cleanliness, and decorations.
 - Common items cost common coins.
 - Rare items cost rare coins.
 - Super rare items cost super rare coins.
@@ -96,7 +103,7 @@ effectiveProduction =
   moodMultiplier *
   healthMultiplier *
   cleanlinessMultiplier *
-  compatibilityMultiplier *
+  communityTankMultiplier *
   decorationMultiplier *
   eventMultiplier;
 ```
@@ -114,6 +121,7 @@ Each fish type should define:
 
 - ID.
 - Display name.
+- Tank level requirement.
 - Price.
 - Rarity.
 - Acquisition sources.
@@ -130,7 +138,7 @@ Each fish type should define:
 - Favorite food.
 - Preferred decoration or habitat.
 - Compatible species.
-- Incompatible species.
+- Community-safe species mix.
 - Water or habitat requirements.
 - Illness resistance.
 
@@ -142,6 +150,7 @@ Rarity values:
 
 Store design should allow a very large fish catalog through filters:
 
+- Tank level.
 - Rarity.
 - Species family.
 - Food type.
@@ -159,6 +168,7 @@ type FishType = {
   id: string;
   name: string;
   speciesFamily: string;
+  tankLevel: number;
   rarity: Rarity;
   price?: Price;
   acquisitionSources: string[];
@@ -167,7 +177,7 @@ type FishType = {
   preferredFoodTypes: FoodType[];
   habitatTags: string[];
   compatibleSpecies: string[];
-  incompatibleSpecies: string[];
+  incompatibleSpecies: string[]; // kept empty in the current community-tank design
   ageCurve: Record<AgeStage, {
     durationSeconds: number;
     scale: number;
@@ -177,6 +187,17 @@ type FishType = {
   }>;
 };
 ```
+
+## Tank Level Progression
+
+The player has one active tank level from 1 to 5.
+
+- Fish have a `tankLevel` requirement.
+- A fish can enter the tank when `fish.tankLevel <= currentTankLevel`.
+- Lower-level fish remain valid in higher-level tanks.
+- Higher-level fish cannot be purchased or placed until the tank is upgraded.
+- The shop shows fish by tank tier so the catalog stays readable on portrait screens.
+- The HUD shows total wealth and the tank need indicator suggests the next useful purchase or upgrade.
 
 ## Fish Instance State
 
@@ -196,7 +217,15 @@ Each placed fish should track:
 - Last coin drop time.
 - Last fed time.
 - Mood cycle offset.
-- Compatibility score.
+- Community-tank score.
+
+Fish visual language:
+
+- Fish tail tint should match the color of its primary preferred food, so players can map fish to food quickly without changing body identity.
+- Food drops and food shop cards should use the same color language.
+- Fish rarity should be visible as one, two, or three small stars near the fish status bars.
+- Fully grown fish should show a compact max-growth marker near the status bars.
+- Sick fish should keep a recognizable body color with mild desaturation instead of turning colorless gray.
 
 ## Age Stages
 
@@ -220,7 +249,7 @@ Age affects:
 - Coin production amount.
 - Coin production interval.
 - Sell value.
-- Compatibility tolerance.
+- Community-tank tolerance.
 
 Suggested behavior:
 
@@ -237,7 +266,7 @@ Players can sell fish from tank or inventory.
 Selling rules:
 
 - Sell value is paid in the fish's primary coin type.
-- Value increases with rarity, age, health, happiness, and growth.
+- Value increases with rarity, age, production strength, size, resilience, health, and fullness.
 - Recently bought baby fish sell for less than purchase price.
 - Event-only fish require a strong warning before selling later.
 - Selling should free tank capacity immediately.
@@ -245,10 +274,17 @@ Selling rules:
 Suggested formula:
 
 ```ts
-sellValue = basePrice * rarityMultiplier * ageMultiplier * conditionMultiplier
+sellValue =
+  baseValue *
+  ageMultiplier *
+  rarityMultiplier *
+  productionMultiplier *
+  sizeMultiplier *
+  resilienceMultiplier *
+  conditionMultiplier
 ```
 
-Condition multiplier combines health, happiness, and hunger.
+Condition multiplier combines health and hunger/fullness. Baby resale is capped below purchase price to prevent instant buy/sell profit.
 
 Selling edge cases:
 
@@ -290,6 +326,7 @@ Fish become happy when:
 Hungry fish:
 
 - Show a clear hunger indicator.
+- Show a compact fullness bar above the fish while it swims; a full bar means good and an empty bar means hungry.
 - Seek nearby food.
 - Move faster toward food.
 - Stop or reduce coin drops if hunger is high.
@@ -301,7 +338,7 @@ Fish become hungry when hunger passes a threshold.
 Ill fish:
 
 - Move slower.
-- Lose coin production.
+- Keep coin production alive, but only as slower reduced `+1` drops.
 - Stop growing or grow slowly.
 - Need medicine or better tank conditions.
 
@@ -316,6 +353,8 @@ Important: illness should create care urgency, but not make the game cruel.
 ## Hunger
 
 Hunger increases over time.
+
+MVP tuning should be gentle enough for short mobile idle sessions: a newly fed baby fish should stay comfortable for roughly a minute or more before becoming hungry, and health loss should start only at severe hunger.
 
 Suggested scale:
 
@@ -336,7 +375,7 @@ Mood inputs:
 - Hunger.
 - Health.
 - Tank cleanliness.
-- Compatible or incompatible tank mates.
+- Species variety in the shared tank.
 - Preferred decorations.
 - Recent feeding quality.
 
@@ -348,6 +387,8 @@ Mood effects:
 - Bubble or sparkle effects.
 - Rare behavior chance.
 
+Current MVP displays mood as a compact above-fish condition bar derived from health until the separate mood stat is implemented.
+
 Mood should drift slowly, not flicker every frame. Use smoothing or state timers.
 
 ## Food
@@ -357,6 +398,7 @@ Food types:
 - Basic flakes: cheap, lowers hunger.
 - Premium flakes: lowers hunger more and improves happiness.
 - Medicine food: lowers hunger slightly and improves health.
+- Medicine drops should render as green pill-shaped treatment pellets, not generic food dots.
 - Favorite snacks: bonus effect for specific fish types.
 - Herb food: required by plant-eating species.
 - Protein food: required by predator or fast-growing species.
@@ -366,13 +408,15 @@ Food types:
 
 Food behavior:
 
-- Player taps food, then taps tank.
+- Player activates an owned food icon, then taps the tank.
 - Food drops from tap point and sinks.
 - Hungry fish target nearest food.
+- Fish should aggressively chase compatible food whenever they are not basically full, even before the visible hungry state.
 - First fish to reach the food consumes it.
 - Fish can reject the wrong food type.
 - Wrong food may reduce hunger slightly but give no happiness bonus.
 - Strict species may not eat incompatible food at all.
+- Medicine is handled through the same food tool flow as a treatment pellet; ill fish seek it and recover only after eating it.
 
 Food edge cases:
 
@@ -380,7 +424,19 @@ Food edge cases:
 - Expired food lowers cleanliness.
 - Multiple fish can target the same food, but only one consumes it.
 - Baby fish prefer micro food, even if their adult species prefers another food.
-- Medicine food should not become the best everyday food.
+- Medicine should restore health and reduce hunger only slightly, so it does not become the best everyday food.
+
+Timed care rentals:
+
+- Auto Feeder can be rented from Care for a player-selected number of minutes.
+- Auto Feeder spends owned non-medicine food; it should not create free food.
+- Auto Feeder evaluates each hungry eligible fish and drops that fish's compatible or broadly accepted food from a random top-of-tank position.
+- Auto Feeder decrements food inventory once for every pellet it drops.
+- If several fish species need different foods, Auto Feeder should drop each needed food type as long as stock exists.
+- Auto Coin Collector can be rented from Care for a player-selected number of minutes.
+- Auto Coin Collector collects coin drops after they sink to the tank bottom.
+- Rental prices scale by selected minutes.
+- Rentals are short-session convenience boosts, not permanent automation.
 
 ## Growth
 
@@ -411,6 +467,7 @@ Rules:
 - Coin drops pause when fish are ill.
 - Coin drops slow when fish are hungry.
 - Uncollected coins remain in tank until collected or capped.
+- Coin drops sink faster than food pellets so rewards feel responsive.
 - Coin storage should have a cap to encourage check-ins without punishing absence too much.
 
 Production examples:
@@ -462,66 +519,58 @@ Tank happiness affects:
 - Growth speed.
 - Visual effects.
 
-## Species Compatibility
+## Community Tank Rules
 
-Some species cannot live together comfortably.
+All fish species can live together in the player's tank. The collection fantasy should reward adding many fish types instead of forcing separation.
 
-Compatibility should affect:
+Community-tank rules should affect:
 
-- Health.
-- Mood.
-- Growth.
-- Coin production type.
-- Coin production rate.
+- Store clarity.
+- Tank capacity.
 - Food competition.
 - Swimming behavior.
+- Decoration and habitat bonuses.
 
-Compatibility inputs:
+Community-tank inputs:
 
 - Species family.
 - Rarity.
-- Size difference.
 - Diet type.
-- Temperament.
 - Habitat.
 - Water preference.
 - Decoration coverage.
+- Tank capacity.
 
 Examples:
 
-- Peaceful community fish can share tanks with most common fish.
-- Predator fish stress tiny fish and reduce their mood.
-- Shy fish need plants or rocks to tolerate active fish.
-- Reef fish need coral habitat and dislike bare tanks.
-- Event spirit fish may only tolerate other event fish.
+- Peaceful community fish can share tanks with every current species.
+- Shy fish can still prefer plants or rocks for bonus mood without being harmed by tankmates.
+- Reef fish can want coral habitat while remaining safe beside freshwater collection fish in MVP terms.
+- Event fish can have special production or decoration needs, but should not make other fish sick just by sharing the tank.
 
 Placement UX:
 
-- Warn before placing incompatible fish.
-- Show a compatibility badge before confirming placement.
-- Suggest a better tank or decoration fix.
-- Do not silently punish players for unclear rules.
+- Fish purchases auto-add when the tank has capacity.
+- Show a community-safe badge or detail copy instead of an incompatibility warning.
+- Suggest helpful decorations or foods for bonuses.
+- Do not punish players for collecting mixed species.
 
-Compatibility formula:
+Community formula:
 
 ```ts
-compatibilityScore =
-  baseSpeciesScore +
+communityTankScore =
+  baseScore +
   habitatScore +
-  sizeScore +
-  temperamentScore +
-  decorationMitigation -
+  decorationBonus -
   crowdingPenalty;
 ```
 
 Suggested thresholds:
 
-- 80-100: excellent, bonus mood and production.
-- 60-79: stable, no penalty.
-- 40-59: tense, mild mood or production penalty.
-- 0-39: incompatible, health and production penalty.
+- 100: current MVP community-safe default.
+- Future lower scores should represent missing comfort bonuses, not species incompatibility.
 
-Compatibility should be recalculated when:
+Community status should be recalculated when:
 
 - Fish is placed or removed.
 - Decoration is placed or removed.
@@ -582,11 +631,13 @@ Store UX:
 - Large touch targets.
 - Clear owned count.
 - Clear price.
-- Immediate placement mode after buying placeable items.
+- Fish purchases auto-add the baby to the tank when capacity allows it.
+- Mixed species never require a risky/incompatible confirmation.
+- Non-fish placeable items can use immediate placement mode after purchase.
 - Clear locked reason for unavailable fish.
 - Clear acquisition source for event-only fish.
 - Filter and sort for large catalogs.
-- Preview production, food need, rarity, and compatibility tags before purchase.
+- Preview production, food need, rarity, and community-safe tags before purchase.
 
 Purchase edge cases:
 
@@ -615,7 +666,7 @@ Placement should support:
 
 Tank capacity rules:
 
-- Each tank has fish slot capacity.
+- MVP tank fish slot capacity is 10.
 - Each tank has decoration capacity or placement footprint budget.
 - Bigger fish may count as more capacity after aging.
 - Overcrowding lowers happiness and cleanliness.
@@ -634,14 +685,14 @@ Progression should unlock:
 - Collection rewards.
 - New coin types.
 - Event-only species.
-- Compatibility tools.
+- Community tank boosts.
 
 Progression rewards should avoid hard blocking core care. New systems should unlock gradually:
 
 - First: feeding, coins, decorations.
 - Next: cleanliness and daily goals.
 - Next: rarity and rare coins.
-- Next: compatibility and second tank.
+- Next: collection variety and habitat bonuses.
 - Later: event-only fish, discovery recipes, and mastery.
 
 Suggested early progression:
@@ -650,7 +701,7 @@ Suggested early progression:
 - Level 2: Angelfish, coral, premium food.
 - Level 3: Koi, castle, filter upgrade.
 - Level 4: Rare variants, rare coins, and themed decorations.
-- Level 5: Species compatibility tools and second tank.
+- Level 5: Species variety bonuses and advanced tank decorations.
 - Level 6: Super rare coins and event-only fish.
 
 ## Event-Only Fish
@@ -677,8 +728,8 @@ Event-only fish rules:
 
 These systems can deepen long-term retention:
 
-- Fish personalities: lazy, playful, shy, bossy, curious. Personality modifies movement, mood cycle, and compatibility.
-- Tank biomes: freshwater, reef, deep sea, zen pond, fantasy. Biomes determine compatible species and decoration bonuses.
+- Fish personalities: lazy, playful, shy, bossy, curious. Personality modifies movement and mood cycle.
+- Tank biomes: freshwater, reef, deep sea, zen pond, fantasy. Biomes determine decoration and production bonuses.
 - Collection album: rewards coins, food, decorations, or tank upgrades for owning/growing fish.
 - Species mastery: rewards for raising a species from baby to adult or elder.
 - Discovery recipes: certain decorations, food, and fish combinations attract hidden fish.
@@ -687,7 +738,7 @@ These systems can deepen long-term retention:
 - Mood events: fish occasionally request a favorite food, toy, or decoration.
 - Photo moments: rare behaviors create collectible snapshots.
 - Gentle quests: short goals that nudge care, collection, and decoration.
-- Second tank: lets players separate incompatible species and build themed aquariums.
+- Second tank: lets players build themed aquariums and show off more fish, not separate incompatible species.
 - Fish rescue events: rescue-only fish with care goals before they become permanent.
 
 ## Daily Goals
@@ -786,7 +837,7 @@ Every content item should pass validation before release:
 - Valid unlock source.
 - Valid food type references.
 - Valid production table.
-- Valid compatibility references.
+- Valid community-safe species references.
 - Valid localization key.
 - No event-only item appears in normal purchase lane.
 
@@ -805,7 +856,7 @@ Manual and automated QA should cover:
 - Sell rare fish.
 - Attempt to sell event-only fish.
 - Wrong food rejection.
-- Incompatible species placement warning.
+- Mixed-species auto-add purchase flow.
 - Coin collection when many coins are present.
 - Store rotation with owned items.
 - Event ending while app is closed.
@@ -827,11 +878,13 @@ The regression smoke test should cover:
 - Species can reject incompatible food.
 - Hungry fish can eat food.
 - Happy fish can drop a coin.
+- Uncollected coin drops cap at 5 and production waits until the player collects.
+- Common, rare, and super rare coins render with distinct colors.
 - Coin can be collected.
 - Multiple coin types can be produced and collected.
 - Decoration can be bought.
 - Decoration can be placed.
-- Incompatible species affect mood, health, and production.
+- Mixed species stay community-safe and do not add health penalties.
 - Save/load preserves fish, wallet, tank, and inventory.
 - Offline progress applies capped rewards.
 - Old save migration succeeds.

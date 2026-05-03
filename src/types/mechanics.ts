@@ -38,6 +38,7 @@ export type FishType = {
   id: string;
   name: string;
   speciesFamily: string;
+  tankLevel: number;
   rarity: Rarity;
   price: Price;
   acquisitionSources: string[];

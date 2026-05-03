@@ -12,22 +12,27 @@
 - [x] Add initial data-driven content tables for fish, food, and decorations.
 - [x] Add shared mechanics types: `Rarity`, `CoinType`, `AgeStage`, `FishState`, `FoodType`, `Wallet`, and `Price`.
 - [x] Add content validation for unique IDs, rarity, prices, food references, production tables, and core numeric fields.
-- [ ] Add data-driven content tables for upgrades, events, daily goals, compatibility, and economy constants.
-- [ ] Expand content validation for assets, compatibility references, localization keys, and event-only rules.
-- [ ] Add save schema versioning.
-- [ ] Add save migrations.
-- [ ] Add autosave for purchases, sales, placement, collection, feeding, cleaning, age-up, and settings changes.
+- [ ] Add data-driven content tables for upgrades, events, daily goals, community tank bonuses, and economy constants.
+- [x] Expand content validation for community-safe species references.
+- [ ] Expand content validation for assets, localization keys, and event-only rules.
+- [x] Add save schema versioning.
+- [x] Add save migrations.
+- [x] Add autosave for current MVP purchases, sales, placement, collection, and feeding.
+- [ ] Extend autosave to cleaning, explicit age-up moments, settings changes, migrations, and future screens.
 
 ## Phase 2: Economy And Store
 
 - [x] Replace single coin counter with common, rare, and super rare wallet state.
 - [x] Add wallet UI for all three coin types.
-- [ ] Add coin production tables by fish type, age, rarity, mood, health, cleanliness, compatibility, decoration, and event modifiers.
+- [ ] Add coin production tables by fish type, age, rarity, mood, health, cleanliness, decoration, and event modifiers.
 - [ ] Add production caps for per-fish uncollected coins and per-tank offline earnings.
+- [x] Add MVP offline earnings cap for restored saves.
 - [ ] Add visual merging for many pending coin drops.
 - [ ] Add shop rarity lanes: common, rare, and super rare.
 - [ ] Add store filtering and sorting for large fish catalogs.
-- [ ] Show item locked reason, owned count, price, coin type, rarity, production preview, food need, and compatibility tags.
+- [x] Add 50 store fish with tank-level catalog categorization.
+- [x] Add fish-tier browsing to the shop catalog.
+- [ ] Show item locked reason, owned count, price, coin type, rarity, production preview, food need, and community-safe tags.
 - [ ] Handle insufficient currency, full tank, full inventory, store rotations, and expired event shop items.
 
 ## Phase 3: Fish Lifecycle
@@ -35,47 +40,61 @@
 - [x] Make all fish start as babies.
 - [x] Add age stages: baby, juvenile, adult, elder, and master.
 - [x] Add active-play age-up rules.
-- [ ] Add offline age-up rules.
-- [ ] Add age-based size, food need, mood cycle, production table, sell value, and compatibility tolerance.
+- [x] Add MVP offline age-up rules.
+- [ ] Add age-based size, food need, mood cycle, production table, sell value, and comfort tolerance.
 - [ ] Add clear age-up visual moment.
-- [ ] Add fish details view with age, rarity, mood, hunger, health, food need, production, compatibility, and sell value.
+- [x] Add fish details view with age, rarity, mood, hunger, health, food need, production, community status, and sell value.
 - [x] Add fish selling from tank.
 - [ ] Add fish selling from inventory.
-- [ ] Add sell confirmation for rare, super rare, and event-only fish.
-- [ ] Protect the final tutorial fish from being sold.
+- [x] Add sell confirmation for rare, super rare, and event-only fish.
+- [x] Protect the final tutorial fish from being sold.
+- [x] Raise placed-fish sell values so selling feels like a useful economy action.
+- [x] Scale fish sell value from age, rarity, production, size, resilience, health, and hunger.
 
 ## Phase 4: Food, Mood, And Health
 
-- [ ] Add food types: micro, basic, premium, herb, protein, coral, medicine, and event.
-- [ ] Add species-specific required and preferred food types.
-- [ ] Add wrong-food rejection and wrong-food partial effects.
-- [ ] Add food expiration and cleanliness penalty.
+- [x] Add food types: micro, basic, premium, herb, protein, coral, medicine, and event.
+- [x] Add species-specific required and preferred food types.
+- [x] Add wrong-food rejection and wrong-food partial effects.
+- [x] Add food cleanup cleanliness penalty.
+- [x] Add right-side food tool toggles so a selected food drops on the next tank tap.
+- [x] Add medicine behavior that heals nearby ill fish without becoming optimal everyday food.
+- [x] Allow ill fish to keep producing slower reduced `+1` coin drops.
+- [ ] Add food expiration over time.
 - [ ] Add mood cycle separate from hunger and health.
 - [ ] Add mood smoothing so state does not flicker.
 - [ ] Add clearer fish state indicators for happy, hungry, and ill.
-- [ ] Add medicine behavior that helps health without becoming optimal everyday food.
 
 ## Phase 5: Tank Systems
 
-- [ ] Implement tank cleanliness decay.
-- [ ] Add cleaning action, cleaning cooldown/cost, and low-cleanliness warning.
-- [ ] Add tank happiness calculation.
-- [ ] Add decoration happiness bonuses.
+- [x] Implement tank cleanliness decay.
+- [x] Add cleaning action and low-cleanliness health pressure.
+- [ ] Add cleaning cooldown/cost.
+- [x] Add tank happiness calculation.
+- [x] Add decoration happiness bonuses.
 - [ ] Add decoration habitat tags and collection set bonuses.
-- [ ] Add tank capacity rules for fish slots and decoration footprint.
-- [ ] Add overcrowding effects on happiness and cleanliness.
-- [ ] Add compatibility score formula and thresholds.
-- [ ] Add incompatible species placement warning and confirmation.
-- [ ] Recalculate compatibility when fish, decorations, biome, age, or crowding changes.
+- [x] Add tank capacity rules for 10 fish slots and decoration count.
+- [x] Add tank level upgrades from L1-L5.
+- [x] Gate fish purchase and placement by tank level while allowing lower-level fish in higher-level tanks.
+- [x] Add tank need indicator copy for fish, food, coins, and upgrades.
+- [x] Add overcrowding effects on happiness and cleanliness.
+- [x] Add MVP community tank score.
+- [x] Remove incompatible species penalties so all fish can share one tank.
+- [x] Recalculate community tank status when fish or decorations change.
+- [ ] Extend community tank bonuses to biome, age tolerance, and decoration set bonuses.
 
 ## Phase 6: Progression And Retention
 
 - [ ] Add first-time user experience flow: starter baby fish, first feeding, first coin, first decoration.
-- [ ] Add collection album for owned, locked, event-only, age mastery, and discovery hints.
+- [x] Add MVP collection album for owned, locked, rarity, food hints, and mastery hint.
 - [ ] Add fish rarity progression.
-- [ ] Add daily goals and rewards.
-- [ ] Add offline return summary.
-- [ ] Add offline progress with capped coins, hunger, cleanliness, growth, and gentle illness risk.
+- [x] Add MVP daily goals and rewards.
+- [x] Add minute-selectable Auto Feeder and Auto Coin Collector rentals as short-session boosters.
+- [x] Add MVP offline return summary in the tank status line.
+- [x] Add MVP offline progress with capped coins, hunger, growth, and gentle illness risk.
+- [x] Add total wealth statistic for wallet, fish, inventory, and waiting coin value.
+- [x] Extend offline progress to cleanliness and a dedicated return screen.
+- [ ] Extend offline progress to decorations and community tank bonuses.
 - [ ] Add offline clock-abuse safeguards.
 - [ ] Add event-only fish acquisition.
 - [ ] Add event rerun or alternate acquisition path for expired event fish.
@@ -83,16 +102,19 @@
 - [ ] Add visitor fish.
 - [ ] Add species mastery rewards.
 - [ ] Add photo moments.
-- [ ] Add second tank support for incompatible species.
+- [ ] Add second tank support for themed collections.
 
 ## Phase 7: Production Mobile
 
-- [ ] Add required screens: tank, store, inventory, fish details, placement confirmation, sell confirmation, collection album, daily goals, offline summary, and settings.
-- [ ] Add safe-area handling for notches and home indicators.
-- [ ] Test portrait layout on 390x844, 393x852, 412x915, and 430x932.
-- [ ] Add native/mobile packaging path, such as Capacitor or platform-specific wrapper.
-- [ ] Add optional gentle notification flow.
-- [ ] Add accessibility support: large targets, contrast, icon plus text states, reduced motion, separate audio controls.
+- [x] Add required MVP screens: tank, store, care/inventory, fish details, sell confirmation, collection album, daily goals, offline summary, and settings.
+- [x] Make the tank the full-screen primary play surface in portrait mode.
+- [x] Replace tab-like global navigation with individual icon buttons for Store, Care, Album, Goals, and Settings.
+- [x] Remove risky/incompatible placement confirmation from the current community-tank flow.
+- [x] Add safe-area handling for notches and home indicators.
+- [x] Test portrait layout on 390x844, 393x852, 412x915, and 430x932.
+- [x] Add documented native/mobile packaging path.
+- [x] Add optional gentle notification setting without prompting yet.
+- [ ] Add accessibility support: larger final hit targets, contrast audit, icon plus text states, reduced motion, separate audio controls.
 - [ ] Add localization-ready strings and test longer localized text.
 - [ ] Add privacy-conscious analytics events.
 - [ ] Add mobile performance budgets and object caps.
@@ -102,15 +124,17 @@
 
 - [ ] Expand regression tests for multi-currency wallet and coin collection.
 - [x] Expand regression tests for wallet, baby fish, common coin production, and placed-fish selling.
-- [ ] Expand regression tests for sell protections.
+- [x] Expand regression tests for sell protections.
 - [ ] Expand regression tests for age-up and age-based production.
 - [ ] Expand regression tests for wrong-food rejection.
-- [ ] Expand regression tests for species compatibility effects.
-- [ ] Expand regression tests for save/load.
-- [ ] Expand regression tests for offline progress caps.
+- [x] Expand regression tests for community-safe mixed-species behavior.
+- [x] Expand regression tests for 50-fish catalog, tank level gating, tank upgrade, and total wealth.
+- [x] Expand regression tests for save/load.
+- [x] Expand regression tests for offline progress caps.
+- [x] Expand regression tests for timed auto feeder and auto coin collector rentals, including selected duration and scaled prices.
 - [ ] Expand regression tests for old save migration.
 - [x] Add content validation to `npm test`.
-- [ ] Keep visual browser QA as part of every UI/gameplay change.
+- [x] Keep visual browser QA as part of every UI/gameplay change.
 - [ ] Maintain screenshot artifacts for key portrait layouts.
 
 ## Done
@@ -137,3 +161,12 @@
 - [x] Fixed selected tab highlight when switching bottom tabs.
 - [x] Added `.gitignore`.
 - [x] Created initial git commit.
+- [x] Added local save/load with schema versioning and autosave.
+- [x] Added capped offline return rewards and offline fish growth/hunger progression.
+- [x] Added regression coverage for save restore and offline return.
+- [x] Added typed food inventory and species food acceptance rules.
+- [x] Added mobile screen navigation for store, care, album, goals, and settings.
+- [x] Added fish details, sell confirmation, offline summary, tank cleanliness, tank happiness, cleaning, capacity, and daily goals.
+- [x] Added portrait screenshot regression artifacts for Phase 7 target viewports.
+- [x] Added Betta as a fourth store fish, then converted it to the same community-safe tank rules.
+- [x] Added final-fish protection and rare-fish sell confirmation regression coverage.

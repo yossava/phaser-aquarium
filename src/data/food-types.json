@@ -22,6 +22,45 @@
     "price": { "coinType": "rare", "amount": 1 },
     "nutrition": 70,
     "acceptedByDefault": false
+  },
+  {
+    "id": "herb",
+    "name": "Herb Flakes",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 8 },
+    "nutrition": 44,
+    "acceptedByDefault": false
+  },
+  {
+    "id": "protein",
+    "name": "Protein Bites",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 1 },
+    "nutrition": 76,
+    "acceptedByDefault": false
+  },
+  {
+    "id": "coral",
+    "name": "Coral Dust",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 2 },
+    "nutrition": 62,
+    "acceptedByDefault": false
+  },
+  {
+    "id": "medicine",
+    "name": "Medicine",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 18 },
+    "nutrition": 12,
+    "acceptedByDefault": true
+  },
+  {
+    "id": "event",
+    "name": "Event Treat",
+    "rarity": "superRare",
+    "price": { "coinType": "superRare", "amount": 1 },
+    "nutrition": 90,
+    "acceptedByDefault": false
   }
 ]
-

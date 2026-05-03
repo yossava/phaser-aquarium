@@ -2,6 +2,71 @@
 
 ## Unreleased
 
+- Added total wealth to the tank HUD, counting wallet, fish, inventory, and waiting coin value.
+- Expanded the store fish catalog to 50 fish with ten fish per tank level.
+- Added tank level progression from L1-L5; higher-level fish require the matching tank upgrade before purchase or placement.
+- Added fish-tier browsing and tank upgrade controls to the fish store.
+- Added tank need indicator copy for next useful purchases such as fish, food, coin collection, or tank upgrades.
+- Removed fish incompatibility: all fish species can now share one tank, mixed fish purchases auto-add without a risky confirmation, and community compatibility stays at 100.
+- Changed fish purchases so bought fish are added directly to the tank without a separate placement tap.
+- Increased tank fish capacity to 10.
+- Changed Auto Feeder cycles to drop the needed food type for each hungry fish species and decrement inventory per pellet.
+- Added minute controls for Auto Feeder and Auto Coin Collector rentals, with scaled rental pricing.
+- Increased coin sink speed so coin drops fall faster than food pellets.
+- Changed Auto Feeder drops to spawn from random top-of-tank positions instead of near fish.
+- Made fish aggressively chase compatible food whenever they can still benefit from eating.
+- Added one-minute Auto Feeder and Auto Coin Collector rentals from the Care screen.
+- Added regression coverage for rented auto feeding and settled-coin collection.
+- Reworked the Store screen into a mobile catalog grid with item cards for fish, food, and decorations.
+- Slowed fish hunger growth and raised the hungry threshold so fish need care less aggressively.
+- Added fish-food color matching, rarity star badges, and a fully-grown marker above fish.
+- Moved fish-food color matching from the overhead status UI onto each fish tail and kept sick fish color identity with desaturation.
+- Changed fish status bars so full bars mean good for both fullness and mood/condition.
+- Added compact hunger and mood/condition bars above each fish in the tank.
+- Added a dedicated green pill-shaped sprite for dropped Medicine.
+- Changed medicine so it drops as an edible treatment pellet and heals only after a fish eats it.
+- Changed medicine into a recovery treatment that restores health, lowers hunger, and prevents immediate illness relapse.
+- Added regression coverage to ensure treated fish stay stable after medicine.
+- Compacted the top HUD text and removed idle/offline copy from the always-visible tank header.
+- Moved Store, Care, Album, Goals, and Settings menu icons to a right-side vertical rail.
+- Moved food and medicine tool icons to a left-side vertical rail.
+- Added distinct common, rare, and super rare coin sprite and label colors.
+- Added regression coverage and a `coin-colors.png` visual artifact for coin color distinction.
+- Capped uncollected coin drops at 5 and paused further coin drops until the player collects them.
+- Added regression coverage and a `coin-stack-cap.png` visual artifact for the 5-coin stack cap.
+- Added regression coverage to ensure coin drops reach the actual tank bottom before collection.
+- Added a dedicated `coin-bottom.png` visual regression artifact for coin floor placement.
+- Let coins sink all the way to the tank bottom.
+- Changed fish sell value to scale from fish attributes: age, rarity, production, size, resilience, health, and hunger.
+- Slowed sick-fish coin production so ill fish drop reduced `+1` coins less often than healthy fish.
+- Changed coin drops so they sink downward and settle near the tank sand instead of floating upward.
+- Raised fish resale values so selling feels meaningfully rewarding instead of heavily discounted.
+- Changed ill fish coin production so sick fish still drop coins, but only as reduced `+1` drops.
+- Added regression coverage for reduced ill-fish coin drops.
+- Changed the tank into the full-screen portrait play surface with HUD overlay and bottom icon navigation.
+- Added individual Store, Care, Album, Goals, and Settings icon buttons that open their respective overlay pages.
+- Added a right-side food tool dock; tapping an owned food activates it, and the next tank tap drops that food.
+- Added medicine use behavior: Medicine can be selected like food and heals the nearest sick fish when dropped nearby.
+- Expanded regression coverage for food tool activation and medicine healing.
+- Added Betta as a fourth store fish with solitary compatibility rules.
+- Added compatibility scoring, direct species conflict penalties, and ongoing compatibility health pressure.
+- Added incompatible/risky fish placement confirmation before inventory is consumed.
+- Added final-fish sell protection and rare/event fish sell confirmation copy.
+- Expanded content validation for fish compatibility references.
+- Expanded regression coverage for compatibility warnings, confirmed risky placement, rare sell confirmation, and final-fish protection.
+- Added a `430x844` mobile portrait virtual canvas and safe-area CSS padding.
+- Added mobile screen navigation for Store, Care, Album, Goals, and Settings.
+- Added required MVP production screens: fish details, sell confirmation, offline summary, care/inventory, collection album, daily goals, and settings.
+- Added tank cleanliness decay, cleaning, tank happiness, decoration happiness contribution, fish/decor capacity, and overcrowding penalties.
+- Added typed food inventory, eight food types, selected food cycling, species food acceptance, and wrong-food effects.
+- Added save migration to schema version 2 for typed food inventory, tank state, settings, and daily goals.
+- Added local-date daily goal handling so daily goals follow the player's calendar day instead of UTC.
+- Added portrait layout regression screenshots for `390x844`, `393x852`, `412x915`, and `430x932`.
+- Added mobile build path documentation.
+- Added versioned local save/load for wallet, inventories, placed fish, fish vitals/age, and placed decorations.
+- Added autosave after MVP purchases, sales, placements, feeding, and coin collection, plus periodic active-play autosave.
+- Added capped offline return progress with fish growth, hunger/health drift, and coin rewards.
+- Expanded regression coverage for save restore after reload and simulated offline return rewards.
 - Split the MVP out of monolithic `main.ts` into scene, object, constants, and economy modules.
 - Added common/rare/super rare wallet state and UI.
 - Added baby age-stage tracking and active-play age progression.

@@ -29,7 +29,7 @@ The player owns a growing aquarium that becomes more beautiful, rare, and person
 - Growth: Fish mature visually and economically over time.
 - Expression: Players arrange decorations and build a tank that feels like theirs.
 - Calm Reward: The game feels soothing, generous, and satisfying to check.
-- Lightweight Strategy: Food choices, tank layout, fish compatibility, and decoration bonuses matter.
+- Lightweight Strategy: Food choices, tank layout, fish variety, and decoration bonuses matter.
 
 ## Core Loop
 
@@ -60,7 +60,7 @@ The current MVP should prove:
 
 - Player can buy fish.
 - Player can sell fish.
-- Player can place fish in the tank.
+- Player can buy fish and have them added to the tank immediately.
 - Player can buy and drop food.
 - Hungry fish seek and eat food.
 - Fish have visible states: happy, hungry, ill.
@@ -74,7 +74,8 @@ The current MVP should prove:
 ## Near-Term V1 Scope
 
 - Persistent save/load.
-- Better fish state UI.
+- Better fish state UI, including compact hunger and mood bars, tail-based fish-food color matching, rarity stars, and fully-grown markers above fish.
+- Minute-selectable care rentals for Auto Feeder and Auto Coin Collector.
 - Tank cleanliness.
 - Fish medicine.
 - Decoration happiness bonuses.
@@ -85,7 +86,7 @@ The current MVP should prove:
 - Three coin types: common, rare, and super rare.
 - Shop categories and prices based on coin type.
 - Species-specific food needs.
-- Basic tank compatibility rules.
+- Basic community-tank rules where all owned fish can share one aquarium.
 - Basic upgrade progression.
 - Daily goals.
 - Offline coin accrual with caps.
@@ -122,7 +123,7 @@ The current MVP should prove:
 - Multiple tanks.
 - Rare cosmetic mutations.
 - Species mastery and collection album bonuses.
-- Tank compatibility puzzles.
+- Tank variety and habitat-decoration puzzles.
 - Collection milestones.
 - Optional social visits.
 
@@ -149,7 +150,7 @@ Shop items are categorized by the same rarity as the coin type:
 - Rare shop items cost rare coins.
 - Super rare shop items cost super rare coins.
 
-Fish can produce more than one coin type. Production depends on fish species, rarity, age, mood, health, habitat, compatibility, and event bonuses.
+Fish can produce more than one coin type. Production depends on fish species, rarity, age, mood, health, habitat, decoration, and event bonuses.
 
 The MVP currently only uses one coin counter, but the target economy should support all three.
 
@@ -161,21 +162,19 @@ Rarity tiers:
 
 - Common: easy to buy, produces common coins, simple care needs.
 - Rare: unlocked through progression, produces rare coins, has more specific needs.
-- Super rare: expensive, event-gated, or discovered, produces super rare coins, has strict habitat or compatibility needs.
+- Super rare: expensive, event-gated, or discovered, produces super rare coins, and has strict care or habitat needs.
 
 All fish start as babies. The player grows them into juveniles, adults, and elder/master fish. Age changes size, food needs, mood cycle, production type, production rate, and selling value.
 
-## Species And Compatibility
+## Species And Community Tank Rules
 
 Fish species should vary meaningfully:
 
 - Each species has a food type it prefers or requires.
-- Some species can share tanks peacefully.
-- Some species dislike specific species, sizes, or habitats.
+- All fish species can share the same player tank.
+- Species identity should come from food, movement, growth, production, rarity, and visual style rather than incompatibility.
 - Some species require matching water type, decoration type, or tank cleanliness.
-- Incompatible species affect health, mood, growth, and production rate.
-
-Compatibility should create interesting tank-building decisions without making the player feel punished for experimenting. The game should warn players before placing incompatible fish.
+- Community safety should avoid punishing players for collecting many fish types in one aquarium.
 
 ## Acquisition Rules
 
@@ -244,7 +243,7 @@ The game is production-ready only when these are true:
 - Fish state changes are visually readable on a phone screen.
 - The game supports common portrait phone sizes and safe areas.
 - Performance stays smooth on mid-tier mobile devices.
-- Regression tests cover the economy, fish care, placement, selling, offline progress, and compatibility rules.
+- Regression tests cover the economy, fish care, placement, selling, offline progress, and community-tank rules.
 - Content data can be expanded without editing core gameplay code.
 - No player can lose event-only fish by accident.
 
@@ -255,13 +254,21 @@ Production needs these screens or overlays:
 - Tank screen: main play area, HUD, fish, decorations, coins, food drops.
 - Store: fish, food, decorations, upgrades, event items, rarity lanes.
 - Inventory: owned fish, food, decorations, and locked items.
-- Fish details: age, rarity, mood, hunger, health, food need, production, compatibility, sell value.
-- Placement confirmation: warns about incompatibility or tank limits.
+- Fish details: age, rarity, mood, hunger, health, food need, production, community status, sell value.
+- Placement confirmation: warns about tank limits where needed.
 - Sell confirmation: shows payout and extra warning for event-only fish.
 - Collection album: owned, locked, event-only, mastery, and discovery hints.
 - Daily goals: short care tasks and rewards.
 - Offline return summary: coins earned, fish needs, cleanliness changes.
 - Settings: sound, music, notifications, language, privacy, restore/reset save.
+
+Mobile navigation rules:
+
+- The tank is the default full-screen play surface.
+- Store, Care, Album, Goals, and Settings each have a dedicated right-side icon.
+- Owned food and medicine appear as a left-side tool dock; activating a food icon changes the next tank tap into a food drop.
+- Medicine uses the same food-drop interaction, sinks like food, and heals only after a sick fish eats it.
+- Care screen rentals give temporary convenience with player-selected minutes and scaled pricing: Auto Feeder spends owned food per pellet and drops each hungry species' needed food from random top-of-tank positions, while Auto Coin Collector collects settled bottom coins.
 
 ## First-Time User Experience
 
@@ -283,6 +290,7 @@ The tutorial should use highlights, arrows, and short labels only. Avoid long te
 Fish catalog should scale through data:
 
 - Species.
+- Tank level.
 - Rarity.
 - Age stages.
 - Color variants.
@@ -295,9 +303,11 @@ Fish catalog should scale through data:
 
 Initial production target:
 
-- 12 common fish.
-- 8 rare fish.
-- 4 super rare fish.
+- 50 store fish, with 10 fish per tank level from L1-L5.
+- Lower-level fish can live in any higher-level tank.
+- Higher-level fish cannot be purchased or placed until the tank is upgraded to that level.
+- Total wealth should be visible and include wallet, fish, inventories, and waiting coin value.
+- The tank status line should suggest useful next purchases, such as fish, food, coin collection, or tank upgrades.
 - 3 event-only fish.
 - 12 decorations.
 - 5 food types.
@@ -356,8 +366,7 @@ Analytics should be privacy-conscious and gameplay-focused:
 - Coin collected by type.
 - Fish aged up.
 - Fish became ill.
-- Compatibility warning shown.
-- Compatibility warning ignored.
+- Community-safe mixed tank created.
 - Daily goal completed.
 - Offline reward claimed.
 - Store item bought by category and rarity.
@@ -367,7 +376,7 @@ Do not collect sensitive personal data for core gameplay.
 ## Production Risks
 
 - Too many currencies too early can confuse new players.
-- Species incompatibility can feel unfair if not explained before placement.
+- Too much fish-specific care complexity can feel unfair if it is not visible before purchase.
 - Event-only fish can create fear of missing out if they never return.
 - Offline progress can break economy if uncapped.
 - Selling can cause regret if rare fish are not protected.
