@@ -53,3 +53,15 @@
 - Food shop purchases should have minus/plus quantity controls.
 - Rental duration maximum should be 60 minutes.
 - Renting an active Auto Feeder or Auto Coin Collector should add duration to the current timer.
+- Add a fish statistics page showing owned fish type, age, worth, and gender.
+- Fish can be sold from the fish statistics page.
+- Add fish evolution with three stages and age reset after successful evolution.
+- Add Evolve Pill purchase and fee-based evolution with success/death chance.
+- Add M/F same-species breeding with same-species or rare baby outcomes.
+- Large in-game numbers should abbreviate visually with one decimal digit, such as `24.7K` or `67.8M`.
+- Each tank level increase should zoom the aquarium view out so the tank feels bigger.
+- Adult fish should grow larger linearly with age, capped at very big, and Book should show fish age.
+- Each tank level should have a distinct background pattern.
+- Aquarium decorations should be draggable for repositioning and removable by dragging to trash.
+- Add purchasable bottom creatures like shrimp, shell, and crab that are not upgradeable and help collect coins and clean wasted food/medicine.
+- Each tank level should contain more fish after upgrade.

@@ -10,7 +10,10 @@ export type FoodTypeId =
   | "protein"
   | "coral"
   | "medicine"
+  | "evolve"
   | "event";
+
+export type FishGender = "M" | "F";
 
 export type Price = {
   coinType: CoinType;
@@ -80,4 +83,18 @@ export type DecorationType = {
   happinessBonus: number;
 };
 
-export type StoreTab = "fish" | "food" | "decor";
+export type HelperCreatureType = {
+  id: string;
+  name: string;
+  rarity: Rarity;
+  price: Price;
+  texture: string;
+  speed: number;
+  coinCollectSeconds: number;
+  cleanupSeconds: number;
+  feedSeconds?: number;
+  habitatTags: string[];
+  description: string;
+};
+
+export type StoreTab = "fish" | "food" | "decor" | "creature";

@@ -46,7 +46,7 @@ The player owns a growing aquarium that becomes more beautiful, rare, and person
 
 1. Complete daily care goals.
 2. Unlock new fish tiers and decoration sets.
-3. Breed or discover fish variants.
+3. Breed fish pairs, evolve special pets, or discover fish variants.
 4. Upgrade tank capacity, filters, lighting, and themes.
 5. Complete collection albums.
 6. Build themed aquariums.
@@ -68,6 +68,7 @@ The current MVP should prove:
 - Player can collect coins.
 - Fish grow over time with a cap per fish type.
 - Player can buy and place decorations.
+- Player can buy bottom helper creatures that collect settled coins and clean wasted food or medicine.
 - Game is portrait mobile and touch-first.
 - Regression test covers the core loop.
 
@@ -79,9 +80,11 @@ The current MVP should prove:
 - Tank cleanliness.
 - Fish medicine.
 - Decoration happiness bonuses.
+- Helper creatures such as shrimp, shell crawlers, and crabs.
 - More fish types.
 - More decorations.
 - Fish selling.
+- Owned fish statistics page with type, exact age, worth, gender, evolution, and sell actions.
 - Fish rarity: common, rare, and super rare.
 - Three coin types: common, rare, and super rare.
 - Shop categories and prices based on coin type.
@@ -130,7 +133,7 @@ The current MVP should prove:
 ## Ethical Engagement Rules
 
 - Do not punish players harshly for being away.
-- Fish should become unhappy or paused, not permanently die from absence.
+- Fish should warn clearly before death: a fish dies only after it remains hungry or sick for 60 continuous minutes.
 - Offline rewards should be capped but meaningful.
 - Notifications should be useful and sparse.
 - Monetization, if added later, should be cosmetic or convenience-focused.
@@ -164,7 +167,9 @@ Rarity tiers:
 - Rare: unlocked through progression, produces rare coins, has more specific needs.
 - Super rare: expensive, event-gated, or discovered, produces super rare coins, and has strict care or habitat needs.
 
-All fish start as babies. The player grows them into juveniles, adults, and elder/master fish. Age changes size, food needs, mood cycle, production type, production rate, and selling value.
+All fish start at age zero. Fish age uses fish-time: 1 real hour equals 1 fish month, real minutes convert into fish-days, and 12 real hours equals 1 fish year. Fish stats should show exact age, not player-facing categories like baby, medium, big, or max. Age changes size, food needs, mood cycle, production type, production rate, and selling value. Fish visual size is based solely on exact age: early months should be visibly readable, reaching the main species size around 6 months, and long-tail growth continues until 50 fish-years, when it reaches the very-big cap. If the tank is too small, visible growth pauses and the player is prompted to upgrade.
+
+Fish also have gender and up to three evolution stages. Evolution spends an Evolve Pill and a fee, has a 50% success / 50% death risk in the current design, and successful evolution resets age to zero. Same-species male/female breeding creates an age-zero fish: 70% same species and 30% random rare species available to the current tank level.
 
 ## Species And Community Tank Rules
 
@@ -237,7 +242,7 @@ The game is production-ready only when these are true:
 - Core loop is playable without developer knowledge.
 - Save/load is stable across app restarts and app updates.
 - Offline progress is capped, understandable, and resistant to obvious clock abuse.
-- The first session gives the player a baby fish, teaches feeding, teaches coin collection, and gives one meaningful decoration choice.
+- The first session gives the player an age-zero fish, teaches feeding, teaches coin collection, and gives one meaningful decoration choice.
 - All shop purchases have clear prices, owned counts, currency type, and placement behavior.
 - All sell actions show value, currency type, and confirmation when needed.
 - Fish state changes are visually readable on a phone screen.
@@ -252,8 +257,9 @@ The game is production-ready only when these are true:
 Production needs these screens or overlays:
 
 - Tank screen: main play area, HUD, fish, decorations, coins, food drops.
-- Store: fish, food, decorations, upgrades, event items, rarity lanes.
+- Store: fish, food, decorations, helper creatures, upgrades, event items, rarity lanes.
 - Inventory: owned fish, food, decorations, and locked items.
+- Book statistics: owned fish grid showing type, exact age, worth, gender, evolution stage, and quick actions for sell, evolve, and breed; owned helper creature grid with sell actions for cleanup.
 - Fish details: age, rarity, mood, hunger, health, food need, production, community status, sell value.
 - Placement confirmation: warns about tank limits where needed.
 - Sell confirmation: shows payout and extra warning for event-only fish.
@@ -274,7 +280,7 @@ Mobile navigation rules:
 
 The first session should be playable in under one minute:
 
-1. Player receives one free common baby fish.
+1. Player receives one free common age-zero fish.
 2. Player places it in the tank.
 3. Fish becomes hungry.
 4. Player receives free micro/basic food.
@@ -306,6 +312,7 @@ Initial production target:
 - 50 store fish, with 10 fish per tank level from L1-L5.
 - Lower-level fish can live in any higher-level tank.
 - Higher-level fish cannot be purchased or placed until the tank is upgraded to that level.
+- Fish capacity increases with tank level: 10, 14, 18, 22, then 30.
 - Total wealth should be visible and include wallet, fish, inventories, and waiting coin value.
 - The tank status line should suggest useful next purchases, such as fish, food, coin collection, or tank upgrades.
 - 3 event-only fish.
@@ -329,7 +336,7 @@ Rules:
 - Ask permission only after the player understands why notifications help.
 - Never send more than one routine notification per day by default.
 - Do not use guilt language.
-- Do not imply fish will die while the player is away.
+- Use neutral care reminders when fish are hungry or sick; avoid guilt language even when death risk exists.
 
 ## Accessibility And Localization
 

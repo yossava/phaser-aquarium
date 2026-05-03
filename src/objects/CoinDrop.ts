@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { tankBounds } from "../game/constants";
+import { formatNumber } from "../game/economy";
 import type { CoinType } from "../types/mechanics";
 
 export const coinVisualsByType: Record<CoinType, { tint: number; textColor: string; strokeColor: string }> = {
@@ -30,7 +31,7 @@ export class CoinDrop {
     this.sprite.setDepth(12);
     this.sprite.setInteractive({ useHandCursor: true });
     this.valueText = scene.add
-      .text(x, y + 20, `+${value}`, {
+      .text(x, y + 20, `+${formatNumber(value)}`, {
         fontFamily: "Arial",
         fontSize: "13px",
         color: this.visual.textColor,
@@ -44,6 +45,10 @@ export class CoinDrop {
   public update(deltaSeconds: number): void {
     this.sprite.y = Math.min(this.bottomY, this.sprite.y + this.sinkSpeed * deltaSeconds);
     this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + 20, tankBounds.bottom - 8));
+  }
+
+  public addToContainer(container: Phaser.GameObjects.Container): void {
+    container.add([this.sprite, this.valueText]);
   }
 
   public get atBottom(): boolean {

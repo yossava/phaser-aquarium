@@ -21,10 +21,18 @@
     "id": "castle",
     "name": "Castle",
     "rarity": "rare",
-    "price": { "coinType": "common", "amount": 60 },
+    "price": { "coinType": "rare", "amount": 2 },
     "texture": "decor-castle",
     "habitatTags": ["shelter", "fantasy"],
     "happinessBonus": 6
+  },
+  {
+    "id": "crystal-arch",
+    "name": "Crystal Arch",
+    "rarity": "superRare",
+    "price": { "coinType": "superRare", "amount": 1 },
+    "texture": "decor-crystal",
+    "habitatTags": ["crystal", "fantasy"],
+    "happinessBonus": 10
   }
 ]
-

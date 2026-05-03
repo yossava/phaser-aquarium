@@ -29,7 +29,8 @@ type Rarity = "common" | "rare" | "superRare";
 type CoinType = "common" | "rare" | "superRare";
 type AgeStage = "baby" | "juvenile" | "adult" | "elder" | "master";
 type FishState = "happy" | "hungry" | "ill";
-type FoodType = "micro" | "basic" | "premium" | "herb" | "protein" | "coral" | "medicine" | "event";
+type FoodType = "micro" | "basic" | "premium" | "herb" | "protein" | "coral" | "medicine" | "evolve" | "event";
+type FishGender = "M" | "F";
 
 type Wallet = Record<CoinType, number>;
 
@@ -90,7 +91,7 @@ type CoinProduction = {
 
 Example:
 
-- Baby Goldfish: common coin only, low amount, short interval.
+- Age-zero Goldfish: common coin only, low amount, short interval.
 - Adult Angelfish: common coins plus occasional rare coins.
 - Elder Event Dragonfish: rare coins plus occasional super rare coins.
 
@@ -199,6 +200,7 @@ The player has one active tank level from 1 to 5.
 - Higher-level fish cannot be purchased or placed until the tank is upgraded.
 - The shop shows fish by tank tier so the catalog stays readable on portrait screens.
 - The HUD shows total wealth and the tank need indicator suggests the next useful purchase or upgrade.
+- Each tank level has a distinct procedural background pattern: lagoon ripples, kelp stripes, coral diamonds, deep currents, and starlit reef.
 
 ## Fish Instance State
 
@@ -206,6 +208,8 @@ Each placed fish should track:
 
 - Unique ID.
 - Fish type ID.
+- Gender: male or female.
+- Evolution stage from 0 to 3.
 - Age stage.
 - Position.
 - Target position.
@@ -230,9 +234,19 @@ Fish visual language:
 
 ## Age Stages
 
-All fish start as babies.
+All fish start at age zero.
 
-Age stages:
+Age uses fish-time rather than literal wall-clock labels:
+
+- 1 real hour equals 1 fish month.
+- Real minutes convert into fish-days, using a 30-day fish month.
+- 12 real hours equals 1 fish year.
+- Fish visual size is based solely on exact age: early months grow fast enough to be visibly readable, reaching the main species size around 6 months, then long-tail growth continues until 50 fish-years and reaches the very-big cap.
+- Tank size can cap visible growth. Smaller tanks stop oversized fish before their natural age size; upgrading increases the growth allowance up to roughly half the screen width at the highest tank level.
+- Growth-blocked fish should show a compact marker above their status bars and should make the tank need indicator recommend a bigger tank.
+- Player-facing UI should not show size categories such as baby, small, medium, big, or max.
+
+Internal lifecycle stages, used for production and care tuning but not shown as player-facing size categories:
 
 - Baby.
 - Juvenile.
@@ -243,6 +257,7 @@ Age stages:
 Age affects:
 
 - Size.
+- Continuous adult growth toward a very-big visual cap.
 - Food need.
 - Food type sensitivity.
 - Mood cycle length.
@@ -254,21 +269,45 @@ Age affects:
 
 Suggested behavior:
 
-- Baby fish need frequent, cheaper feeding and produce little.
+- Age-zero fish need frequent, cheaper feeding and produce little.
 - Juvenile fish grow quickly and begin normal production.
 - Adult fish are stable producers.
 - Elder fish produce better rewards but may need more specific care.
 - Master fish unlock collection bonuses, special looks, or breeding/discovery bonuses later.
 
+## Evolution
+
+Fish can evolve up to three times.
+
+- Every fish starts at evolution stage 0.
+- Successful evolution increases the stage by 1.
+- After a successful evolution, age resets to zero so players can grow the fish again.
+- Evolution requires an owned Evolve Pill plus the fish's evolution fee.
+- Evolve Pill is a rare shop item and is used from the fish statistics page, not dropped into the tank.
+- Current MVP chance: 50% success and 50% death.
+- Evolution should increase long-term worth and production potential enough to feel exciting, but the death risk should be clear before production release.
+- Stage 3 fish cannot evolve further.
+
+## Breeding
+
+Breeding creates age-zero fish without direct store purchase.
+
+- Requires one male and one female fish of the same species in the tank.
+- Requires open tank capacity.
+- Result chance: 70% same species age-zero fish, 30% random rare age-zero fish available for the current tank level.
+- The new fish starts at age zero and evolution stage 0.
+- Breeding is launched from the owned fish statistics page.
+- Later production balance may add cooldowns, pair stamina, nursery slots, or special food requirements.
+
 ## Fish Selling
 
-Players can sell fish from tank or inventory.
+Players can sell fish from tank, details, or the owned fish statistics page.
 
 Selling rules:
 
 - Sell value is paid in the fish's primary coin type.
 - Value increases with rarity, age, production strength, size, resilience, health, and fullness.
-- Recently bought baby fish sell for less than purchase price.
+- Recently bought age-zero fish sell for less than purchase price.
 - Event-only fish require a strong warning before selling later.
 - Selling should free tank capacity immediately.
 
@@ -282,10 +321,11 @@ sellValue =
   productionMultiplier *
   sizeMultiplier *
   resilienceMultiplier *
-  conditionMultiplier
+  conditionMultiplier *
+  evolutionMultiplier
 ```
 
-Condition multiplier combines health and hunger/fullness. Baby resale is capped below purchase price to prevent instant buy/sell profit.
+Condition multiplier combines health and hunger/fullness. Age-zero resale is capped below purchase price to prevent instant buy/sell profit.
 
 Selling edge cases:
 
@@ -334,6 +374,8 @@ Hungry fish:
 
 Fish become hungry when hunger passes a threshold.
 
+If a fish remains hungry continuously for 60 minutes, it dies. Feeding it enough to leave the hungry state resets this danger timer.
+
 ### Ill
 
 Ill fish:
@@ -349,13 +391,15 @@ Fish become ill when:
 - Tank cleanliness is poor.
 - Random illness triggers happen, modified by resistance.
 
-Important: illness should create care urgency, but not make the game cruel.
+If a fish remains ill continuously for 60 minutes, it dies. Medicine or recovery above the illness threshold resets this danger timer.
+
+Important: illness should create care urgency with clear warning and recovery paths, not surprise punishment.
 
 ## Hunger
 
 Hunger increases over time.
 
-MVP tuning should be gentle enough for short mobile idle sessions: a newly fed baby fish should stay comfortable for roughly a minute or more before becoming hungry, and health loss should start only at severe hunger.
+MVP tuning should be gentle enough for short mobile idle sessions: a newly fed age-zero fish should stay comfortable for roughly a minute or more before becoming hungry, and health loss should start only at severe hunger.
 
 Suggested scale:
 
@@ -424,7 +468,7 @@ Food edge cases:
 - If no fish can eat dropped food, it sinks and expires.
 - Expired food lowers cleanliness.
 - Multiple fish can target the same food, but only one consumes it.
-- Baby fish prefer micro food, even if their adult species prefers another food.
+- Age-zero fish prefer micro food, even if their older species form prefers another food.
 - Medicine should restore health and reduce hunger only slightly, so it does not become the best everyday food.
 
 Timed care rentals:
@@ -473,7 +517,7 @@ Rules:
 
 Production examples:
 
-- Common baby fish: common coins only.
+- Common age-zero fish: common coins only.
 - Common adult fish: common coins with tiny rare coin chance during events.
 - Rare adult fish: rare coins plus common coins.
 - Super rare adult fish: super rare coins plus rare coins.
@@ -593,7 +637,7 @@ Player actions:
 
 - Tap clean button.
 - Buy filter upgrade.
-- Add cleaning decoration or helper item later.
+- Buy helper creatures for bottom cleanup.
 
 Cleanliness edge cases:
 
@@ -603,6 +647,19 @@ Cleanliness edge cases:
 - Cleaning should have a cooldown or cost if needed for balance.
 - Low cleanliness should warn before illness becomes severe.
 
+## Helper Creatures
+
+Helper creatures are utility tank inhabitants, not fish.
+
+- MVP types: Cleaner Shrimp, Shell Crawler, and Tiny Crab.
+- They crawl along the sand at the bottom of the tank.
+- They do not age, evolve, breed, produce coins, or count toward fish capacity.
+- They collect settled coin drops from the bottom.
+- They clean wasted food and medicine pellets that reach the bottom.
+- They should help reduce cleanup friction without fully replacing active feeding and coin collection.
+- The Book page lists hired helper creatures and lets players sell them to free helper capacity.
+- MVP capacity is 5 helper creatures.
+
 ## Store
 
 Store categories:
@@ -610,6 +667,7 @@ Store categories:
 - Fish.
 - Food.
 - Decorations.
+- Helper creatures.
 - Upgrades.
 - Event items.
 
@@ -632,7 +690,8 @@ Store UX:
 - Large touch targets.
 - Clear owned count.
 - Clear price.
-- Fish purchases auto-add the baby to the tank when capacity allows it.
+- Fish purchases auto-add an age-zero fish to the tank when capacity allows it.
+- Helper creature purchases auto-add a non-upgradeable bottom crawler to the tank.
 - Mixed species never require a risky/incompatible confirmation.
 - Non-fish placeable items can use immediate placement mode after purchase.
 - Clear locked reason for unavailable fish.
@@ -662,12 +721,13 @@ Rules:
 Placement should support:
 
 - Tap to place.
-- Later: drag to move.
+- Drag placed decorations to reposition them.
+- Drag placed decorations onto the trash target to remove them from the tank.
 - Later: long-press to edit or sell.
 
 Tank capacity rules:
 
-- MVP tank fish slot capacity is 10.
+- Fish slot capacity scales by tank level: L1 10, L2 14, L3 18, L4 22, L5 30.
 - Each tank has decoration capacity or placement footprint budget.
 - Bigger fish may count as more capacity after aging.
 - Overcrowding lowers happiness and cleanliness.
@@ -732,7 +792,7 @@ These systems can deepen long-term retention:
 - Fish personalities: lazy, playful, shy, bossy, curious. Personality modifies movement and mood cycle.
 - Tank biomes: freshwater, reef, deep sea, zen pond, fantasy. Biomes determine decoration and production bonuses.
 - Collection album: rewards coins, food, decorations, or tank upgrades for owning/growing fish.
-- Species mastery: rewards for raising a species from baby to adult or elder.
+- Species mastery: rewards for raising a species from age zero to older ages.
 - Discovery recipes: certain decorations, food, and fish combinations attract hidden fish.
 - Visitor fish: temporary fish visit the tank; caring for them can unlock them later.
 - Decoration sets: completing a set grants tank-wide bonuses.
@@ -775,7 +835,7 @@ When the player returns:
 Offline rules:
 
 - Cap rewards to prevent runaway economy.
-- Do not kill fish for absence.
+- Fish that were already hungry or ill can continue their saved 60-minute danger timer while offline.
 - Show a pleasant return summary.
 
 ## Events

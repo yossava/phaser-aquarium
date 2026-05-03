@@ -56,6 +56,14 @@
     "acceptedByDefault": true
   },
   {
+    "id": "evolve",
+    "name": "Evolve Pill",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 2 },
+    "nutrition": 1,
+    "acceptedByDefault": false
+  },
+  {
     "id": "event",
     "name": "Event Treat",
     "rarity": "superRare",

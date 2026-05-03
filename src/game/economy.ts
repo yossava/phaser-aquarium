@@ -21,8 +21,27 @@ export function earn(wallet: Wallet, coinType: CoinType, amount: number): void {
   wallet[coinType] += amount;
 }
 
+export function formatNumber(value: number): string {
+  const sign = value < 0 ? "-" : "";
+  const absoluteValue = Math.abs(value);
+  const suffixes = [
+    { value: 1_000_000_000_000, label: "T" },
+    { value: 1_000_000_000, label: "B" },
+    { value: 1_000_000, label: "M" },
+    { value: 1_000, label: "K" }
+  ];
+
+  for (const suffix of suffixes) {
+    if (absoluteValue >= suffix.value) {
+      return `${sign}${(absoluteValue / suffix.value).toFixed(1)}${suffix.label}`;
+    }
+  }
+
+  return `${sign}${Math.round(absoluteValue)}`;
+}
+
 export function formatWallet(wallet: Wallet): string {
-  return `C:${wallet.common}  R:${wallet.rare}  SR:${wallet.superRare}`;
+  return `C:${formatNumber(wallet.common)}  R:${formatNumber(wallet.rare)}  SR:${formatNumber(wallet.superRare)}`;
 }
 
 export function formatPrice(price: Price): string {
@@ -32,6 +51,5 @@ export function formatPrice(price: Price): string {
     superRare: "SR"
   };
 
-  return `${labelByCoin[price.coinType]}${price.amount}`;
+  return `${labelByCoin[price.coinType]}${formatNumber(price.amount)}`;
 }
-

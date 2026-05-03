@@ -1,0 +1,51 @@
+[
+  {
+    "id": "shrimp",
+    "name": "Cleaner Shrimp",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 80 },
+    "texture": "helper-shrimp",
+    "speed": 52,
+    "coinCollectSeconds": 6,
+    "cleanupSeconds": 3,
+    "habitatTags": ["bottom", "cleaner"],
+    "description": "Quick cleaner that eats wasted food and helps pick up settled coins."
+  },
+  {
+    "id": "shell",
+    "name": "Shell Crawler",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 2 },
+    "texture": "helper-shell",
+    "speed": 32,
+    "coinCollectSeconds": 4,
+    "cleanupSeconds": 4,
+    "habitatTags": ["bottom", "collector"],
+    "description": "Slow shell helper that steadily scoops coins from the sand."
+  },
+  {
+    "id": "crab",
+    "name": "Tiny Crab",
+    "rarity": "superRare",
+    "price": { "coinType": "superRare", "amount": 1 },
+    "texture": "helper-crab",
+    "speed": 44,
+    "coinCollectSeconds": 3,
+    "cleanupSeconds": 2,
+    "habitatTags": ["bottom", "cleaner", "collector"],
+    "description": "Premium crawler that cleans leftovers and collects coins faster."
+  },
+  {
+    "id": "feeder-snail",
+    "name": "Feeder Snail",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 120 },
+    "texture": "helper-feeder-snail",
+    "speed": 36,
+    "coinCollectSeconds": 12,
+    "cleanupSeconds": 8,
+    "feedSeconds": 5,
+    "habitatTags": ["bottom", "feeder"],
+    "description": "Gentle feeder that spends stocked food to drop matching meals for hungry fish."
+  }
+]

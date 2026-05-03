@@ -1,6 +1,6 @@
-import type { CoinType, FoodTypeId, Wallet } from "../types/mechanics";
+import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 6;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
 export const MAX_OFFLINE_SECONDS = 60 * 60 * 8;
 
@@ -12,12 +12,22 @@ export type SavedFish = {
   hunger: number;
   health: number;
   nextCoinDropInMs: number;
+  fatalCareSeconds?: number;
+  gender?: FishGender;
+  evolutionStage?: number;
 };
 
 export type SavedDecoration = {
   typeId: string;
   x: number;
   y: number;
+};
+
+export type SavedHelperCreature = {
+  typeId: string;
+  x: number;
+  y: number;
+  targetX: number;
 };
 
 export type SavedGame = {
@@ -27,8 +37,10 @@ export type SavedGame = {
   foodInventory: Record<FoodTypeId, number>;
   fishInventory: Record<string, number>;
   decorationInventory: Record<string, number>;
+  creatureInventory: Record<string, number>;
   fish: SavedFish[];
   decorations: SavedDecoration[];
+  helperCreatures: SavedHelperCreature[];
   tank: {
     cleanliness: number;
     cleanedAt: number;
@@ -120,11 +132,15 @@ export function loadGame(): SavedGame | undefined {
       foodInventory: sanitizeFoodInventory(migrated.foodInventory),
       fishInventory: sanitizeCountRecord(migrated.fishInventory),
       decorationInventory: sanitizeCountRecord(migrated.decorationInventory),
+      creatureInventory: sanitizeCountRecord(migrated.creatureInventory),
       fish: migrated.fish.map(sanitizeFish).filter((fish): fish is SavedFish => Boolean(fish)),
       decorations: Array.isArray(migrated.decorations)
         ? migrated.decorations.map(sanitizeDecoration).filter((decoration): decoration is SavedDecoration => Boolean(decoration))
         : []
       ,
+      helperCreatures: Array.isArray(migrated.helperCreatures)
+        ? migrated.helperCreatures.map(sanitizeHelperCreature).filter((creature): creature is SavedHelperCreature => Boolean(creature))
+        : [],
       tank: {
         cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
         cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
@@ -145,8 +161,8 @@ export function loadGame(): SavedGame | undefined {
       rentals: {
         autoFeederEndsAt: Math.max(0, sanitizeNumber(migrated.rentals?.autoFeederEndsAt, 0)),
         autoCollectorEndsAt: Math.max(0, sanitizeNumber(migrated.rentals?.autoCollectorEndsAt, 0)),
-        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(migrated.rentals?.autoFeederMinutes, 1)), 1, 10),
-        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(migrated.rentals?.autoCollectorMinutes, 1)), 1, 10)
+        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(migrated.rentals?.autoFeederMinutes, 1)), 1, 60),
+        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(migrated.rentals?.autoCollectorMinutes, 1)), 1, 60)
       }
     };
   } catch {
@@ -161,10 +177,43 @@ function migrateSave(
     return parsed as SavedGame;
   }
 
+    if (parsed.version === 5) {
+      return {
+        ...(parsed as SavedGame),
+        version: SAVE_VERSION
+      };
+    }
+
+    if (parsed.version === 4) {
+      return {
+        ...(parsed as SavedGame),
+        version: SAVE_VERSION,
+      creatureInventory: sanitizeCountRecord(parsed.creatureInventory),
+      helperCreatures: []
+    };
+  }
+
+  if (parsed.version === 3) {
+    return {
+      ...(parsed as SavedGame),
+      version: SAVE_VERSION,
+      creatureInventory: {},
+      helperCreatures: [],
+      rentals: {
+        autoFeederEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoFeederEndsAt, 0)),
+        autoCollectorEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoCollectorEndsAt, 0)),
+        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoFeederMinutes, 1)), 1, 60),
+        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoCollectorMinutes, 1)), 1, 60)
+      }
+    };
+  }
+
   if (parsed.version === 2) {
     return {
       ...(parsed as SavedGame),
       version: SAVE_VERSION,
+      creatureInventory: {},
+      helperCreatures: [],
       tank: {
         cleanliness: sanitizeNumber(parsed.tank?.cleanliness, 100),
         cleanedAt: sanitizeNumber(parsed.tank?.cleanedAt, Date.now()),
@@ -173,8 +222,8 @@ function migrateSave(
       rentals: {
         autoFeederEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoFeederEndsAt, 0)),
         autoCollectorEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoCollectorEndsAt, 0)),
-        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoFeederMinutes, 1)), 1, 10),
-        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoCollectorMinutes, 1)), 1, 10)
+        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoFeederMinutes, 1)), 1, 60),
+        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoCollectorMinutes, 1)), 1, 60)
       }
     };
   }
@@ -188,8 +237,10 @@ function migrateSave(
       foodInventory: { basic: foodCount } as Record<FoodTypeId, number>,
       fishInventory: sanitizeCountRecord(parsed.fishInventory),
       decorationInventory: sanitizeCountRecord(parsed.decorationInventory),
+      creatureInventory: {},
       fish: Array.isArray(parsed.fish) ? parsed.fish : [],
       decorations: Array.isArray(parsed.decorations) ? parsed.decorations : [],
+      helperCreatures: [],
       tank: { cleanliness: 100, cleanedAt: Date.now(), level: 1 },
       settings: { sound: true, music: true, reducedMotion: false, notifications: false },
       dailyGoals: { date: localDateKey(), claimed: [] },
@@ -252,7 +303,10 @@ function sanitizeFish(fish: Partial<SavedFish>): SavedFish | undefined {
     ageSeconds: Math.max(0, sanitizeNumber(fish.ageSeconds, 0)),
     hunger: clamp(sanitizeNumber(fish.hunger, 12), 0, 100),
     health: clamp(sanitizeNumber(fish.health, 100), 0, 100),
-    nextCoinDropInMs: Math.max(0, sanitizeNumber(fish.nextCoinDropInMs, 0))
+    nextCoinDropInMs: Math.max(0, sanitizeNumber(fish.nextCoinDropInMs, 0)),
+    fatalCareSeconds: clamp(sanitizeNumber(fish.fatalCareSeconds, 0), 0, 3600),
+    gender: fish.gender === "F" ? "F" : "M",
+    evolutionStage: clamp(Math.floor(sanitizeNumber(fish.evolutionStage, 0)), 0, 3)
   };
 }
 
@@ -265,6 +319,19 @@ function sanitizeDecoration(decoration: Partial<SavedDecoration>): SavedDecorati
     typeId: decoration.typeId,
     x: sanitizeNumber(decoration.x, 0),
     y: sanitizeNumber(decoration.y, 0)
+  };
+}
+
+function sanitizeHelperCreature(creature: Partial<SavedHelperCreature>): SavedHelperCreature | undefined {
+  if (!creature.typeId) {
+    return undefined;
+  }
+
+  return {
+    typeId: creature.typeId,
+    x: sanitizeNumber(creature.x, 0),
+    y: sanitizeNumber(creature.y, 0),
+    targetX: sanitizeNumber(creature.targetX, creature.x ?? 0)
   };
 }
 

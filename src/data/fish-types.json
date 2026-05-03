@@ -1655,15 +1655,15 @@
     "tankLevel": 2,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 72
+      "coinType": "rare",
+      "amount": 1
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 50
+      "coinType": "rare",
+      "amount": 1
     },
     "requiredFoodTypes": [
       "micro",
@@ -3305,15 +3305,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 94
+      "coinType": "rare",
+      "amount": 2
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 63
+      "coinType": "rare",
+      "amount": 2
     },
     "requiredFoodTypes": [
       "micro",
@@ -3488,15 +3488,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 101
+      "coinType": "rare",
+      "amount": 3
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 68
+      "coinType": "rare",
+      "amount": 2
     },
     "requiredFoodTypes": [
       "micro",
@@ -3671,15 +3671,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 108
+      "coinType": "rare",
+      "amount": 4
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 73
+      "coinType": "rare",
+      "amount": 3
     },
     "requiredFoodTypes": [
       "micro",
@@ -3854,15 +3854,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 115
+      "coinType": "rare",
+      "amount": 5
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 78
+      "coinType": "rare",
+      "amount": 4
     },
     "requiredFoodTypes": [
       "micro",
@@ -4037,15 +4037,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 122
+      "coinType": "rare",
+      "amount": 6
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 82
+      "coinType": "rare",
+      "amount": 4
     },
     "requiredFoodTypes": [
       "micro",
@@ -4220,15 +4220,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 129
+      "coinType": "rare",
+      "amount": 7
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 87
+      "coinType": "rare",
+      "amount": 5
     },
     "requiredFoodTypes": [
       "micro",
@@ -4403,15 +4403,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 136
+      "coinType": "rare",
+      "amount": 8
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 92
+      "coinType": "rare",
+      "amount": 6
     },
     "requiredFoodTypes": [
       "micro",
@@ -4586,15 +4586,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 143
+      "coinType": "rare",
+      "amount": 9
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 97
+      "coinType": "rare",
+      "amount": 6
     },
     "requiredFoodTypes": [
       "micro",
@@ -4769,15 +4769,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 150
+      "coinType": "rare",
+      "amount": 10
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 102
+      "coinType": "rare",
+      "amount": 7
     },
     "requiredFoodTypes": [
       "micro",
@@ -4952,15 +4952,15 @@
     "tankLevel": 3,
     "rarity": "rare",
     "price": {
-      "coinType": "common",
-      "amount": 157
+      "coinType": "rare",
+      "amount": 11
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
-      "coinType": "common",
-      "amount": 106
+      "coinType": "rare",
+      "amount": 8
     },
     "requiredFoodTypes": [
       "micro",
@@ -5136,14 +5136,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 2
+      "amount": 12
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 1
+      "amount": 8
     },
     "requiredFoodTypes": [
       "micro",
@@ -5319,14 +5319,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 3
+      "amount": 13
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 2
+      "amount": 9
     },
     "requiredFoodTypes": [
       "micro",
@@ -5502,14 +5502,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 4
+      "amount": 14
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 2
+      "amount": 10
     },
     "requiredFoodTypes": [
       "micro",
@@ -5685,14 +5685,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 5
+      "amount": 15
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 3
+      "amount": 10
     },
     "requiredFoodTypes": [
       "micro",
@@ -5868,14 +5868,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 6
+      "amount": 16
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 4
+      "amount": 11
     },
     "requiredFoodTypes": [
       "micro",
@@ -6051,14 +6051,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 7
+      "amount": 17
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 4
+      "amount": 12
     },
     "requiredFoodTypes": [
       "micro",
@@ -6234,14 +6234,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 8
+      "amount": 18
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 5
+      "amount": 12
     },
     "requiredFoodTypes": [
       "micro",
@@ -6417,14 +6417,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 9
+      "amount": 19
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 6
+      "amount": 13
     },
     "requiredFoodTypes": [
       "micro",
@@ -6600,14 +6600,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 10
+      "amount": 20
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 6
+      "amount": 13
     },
     "requiredFoodTypes": [
       "micro",
@@ -6783,14 +6783,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 11
+      "amount": 21
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 7
+      "amount": 14
     },
     "requiredFoodTypes": [
       "micro",

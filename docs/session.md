@@ -20,6 +20,11 @@
 - Use a portrait virtual canvas with the tank above and touch controls below.
 - Run visual browser QA after UI or gameplay changes.
 - Use `npm test` for repeatable regression coverage before handoff.
+- Fish age uses fish-time: 1 real hour equals 1 fish month, so real minutes convert into fish-days.
+- Fish size continues growing until 50 fish-years, then shows the fully grown marker.
+- Fish stats should show exact age, not size categories like baby, small, medium, big, or max.
+- Fish sizing should make early months visually readable, reaching the main species size around 6 months, then slowing into a long-tail 50-year growth curve.
+- If a fish outgrows the current tank's growth allowance, its visible growth pauses and the tank need indicator should prompt an upgrade.
 
 ## Session Progress
 
@@ -97,6 +102,19 @@
   - Changed fish sell value to scale with age, rarity, production, size, resilience, health, and hunger.
   - Kept fresh baby resale below purchase price to avoid instant buy/sell profit.
   - Added regression coverage for attribute-driven value growth and poor-condition value reduction.
+- Applied multi-currency store feedback:
+  - Added common, rare, and super rare coin lane filters to Store pages.
+  - Rebalanced rare fish pricing so higher tank ranks no longer appear as mostly common-coin purchases.
+  - Added rare/super rare decoration and helper creature lanes with regression coverage.
+- Applied tank statistic visibility feedback:
+  - Reworked the tank HUD from small floating text into a compact translucent stat panel.
+  - The tank screen now keeps wallet, wealth, tank level, fish capacity, coins, food, cleanliness, happiness, and next need visible at a glance.
+- Added helper feeding:
+  - Added Feeder Snail as a common helper creature in the Store.
+  - Feeder Snail crawls beneath hungry fish, spends stocked matching food, and drops a meal into the tank.
+  - Changed Feeder Snail to ignore nearby coins and cleanup targets so it prioritizes feeding only.
+  - Changed Feeder Snail to climb on tank walls and throw pellets into the water so fish still have to swim to eat.
+  - Added validation, regression coverage, and a visual screenshot artifact for helper-assisted feeding.
 - Added short rental boosts:
   - Auto Feeder runs for the selected number of minutes, spends owned non-medicine food, and drops compatible food from random top-of-tank positions.
   - Auto Feeder now checks every hungry eligible fish in a cycle, drops each species' needed food type when stock exists, and decrements food inventory per dropped pellet.
@@ -127,3 +145,17 @@
   - Buying food charges the multiplied price and adds the selected quantity to stock.
 - Increased rental duration controls so Auto Feeder and Auto Coin Collector can be rented for up to 60 minutes.
 - Changed active rental purchases to extend the current timer instead of being ignored.
+- Added the owned fish statistics page under Book/Album with type, gender, exact age, worth, evolution, and Sell/Evo/Breed controls.
+- Added Evolve Pill, fish gender, three evolution stages, 50% evolution failure death risk, and same-species M/F breeding with rare baby chances.
+- Added compact number formatting across visible game UI so large values use one decimal digit suffixes like `K`, `M`, and `B`.
+- Added a tank view scale tied to tank level, so upgraded tanks render fish, food, coins, decorations, bubbles, and sand more zoomed out while UI stays fixed.
+- Reworked tank view scaling so upgrades expand the tank world behind the viewport instead of shrinking the rendered aquarium, keeping the background, floor, contents, and pointer interactions full-screen.
+- Changed fish scale to come from age-driven growth, with adult fish continuing to grow toward a very-big cap, and added age labels on Book fish cards.
+- Added a consecutive 60-minute danger timer for hungry or sick fish. The timer persists in save data, can progress offline for fish already in danger, kills the fish at one hour, and resets when the fish recovers.
+- Added helper creature cards to Book/Album so players can review hired helpers and sell them to free utility slots.
+- Added distinct procedural tank background patterns for levels 1-5 so progression changes the tank's visual identity.
+- Added touch drag behavior for placed decorations, including repositioning and drag-to-trash removal.
+- Added purchasable bottom helper creatures: shrimp, shell, and crab crawlers that collect settled coins and clean wasted food or medicine without upgrades.
+- Changed tank upgrades to increase fish capacity by level, from 10 fish at L1 up to 30 fish at L5.
+- Removed visible fish size/age categories from Book, tank HUD, sell confirmations, add-to-tank copy, and regression snapshots; fish size now follows exact age directly.
+- Added tank-size growth caps so oversized fish pause growth in small tanks, show a capped-growth marker, and resume toward full size after tank upgrades.

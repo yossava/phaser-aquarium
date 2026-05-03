@@ -6,7 +6,7 @@ const dataDir = path.join(root, "src", "data");
 
 const rarities = new Set(["common", "rare", "superRare"]);
 const coinTypes = new Set(["common", "rare", "superRare"]);
-const foodTypes = new Set(["micro", "basic", "premium", "herb", "protein", "coral", "medicine", "event"]);
+const foodTypes = new Set(["micro", "basic", "premium", "herb", "protein", "coral", "medicine", "evolve", "event"]);
 const ageStages = ["baby", "juvenile", "adult", "elder", "master"];
 
 const errors = [];
@@ -215,13 +215,48 @@ function validateDecorationTypes(decorationTypesData) {
   }
 }
 
+function validateHelperCreatureTypes(helperCreatureTypesData) {
+  validateUniqueIds("helper-creature-types", helperCreatureTypesData);
+
+  for (const helper of helperCreatureTypesData) {
+    validateRarity("helper-creature-types", helper);
+    validatePrice("helper-creature-types", helper);
+
+    if (!helper.texture || typeof helper.texture !== "string") {
+      fail(`helper-creature-types/${helper.id}: texture must be a string.`);
+    }
+
+    if (!Number.isFinite(helper.speed) || helper.speed <= 0) {
+      fail(`helper-creature-types/${helper.id}: speed must be positive.`);
+    }
+
+    if (!Number.isFinite(helper.coinCollectSeconds) || helper.coinCollectSeconds <= 0) {
+      fail(`helper-creature-types/${helper.id}: coinCollectSeconds must be positive.`);
+    }
+
+    if (!Number.isFinite(helper.cleanupSeconds) || helper.cleanupSeconds <= 0) {
+      fail(`helper-creature-types/${helper.id}: cleanupSeconds must be positive.`);
+    }
+
+    if (helper.feedSeconds !== undefined && (!Number.isFinite(helper.feedSeconds) || helper.feedSeconds <= 0)) {
+      fail(`helper-creature-types/${helper.id}: feedSeconds must be positive when present.`);
+    }
+
+    if (!Array.isArray(helper.habitatTags)) {
+      fail(`helper-creature-types/${helper.id}: habitatTags must be an array.`);
+    }
+  }
+}
+
 const fishTypesData = await readJson("fish-types.json");
 const foodTypesData = await readJson("food-types.json");
 const decorationTypesData = await readJson("decoration-types.json");
+const helperCreatureTypesData = await readJson("helper-creature-types.json");
 
 validateFishTypes(fishTypesData);
 validateFoodTypes(foodTypesData);
 validateDecorationTypes(decorationTypesData);
+validateHelperCreatureTypes(helperCreatureTypesData);
 
 if (fishTypesData.length < 50) {
   fail(`fish-types: expected at least 50 fish, found ${fishTypesData.length}.`);
@@ -243,5 +278,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-  `Content validation passed: ${fishTypesData.length} fish, ${foodTypesData.length} food, ${decorationTypesData.length} decorations.`
+  `Content validation passed: ${fishTypesData.length} fish, ${foodTypesData.length} food, ${decorationTypesData.length} decorations, ${helperCreatureTypesData.length} helpers.`
 );

@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+- Added tank-size growth limits: fish stop growing when the current tank is too small and resume after upgrading.
+- Added growth-blocked tank need text plus a visual marker above capped fish.
+- Added regression and visual artifact coverage for tank-blocked fish growth and post-upgrade full growth.
+- Retuned age-only fish sizing so a four-month fish is much larger than a new fish while growth still continues to 50 years.
+- Removed player-facing fish size categories such as baby, small, medium, big, and max from fish stats and tank HUD.
+- Changed fish visual size to scale directly from exact age until 50 fish-years instead of stepping through size categories.
+- Changed new/evolved/bred fish copy to describe age-zero fish without labeling them as babies.
+- Changed fish age to fish-time: 1 real hour equals 1 fish month, with minute playtime shown as fish-days.
+- Changed long-term fish growth so size keeps scaling until the fish reaches 50 fish-years.
+- Added regression and visual artifact coverage for the 50-year fully grown fish state.
+- Added Feeder Snail as a purchasable helper creature that spends stocked food to drop matching meals for hungry fish.
+- Added helper-feeding behavior, texture, content validation, regression coverage, and visual artifact coverage.
+- Changed Feeder Snail into a dedicated feeding helper so it feeds hungry fish instead of collecting nearby coins.
+- Changed Feeder Snail movement so it climbs tank walls and throws food pellets into the water for fish to chase.
+- Changed tank upgrades so the background, floor, and interactable aquarium edges remain full-screen while higher levels expand the underlying tank world.
+- Added 60-minute neglect death: fish that stay hungry or sick for a full hour die, while feeding or healing resets the danger timer.
+- Added helper creatures to the Book page with sell actions so players can clean up helper slots from the owned-creature list.
+- Reworked the tank HUD into a visible compact stat panel showing wallet, wealth, tank level, fish capacity, coins, food, cleanliness, happiness, and next tank need.
+- Added C/R/SR coin lane filters to every Store section so fish, food, decorations, and helper creatures can be browsed by currency type.
+- Rebalanced store pricing so rare fish use rare coins earlier, super rare items have their own catalog entries, and helper creatures/decorations now span common, rare, and super rare lanes.
+- Changed fish capacity to scale by tank level: L1 10, L2 14, L3 18, L4 22, and L5 30 fish.
+- Added purchasable bottom helper creatures: Cleaner Shrimp, Shell Crawler, and Tiny Crab.
+- Added helper behavior so bottom creatures crawl along the sand, collect settled coins, and clean wasted food or medicine pellets.
+- Added save/load, content validation, regression coverage, and a visual artifact for helper creature cleanup.
+- Added drag controls for placed tank decorations, including a drag-to-trash target for removing decorations.
+- Added distinct procedural background patterns for each tank level so upgrades are visually recognizable beyond zoom.
+- Changed adult fish growth so adult and older fish continue growing linearly with age until they reach a very-big cap.
+- Added fish age labels to Book/Album owned fish cards.
+- Changed tank upgrades so each higher tank level zooms the tank contents farther out, making the aquarium feel larger while keeping HUD and menu controls fixed.
+- Added compact visual number formatting for in-game values: thousands, millions, billions, and trillions render with one decimal digit, such as `24.7K` and `67.8M`.
+- Added a fish statistics page under Book/Album showing owned fish type, gender, age, worth, rarity, tank level, and evolution stage.
+- Added sell, evolve, and breed actions to the owned fish statistics page.
+- Added fish gender to owned fish state, save data, and regression snapshots.
+- Added Evolve Pill as a rare shop item used for fish evolution.
+- Added three fish evolution stages: successful evolution spends an Evolve Pill and fee, increases evolution by one, and resets age to zero; failure kills the fish.
+- Added same-species M/F breeding with a same-species age-zero outcome or rare age-zero outcome.
+- Expanded regression coverage for fish statistics, Evolve Pill purchase, evolution success/failure, breeding, age categories, gender, and stats-page selling.
 - Changed Auto Feeder and Auto Coin Collector rentals so buying again while active adds duration to the current timer.
 - Increased Auto Feeder and Auto Coin Collector rental duration caps to 60 minutes.
 - Added minus/plus quantity controls to food shop cards so players can buy multiple food items at once.
@@ -81,7 +118,7 @@
 - Refactored the MVP scene to read fish, food, and decoration content from data tables.
 - Reorganized task list into mechanics-aligned production phases.
 - Added production-readiness coverage to specs: release criteria, required screens, FTUE, content strategy, notifications, accessibility, localization, performance, analytics, risks, data contracts, save/load, migrations, content validation, and QA matrix.
-- Expanded specs with fish selling, large fish catalog, baby-to-adult growth, rarity tiers, multi-currency production, shop rarity lanes, age attributes, species food needs, compatibility rules, and event-only fish.
+- Expanded specs with fish selling, large fish catalog, age-based growth, rarity tiers, multi-currency production, shop rarity lanes, age attributes, species food needs, compatibility rules, and event-only fish.
 - Added long-term interest systems: personalities, biomes, collection album, mastery, discovery recipes, visitor fish, decoration sets, photo moments, and rescue events.
 - Added game specification document.
 - Added mechanics specification document.
