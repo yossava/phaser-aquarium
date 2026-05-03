@@ -392,7 +392,14 @@ async function runRegression(cdp, appUrl) {
     "Buying a goldfish should add it directly to the tank."
   );
   assert(state.maxFishCapacity === 10, "Level 1 tank should support 10 fish slots.");
-  assert(state.tankLevel === 1 && state.maxTankLevel === 5, "Fresh tank should start at level 1 of 5.");
+  assert(
+    state.tankLevel === 1 &&
+      state.maxTankLevel === null &&
+      state.tankCanUpgradeIndefinitely &&
+      state.fishCatalogMaxLevel === 5,
+    "Fresh tank should start at level 1 with indefinite upgrade support and five fish catalog tiers."
+  );
+  assert(state.nextTankUpgradePrice?.coinType === "common" && state.nextTankUpgradePrice.amount === 100, "Fresh tank should expose the level-2 upgrade price.");
   assert(state.tankViewScale === 1, "Level 1 tank should use the default close tank view.");
   assert(state.tankWorldBounds.width === gameWidth && state.tankWorldBounds.height === gameHeight, "Level 1 tank world should match the portrait viewport.");
   assert(
@@ -1115,10 +1122,27 @@ async function runRegression(cdp, appUrl) {
   await captureNamedScreenshot(cdp, "fish-age-50y-growth.png");
   await evaluate(cdp, "window.__aquariumTest.forceFishAge(0, 0)");
   assert(
-    new Set(["lagoon-ripples", "kelp-stripes", ...tankPatternIds]).size === state.maxTankLevel,
+    new Set(["lagoon-ripples", "kelp-stripes", ...tankPatternIds]).size === state.fishCatalogMaxLevel,
     "Each tank level should expose a distinct background pattern."
   );
   await captureNamedScreenshot(cdp, "tank-level-5-pattern.png");
+  assert(state.nextTankUpgradePrice?.coinType === "superRare" && state.nextTankUpgradePrice.amount === 5, "Level 5 tank should still expose the level-6 upgrade price.");
+  const superRareBeforeInfiniteUpgrade = state.wallet.superRare;
+  await evaluate(cdp, "window.__aquariumTest.addWallet('superRare', 5)");
+  await evaluate(cdp, "window.__aquariumTest.upgradeTank()");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.tankLevel === 6 &&
+      current.maxTankLevel === null &&
+      current.tankCanUpgradeIndefinitely &&
+      current.maxFishCapacity === 36 &&
+      current.wallet.superRare === superRareBeforeInfiniteUpgrade &&
+      current.nextTankUpgradePrice?.coinType === "superRare" &&
+      current.nextTankUpgradePrice.amount === 8,
+    "Tank should upgrade beyond level 5 with formula prices and growing capacity."
+  );
+  await captureNamedScreenshot(cdp, "tank-level-6-infinite-upgrade.png");
   assert(state.decorations.length === 1, "Decoration should still be available before trash drag coverage.");
   await dragGame(
     cdp,
@@ -1220,10 +1244,10 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.setScreen('care')");
   state = await waitFor(
     cdp,
-    (current) => current.activeScreen === "care" && current.tankLevel === 5 && current.maxFishCapacity === 30,
+    (current) => current.activeScreen === "care" && current.tankLevel === 6 && current.maxFishCapacity === 36,
     "Care screen should show the upgraded tank capacity."
   );
-  await captureNamedScreenshot(cdp, "tank-level-5-capacity.png");
+  await captureNamedScreenshot(cdp, "tank-level-6-capacity.png");
   await evaluate(cdp, "window.__aquariumTest.setScreen('tank')");
   state = await waitFor(cdp, (current) => current.activeScreen === "tank", "Returning to tank after capacity screenshot failed.");
 

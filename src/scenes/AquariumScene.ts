@@ -42,7 +42,7 @@ type CompatibilitySummary = {
 };
 
 const maxCoinDrops = 5;
-const fishCapacityByTankLevel: Record<number, number> = {
+const fishCapacityByCatalogTankLevel: Record<number, number> = {
   1: 10,
   2: 14,
   3: 18,
@@ -51,7 +51,7 @@ const fishCapacityByTankLevel: Record<number, number> = {
 };
 const maxDecorations = 8;
 const maxHelperCreatures = 5;
-const maxTankLevel = 5;
+const maxFishCatalogLevel = 5;
 const rentalMinuteMs = 60_000;
 const minRentalMinutes = 1;
 const maxRentalMinutes = 60;
@@ -98,7 +98,9 @@ type AquariumTestSnapshot = {
   helperCreatureCount: number;
   maxHelperCreatures: number;
   tankLevel: number;
-  maxTankLevel: number;
+  maxTankLevel: null;
+  tankCanUpgradeIndefinitely: boolean;
+  fishCatalogMaxLevel: number;
   tankViewScale: number;
   tankPattern: {
     id: string;
@@ -566,15 +568,20 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private tankViewScaleForLevel(level = this.tankLevel): number {
-    return Phaser.Math.Clamp(1 - (Phaser.Math.Clamp(level, 1, maxTankLevel) - 1) * 0.06, 0.76, 1);
+    return Phaser.Math.Clamp(1 / (1 + (Math.max(1, level) - 1) * 0.08), 0.5, 1);
   }
 
   private maxFishCapacityForLevel(level = this.tankLevel): number {
-    return fishCapacityByTankLevel[Phaser.Math.Clamp(level, 1, maxTankLevel)] ?? fishCapacityByTankLevel[1];
+    const sanitizedLevel = Math.max(1, Math.floor(level));
+    if (sanitizedLevel <= maxFishCatalogLevel) {
+      return fishCapacityByCatalogTankLevel[sanitizedLevel] ?? fishCapacityByCatalogTankLevel[1];
+    }
+
+    return fishCapacityByCatalogTankLevel[maxFishCatalogLevel] + (sanitizedLevel - maxFishCatalogLevel) * 6;
   }
 
   private currentTankPattern() {
-    return tankPatternStyles[Phaser.Math.Clamp(this.tankLevel, 1, maxTankLevel) - 1];
+    return tankPatternStyles[(Math.max(1, Math.floor(this.tankLevel)) - 1) % tankPatternStyles.length];
   }
 
   private renderTankPattern(): void {
@@ -908,9 +915,9 @@ export class AquariumScene extends Phaser.Scene {
           controlPanelTop + 16,
           124,
           26,
-          upgradePrice ? `Tank L${formatNumber(this.tankLevel)} ${formatPrice(upgradePrice)}` : `Tank L${formatNumber(this.tankLevel)} Max`,
+          `L${formatNumber(this.tankLevel + 1)} ${formatPrice(upgradePrice)}`,
           () => this.upgradeTank(),
-          upgradePrice && canAfford(this.wallet, upgradePrice) ? 0x356a35 : 0x76512d,
+          canAfford(this.wallet, upgradePrice) ? 0x356a35 : 0x76512d,
           9
         )
       );
@@ -1343,7 +1350,7 @@ export class AquariumScene extends Phaser.Scene {
       this.tabControls.push(
         this.createInfoLine(20, controlPanelTop + 54, `Tank L${formatNumber(this.tankLevel)} | Wealth ${formatNumber(this.calculateTotalWealth())} | ${formatNumber(Math.round(this.cleanliness))}% clean | ${formatNumber(Math.round(this.calculateTankHappiness()))}% happy`),
         this.createButton(20, controlPanelTop + 84, 188, 36, "Clean Tank", () => this.cleanTank(), 0x356a35, 13),
-        this.createButton(222, controlPanelTop + 84, 188, 36, upgradePrice ? `Upgrade Tank ${formatPrice(upgradePrice)}` : "Tank Maxed", () => this.upgradeTank(), upgradePrice ? 0x76512d : 0x254d68, 12),
+        this.createButton(222, controlPanelTop + 84, 188, 36, `Upgrade L${formatNumber(this.tankLevel + 1)} ${formatPrice(upgradePrice)}`, () => this.upgradeTank(), canAfford(this.wallet, upgradePrice) ? 0x356a35 : 0x76512d, 11),
         this.createInfoLine(20, controlPanelTop + 130, `Food: ${this.describeFoodInventory()}`),
         this.createInfoLine(20, controlPanelTop + 154, `Fish ${formatNumber(this.fish.length)}/${formatNumber(this.maxFishCapacityForLevel())} | Decor ${formatNumber(this.placedDecorations.length)}/${formatNumber(maxDecorations)} | ${this.getTankNeedIndicator()}`),
         this.createInfoLine(20, controlPanelTop + 178, `Rentals: ${this.rentalStatusLabel() || "none active"}`),
@@ -1992,8 +1999,8 @@ export class AquariumScene extends Phaser.Scene {
     this.creatureInventory = recordToMap(saved.creatureInventory);
     this.cleanliness = saved.tank.cleanliness;
     this.cleanedAt = saved.tank.cleanedAt;
-    this.tankLevel = Phaser.Math.Clamp(Math.floor(saved.tank.level ?? 1), 1, maxTankLevel);
-    this.fishCatalogLevel = this.tankLevel;
+    this.tankLevel = Math.max(1, Math.floor(saved.tank.level ?? 1));
+    this.fishCatalogLevel = Math.min(this.tankLevel, maxFishCatalogLevel);
     this.applyTankViewScale();
     this.renderTankPattern();
     this.settings = { ...saved.settings };
@@ -2365,7 +2372,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private getFishTankLevel(fishType: FishType): number {
-    return Phaser.Math.Clamp(Math.floor(fishType.tankLevel ?? 1), 1, maxTankLevel);
+    return Math.max(1, Math.floor(fishType.tankLevel ?? 1));
   }
 
   private canTankAcceptFish(fishType: FishType): boolean {
@@ -2407,27 +2414,35 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private changeFishCatalogLevel(delta: number): void {
-    this.fishCatalogLevel = Phaser.Math.Wrap(this.fishCatalogLevel - 1 + delta, 0, maxTankLevel) + 1;
+    this.fishCatalogLevel = Phaser.Math.Wrap(this.fishCatalogLevel - 1 + delta, 0, maxFishCatalogLevel) + 1;
     this.renderTabControls();
   }
 
-  private getNextTankUpgradePrice(): FishType["price"] | undefined {
-    return this.tankLevel < maxTankLevel ? tankUpgradePrices[this.tankLevel + 1] : undefined;
+  private getNextTankUpgradePrice(): FishType["price"] {
+    return this.tankUpgradePriceForLevel(this.tankLevel + 1);
+  }
+
+  private tankUpgradePriceForLevel(targetLevel: number): FishType["price"] {
+    const sanitizedTargetLevel = Math.max(2, Math.floor(targetLevel));
+    const fixedPrice = tankUpgradePrices[sanitizedTargetLevel];
+    if (fixedPrice) {
+      return fixedPrice;
+    }
+
+    return {
+      coinType: "superRare",
+      amount: Math.ceil(tankUpgradePrices[5].amount * Math.pow(1.55, sanitizedTargetLevel - 5))
+    };
   }
 
   private upgradeTank(): void {
     const price = this.getNextTankUpgradePrice();
-    if (!price) {
-      this.floatText("Tank maxed", toastX, toastY, "#d7f4ff");
-      return;
-    }
-
     if (!this.spendPrice(price)) {
       return;
     }
 
-    this.tankLevel = Phaser.Math.Clamp(this.tankLevel + 1, 1, maxTankLevel);
-    this.fishCatalogLevel = this.tankLevel;
+    this.tankLevel += 1;
+    this.fishCatalogLevel = Math.min(this.tankLevel, maxFishCatalogLevel);
     this.applyTankViewScale();
     this.renderTankPattern();
     this.floatText(`Tank L${formatNumber(this.tankLevel)}`, toastX, toastY, "#a8ffb0");
@@ -2474,12 +2489,12 @@ export class AquariumScene extends Phaser.Scene {
     const nextLockedFish = fishTypes.find((fishType) => this.getFishTankLevel(fishType) > this.tankLevel);
     const upgradePrice = this.getNextTankUpgradePrice();
     const growthBlockedFish = this.fish.find((currentFish) => currentFish.isGrowthLimitedByTank());
-    if (upgradePrice && growthBlockedFish) {
-      return `Tank L${formatNumber(this.tankLevel)}: ${growthBlockedFish.type.name} needs L${formatNumber(this.tankLevel + 1)} room`;
+    if (growthBlockedFish) {
+      return `Tank L${formatNumber(this.tankLevel)}: ${growthBlockedFish.type.name} needs L${formatNumber(this.tankLevel + 1)} room (${formatPrice(upgradePrice)})`;
     }
 
-    if (upgradePrice && nextLockedFish && canAfford(this.wallet, upgradePrice)) {
-      return `Tank L${formatNumber(this.tankLevel)}: upgrade ready for L${formatNumber(this.tankLevel + 1)} fish`;
+    if (nextLockedFish && canAfford(this.wallet, upgradePrice)) {
+      return `Tank L${formatNumber(this.tankLevel)}: upgrade ready for L${formatNumber(this.tankLevel + 1)} (${formatPrice(upgradePrice)})`;
     }
 
     if (this.fish.length === 0) {
@@ -2494,22 +2509,22 @@ export class AquariumScene extends Phaser.Scene {
       return "Tank needs coin collection";
     }
 
-    if (upgradePrice && nextLockedFish) {
+    if (nextLockedFish) {
       return `Next: save ${formatPrice(upgradePrice)} for Tank L${formatNumber(this.tankLevel + 1)}`;
     }
 
-    return `Tank L${formatNumber(this.tankLevel)}: stable`;
+    return `Tank L${formatNumber(this.tankLevel)}: next L${formatNumber(this.tankLevel + 1)} ${formatPrice(upgradePrice)}`;
   }
 
   private getCompactTankNeedIndicator(): string {
     const nextLockedFish = fishTypes.find((fishType) => this.getFishTankLevel(fishType) > this.tankLevel);
     const upgradePrice = this.getNextTankUpgradePrice();
-    if (upgradePrice && this.fish.some((currentFish) => currentFish.isGrowthLimitedByTank())) {
-      return `Need bigger tank`;
+    if (this.fish.some((currentFish) => currentFish.isGrowthLimitedByTank())) {
+      return `Need L${formatNumber(this.tankLevel + 1)} ${formatPrice(upgradePrice)}`;
     }
 
-    if (upgradePrice && nextLockedFish && canAfford(this.wallet, upgradePrice)) {
-      return `Upgrade ready L${formatNumber(this.tankLevel + 1)}`;
+    if (nextLockedFish && canAfford(this.wallet, upgradePrice)) {
+      return `Ready L${formatNumber(this.tankLevel + 1)} ${formatPrice(upgradePrice)}`;
     }
 
     if (this.fish.length === 0) {
@@ -2524,11 +2539,11 @@ export class AquariumScene extends Phaser.Scene {
       return "Collect coins";
     }
 
-    if (upgradePrice && nextLockedFish) {
+    if (nextLockedFish) {
       return `Next ${formatPrice(upgradePrice)} -> L${formatNumber(this.tankLevel + 1)}`;
     }
 
-    return `Stable L${formatNumber(this.tankLevel)}`;
+    return `Next L${formatNumber(this.tankLevel + 1)} ${formatPrice(upgradePrice)}`;
   }
 
   private calculateTankHappiness(): number {
@@ -3127,7 +3142,9 @@ export class AquariumScene extends Phaser.Scene {
         helperCreatureCount: this.helperCreatures.length,
         maxHelperCreatures,
         tankLevel: this.tankLevel,
-        maxTankLevel,
+        maxTankLevel: null,
+        tankCanUpgradeIndefinitely: true,
+        fishCatalogMaxLevel: maxFishCatalogLevel,
         tankViewScale: this.tankViewScaleForLevel(),
         tankPattern: { ...this.currentTankPattern() },
         tankWorldBounds: {
@@ -3390,7 +3407,7 @@ export class AquariumScene extends Phaser.Scene {
         }
       },
       setFishCatalogLevel: (level: number) => {
-        this.fishCatalogLevel = Phaser.Math.Clamp(Math.floor(level), 1, maxTankLevel);
+        this.fishCatalogLevel = Phaser.Math.Clamp(Math.floor(level), 1, maxFishCatalogLevel);
         this.renderTabControls();
         this.refreshUi(false);
       },

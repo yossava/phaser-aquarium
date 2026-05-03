@@ -144,7 +144,7 @@ export function loadGame(): SavedGame | undefined {
       tank: {
         cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
         cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
-        level: clamp(Math.floor(sanitizeNumber(migrated.tank?.level, 1)), 1, 5)
+        level: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.level, 1)))
       },
       settings: {
         sound: migrated.settings?.sound ?? true,

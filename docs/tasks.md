@@ -105,6 +105,8 @@
 - [ ] Add decoration habitat tags and collection set bonuses.
 - [x] Add tank capacity rules that scale fish slots by tank level and track decoration count.
 - [x] Add tank level upgrades from L1-L5.
+- [x] Remove the tank upgrade cap so tank level can increase indefinitely.
+- [x] Show next tank upgrade price in Store, Care, and tank need UI.
 - [x] Gate fish purchase and placement by tank level while allowing lower-level fish in higher-level tanks.
 - [x] Zoom the tank view out as tank level increases so upgrades make the aquarium feel larger.
 - [x] Add distinct tank background patterns for each tank level.

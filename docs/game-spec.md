@@ -313,7 +313,8 @@ Initial production target:
 - 50 store fish, with 10 fish per tank level from L1-L5.
 - Lower-level fish can live in any higher-level tank.
 - Higher-level fish cannot be purchased or placed until the tank is upgraded to that level.
-- Fish capacity increases with tank level: 10, 14, 18, 22, then 30.
+- Fish capacity increases with tank level: 10, 14, 18, 22, 30, then +6 fish slots per level forever.
+- Tank upgrades have no max level. Early prices are authored; post-L5 prices are formula-based and always shown before purchase.
 - Total wealth should be visible and include wallet, fish, inventories, and waiting coin value.
 - The tank status line should suggest useful next purchases, such as fish, food, coin collection, or tank upgrades.
 - 3 event-only fish.

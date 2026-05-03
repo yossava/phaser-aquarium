@@ -192,15 +192,16 @@ type FishType = {
 
 ## Tank Level Progression
 
-The player has one active tank level from 1 to 5.
+The player has one active tank level starting at 1. Tank upgrades have no fixed maximum level.
 
 - Fish have a `tankLevel` requirement.
 - A fish can enter the tank when `fish.tankLevel <= currentTankLevel`.
 - Lower-level fish remain valid in higher-level tanks.
 - Higher-level fish cannot be purchased or placed until the tank is upgraded.
-- The shop shows fish by tank tier so the catalog stays readable on portrait screens.
-- The HUD shows total wealth and the tank need indicator suggests the next useful purchase or upgrade.
-- Each tank level has a distinct procedural background pattern: lagoon ripples, kelp stripes, coral diamonds, deep currents, and starlit reef.
+- The shop shows fish by the five authored fish catalog tiers so the catalog stays readable on portrait screens.
+- The HUD shows total wealth and the tank need indicator suggests the next useful purchase or upgrade, including the next tank upgrade price.
+- Authored tank background patterns cover the first five levels, then cycle for later infinite upgrades.
+- Upgrade prices are fixed for early onboarding levels and formula-based after L5.
 
 ## Fish Instance State
 
@@ -734,7 +735,7 @@ Placement should support:
 
 Tank capacity rules:
 
-- Fish slot capacity scales by tank level: L1 10, L2 14, L3 18, L4 22, L5 30.
+- Fish slot capacity scales by tank level: L1 10, L2 14, L3 18, L4 22, L5 30, then +6 fish slots for every level after L5.
 - Each tank has decoration capacity or placement footprint budget.
 - Bigger fish may count as more capacity after aging.
 - Overcrowding lowers happiness and cleanliness.

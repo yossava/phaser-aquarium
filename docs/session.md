@@ -168,3 +168,4 @@
 - Increased displayed fish length labels by 10x so the Book reads at a more satisfying fantasy-aquarium scale.
 - Added food calorie density: bigger fish burn hunger faster, need more calories per meal, and get less fullness from low-calorie starter food.
 - Updated Store food cards, fish details, auto-feeder choice, content validation, and regression coverage for size-based calorie needs.
+- Removed the tank level cap: upgrades continue past L5 with visible formula prices, cycling tank backgrounds, and +6 fish capacity per level.

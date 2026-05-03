@@ -72,3 +72,4 @@
 - Aquarium decorations should be draggable for repositioning and removable by dragging to trash.
 - Add purchasable bottom creatures like shrimp, shell, and crab that are not upgradeable and help collect coins and clean wasted food/medicine.
 - Each tank level should contain more fish after upgrade.
+- Tank upgrades should not have a maximum level, and the next upgrade price should be visible.

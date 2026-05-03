@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Removed the tank upgrade cap; tanks can now upgrade indefinitely with formula-based prices after L5.
+- Added visible next-upgrade price labels in the Store, Care screen, HUD need text, and regression snapshot.
+- Extended tank capacity past L5, adding 6 fish slots per level after the L5 capacity of 30.
 - Added food calories and density levels, with Store cards showing density and calories instead of a flat nutrition stat.
 - Changed hunger and feeding so fish calorie needs scale with age-rooted size: bigger fish become hungry faster and need denser food to get the same fullness benefit.
 - Updated auto-feeder food choice so larger hungry fish can prefer higher-calorie compatible food when stocked.
