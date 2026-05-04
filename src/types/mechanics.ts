@@ -102,4 +102,4 @@ export type HelperCreatureType = {
   description: string;
 };
 
-export type StoreTab = "fish" | "food" | "decor" | "creature";
+export type StoreTab = "fish" | "food" | "tank" | "decor" | "creature";

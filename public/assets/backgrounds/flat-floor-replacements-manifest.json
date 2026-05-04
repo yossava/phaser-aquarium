@@ -1,0 +1,229 @@
+{
+  "createdAt": "2026-05-04T18:39:07+0700",
+  "source": "create-assets codex image generation job 20260504-182924-tank-flat-floor-replacements",
+  "sourceImages": [
+    "/Users/yossava/.codex/generated_images/019df2c0-e0e5-71e2-891b-e1a46500577a/ig_0b7bf4af977435b30169f88367f3488191ab6887a1e3b8f0c5.png",
+    "/Users/yossava/.codex/generated_images/019df2c0-e0e5-71e2-891b-e1a46500577a/ig_0b7bf4af977435b30169f883a421408191a0f7ac7f703691cc.png"
+  ],
+  "notes": "Level 1 floor left unchanged. These six runtime PNGs are raster post-processed from generated flat seabed sources: chroma-key alpha, resize, and theme color grading only.",
+  "files": [
+    "theme-lagoon-floor.png",
+    "theme-coral-floor.png",
+    "theme-kelp-floor.png",
+    "theme-crystal-floor.png",
+    "theme-abyss-floor.png",
+    "theme-sunset-floor.png"
+  ],
+  "updatedAt": "2026-05-04T19:07:25+0700",
+  "seabedLayout": {
+    "runtimeHeight": 844,
+    "visibleTopY": 563,
+    "visibleHeight": 281,
+    "visibleRatio": 0.3329,
+    "note": "Generated raster seabed artwork remapped so the floor occupies the bottom third of each non-Level-1 tank."
+  },
+  "croppedToContent": {
+    "note": "Non-Level-1 raster seabed PNGs are cropped vertically to visible alpha content; width remains 430px for tank-spanning placement.",
+    "files": {
+      "theme-abyss-floor.png": {
+        "originalSize": [
+          430,
+          844
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "sourceVisibleBounds": [
+          0,
+          563,
+          429,
+          843
+        ]
+      },
+      "theme-coral-floor.png": {
+        "originalSize": [
+          430,
+          844
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "sourceVisibleBounds": [
+          0,
+          563,
+          429,
+          843
+        ]
+      },
+      "theme-crystal-floor.png": {
+        "originalSize": [
+          430,
+          844
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "sourceVisibleBounds": [
+          0,
+          563,
+          429,
+          843
+        ]
+      },
+      "theme-kelp-floor.png": {
+        "originalSize": [
+          430,
+          844
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "sourceVisibleBounds": [
+          0,
+          563,
+          429,
+          843
+        ]
+      },
+      "theme-lagoon-floor.png": {
+        "originalSize": [
+          430,
+          844
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "sourceVisibleBounds": [
+          0,
+          563,
+          429,
+          843
+        ]
+      },
+      "theme-sunset-floor.png": {
+        "originalSize": [
+          430,
+          844
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "sourceVisibleBounds": [
+          0,
+          563,
+          429,
+          843
+        ]
+      }
+    }
+  },
+  "allFloorAssetsCroppedToContent": {
+    "note": "Lv1 aquarium-floor.png and all non-Lv1 theme floor PNGs are vertically cropped to visible alpha content. Runtime renders floors as bottom one-sixth of the tank.",
+    "files": {
+      "aquarium-floor.png": {
+        "originalSize": [
+          1024,
+          2048
+        ],
+        "croppedSize": [
+          1024,
+          928
+        ],
+        "visibleY": [
+          1120,
+          2047
+        ]
+      },
+      "theme-abyss-floor.png": {
+        "originalSize": [
+          430,
+          281
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "visibleY": [
+          0,
+          280
+        ]
+      },
+      "theme-coral-floor.png": {
+        "originalSize": [
+          430,
+          281
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "visibleY": [
+          0,
+          280
+        ]
+      },
+      "theme-crystal-floor.png": {
+        "originalSize": [
+          430,
+          281
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "visibleY": [
+          0,
+          280
+        ]
+      },
+      "theme-kelp-floor.png": {
+        "originalSize": [
+          430,
+          281
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "visibleY": [
+          0,
+          280
+        ]
+      },
+      "theme-lagoon-floor.png": {
+        "originalSize": [
+          430,
+          281
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "visibleY": [
+          0,
+          280
+        ]
+      },
+      "theme-sunset-floor.png": {
+        "originalSize": [
+          430,
+          281
+        ],
+        "croppedSize": [
+          430,
+          281
+        ],
+        "visibleY": [
+          0,
+          280
+        ]
+      }
+    }
+  }
+}

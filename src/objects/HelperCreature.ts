@@ -20,6 +20,7 @@ const helperDisplayWidths: Record<string, number> = {
 
 export class HelperCreature {
   public readonly sprite: Phaser.GameObjects.Image;
+  public tankLevel: number;
   private targetX: number;
   private coinCooldown = 0;
   private cleanupCooldown = 0;
@@ -31,8 +32,10 @@ export class HelperCreature {
     private readonly scene: Phaser.Scene,
     public readonly type: HelperCreatureType,
     x: number,
-    y = helperBottomY()
+    y = helperBottomY(),
+    options: { tankLevel?: number } = {}
   ) {
+    this.tankLevel = Math.max(1, Math.floor(options.tankLevel ?? 1));
     const startX = x;
     const startY = y;
     this.sprite = scene.add.image(startX, startY, type.texture);
@@ -44,6 +47,10 @@ export class HelperCreature {
 
   public addToContainer(container: Phaser.GameObjects.Container): void {
     container.add(this.sprite);
+  }
+
+  public setTankVisible(visible: boolean): void {
+    this.sprite.setVisible(visible);
   }
 
   public update(deltaSeconds: number, coins: CoinDrop[], foods: FoodPellet[], fish: Fish[] = []): HelperCreatureAction | undefined {

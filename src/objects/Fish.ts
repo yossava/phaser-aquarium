@@ -26,6 +26,7 @@ const minimumHungerToEatMore = 3;
 const veryBigScaleMultiplier = 1.55;
 const secondsPerFishMonth = 60 * 60;
 const monthsPerFishYear = 12;
+const secondsPerFishYear = monthsPerFishYear * secondsPerFishMonth;
 const daysPerFishMonth = 30;
 const growthCapYears = 50;
 const oneMonthGrowthSeconds = secondsPerFishMonth;
@@ -35,8 +36,9 @@ const oneMonthTankWidthRatio = 0.23;
 const sixMonthTankWidthRatio = 0.39;
 const readyToMoveTankWidthRatio = 0.5;
 const veryBigTankWidthRatio = 0.78;
-const minimumGrowthWidthRatio = readyToMoveTankWidthRatio;
-const maximumGrowthWidthRatio = 0.86;
+const maximumFishScreenWidthRatio = 0.5;
+const minimumGrowthWidthRatio = maximumFishScreenWidthRatio;
+const maximumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const happyEmojiDurationMs = 3200;
 const missedFoodEmojiDurationMs = 1000;
 const fishLengthDisplayMultiplier = 10;
@@ -255,10 +257,10 @@ export class Fish {
     this.sprite.setVisible(visible);
     this.tailMark.setVisible(visible);
     this.statusBars.setVisible(visible);
-    this.stateBubble.setVisible(visible);
-    this.stateEmoji.setVisible(visible);
     if (visible) {
       this.updateStatusBars();
+    } else {
+      this.hideStateEmoji();
     }
   }
 
@@ -479,19 +481,12 @@ export class Fish {
   }
 
   public tankGrowthScaleCap(): number {
-    const inferredTankViewScale = this.currentTankViewScale();
-    const tankProgress = Phaser.Math.Clamp((1 - inferredTankViewScale) / 0.24, 0, 1);
-    const visibleWidthRatio = Phaser.Math.Linear(minimumGrowthWidthRatio, maximumGrowthWidthRatio, tankProgress);
-    const maxVisibleWidth = gameWidth * visibleWidthRatio;
-    const maxWorldWidth = maxVisibleWidth / inferredTankViewScale;
-    const viewportScaleCap = Math.max(this.visibleToWorldScale(this.hatchlingScale()), maxWorldWidth / this.logicalTextureWidth());
-    const ageCapSeconds = Math.max(1, this.tankLevel) * monthsPerFishYear * secondsPerFishMonth;
-    const tankLevelScaleCap = this.uncappedAgeScaleAt(ageCapSeconds);
-    return Math.min(viewportScaleCap, tankLevelScaleCap);
+    const maxVisibleWidth = gameWidth * maximumFishScreenWidthRatio;
+    return Math.max(this.visibleToWorldScale(this.hatchlingScale()), maxVisibleWidth / this.logicalTextureWidth());
   }
 
   public isGrowthLimitedByTank(): boolean {
-    return this.tankLevel !== this.ageRequiredTankLevel() || this.naturalAgeScale() > this.tankGrowthScaleCap() + 0.01;
+    return this.naturalAgeScale() > this.tankGrowthScaleCap() + 0.01;
   }
 
   public destroy(): void {
@@ -703,7 +698,7 @@ export class Fish {
   }
 
   private uncappedAgeScale(): number {
-    return this.uncappedAgeScaleAt(this.ageSeconds);
+    return this.uncappedAgeScaleAt(this.visualAgeSecondsInCurrentTank());
   }
 
   private uncappedAgeScaleAt(ageSecondsValue: number): number {
@@ -774,7 +769,7 @@ export class Fish {
   }
 
   private slowAdultGrowthScale(startScale: number, capScale: number, ageSeconds: number): number {
-    const adultYears = Math.max(0, (ageSeconds - adultGrowthSeconds) / (monthsPerFishYear * secondsPerFishMonth));
+    const adultYears = Math.max(0, (ageSeconds - adultGrowthSeconds) / secondsPerFishYear);
     const totalAdultYears = Math.max(1, growthCapYears - 1);
     const slowRatio = Math.log1p(adultYears * 2.2) / Math.log1p(totalAdultYears * 2.2);
     return Phaser.Math.Linear(startScale, capScale, Phaser.Math.Clamp(slowRatio, 0, 1));
@@ -786,6 +781,10 @@ export class Fish {
 
   private visibleToWorldScale(visibleScale: number): number {
     return visibleScale / this.currentTankViewScale();
+  }
+
+  private visualAgeSecondsInCurrentTank(): number {
+    return this.ageSeconds;
   }
 
   private updateAgeStage(): void {
@@ -980,37 +979,17 @@ export class Fish {
     const barHeight = 3;
     const gap = 2;
     const x = Math.round(this.sprite.x - barWidth / 2);
-    const fullyGrown = this.isFullyGrown();
-    const growthBlocked = this.isGrowthLimitedByTank();
-    const hasGrowthMarker = fullyGrown || growthBlocked;
-    const yOffset = hasGrowthMarker ? 24 : 16;
+    const yOffset = 16;
     const y = Math.round(Math.max(tankBounds.top + yOffset, this.sprite.y - this.sprite.displayHeight / 2 - yOffset));
     const fullnessRatio = this.currentFullnessRatio();
     const moodRatio = this.currentMoodRatio();
     const fullnessColor = fullnessRatio < 0.35 ? 0xff6d75 : fullnessRatio < 0.68 ? 0xffd15c : 0x62f2a8;
     const moodColor = moodRatio < 0.35 ? 0xff6d75 : moodRatio < 0.68 ? 0xffd15c : 0x62f2a8;
-    const barY = hasGrowthMarker ? 8 : 0;
+    const barY = 0;
     const showCareBars = this.shouldShowCareBars(fullnessRatio, moodRatio);
 
     this.statusBars.clear();
     this.statusBars.setPosition(x, y);
-
-    if (fullyGrown) {
-      this.statusBars.fillStyle(0x10283a, 0.86);
-      this.statusBars.fillRoundedRect(3, -3, 28, 8, 3);
-      this.statusBars.lineStyle(1, 0x62f2a8, 0.85);
-      this.statusBars.strokeRoundedRect(3, -3, 28, 8, 3);
-      this.statusBars.fillStyle(0x62f2a8, 1);
-      this.statusBars.fillRect(8, 0, 18, 2);
-    } else if (growthBlocked) {
-      this.statusBars.fillStyle(0x3a2410, 0.9);
-      this.statusBars.fillRoundedRect(4, -3, 26, 8, 3);
-      this.statusBars.lineStyle(1, 0xffd15c, 0.9);
-      this.statusBars.strokeRoundedRect(4, -3, 26, 8, 3);
-      this.statusBars.fillStyle(0xffd15c, 1);
-      this.statusBars.fillRect(8, 0, 18, 2);
-      this.statusBars.fillTriangle(25, -1, 29, 1, 25, 3);
-    }
 
     if (showCareBars) {
       this.statusBars.fillStyle(0x061725, 0.72);
@@ -1033,9 +1012,14 @@ export class Fish {
   private updateStateEmoji(statusY: number): void {
     const emoji = this.currentStateEmoji();
     const visible = emoji.length > 0;
+    if (!visible || !this.sprite.visible) {
+      this.hideStateEmoji();
+      return;
+    }
+
     this.stateEmoji.setText(emoji);
-    this.stateEmoji.setVisible(visible);
-    this.stateBubble.setVisible(visible);
+    this.stateEmoji.setVisible(true);
+    this.stateBubble.setVisible(true);
     this.stateEmoji.setPosition(
       Math.round(this.sprite.x),
       Math.round(Math.max(tankBounds.top + 16, statusY - 18))
@@ -1044,11 +1028,14 @@ export class Fish {
     this.drawStateBubble();
   }
 
-  private currentStateEmoji(): string {
-    if (this.isGrowthLimitedByTank()) {
-      return "😣";
-    }
+  private hideStateEmoji(): void {
+    this.stateEmoji.setText("");
+    this.stateEmoji.setVisible(false);
+    this.stateBubble.clear();
+    this.stateBubble.setVisible(false);
+  }
 
+  private currentStateEmoji(): string {
     if (this.state === "ill") {
       return "🤒";
     }
@@ -1110,7 +1097,7 @@ export class Fish {
   }
 
   private isFullyGrown(): boolean {
-    return !this.isGrowthLimitedByTank() && this.currentVisualWorldScale() >= this.veryBigScaleCap() - 0.01;
+    return this.currentVisualWorldScale() >= this.tankGrowthScaleCap() - 0.01;
   }
 
   private updateTailMark(): void {

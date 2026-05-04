@@ -1,6 +1,6 @@
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
 export const MAX_OFFLINE_SECONDS = 60 * 60 * 8;
 
@@ -20,12 +20,14 @@ export type SavedFish = {
 
 export type SavedDecoration = {
   typeId: string;
+  tankLevel?: number;
   x: number;
   y: number;
 };
 
 export type SavedHelperCreature = {
   typeId: string;
+  tankLevel?: number;
   x: number;
   y: number;
   targetX: number;
@@ -48,6 +50,8 @@ export type SavedGame = {
     level: number;
     ownedLevels?: number[];
     activeLevel?: number;
+    names?: Record<string, string>;
+    states?: Record<string, SavedTankState>;
   };
   settings: {
     sound: boolean;
@@ -65,6 +69,16 @@ export type SavedGame = {
     autoFeederMinutes?: number;
     autoCollectorMinutes?: number;
   };
+};
+
+export type SavedTankState = {
+  wallet?: Wallet;
+  foodInventory?: Record<FoodTypeId, number>;
+  fishInventory?: Record<string, number>;
+  decorationInventory?: Record<string, number>;
+  creatureInventory?: Record<string, number>;
+  cleanliness?: number;
+  cleanedAt?: number;
 };
 
 export type OfflineProgress = {
@@ -148,8 +162,10 @@ export function loadGame(): SavedGame | undefined {
         cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
         cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
         level: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.level, 1))),
-        ownedLevels: sanitizeOwnedTankLevels(migrated.tank?.ownedLevels, migrated.tank?.level),
-        activeLevel: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.activeLevel, migrated.tank?.level ?? 1)))
+        ownedLevels: sanitizeOwnedTankLevels(migrated.tank?.ownedLevels, migrated.tank?.level).slice(0, 5),
+        activeLevel: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.activeLevel, migrated.tank?.level ?? 1))),
+        names: sanitizeTankNames(migrated.tank?.names),
+        states: sanitizeTankStates(migrated.tank?.states)
       },
       settings: {
         sound: migrated.settings?.sound ?? true,
@@ -181,6 +197,13 @@ function migrateSave(
   if (parsed.version === SAVE_VERSION) {
     return parsed as SavedGame;
   }
+
+    if (parsed.version === 6) {
+      return {
+        ...(parsed as SavedGame),
+        version: SAVE_VERSION
+      };
+    }
 
     if (parsed.version === 5) {
       return {
@@ -325,10 +348,55 @@ function sanitizeOwnedTankLevels(source: number[] | undefined, legacyLevel = 1):
   if (Array.isArray(source)) {
     for (const value of source) {
       const level = Math.max(1, Math.floor(sanitizeNumber(value, 1)));
-      levels.add(level);
+      if (level <= 5) {
+        levels.add(level);
+      }
     }
   }
   return [...levels].sort((a, b) => a - b);
+}
+
+function sanitizeTankStates(source: Record<string, SavedTankState> | undefined): Record<string, SavedTankState> {
+  const result: Record<string, SavedTankState> = {};
+  if (!source) {
+    return result;
+  }
+
+  for (const [key, value] of Object.entries(source)) {
+    const level = Math.max(1, Math.floor(sanitizeNumber(Number(key), 1)));
+    if (level > 5 || !value) {
+      continue;
+    }
+    result[String(level)] = {
+      wallet: sanitizeWallet(value.wallet ?? {}),
+      foodInventory: sanitizeFoodInventory(value.foodInventory),
+      fishInventory: sanitizeCountRecord(value.fishInventory),
+      decorationInventory: sanitizeCountRecord(value.decorationInventory),
+      creatureInventory: sanitizeCountRecord(value.creatureInventory),
+      cleanliness: clamp(sanitizeNumber(value.cleanliness, 100), 0, 100),
+      cleanedAt: sanitizeNumber(value.cleanedAt, Date.now())
+    };
+  }
+  return result;
+}
+
+function sanitizeTankNames(source: Record<string, string> | undefined): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!source) {
+    return result;
+  }
+
+  for (const [key, value] of Object.entries(source)) {
+    const level = Math.max(1, Math.floor(sanitizeNumber(Number(key), 1)));
+    if (typeof value === "string") {
+      const name = value.trim().slice(0, 24);
+      if (name.length > 0) {
+        result[String(level)] = name;
+      }
+    }
+  }
+
+  return result;
 }
 
 function sanitizeDecoration(decoration: Partial<SavedDecoration>): SavedDecoration | undefined {
@@ -338,6 +406,7 @@ function sanitizeDecoration(decoration: Partial<SavedDecoration>): SavedDecorati
 
   return {
     typeId: decoration.typeId,
+    tankLevel: Math.max(1, Math.floor(sanitizeNumber(decoration.tankLevel, 1))),
     x: sanitizeNumber(decoration.x, 0),
     y: sanitizeNumber(decoration.y, 0)
   };
@@ -350,6 +419,7 @@ function sanitizeHelperCreature(creature: Partial<SavedHelperCreature>): SavedHe
 
   return {
     typeId: creature.typeId,
+    tankLevel: Math.max(1, Math.floor(sanitizeNumber(creature.tankLevel, 1))),
     x: sanitizeNumber(creature.x, 0),
     y: sanitizeNumber(creature.y, 0),
     targetX: sanitizeNumber(creature.targetX, creature.x ?? 0)
