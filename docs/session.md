@@ -194,6 +194,39 @@
 - Reduced tank visual clutter by hiding fish care bars unless fullness or health is below 50%, and removed above-fish rarity star badges from the tank view.
 - Added a transparent blue-green dirty-water PNG overlay that appears over tank contents below 20% cleanliness and hides again once cleanliness reaches 20%.
 - Replaced the removed solid bottom band with a generated transparent wavy sandy floor PNG, keeping a shaped sand edge over the underwater background.
+- Revamped the live tank toward the glossy fantasy aquarium reference:
+  - Generated and promoted a brighter fantasy underwater backdrop as the active runtime `tank-background.png`.
+  - Generated transparent raster UI skin assets for the ornate HUD panel, circular menu button frame, food pedestal frame, and coin sparkle trail.
+  - Applied the new HUD/button skin in Phaser while keeping live text and icons readable.
+  - Added the coin sparkle trail behind in-tank coin drops and regression asset coverage for all new UI skin textures.
+- Replaced separate menu and food button frames with one generated reusable transparent-center glass bubble frame:
+  - Created `reusable_glass_bubble_button_source.png` from the requested prompt and promoted it to `public/assets/ui/reusable-glass-bubble-button.png`.
+  - Updated the tank scene so menu, food, medicine, and pill dock icons all share the same reusable bubble frame.
+- Fixed the low-DPI/soft rendering issue:
+  - Phaser now boots the canvas at up to 2x device pixel ratio while keeping the 430x844 portrait design coordinates.
+  - The main camera uses a top-left-origin zoom so the existing layout fills the higher-resolution backing canvas.
+  - Manual tank pointer handling converts raw high-DPI pointer coordinates back to design coordinates, keeping food drops, coin taps, and decoration dragging aligned.
+  - Regression now emulates DPR 2 and asserts the canvas backing store is at least 860x1688 while the CSS display remains 430x844.
+- Revamped applied assets from `docs/prompt.json` through the `create-assets` workflow:
+  - Promoted verified generated PNGs for the clean water background, distant silhouettes, wavy foreground sand, normal/pressed bubble button frames, HUD panel, floating coin pickups, and eight decorations.
+  - Kept bad generated chip/overlay outputs out of runtime instead of wiring in assets with incorrect subjects or baked checker/key mattes.
+  - Adjusted background and floor layout so generated environment layers remain full-screen when tank view zooms out.
+  - Updated regression asset coverage and re-ran build plus the full visual smoke test.
+- Reworked the live tank HUD placement to match the provided premium aquarium layout reference:
+  - Enlarged the `Aquarium` title, moved the top HUD into a single wide stat panel, and placed coin PNGs inside the resource chips.
+  - Moved left food tools and right menu bubbles lower so they sit below the HUD like the reference composition.
+  - Used the generated HUD PNG as a subtle glass highlight behind a clean live stat panel, avoiding the previous stretched-capsule mismatch.
+  - Verified with `npm run build`, `npm run test:regression`, a fresh `artifacts/regression-smoke.png`, and the in-app browser.
+- Fixed menu icon asset layering:
+  - Confirmed the previous menu icons were older 96x96 assets with baked keyed backgrounds/borders, not the `docs/prompt.json` prompt-generated icons.
+  - Promoted prompt-generated transparent icon-only PNGs for Shop, Care, Book, Goal, and Settings into the runtime UI folder.
+  - Tuned menu and food icon draw sizes inside the reusable bubble frame so icons sit comfortably inside the rim without their own border or background.
+  - Verified with `npm run build`, `npm run test:regression`, a fresh `artifacts/regression-smoke.png`, and an in-app browser reload with no console errors.
+- Upgraded the top statistic HUD toward the provided reference:
+  - Promoted prompt-generated glossy resource and status icons for common, rare, super rare, food, clean, and happy indicators.
+  - Reworked the top panel drawing with stronger glass layering, chip highlights, bright borders, row separators, and icon+label status groups.
+  - Kept the live text dynamic while hiding the old flat `Food / Clean / Happy` string from view for a cleaner composed row.
+  - Verified with `npm run build`, `npm run test:regression`, and a fresh `artifacts/regression-smoke.png`.
 - Ported the Monopoly Godot asset-generation workflow:
   - Added `.agents/skills/create-assets/SKILL.md` tailored to Phaser Aquarium asset paths, mobile portrait style, and validation steps.
   - Added `tools/codex_image_job.py` for background Codex image-generation jobs with logs/status under `.codex_asset_jobs/`.

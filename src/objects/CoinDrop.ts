@@ -13,9 +13,9 @@ export const coinVisualsByType: Record<CoinType, { tint: number; textColor: stri
 };
 
 export const coinTextureKeyByType: Record<CoinType, string> = {
-  common: "coin-common",
-  rare: "coin-rare",
-  superRare: "coin-superRare"
+  common: "ui-icon-common-coin",
+  rare: "ui-icon-rare-coin",
+  superRare: "ui-icon-super-rare-coin"
 };
 
 type CoinVisual = (typeof coinVisualsByType)[CoinType];

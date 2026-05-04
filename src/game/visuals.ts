@@ -2,7 +2,10 @@ import type { FishType, FoodTypeId, Rarity } from "../types/mechanics";
 
 export const foodVisualsByType: Record<FoodTypeId, { tint: number; label: string }> = {
   micro: { tint: 0x62f2a8, label: "Micro" },
-  basic: { tint: 0xffb13b, label: "Basic" },
+  basic: { tint: 0xffb13b, label: "Basic S" },
+  basicMedium: { tint: 0xf4e45b, label: "Basic M" },
+  basicLarge: { tint: 0xff7a45, label: "Basic L" },
+  basicXL: { tint: 0xc879ff, label: "Basic XL" },
   premium: { tint: 0x56a8ff, label: "Premium" },
   herb: { tint: 0x78d957, label: "Herb" },
   protein: { tint: 0xff5b5b, label: "Protein" },

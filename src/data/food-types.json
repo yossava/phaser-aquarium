@@ -1,7 +1,7 @@
 [
   {
     "id": "basic",
-    "name": "Basic Food",
+    "name": "Basic Small",
     "rarity": "common",
     "price": {
       "coinType": "common",
@@ -11,6 +11,45 @@
     "acceptedByDefault": true,
     "calories": 46,
     "densityLevel": 1
+  },
+  {
+    "id": "basicMedium",
+    "name": "Basic Medium",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 25
+    },
+    "nutrition": 230,
+    "acceptedByDefault": true,
+    "calories": 230,
+    "densityLevel": 2
+  },
+  {
+    "id": "basicLarge",
+    "name": "Basic Large",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 125
+    },
+    "nutrition": 1150,
+    "acceptedByDefault": true,
+    "calories": 1150,
+    "densityLevel": 3
+  },
+  {
+    "id": "basicXL",
+    "name": "Basic XL",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 625
+    },
+    "nutrition": 5750,
+    "acceptedByDefault": true,
+    "calories": 5750,
+    "densityLevel": 4
   },
   {
     "id": "micro",

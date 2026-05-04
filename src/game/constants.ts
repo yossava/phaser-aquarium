@@ -2,6 +2,7 @@ import Phaser from "phaser";
 
 export const gameWidth = 430;
 export const gameHeight = 844;
+export const maxRenderScale = 2;
 export const tankViewportBounds = new Phaser.Geom.Rectangle(0, 0, gameWidth, gameHeight);
 export const tankBounds = new Phaser.Geom.Rectangle(0, 0, gameWidth, gameHeight);
 export const controlPanelTop = 62;

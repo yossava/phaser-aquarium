@@ -1,40 +1,162 @@
 {
-  "generatedAt": "2026-05-03T23:32:05.513Z",
+  "generated_at": "2026-05-04",
+  "generator": "codex_image_generation",
   "assets": [
     {
-      "file": "/assets/ui/shop.png",
-      "width": 96,
-      "height": 96,
-      "source": "assets/generated/source/ui/shop_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+      "filename": "hud_panel_fantasy_source.png",
+      "runtime_filename": "hud-panel-fantasy.png",
+      "dimensions": {
+        "width": 760,
+        "height": 232
+      },
+      "format": "png",
+      "transparency": "rgba_alpha_from_green_chroma_key",
+      "background_notes": "Ornate dark blue glass HUD panel with silver/teal beveled trim and title tab; transparent keyed background removed.",
+      "intended_use": "Runtime top aquarium stat panel skin under live Phaser text.",
+      "source_generation": {
+        "method": "codex_image_generation plus local chroma-key alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df086-dd78-7183-9861-ca8adb3c005f/ig_01742575b1bedde50169f7f175d5508191a4de8624896b364e.png",
+        "postprocess": "Green key removed, alpha softened, cropped to visible art, and resized onto a 760x232 transparent canvas."
+      }
     },
     {
-      "file": "/assets/ui/care.png",
-      "width": 96,
-      "height": 96,
-      "source": "assets/generated/source/ui/care_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+      "filename": "round_button_frame_source.png",
+      "runtime_filename": "round-button-frame.png",
+      "dimensions": {
+        "width": 192,
+        "height": 192
+      },
+      "format": "png",
+      "transparency": "rgba_alpha_from_green_chroma_key",
+      "background_notes": "Circular glossy bubble button frame for right-side menu icons; transparent keyed background removed.",
+      "intended_use": "Runtime circular frame behind right-side page menu icons.",
+      "source_generation": {
+        "method": "codex_image_generation plus local chroma-key alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df086-dd78-7183-9861-ca8adb3c005f/ig_01742575b1bedde50169f7f1968ddc81918c1ef1ca17ac7014.png",
+        "postprocess": "Green key removed, alpha softened, cropped to visible art, and resized onto a 192x192 transparent canvas."
+      }
     },
     {
-      "file": "/assets/ui/book.png",
-      "width": 96,
-      "height": 96,
-      "source": "assets/generated/source/ui/book_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+      "filename": "food_button_base_source.png",
+      "runtime_filename": "food-button-base.png",
+      "dimensions": {
+        "width": 192,
+        "height": 192
+      },
+      "format": "png",
+      "transparency": "rgba_alpha_from_green_chroma_key",
+      "background_notes": "Purple-blue pedestal button base for food/medicine dock icons; transparent keyed background removed.",
+      "intended_use": "Runtime pedestal frame behind left-side food, medicine, and pill buttons.",
+      "source_generation": {
+        "method": "codex_image_generation plus local chroma-key alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df086-dd78-7183-9861-ca8adb3c005f/ig_01742575b1bedde50169f7f1b5f0988191961982ae5c120fd7.png",
+        "postprocess": "Green key removed, alpha softened, cropped to visible art, and resized onto a 192x192 transparent canvas."
+      }
     },
     {
-      "file": "/assets/ui/goals.png",
-      "width": 96,
-      "height": 96,
-      "source": "assets/generated/source/ui/goals_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+      "filename": "coin_glow_source.png",
+      "runtime_filename": "coin-glow.png",
+      "dimensions": {
+        "width": 192,
+        "height": 256
+      },
+      "format": "png",
+      "transparency": "rgba_alpha_from_green_chroma_key",
+      "background_notes": "Vertical golden coin sparkle trail used behind falling coin drops; transparent keyed background removed.",
+      "intended_use": "Runtime sparkle trail displayed behind collectable coin drops.",
+      "source_generation": {
+        "method": "codex_image_generation plus local chroma-key alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df086-dd78-7183-9861-ca8adb3c005f/ig_01742575b1bedde50169f7f1d2621c8191bed4240d20025bfa.png",
+        "postprocess": "Green key removed, alpha softened, cropped to visible art, and resized onto a 192x256 transparent canvas."
+      }
     },
     {
-      "file": "/assets/ui/settings.png",
-      "width": 96,
-      "height": 96,
-      "source": "assets/generated/source/ui/settings_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+      "filename": "reusable_glass_bubble_button_source.png",
+      "runtime_filename": "reusable-glass-bubble-button.png",
+      "dimensions": {
+        "width": 256,
+        "height": 256
+      },
+      "format": "png",
+      "transparency": "rgba_alpha_from_green_chroma_key",
+      "background_notes": "Circular glossy glass bubble button frame with transparent corners and clean transparent center for icon placement; flat green keyed background removed.",
+      "intended_use": "Reusable premium underwater circular UI button frame for placing Phaser icons inside.",
+      "source_generation": {
+        "method": "codex_image_generation plus local chroma-key alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df0a1-17d1-72f1-9dff-9ca82afa6255/ig_02778ecb3f85e13c0169f7f82f035c8191a4f1ea37b675c006.png",
+        "postprocess": "Green key removed with soft matte/despill and resized onto a 256x256 transparent PNG canvas."
+      }
+    },
+    {
+      "filename": "icon_shop.png",
+      "runtime_filename": "shop.png",
+      "intended_use": "Prompt-generated transparent icon-only shop symbol centered inside the reusable glass bubble frame.",
+      "prompt_source": "docs/prompt.json assets.icon_shop",
+      "background_notes": "No baked bubble, border, text label, or background."
+    },
+    {
+      "filename": "icon_care.png",
+      "runtime_filename": "care.png",
+      "intended_use": "Prompt-generated transparent icon-only care symbol centered inside the reusable glass bubble frame.",
+      "prompt_source": "docs/prompt.json assets.icon_care",
+      "background_notes": "No baked bubble, border, text label, or background."
+    },
+    {
+      "filename": "icon_book.png",
+      "runtime_filename": "book.png",
+      "intended_use": "Prompt-generated transparent icon-only collection book symbol centered inside the reusable glass bubble frame.",
+      "prompt_source": "docs/prompt.json assets.icon_book",
+      "background_notes": "No baked bubble, border, text label, or background."
+    },
+    {
+      "filename": "icon_goal.png",
+      "runtime_filename": "goals.png",
+      "intended_use": "Prompt-generated transparent icon-only trophy symbol centered inside the reusable glass bubble frame.",
+      "prompt_source": "docs/prompt.json assets.icon_goal",
+      "background_notes": "No baked bubble, border, text label, or background."
+    },
+    {
+      "filename": "icon_settings.png",
+      "runtime_filename": "settings.png",
+      "intended_use": "Prompt-generated transparent icon-only settings gear centered inside the reusable glass bubble frame.",
+      "prompt_source": "docs/prompt.json assets.icon_settings",
+      "background_notes": "No baked bubble, border, text label, or background."
+    },
+    {
+      "filename": "icon_common_coin_yellow.png",
+      "runtime_filename": "icon-common-coin.png",
+      "intended_use": "Prompt-generated glossy common coin HUD icon for the top resource chip row.",
+      "prompt_source": "docs/prompt.json assets.icon_common_coin_yellow"
+    },
+    {
+      "filename": "icon_rare_coin_blue.png",
+      "runtime_filename": "icon-rare-coin.png",
+      "intended_use": "Prompt-generated glossy rare coin HUD icon for the top resource chip row.",
+      "prompt_source": "docs/prompt.json assets.icon_rare_coin_blue"
+    },
+    {
+      "filename": "icon_super_rare_coin_purple.png",
+      "runtime_filename": "icon-super-rare-coin.png",
+      "intended_use": "Prompt-generated glossy super rare coin HUD icon for the top resource chip row.",
+      "prompt_source": "docs/prompt.json assets.icon_super_rare_coin_purple"
+    },
+    {
+      "filename": "icon_food_status.png",
+      "runtime_filename": "icon-food-status.png",
+      "intended_use": "Prompt-generated food status badge for the top HUD care row.",
+      "prompt_source": "docs/prompt.json assets.icon_food_status"
+    },
+    {
+      "filename": "icon_clean_status.png",
+      "runtime_filename": "icon-clean-status.png",
+      "intended_use": "Prompt-generated clean/water status badge for the top HUD care row and water-value chip.",
+      "prompt_source": "docs/prompt.json assets.icon_clean_status"
+    },
+    {
+      "filename": "icon_happy_status.png",
+      "runtime_filename": "icon-happy-status.png",
+      "intended_use": "Prompt-generated happy status badge for the top HUD care row.",
+      "prompt_source": "docs/prompt.json assets.icon_happy_status"
     }
   ]
 }

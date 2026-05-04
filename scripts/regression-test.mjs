@@ -327,6 +327,17 @@ async function runRegression(cdp, appUrl) {
     "Initial HUD state did not load."
   );
   let state = await snapshot(cdp);
+  const canvasResolution = await evaluate(
+    cdp,
+    `(() => {
+      const canvas = document.querySelector("canvas");
+      const rect = canvas.getBoundingClientRect();
+      return { width: canvas.width, height: canvas.height, cssWidth: rect.width, cssHeight: rect.height, devicePixelRatio: window.devicePixelRatio };
+    })()`
+  );
+  assert(state.renderScale >= 2, "High-DPI render scale should use the capped device pixel ratio in mobile portrait tests.");
+  assert(canvasResolution.width >= gameWidth * 2 && canvasResolution.height >= gameHeight * 2, "Canvas backing resolution should be at least 2x the design size.");
+  assert(Math.round(canvasResolution.cssWidth) === gameWidth && Math.round(canvasResolution.cssHeight) === gameHeight, "Canvas CSS size should stay at the portrait design size.");
   assert(state.numberFormatSamples.small === "999", "Small numbers should render without a suffix.");
   assert(state.numberFormatSamples.thousand === "24.7K", "Thousands should render with one K digit.");
   assert(state.numberFormatSamples.million === "67.8M", "Millions should render with one M digit.");
@@ -338,9 +349,9 @@ async function runRegression(cdp, appUrl) {
   assert(state.assetCoverage.food === 9, "All food, medicine, and pill types should have loaded custom asset textures.");
   assert(state.assetCoverage.decorations >= 12, "Decoration catalog should have the expanded custom asset set.");
   assert(state.assetCoverage.coins === 3, "All three coin types should have loaded custom asset textures.");
-  assert(state.assetCoverage.uiIcons === 5, "All tank menu icons should have loaded custom asset textures.");
+  assert(state.assetCoverage.uiIcons >= 9, "All menu icons and shared prompt-pack HUD/button UI skin textures should load.");
   assert(state.assetCoverage.helpers === 4, "All helper creatures should have loaded custom asset textures.");
-  assert(state.assetCoverage.backgrounds === 3, "The wavy sandy floor, distant underwater background, and dirty tank overlay assets should load.");
+  assert(state.assetCoverage.backgrounds >= 4, "The prompt-pack sand floor, underwater background, distant silhouette overlay, and dirty tank overlay assets should load.");
   assert(!state.dirtyTankOverlay.visible && state.dirtyTankOverlay.alpha === 0, "Dirty tank overlay should stay hidden while the tank is clean.");
   await evaluate(cdp, "window.__aquariumTest.setCleanliness(19)");
   state = await waitFor(
@@ -350,11 +361,11 @@ async function runRegression(cdp, appUrl) {
   );
   assert(state.dirtyTankOverlay.displayWidth === gameWidth && state.dirtyTankOverlay.displayHeight === gameHeight, "Dirty tank overlay should cover the portrait tank screen.");
   await captureNamedScreenshot(cdp, "dirty-tank-overlay.png");
-  await evaluate(cdp, "window.__aquariumTest.setCleanliness(20)");
+  await evaluate(cdp, "window.__aquariumTest.setCleanliness(21)");
   state = await waitFor(
     cdp,
     (current) => !current.dirtyTankOverlay.visible && current.dirtyTankOverlay.alpha === 0,
-    "Dirty tank overlay should hide at 20% cleanliness."
+    "Dirty tank overlay should hide above 20% cleanliness."
   );
 
   await evaluate(cdp, "window.__aquariumTest.setScreen('store')");
@@ -473,7 +484,8 @@ async function runRegression(cdp, appUrl) {
   assert(
     Math.abs(state.fish[0].displayWidth - swimSampleA.displayWidth) > 0.02 ||
       Math.abs(state.fish[0].displayHeight - swimSampleA.displayHeight) > 0.02 ||
-      Math.abs(state.fish[0].rotation - swimSampleA.rotation) > 0.002,
+      Math.abs(state.fish[0].rotation - swimSampleA.rotation) > 0.002 ||
+      Math.abs(state.fish[0].tailAnimation.wag - swimSampleA.tailWag) > 0.05,
     "Fish sprite should animate while swimming instead of staying visually frozen."
   );
   let tailWagChanged = Math.abs(state.fish[0].tailAnimation.wag - swimSampleA.tailWag) > 0.25;
@@ -1479,7 +1491,7 @@ async function main() {
     await cdp.send("Emulation.setDeviceMetricsOverride", {
       width: gameWidth,
       height: gameHeight,
-      deviceScaleFactor: 1,
+      deviceScaleFactor: 2,
       mobile: true
     });
 

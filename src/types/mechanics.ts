@@ -5,6 +5,9 @@ export type FishState = "hungry" | "ill" | "happy";
 export type FoodTypeId =
   | "micro"
   | "basic"
+  | "basicMedium"
+  | "basicLarge"
+  | "basicXL"
   | "premium"
   | "herb"
   | "protein"

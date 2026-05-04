@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Revamped runtime assets from `docs/prompt.json` using the `create-assets` workflow: applied a cleaner underwater background, distant silhouette overlay, wavy foreground sand bed, pressed/normal bubble button frames, top HUD panel, floating coin pickups, and eight refreshed decoration PNGs.
+- Updated tank background/floor scaling so the prompt-pack environment stays full-screen as tank level zooms out.
+- Expanded regression asset coverage for the prompt-pack UI/background assets and refreshed visual regression screenshots.
+- Increased render sharpness on high-DPI screens by rendering the fixed 430x844 portrait design into a capped 2x backing canvas while preserving the same visual layout and input coordinates.
+- Added regression coverage for high-DPI canvas backing resolution and updated pointer handling so food drops, coin collection, and decoration dragging remain aligned.
+- Revamped the tank presentation toward the glossy fantasy aquarium reference with a new image-generated underwater backdrop, ornate HUD panel, circular menu button frames, food pedestal frame, and golden coin sparkle trail.
+- Added runtime asset coverage for the new HUD/button UI skin textures and applied the fantasy background as the active tank backdrop.
+- Generated a reusable transparent-center glossy glass bubble button PNG from the requested prompt and switched both menu and food dock icons to that single shared frame.
 - Generated and restored a transparent wavy sandy floor PNG so the tank has a shaped sand bed instead of a flat rectangle.
 - Removed the remaining solid sand floor band so the underwater tank background reaches the bottom of the screen.
 - Removed the raster aquarium floor image from the active tank view, returning the floor to a simple built-in band for visual comparison.
@@ -197,6 +205,9 @@
 - Added mechanics specification document.
 - Added `npm test` regression flow for the MVP gameplay loop.
 - Added dev-only aquarium test hooks for regression assertions.
+- Repositioned the tank HUD to match the supplied premium aquarium reference: large title, one wide stat panel, resource coin icons in chips, and side tool bubbles below the HUD.
+- Replaced the old bordered menu icon PNGs with prompt-generated transparent icon-only assets and enlarged their in-bubble placement.
+- Beautified the top statistic HUD with prompt-generated resource/status icons, stronger glass chip styling, and separated Food/Clean/Happy icon rows.
 - Fixed bottom tab highlight state when switching Food and Decor tabs.
 - Converted game layout to mobile portrait mode.
 - Replaced the desktop side panel with bottom tab controls for touch play.

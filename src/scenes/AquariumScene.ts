@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
-import { controlPanelTop, gameHeight, gameWidth, setTankWorldScale, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
+import { controlPanelTop, gameHeight, gameWidth, maxRenderScale, setTankWorldScale, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, spend } from "../game/economy";
 import {
   calculateOfflineSeconds,
@@ -60,7 +60,9 @@ const autoFeederPrice: FishType["price"] = { coinType: "common", amount: 18 };
 const autoCollectorPrice: FishType["price"] = { coinType: "common", amount: 22 };
 const evolvePillFoodTypeId: FoodTypeId = "evolve";
 const maxEvolutionStage = 3;
-const foodBulkBuyQuantities = [1, 10, 20, 30, 50];
+const maxFoodBuyQuantity = 99_999;
+const overfullHungerFloor = -10000;
+const foodBulkBuyQuantities = [1, 10, 100, 500, 1000];
 const fishStatsCardHeight = 96;
 const fishStatsCardRowHeight = 104;
 const tankUpgradePrices: Record<number, FishType["price"]> = {
@@ -94,12 +96,29 @@ const menuIconAssetPathByKey: Record<string, string> = {
   "ui-goals": "/assets/ui/goals.png",
   "ui-settings": "/assets/ui/settings.png"
 };
+const hudIconAssetPathByKey: Record<string, string> = {
+  "ui-icon-common-coin": "/assets/ui/icon-common-coin.png",
+  "ui-icon-rare-coin": "/assets/ui/icon-rare-coin.png",
+  "ui-icon-super-rare-coin": "/assets/ui/icon-super-rare-coin.png",
+  "ui-icon-total-wealth": "/assets/ui/icon-total-wealth.png",
+  "ui-icon-food-status": "/assets/ui/icon-food-status.png",
+  "ui-icon-clean-status": "/assets/ui/icon-clean-status.png",
+  "ui-icon-happy-status": "/assets/ui/icon-happy-status.png"
+};
 const aquariumFloorTextureKey = "aquarium-floor";
 const aquariumFloorAssetPath = "/assets/backgrounds/aquarium-floor.png";
 const aquariumBackgroundTextureKey = "aquarium-background";
 const aquariumBackgroundAssetPath = "/assets/backgrounds/tank-background.png";
+const distantSilhouetteTextureKey = "aquarium-distant-silhouettes";
+const distantSilhouetteAssetPath = "/assets/backgrounds/distant-silhouettes.png";
 const dirtyTankOverlayTextureKey = "dirty-tank-overlay";
 const dirtyTankOverlayAssetPath = "/assets/backgrounds/dirty-tank-overlay.png";
+const bubbleButtonFrameTextureKey = "ui-reusable-glass-bubble-button";
+const bubbleButtonFrameAssetPath = "/assets/ui/reusable-glass-bubble-button.png";
+const coinGlowTextureKey = "coin-glow";
+const coinGlowAssetPath = "/assets/ui/coin-glow.png";
+const bubbleButtonPressedTextureKey = "ui-reusable-glass-bubble-button-pressed";
+const bubbleButtonPressedAssetPath = "/assets/ui/reusable-glass-bubble-button-pressed.png";
 const dirtyTankOverlayThreshold = 20;
 const dirtyTankOverlayMaxAlpha = 0.64;
 
@@ -120,6 +139,7 @@ type AquariumTestSnapshot = {
   maxHelperCreatures: number;
   tankLevel: number;
   maxTankLevel: null;
+  renderScale: number;
   tankCanUpgradeIndefinitely: boolean;
   fishCatalogMaxLevel: number;
   tankViewScale: number;
@@ -355,7 +375,8 @@ export class AquariumScene extends Phaser.Scene {
   private selectedFishIndex?: number;
   private tankLayer!: Phaser.GameObjects.Container;
   private tankBackground!: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
-  private tankSand?: Phaser.GameObjects.TileSprite;
+  private tankDistantOverlay?: Phaser.GameObjects.Image;
+  private tankSand?: Phaser.GameObjects.Image;
   private dirtyTankOverlay?: Phaser.GameObjects.Image;
   private decorationTrashTarget!: Phaser.GameObjects.Container;
   private decorationTrashBackground!: Phaser.GameObjects.Rectangle;
@@ -369,10 +390,14 @@ export class AquariumScene extends Phaser.Scene {
   private hudWealthText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
   private modeText!: Phaser.GameObjects.Text;
+  private hudFoodStatusText!: Phaser.GameObjects.Text;
+  private hudCleanStatusText!: Phaser.GameObjects.Text;
+  private hudHappyStatusText!: Phaser.GameObjects.Text;
   private hudNeedText!: Phaser.GameObjects.Text;
   private pagePanel?: Phaser.GameObjects.Container;
   private screenButtons: Phaser.GameObjects.Container[] = [];
   private foodButtons: Phaser.GameObjects.Container[] = [];
+  private foodDragGhosts = new Set<Phaser.GameObjects.Image>();
   private tabButtons: Phaser.GameObjects.Container[] = [];
   private tabControls: Phaser.GameObjects.Container[] = [];
   private modal?: Phaser.GameObjects.Container;
@@ -401,12 +426,20 @@ export class AquariumScene extends Phaser.Scene {
     Object.entries(menuIconAssetPathByKey).forEach(([textureKey, assetPath]) => {
       this.load.image(textureKey, assetPath);
     });
+    Object.entries(hudIconAssetPathByKey).forEach(([textureKey, assetPath]) => {
+      this.load.image(textureKey, assetPath);
+    });
     this.load.image(aquariumFloorTextureKey, aquariumFloorAssetPath);
     this.load.image(aquariumBackgroundTextureKey, aquariumBackgroundAssetPath);
+    this.load.image(distantSilhouetteTextureKey, distantSilhouetteAssetPath);
     this.load.image(dirtyTankOverlayTextureKey, dirtyTankOverlayAssetPath);
+    this.load.image(bubbleButtonFrameTextureKey, bubbleButtonFrameAssetPath);
+    this.load.image(bubbleButtonPressedTextureKey, bubbleButtonPressedAssetPath);
+    this.load.image(coinGlowTextureKey, coinGlowAssetPath);
   }
 
   public create(): void {
+    this.configureCameraForHighDpi();
     this.createTextures();
     this.createWorld();
     this.createUi();
@@ -425,6 +458,7 @@ export class AquariumScene extends Phaser.Scene {
     const now = this.time.now;
 
     this.foods.forEach((food) => food.update(deltaSeconds));
+    this.removeExpiredFood();
     this.coinDrops.forEach((coin) => coin.update(deltaSeconds));
     this.updateHelperCreatures(deltaSeconds);
     this.updateRentals();
@@ -444,6 +478,9 @@ export class AquariumScene extends Phaser.Scene {
 
       if (eatenFood) {
         const ateMedicine = eatenFood.accepted && eatenFood.food.foodType.id === "medicine";
+        if (eatenFood.accepted && eatenFood.food.foodType.id !== "medicine") {
+          this.showMissedFoodEmotes(eatenFood.food, currentFish);
+        }
         this.removeFood(eatenFood.food);
         if (ateMedicine) {
           currentFish.applyMedicine(this.time.now);
@@ -501,6 +538,18 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshStatus();
   }
 
+  private configureCameraForHighDpi(): void {
+    const renderScale = this.currentRenderScale();
+    this.cameras.main.setOrigin(0, 0);
+    this.cameras.main.setZoom(renderScale);
+    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.setBackgroundColor("#071b2a");
+  }
+
+  private currentRenderScale(): number {
+    return Phaser.Math.Clamp(this.scale.gameSize.width / gameWidth, 1, maxRenderScale);
+  }
+
   private createWorld(): void {
     this.cameras.main.setBackgroundColor("#071b2a");
 
@@ -518,12 +567,15 @@ export class AquariumScene extends Phaser.Scene {
     this.tankLayer = this.add.container(0, 0).setDepth(2);
     this.tankBackground = this.createTankBackground();
     this.tankLayer.add(this.tankBackground);
+    this.tankDistantOverlay = this.createOptionalTankOverlay(distantSilhouetteTextureKey, 0.5);
+    if (this.tankDistantOverlay) {
+      this.tankLayer.add(this.tankDistantOverlay);
+    }
     this.applyTankViewScale();
     this.tankSand = this.createTankFloor();
     this.tankLayer.add(this.tankSand);
     this.layoutTankFloor();
     this.dirtyTankOverlay = this.createDirtyTankOverlay();
-    this.add.rectangle(tankViewportBounds.centerX, 0, tankViewportBounds.width, 120, 0x071b2a, 0.34).setOrigin(0.5, 0).setDepth(18);
 
     for (let i = 0; i < 18; i += 1) {
       const bubble = this.add.circle(
@@ -548,15 +600,6 @@ export class AquariumScene extends Phaser.Scene {
         }
       });
     }
-
-    this.add
-      .text(18, 14, "Aquarium", {
-        fontFamily: "Arial",
-        fontSize: "17px",
-        color: "#f8fbff",
-        fontStyle: "bold"
-      })
-      .setDepth(20);
   }
 
   private createUi(): void {
@@ -571,60 +614,110 @@ export class AquariumScene extends Phaser.Scene {
       fixedWidth: 292
     }).setDepth(24).setVisible(false);
 
-    this.hudCommonText = this.add.text(29, 48, "", {
+    this.add.image(49, 36, "ui-icon-common-coin").setDisplaySize(21, 21).setDepth(23);
+    this.add.image(146, 36, "ui-icon-rare-coin").setDisplaySize(21, 21).setDepth(23);
+    this.add.image(242, 36, "ui-icon-super-rare-coin").setDisplaySize(21, 21).setDepth(23);
+    this.add.image(338, 36, "ui-icon-total-wealth").setDisplaySize(20, 20).setDepth(23);
+
+    this.hudCommonText = this.add.text(64, 36, "", {
       fontFamily: "Arial",
-      fontSize: "9px",
+      fontSize: "13px",
       color: "#fff1a6",
       fontStyle: "bold",
-      fixedWidth: 54
-    }).setDepth(24);
+      fixedWidth: 54,
+      stroke: "#3a2400",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
 
-    this.hudRareText = this.add.text(98, 48, "", {
+    this.hudRareText = this.add.text(161, 36, "", {
       fontFamily: "Arial",
-      fontSize: "9px",
+      fontSize: "13px",
       color: "#d7f8ff",
       fontStyle: "bold",
-      fixedWidth: 48
-    }).setDepth(24);
+      fixedWidth: 50,
+      stroke: "#04273d",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
 
-    this.hudSuperRareText = this.add.text(162, 48, "", {
+    this.hudSuperRareText = this.add.text(257, 36, "", {
       fontFamily: "Arial",
-      fontSize: "9px",
+      fontSize: "13px",
       color: "#ffd9ff",
       fontStyle: "bold",
-      fixedWidth: 56
-    }).setDepth(24);
+      fixedWidth: 50,
+      stroke: "#2d073d",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
 
-    this.hudWealthText = this.add.text(238, 48, "", {
+    this.hudWealthText = this.add.text(349, 36, "", {
       fontFamily: "Arial",
-      fontSize: "9px",
+      fontSize: "13px",
       color: "#ffffff",
       fontStyle: "bold",
-      fixedWidth: 74
-    }).setDepth(24);
+      fixedWidth: 48,
+      stroke: "#062235",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
 
-    this.statusText = this.add.text(24, 74, "", {
+    this.statusText = this.add.text(34, 65, "", {
       fontFamily: "Arial",
-      fontSize: "11px",
+      fontSize: "13px",
       color: "#eaf9ff",
       fontStyle: "bold",
-      fixedWidth: 292
-    }).setDepth(24);
+      fixedWidth: 356,
+      stroke: "#061826",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
 
-    this.modeText = this.add.text(24, 94, "", {
+    this.modeText = this.add.text(36, 84, "", {
       fontFamily: "Arial",
-      fontSize: "10px",
+      fontSize: "11px",
       color: "#bfeeff",
-      fixedWidth: 292
-    }).setDepth(24);
+      fontStyle: "bold",
+      fixedWidth: 356
+    }).setDepth(24).setVisible(false);
 
-    this.hudNeedText = this.add.text(24, 114, "", {
+    this.add.image(48, 88, "ui-icon-food-status").setDisplaySize(20, 20).setDepth(23);
+    this.add.image(178, 88, "ui-icon-clean-status").setDisplaySize(20, 20).setDepth(23);
+    this.add.image(307, 88, "ui-icon-happy-status").setDisplaySize(20, 20).setDepth(23);
+
+    this.hudFoodStatusText = this.add.text(64, 89, "", {
+      fontFamily: "Arial",
+      fontSize: "11px",
+      color: "#fff4dc",
+      fontStyle: "bold",
+      fixedWidth: 94,
+      stroke: "#061826",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
+
+    this.hudCleanStatusText = this.add.text(194, 89, "", {
+      fontFamily: "Arial",
+      fontSize: "11px",
+      color: "#dff8ff",
+      fontStyle: "bold",
+      fixedWidth: 94,
+      stroke: "#061826",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
+
+    this.hudHappyStatusText = this.add.text(323, 89, "", {
+      fontFamily: "Arial",
+      fontSize: "11px",
+      color: "#e8ffd5",
+      fontStyle: "bold",
+      fixedWidth: 70,
+      stroke: "#061826",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5).setDepth(24);
+
+    this.hudNeedText = this.add.text(34, 111, "", {
       fontFamily: "Arial",
       fontSize: "10px",
       color: "#ffe39a",
       fontStyle: "bold",
-      fixedWidth: 292
-    }).setDepth(24);
+      fixedWidth: 356
+    }).setOrigin(0, 0.5).setDepth(24);
 
     this.createScreenNav();
     this.createFoodDock();
@@ -635,29 +728,42 @@ export class AquariumScene extends Phaser.Scene {
 
   private drawHudPanel(): void {
     this.hudPanel.clear();
-    this.hudPanel.fillStyle(0x061826, 0.8);
-    this.hudPanel.fillRoundedRect(14, 36, 318, 96, 10);
-    this.hudPanel.fillStyle(0x0d3046, 0.8);
-    this.hudPanel.fillRoundedRect(19, 41, 308, 25, 8);
-    this.hudPanel.lineStyle(1, 0x9bdfff, 0.32);
-    this.hudPanel.strokeRoundedRect(14, 36, 318, 96, 10);
+    this.hudPanel.fillStyle(0x02111d, 0.76);
+    this.hudPanel.fillRoundedRect(22, 17, 386, 108, 18);
 
-    const chipY = 44;
+    this.hudPanel.fillStyle(0x09314a, 0.9);
+    this.hudPanel.fillRoundedRect(20, 14, 390, 108, 18);
+    this.hudPanel.fillStyle(0x0b4c68, 0.34);
+    this.hudPanel.fillRoundedRect(24, 18, 382, 32, 15);
+    this.hudPanel.fillStyle(0xffffff, 0.08);
+    this.hudPanel.fillRoundedRect(30, 20, 370, 9, 6);
+    this.hudPanel.fillGradientStyle(0x7fe7ff, 0x7fe7ff, 0x0b4c68, 0x0b4c68, 0.1, 0.1, 0.08, 0.08);
+    this.hudPanel.fillRoundedRect(24, 52, 382, 64, 14);
+
+    this.hudPanel.lineStyle(2, 0xa8eaff, 0.36);
+    this.hudPanel.strokeRoundedRect(20, 14, 390, 108, 18);
+    this.hudPanel.lineStyle(1, 0x0b2233, 0.62);
+    this.hudPanel.strokeRoundedRect(23, 17, 384, 102, 15);
+
+    const chipY = 23;
     for (const chip of [
-      { x: 24, width: 62, fill: 0x8a6726 },
-      { x: 92, width: 58, fill: 0x1f7192 },
-      { x: 156, width: 66, fill: 0x733b91 },
-      { x: 230, width: 88, fill: 0x15394d }
+      { x: 34, width: 92, fill: 0xa56a05, line: 0xffd35e },
+      { x: 130, width: 88, fill: 0x075f92, line: 0x7fe7ff },
+      { x: 224, width: 90, fill: 0x64108e, line: 0xf48aff },
+      { x: 318, width: 84, fill: 0x0b5593, line: 0x8fd8ff }
     ]) {
-      this.hudPanel.fillStyle(chip.fill, 0.96);
-      this.hudPanel.fillRoundedRect(chip.x, chipY, chip.width, 18, 6);
-      this.hudPanel.lineStyle(1, 0xeaf9ff, 0.18);
-      this.hudPanel.strokeRoundedRect(chip.x, chipY, chip.width, 18, 6);
+      this.hudPanel.fillStyle(chip.fill, 0.92);
+      this.hudPanel.fillRoundedRect(chip.x, chipY, chip.width, 25, 13);
+      this.hudPanel.fillStyle(0xffffff, 0.12);
+      this.hudPanel.fillRoundedRect(chip.x + 4, chipY + 3, chip.width - 8, 7, 5);
+      this.hudPanel.lineStyle(2, chip.line, 0.72);
+      this.hudPanel.strokeRoundedRect(chip.x, chipY, chip.width, 25, 13);
     }
 
-    this.hudPanel.lineStyle(1, 0x9bdfff, 0.18);
-    this.hudPanel.lineBetween(24, 88, 318, 88);
-    this.hudPanel.lineBetween(24, 108, 318, 108);
+    this.hudPanel.fillStyle(0xffffff, 0.05);
+    this.hudPanel.fillRoundedRect(36, 82, 120, 18, 9);
+    this.hudPanel.fillRoundedRect(166, 82, 120, 18, 9);
+    this.hudPanel.fillRoundedRect(296, 82, 96, 18, 9);
   }
 
   private createDecorationTrashTarget(): void {
@@ -724,8 +830,16 @@ export class AquariumScene extends Phaser.Scene {
     return this.add.rectangle(tankBounds.centerX, tankBounds.centerY, tankBounds.width, tankBounds.height, tankFallbackBaseColor, 1);
   }
 
-  private createTankFloor(): Phaser.GameObjects.TileSprite {
-    return this.add.tileSprite(tankBounds.centerX, tankBounds.bottom - 56, tankBounds.width, 112, aquariumFloorTextureKey).setDepth(2);
+  private createOptionalTankOverlay(textureKey: string, alpha: number): Phaser.GameObjects.Image | undefined {
+    if (!this.textures.exists(textureKey)) {
+      return undefined;
+    }
+
+    return this.add.image(tankBounds.centerX, tankBounds.centerY, textureKey).setAlpha(alpha);
+  }
+
+  private createTankFloor(): Phaser.GameObjects.Image {
+    return this.add.image(tankBounds.centerX, tankBounds.centerY, aquariumFloorTextureKey).setDepth(2);
   }
 
   private createDirtyTankOverlay(): Phaser.GameObjects.Image | undefined {
@@ -776,12 +890,20 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const scale = Math.max(0.01, this.tankViewScaleForLevel());
+    const screenCompensatedWidth = tankBounds.width / scale;
+    const screenCompensatedHeight = tankBounds.height / scale;
     this.tankBackground.setPosition(tankBounds.centerX, tankBounds.centerY);
     if (this.tankBackground instanceof Phaser.GameObjects.Image) {
-      this.tankBackground.setDisplaySize(tankBounds.width, tankBounds.height);
-      this.tankBackground.setAlpha(0.72);
+      this.tankBackground.setDisplaySize(screenCompensatedWidth, screenCompensatedHeight);
+      this.tankBackground.setAlpha(1);
     } else {
-      this.tankBackground.setSize(tankBounds.width, tankBounds.height);
+      this.tankBackground.setSize(screenCompensatedWidth, screenCompensatedHeight);
+    }
+
+    for (const overlay of [this.tankDistantOverlay]) {
+      overlay?.setPosition(tankBounds.centerX, tankBounds.centerY);
+      overlay?.setDisplaySize(screenCompensatedWidth, screenCompensatedHeight);
     }
   }
 
@@ -791,11 +913,8 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     const scale = Math.max(0.01, this.tankViewScaleForLevel());
-    const floorHeight = 118 / scale;
-    this.tankSand.setPosition(tankBounds.centerX, tankBounds.bottom - floorHeight * 0.5);
-    this.tankSand.setSize(tankBounds.width, floorHeight);
-    this.tankSand.setTileScale(0.46 / scale, 0.46 / scale);
-    this.tankSand.setTilePosition(-tankBounds.left * 0.8, 0);
+    this.tankSand.setPosition(tankBounds.centerX, tankBounds.centerY);
+    this.tankSand.setDisplaySize(tankBounds.width / scale, tankBounds.height / scale);
   }
 
   private screenToTankPoint(x: number, y: number): Phaser.Math.Vector2 {
@@ -804,6 +923,11 @@ export class AquariumScene extends Phaser.Scene {
       Phaser.Math.Clamp((x - this.tankLayer.x) / scale, tankBounds.left, tankBounds.right),
       Phaser.Math.Clamp((y - this.tankLayer.y) / scale, tankBounds.top, tankBounds.bottom)
     );
+  }
+
+  private pointerDesignPoint(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
+    const renderScale = this.currentRenderScale();
+    return new Phaser.Math.Vector2(pointer.x / renderScale, pointer.y / renderScale);
   }
 
   private tankToScreenPoint(x: number, y: number): { x: number; y: number } {
@@ -829,11 +953,11 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     const screens: { label: string; screen: Exclude<AppScreen, "tank">; y: number }[] = [
-      { label: "Shop", screen: "store", y: 176 },
-      { label: "Care", screen: "care", y: 238 },
-      { label: "Book", screen: "album", y: 300 },
-      { label: "Goal", screen: "goals", y: 362 },
-      { label: "Set", screen: "settings", y: 424 }
+      { label: "Shop", screen: "store", y: 218 },
+      { label: "Care", screen: "care", y: 286 },
+      { label: "Book", screen: "album", y: 354 },
+      { label: "Goal", screen: "goals", y: 422 },
+      { label: "Set", screen: "settings", y: 490 }
     ];
 
     for (const screen of screens) {
@@ -853,6 +977,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createFoodDock(): void {
+    this.clearFoodDragGhosts();
     this.foodButtons.forEach((button) => button.destroy(true));
     this.foodButtons = [];
 
@@ -860,20 +985,80 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const visibleFood = foodTypes.filter((foodType) => this.isDroppableFood(foodType.id) && this.getFoodInventory(foodType.id) > 0).slice(0, 4);
+    const visibleFood = foodTypes.filter((foodType) => this.isDroppableFood(foodType.id) && this.getFoodInventory(foodType.id) > 0).slice(0, 5);
     visibleFood.forEach((foodType, index) => {
-      const y = 176 + index * 62;
-      this.foodButtons.push(
-        this.createIconButton(
-          42,
-          y,
-          this.foodIconLabel(foodType),
-          () => this.toggleFoodTool(foodType.id),
-          this.placementMode.kind === "food" && this.placementMode.foodTypeId === foodType.id ? foodTintFor(foodType.id) : 0x10283a,
-          this.foodTextureKey(foodType.id)
-        )
+      const y = 218 + index * 68;
+      const foodButton = this.createIconButton(
+        42,
+        y,
+        this.foodIconLabel(foodType),
+        () => {
+          this.selectedFoodTypeId = foodType.id;
+        },
+        0x10283a,
+        this.foodTextureKey(foodType.id),
+        foodTintFor(foodType.id)
       );
+      this.enableFoodDrag(foodButton, foodType);
+      this.foodButtons.push(foodButton);
     });
+  }
+
+  private enableFoodDrag(button: Phaser.GameObjects.Container, foodType: FoodType): void {
+    let dragGhost: Phaser.GameObjects.Image | undefined;
+    const destroyDragGhost = () => {
+      if (!dragGhost) {
+        return;
+      }
+
+      this.foodDragGhosts.delete(dragGhost);
+      dragGhost.destroy();
+      dragGhost = undefined;
+    };
+
+    const cleanupDragListeners = () => {
+      this.input.off("pointerup", destroyDragGhost);
+      this.input.off("gameout", destroyDragGhost);
+      destroyDragGhost();
+    };
+
+    this.input.setDraggable(button, true);
+    button.on("dragstart", (pointer: Phaser.Input.Pointer) => {
+      destroyDragGhost();
+      const pointerPoint = this.pointerDesignPoint(pointer);
+      dragGhost = this.add
+        .image(pointerPoint.x, pointerPoint.y, this.foodTextureKey(foodType.id))
+        .setDisplaySize(28, 28)
+        .setAlpha(0.9)
+        .setDepth(80);
+      if (foodType.id !== "medicine" && foodType.id !== evolvePillFoodTypeId) {
+        dragGhost.setTint(foodTintFor(foodType.id));
+      }
+      this.foodDragGhosts.add(dragGhost);
+    });
+    button.on("drag", (pointer: Phaser.Input.Pointer) => {
+      const pointerPoint = this.pointerDesignPoint(pointer);
+      dragGhost?.setPosition(pointerPoint.x, pointerPoint.y);
+    });
+    button.on("dragend", (pointer: Phaser.Input.Pointer) => {
+      const pointerPoint = this.pointerDesignPoint(pointer);
+      destroyDragGhost();
+
+      if (!tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
+        return;
+      }
+
+      const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
+      this.dropFoodAt(foodType.id, tankPoint.x, tankPoint.y);
+    });
+    this.input.on("pointerup", destroyDragGhost);
+    this.input.on("gameout", destroyDragGhost);
+    button.once("destroy", cleanupDragListeners);
+  }
+
+  private clearFoodDragGhosts(): void {
+    this.foodDragGhosts.forEach((dragGhost) => dragGhost.destroy());
+    this.foodDragGhosts.clear();
   }
 
   private createIconButton(
@@ -882,20 +1067,40 @@ export class AquariumScene extends Phaser.Scene {
     label: string,
     onClick: () => void,
     fill: number,
-    iconTextureKey?: string
+    iconTextureKey?: string,
+    iconTint?: number
   ): Phaser.GameObjects.Container {
     const objects: Phaser.GameObjects.GameObject[] = [];
     const hasIcon = iconTextureKey !== undefined && this.textures.exists(iconTextureKey);
     const isSelectedFood = fill !== 0x10283a;
+    const isFoodButton = label.includes("\n");
+    const bubbleTextureKey =
+      isSelectedFood && this.textures.exists(bubbleButtonPressedTextureKey) ? bubbleButtonPressedTextureKey : bubbleButtonFrameTextureKey;
+    if (this.textures.exists(bubbleTextureKey)) {
+      const frame = this.add.image(0, isFoodButton ? -5 : -6, bubbleTextureKey);
+      frame.setDisplaySize(isFoodButton ? 60 : 62, isFoodButton ? 60 : 62);
+      frame.setAlpha(isSelectedFood ? 1 : 0.92);
+      if (isSelectedFood) {
+        frame.setTint(Phaser.Display.Color.GetColor(
+          Phaser.Math.Clamp(((fill >> 16) & 0xff) + 24, 0, 255),
+          Phaser.Math.Clamp(((fill >> 8) & 0xff) + 24, 0, 255),
+          Phaser.Math.Clamp((fill & 0xff) + 24, 0, 255)
+        ));
+      }
+      objects.push(frame);
+    }
     if (hasIcon) {
-      const icon = this.add.image(0, label.includes("\n") ? -8 : -6, iconTextureKey);
-      const maxIconSize = label.includes("\n") ? (isSelectedFood ? 38 : 34) : 38;
+      const icon = this.add.image(0, isFoodButton ? -6 : -7, iconTextureKey);
+      const maxIconSize = isFoodButton ? (isSelectedFood ? 39 : 37) : 36;
       const scale = Math.min(maxIconSize / Math.max(1, icon.width), maxIconSize / Math.max(1, icon.height));
       icon.setDisplaySize(icon.width * scale, icon.height * scale);
+      if (iconTint !== undefined) {
+        icon.setTint(iconTint);
+      }
       objects.push(icon);
     }
     const text = this.add
-      .text(0, hasIcon ? 18 : 0, label, {
+      .text(0, hasIcon ? 23 : 0, label, {
         fontFamily: "Arial",
         fontSize: hasIcon ? "8px" : "10px",
         color: isSelectedFood ? this.hexColor(fill) : "#ffffff",
@@ -907,7 +1112,7 @@ export class AquariumScene extends Phaser.Scene {
       .setOrigin(0.5);
     objects.push(text);
     const button = this.add.container(x, y, objects);
-    button.setSize(56, 56);
+    button.setSize(64, 64);
     button.setDepth(35);
     button.setInteractive({ useHandCursor: true });
     button.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
@@ -1075,7 +1280,7 @@ export class AquariumScene extends Phaser.Scene {
         buyLabel: `Buy ${formatPrice(totalPrice)}`,
         onBuy: () => this.buyFood(foodType, buyQuantity),
         accent: foodTintFor(foodType.id),
-        assetPreview: { textureKey: this.foodTextureKey(foodType.id), maxWidth: 42, maxHeight: 38 },
+        assetPreview: { textureKey: this.foodTextureKey(foodType.id), maxWidth: 42, maxHeight: 38, tint: foodTintFor(foodType.id) },
         quantity: {
           label: `x${formatNumber(buyQuantity)}`,
           onReset: () => this.resetFoodBuyQuantity(foodType.id),
@@ -1251,6 +1456,7 @@ export class AquariumScene extends Phaser.Scene {
       textureKey: string;
       maxWidth: number;
       maxHeight: number;
+      tint?: number;
     };
     quantity?: {
       label: string;
@@ -1295,6 +1501,9 @@ export class AquariumScene extends Phaser.Scene {
       const sourceHeight = Math.max(1, preview.height);
       const scale = Math.min(options.assetPreview.maxWidth / sourceWidth, options.assetPreview.maxHeight / sourceHeight);
       preview.setDisplaySize(sourceWidth * scale, sourceHeight * scale);
+      if (options.assetPreview.tint !== undefined) {
+        preview.setTint(options.assetPreview.tint);
+      }
       preview.setDepth(73);
       cardObjects.push(preview);
     }
@@ -1371,14 +1580,28 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private assetCoverageSnapshot(): AquariumTestSnapshot["assetCoverage"] {
+    const uiTextureKeys = [
+      ...Object.keys(menuIconAssetPathByKey),
+      ...Object.keys(hudIconAssetPathByKey),
+      bubbleButtonFrameTextureKey,
+      bubbleButtonPressedTextureKey,
+      coinGlowTextureKey
+    ];
+    const backgroundTextureKeys = [
+      aquariumFloorTextureKey,
+      aquariumBackgroundTextureKey,
+      distantSilhouetteTextureKey,
+      dirtyTankOverlayTextureKey
+    ];
+
     return {
       fish: fishTypes.filter((fishType) => this.textures.exists(`fish-${fishType.id}`)).length,
       food: foodTypes.filter((foodType) => this.textures.exists(this.foodTextureKey(foodType.id))).length,
       decorations: decorationTypes.filter((decorationType) => this.textures.exists(decorationType.texture)).length,
       coins: (Object.keys(coinTextureKeyByType) as CoinType[]).filter((coinType) => this.textures.exists(coinTextureKeyByType[coinType])).length,
-      uiIcons: Object.keys(menuIconAssetPathByKey).filter((textureKey) => this.textures.exists(textureKey)).length,
+      uiIcons: uiTextureKeys.filter((textureKey) => this.textures.exists(textureKey)).length,
       helpers: helperCreatureTypes.filter((creatureType) => this.textures.exists(creatureType.texture)).length,
-      backgrounds: [aquariumFloorTextureKey, aquariumBackgroundTextureKey, dirtyTankOverlayTextureKey].filter((textureKey) => this.textures.exists(textureKey)).length
+      backgrounds: backgroundTextureKeys.filter((textureKey) => this.textures.exists(textureKey)).length
     };
   }
 
@@ -1697,7 +1920,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyFood(foodType = this.getSelectedFoodType(), quantity = this.getFoodBuyQuantity(foodType.id)): void {
-    const buyQuantity = Phaser.Math.Clamp(Math.floor(quantity), 1, 99);
+    const buyQuantity = Phaser.Math.Clamp(Math.floor(quantity), 1, maxFoodBuyQuantity);
     const totalPrice = this.quantityPrice(foodType.price, buyQuantity);
     if (!this.spendPrice(totalPrice)) {
       return;
@@ -1706,14 +1929,36 @@ export class AquariumScene extends Phaser.Scene {
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + buyQuantity);
     if (this.isDroppableFood(foodType.id)) {
       this.selectedFoodTypeId = foodType.id;
-      this.placementMode = { kind: "food", foodTypeId: foodType.id };
-    } else {
-      this.placementMode = { kind: "none" };
     }
+    this.placementMode = { kind: "none" };
     this.floatText(`${foodType.name} x${formatNumber(buyQuantity)}`, toastX, toastY, "#a8ffb0");
     if (this.activeScreen !== "tank" && this.isDroppableFood(foodType.id)) {
       this.closePage();
     }
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
+  }
+
+  private dropFoodAt(foodTypeId: FoodTypeId, x: number, y: number): void {
+    const foodType = foodTypes.find((item) => item.id === foodTypeId);
+    if (!foodType || !this.isDroppableFood(foodType.id) || this.getFoodInventory(foodType.id) <= 0) {
+      return;
+    }
+
+    this.selectedFoodTypeId = foodType.id;
+    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) - 1);
+    const pellet = new FoodPellet(
+      this,
+      Phaser.Math.Clamp(x, tankBounds.left + 18, tankBounds.right - 18),
+      Phaser.Math.Clamp(y, tankBounds.top + 18, tankBounds.bottom - 18),
+      foodType
+    );
+    pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
+    pellet.addToContainer(this.tankLayer);
+    this.foods.push(pellet);
+    this.cleanliness = Phaser.Math.Clamp(this.cleanliness - 1.2, 0, 100);
+    this.placementMode = { kind: "none" };
     this.refreshUi();
     this.createFoodDock();
     this.saveNow();
@@ -1917,7 +2162,6 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.selectedFoodTypeId = foodTypeId;
-    this.placementMode = { kind: "food", foodTypeId };
     if (this.activeScreen !== "tank") {
       this.closePage();
     }
@@ -1926,15 +2170,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private toggleFoodTool(foodTypeId: FoodTypeId): void {
-    if (this.placementMode.kind === "food" && this.placementMode.foodTypeId === foodTypeId) {
-      this.placementMode = { kind: "none" };
-    } else {
-      this.selectFood(foodTypeId);
-      return;
-    }
-
-    this.refreshUi();
-    this.createFoodDock();
+    this.selectFood(foodTypeId);
   }
 
   private selectDecoration(decorationTypeId: string): void {
@@ -1951,12 +2187,13 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private handleTankPointer(pointer: Phaser.Input.Pointer): void {
-    if (!tankViewportBounds.contains(pointer.x, pointer.y)) {
+    const pointerPoint = this.pointerDesignPoint(pointer);
+    if (!tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
       return;
     }
 
     const mode = this.placementMode;
-    const tankPoint = this.screenToTankPoint(pointer.x, pointer.y);
+    const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
 
     if (mode.kind === "fish") {
       const type = fishTypes.find((fishType) => fishType.id === mode.fishTypeId);
@@ -1975,25 +2212,6 @@ export class AquariumScene extends Phaser.Scene {
       }
 
       this.placeFishWithCompatibility(type, tankPoint.x, tankPoint.y);
-      return;
-    }
-
-    if (mode.kind === "food") {
-      const foodType = foodTypes.find((item) => item.id === mode.foodTypeId) ?? basicFood;
-      if (this.getFoodInventory(foodType.id) <= 0) {
-        return;
-      }
-
-      this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) - 1);
-      const pellet = new FoodPellet(this, tankPoint.x, tankPoint.y, foodType);
-      pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
-      pellet.addToContainer(this.tankLayer);
-      this.foods.push(pellet);
-      this.cleanliness = Phaser.Math.Clamp(this.cleanliness - 1.2, 0, 100);
-      this.placementMode = this.getFoodInventory(foodType.id) > 0 ? { kind: "food", foodTypeId: foodType.id } : { kind: "none" };
-      this.refreshUi();
-      this.createFoodDock();
-      this.saveNow();
       return;
     }
 
@@ -2106,9 +2324,10 @@ export class AquariumScene extends Phaser.Scene {
         return;
       }
 
-      const tankPoint = this.screenToTankPoint(pointer.x, pointer.y);
+      const pointerPoint = this.pointerDesignPoint(pointer);
+      const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
       this.moveDecoration(decoration, tankPoint.x, tankPoint.y);
-      this.highlightDecorationTrashTarget(decorationTrashZone.contains(pointer.x, pointer.y));
+      this.highlightDecorationTrashTarget(decorationTrashZone.contains(pointerPoint.x, pointerPoint.y));
     });
     decoration.image.on("dragend", (pointer: Phaser.Input.Pointer) => {
       if (this.draggedDecoration !== decoration) {
@@ -2119,7 +2338,8 @@ export class AquariumScene extends Phaser.Scene {
       this.showDecorationTrashTarget(false);
       this.draggedDecoration = undefined;
 
-      if (this.activeScreen === "tank" && decorationTrashZone.contains(pointer.x, pointer.y)) {
+      const pointerPoint = this.pointerDesignPoint(pointer);
+      if (this.activeScreen === "tank" && decorationTrashZone.contains(pointerPoint.x, pointerPoint.y)) {
         this.trashDecoration(decoration);
         return;
       }
@@ -2152,9 +2372,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private addHelperCreatureToTank(creatureType: HelperCreatureType, x: number, y = tankBounds.bottom - 36, targetX = x): HelperCreature {
-    const yBounds = creatureType.feedSeconds
-      ? { min: tankBounds.top + 132, max: tankBounds.bottom - 64 }
-      : { min: tankBounds.bottom - 48, max: tankBounds.bottom - 28 };
+    const yBounds = { min: tankBounds.bottom - 48, max: tankBounds.bottom - 28 };
     const helper = new HelperCreature(
       this,
       creatureType,
@@ -2256,7 +2474,7 @@ export class AquariumScene extends Phaser.Scene {
       currentFish.setAgeSeconds(currentFish.ageSeconds + elapsedSeconds);
       currentFish.hunger = Phaser.Math.Clamp(
         currentFish.hunger + Math.min(52, currentFish.hungerPerSecond() * elapsedSeconds * 0.045),
-        0,
+        overfullHungerFloor,
         100
       );
 
@@ -2390,15 +2608,38 @@ export class AquariumScene extends Phaser.Scene {
     food.destroy();
   }
 
+  private removeExpiredFood(): void {
+    const expiredFoods = this.foods.filter((food) => food.isExpired());
+    if (expiredFoods.length === 0) {
+      return;
+    }
+
+    this.foods = this.foods.filter((food) => !food.isExpired());
+    for (const food of expiredFoods) {
+      food.destroy();
+    }
+    this.saveNow();
+  }
+
+  private showMissedFoodEmotes(food: FoodPellet, winner: Fish): void {
+    for (const fish of this.fish) {
+      if (fish === winner || fish.fullnessRatio() >= 0.2 || !fish.isInterestedInFood(food)) {
+        continue;
+      }
+
+      fish.showMissedFoodEmoji(this.time.now);
+    }
+  }
+
   private refreshUi(renderControls = true): void {
     this.hudText.setText(
       `C:${formatNumber(this.wallet.common)}   R:${formatNumber(this.wallet.rare)}   SR:${formatNumber(this.wallet.superRare)}   W:${formatNumber(this.calculateTotalWealth())}`
     );
-    this.hudCommonText.setText(`C:${formatNumber(this.wallet.common)}`);
-    this.hudRareText.setText(`R:${formatNumber(this.wallet.rare)}`);
-    this.hudSuperRareText.setText(`SR:${formatNumber(this.wallet.superRare)}`);
-    this.hudWealthText.setText(`W:${formatNumber(this.calculateTotalWealth())}`);
-    this.modeText.setText(this.getCareStatusLabel());
+    this.hudCommonText.setText(formatNumber(this.wallet.common));
+    this.hudRareText.setText(formatNumber(this.wallet.rare));
+    this.hudSuperRareText.setText(`SR ${formatNumber(this.wallet.superRare)}`);
+    this.hudWealthText.setText(formatNumber(this.calculateTotalWealth()));
+    this.refreshCareStatusTexts();
     this.hudNeedText.setText(this.getHudNeedLabel());
     if (renderControls) {
       this.createFoodDock();
@@ -2410,7 +2651,7 @@ export class AquariumScene extends Phaser.Scene {
   private refreshStatus(): void {
     if (this.fish.length === 0) {
       this.statusText.setText(`Tank L${formatNumber(this.tankLevel)}   Fish 0/${formatNumber(this.maxFishCapacityForLevel())}   Coin ${formatNumber(this.coinDrops.length)}/${formatNumber(maxCoinDrops)}`);
-      this.modeText.setText(this.getCareStatusLabel());
+      this.refreshCareStatusTexts();
       this.hudNeedText.setText(this.getHudNeedLabel());
       return;
     }
@@ -2426,12 +2667,22 @@ export class AquariumScene extends Phaser.Scene {
     this.statusText.setText(
       `Tank L${formatNumber(this.tankLevel)}   Fish ${formatNumber(this.fish.length)}/${formatNumber(this.maxFishCapacityForLevel())}   Coin ${formatNumber(this.coinDrops.length)}/${formatNumber(maxCoinDrops)}`
     );
-    this.modeText.setText(this.getCareStatusLabel());
+    this.refreshCareStatusTexts();
     this.hudNeedText.setText(`${this.getHudNeedLabel()}   H${formatNumber(counts.happy)} Hu${formatNumber(counts.hungry)} I${formatNumber(counts.ill)}`);
   }
 
   private getCareStatusLabel(): string {
     return `Food ${formatNumber(this.getTotalFoodInventory())}   Clean ${formatNumber(Math.round(this.cleanliness))}%   Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
+  }
+
+  private refreshCareStatusTexts(): void {
+    const foodLabel = `Food ${formatNumber(this.getTotalFoodInventory())}`;
+    const cleanLabel = `Clean ${formatNumber(Math.round(this.cleanliness))}%`;
+    const happyLabel = `Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
+    this.modeText.setText(`${foodLabel}   ${cleanLabel}   ${happyLabel}`);
+    this.hudFoodStatusText.setText(foodLabel);
+    this.hudCleanStatusText.setText(cleanLabel);
+    this.hudHappyStatusText.setText(happyLabel);
   }
 
   private getHudNeedLabel(): string {
@@ -2462,7 +2713,10 @@ export class AquariumScene extends Phaser.Scene {
   private foodIconLabel(foodType: FoodType): string {
     const labels: Record<FoodTypeId, string> = {
       micro: "Micro",
-      basic: "Food",
+      basic: "S Food",
+      basicMedium: "M Food",
+      basicLarge: "L Food",
+      basicXL: "XL Food",
       premium: "Prem",
       herb: "Herb",
       protein: "Prot",
@@ -2495,7 +2749,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private changeFoodBuyQuantity(foodTypeId: FoodTypeId, delta: number): void {
-    const quantity = Phaser.Math.Clamp(this.getFoodBuyQuantity(foodTypeId) + delta, 1, 99);
+    const quantity = Phaser.Math.Clamp(this.getFoodBuyQuantity(foodTypeId) + delta, 1, maxFoodBuyQuantity);
     this.foodBuyQuantities.set(foodTypeId, quantity);
     this.renderTabControls();
     this.refreshUi(false);
@@ -2504,7 +2758,7 @@ export class AquariumScene extends Phaser.Scene {
   private addFoodBuyQuantity(foodTypeId: FoodTypeId, quantityToAdd: number): void {
     const currentQuantity = this.getFoodBuyQuantity(foodTypeId);
     const nextQuantity = this.foodBuyQuantities.has(foodTypeId) ? currentQuantity + quantityToAdd : quantityToAdd;
-    this.foodBuyQuantities.set(foodTypeId, Phaser.Math.Clamp(Math.floor(nextQuantity), 1, 99));
+    this.foodBuyQuantities.set(foodTypeId, Phaser.Math.Clamp(Math.floor(nextQuantity), 1, maxFoodBuyQuantity));
     this.renderTabControls();
     this.refreshUi(false);
   }
@@ -2515,7 +2769,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.foodBuyQuantities.set(foodTypeId, Phaser.Math.Clamp(Math.floor(quantity), 1, 99));
+    this.foodBuyQuantities.set(foodTypeId, Phaser.Math.Clamp(Math.floor(quantity), 1, maxFoodBuyQuantity));
     this.renderTabControls();
     this.refreshUi(false);
   }
@@ -2967,15 +3221,25 @@ export class AquariumScene extends Phaser.Scene {
 
   private dropHelperFood(helper: HelperCreature, targetFish: Fish, foodType: FoodType): void {
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) - 1);
-    const direction = helper.sprite.x < tankBounds.centerX ? 1 : -1;
-    const x = Phaser.Math.Clamp(helper.sprite.x + direction * 28, tankBounds.left + 28, tankBounds.right - 28);
-    const y = Phaser.Math.Clamp(helper.sprite.y, tankBounds.top + 138, tankBounds.bottom - 120);
-    const pellet = new FoodPellet(this, x, y, foodType, { velocityX: direction * 82 });
+    const launchX = Phaser.Math.Clamp(
+      helper.sprite.x + Phaser.Math.Between(-38, 38),
+      tankBounds.left + 28,
+      tankBounds.right - 28
+    );
+    const launchY = Phaser.Math.Clamp(
+      helper.sprite.y - Phaser.Math.Between(18, 34),
+      tankBounds.bottom - 82,
+      tankBounds.bottom - 44
+    );
+    const targetDirection = Math.sign(targetFish.sprite.x - helper.sprite.x) || Phaser.Math.RND.pick([-1, 1]);
+    const velocityX = Phaser.Math.Between(54, 148) * targetDirection + Phaser.Math.Between(-44, 44);
+    const velocityY = -Phaser.Math.Between(270, 390);
+    const pellet = new FoodPellet(this, launchX, launchY, foodType, { velocityX, velocityY });
     pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
     pellet.addToContainer(this.tankLayer);
     this.foods.push(pellet);
     this.cleanliness = Phaser.Math.Clamp(this.cleanliness - 0.4, 0, 100);
-    this.floatTankText(`${helper.type.name} tossed food`, x, y - 14, "#f7ff9a");
+    this.floatTankText(`${helper.type.name} tossed food`, launchX, launchY - 14, "#f7ff9a");
     this.createFoodDock();
     this.refreshUi(false);
     this.saveNow();
@@ -3335,6 +3599,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private floatTankText(message: string, x: number, y: number, color: string): void {
+    return;
     const position = this.tankToScreenPoint(x, y);
     this.floatText(message, position.x, position.y, color);
   }
@@ -3362,6 +3627,7 @@ export class AquariumScene extends Phaser.Scene {
         maxHelperCreatures,
         tankLevel: this.tankLevel,
         maxTankLevel: null,
+        renderScale: this.currentRenderScale(),
         tankCanUpgradeIndefinitely: true,
         fishCatalogMaxLevel: maxFishCatalogLevel,
         tankViewScale: this.tankViewScaleForLevel(),
@@ -3535,7 +3801,7 @@ export class AquariumScene extends Phaser.Scene {
           return;
         }
 
-        targetFish.hunger = Phaser.Math.Clamp(hunger, 0, 100);
+        targetFish.hunger = Phaser.Math.Clamp(hunger, overfullHungerFloor, 100);
         targetFish.health = Phaser.Math.Clamp(health, 0, 100);
         targetFish.state = targetFish.health < 35 ? "ill" : targetFish.hunger > 68 ? "hungry" : "happy";
         if (!targetFish.isInFatalCareState()) {

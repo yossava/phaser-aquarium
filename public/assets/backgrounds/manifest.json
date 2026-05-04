@@ -49,6 +49,25 @@
       }
     },
     {
+      "filename": "tank_background_fantasy_source.png",
+      "dimensions": {
+        "width": 1024,
+        "height": 2048
+      },
+      "format": "png",
+      "transparency": "opaque_rgb_no_alpha",
+      "background_notes": "Fully opaque fantasy aquarium background with bright turquoise caustic water at the top, deeper blue atmospheric middle, subtle lower-third ruins and castle silhouettes, and colorful coral clusters near the bottom edges.",
+      "intended_use": "Portrait mobile aquarium tank background with an open center for fish movement and readable gameplay sprites.",
+      "style_notes": "Soft toy-like polished 2D mobile game art; no UI, no text, no fish, no coins, no food, and no large foreground blockers.",
+      "source_generation": {
+        "method": "codex_image_generation",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df086-dd0e-77f2-a492-55ce7c176e60/ig_091ef35b8707319c0169f7f16fb810819181f1983e581636cb.png",
+        "postprocess": "Resized from generated 887x1774 RGB PNG to exact requested 1024x2048 output."
+      },
+      "runtime_filename": "tank-background.png",
+      "runtime_notes": "Promoted to current runtime tank background for the fantasy UI revamp."
+    },
+    {
       "filename": "dirty_tank_overlay_source.png",
       "dimensions": {
         "width": 1024,

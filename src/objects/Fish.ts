@@ -38,6 +38,7 @@ const youngAdultScaleRatio = 0.78;
 const minimumGrowthWidthRatio = 0.24;
 const maximumGrowthWidthRatio = 0.5;
 const happyEmojiDurationMs = 3200;
+const missedFoodEmojiDurationMs = 1000;
 const fishLengthDisplayMultiplier = 10;
 const baselineMealCalories = 46;
 const baseTextureWidth = 64;
@@ -48,6 +49,14 @@ const idleSwimBobPixels = 0.28;
 const chaseSwimBobPixels = 0.62;
 const idleTailWagPixels = 5.4;
 const chaseTailWagPixels = 9.2;
+const fishMovementSpeedMultiplier = 0.62;
+const fishRestChanceAtTarget = 0.42;
+const minFishRestMs = 1800;
+const maxFishRestMs = 5200;
+const farDepthScale = 0.58;
+const farDepthBlueTint = 0x68b6cf;
+const farDepthDarkTint = 0x174e68;
+const overfullHungerFloor = -10000;
 export const fatalCareSeconds = 60 * 60;
 
 export class Fish {
@@ -70,12 +79,17 @@ export class Fish {
   private stateEmoji: Phaser.GameObjects.Text;
   private productionProgress = new Map<string, number>();
   private happyEmojiUntil = 0;
+  private missedFoodEmojiUntil = 0;
   private visualWorldScale = 1;
   private swimPhase: number;
   private swimYOffset = 0;
   private swimRotationBase = 0;
   private tailWag = 0;
   private tailFan = 1;
+  private depthRatio: number;
+  private targetDepthRatio: number;
+  private restUntil = 0;
+  private hasRestedAtTarget = false;
   private readonly usesCustomTexture: boolean;
   private readonly textureAspectRatio: number;
 
@@ -89,6 +103,8 @@ export class Fish {
     this.gender = options.gender ?? (Phaser.Math.Between(0, 1) === 0 ? "M" : "F");
     this.evolutionStage = Phaser.Math.Clamp(Math.floor(options.evolutionStage ?? 0), 0, 3);
     this.swimPhase = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    this.depthRatio = Phaser.Math.FloatBetween(0, 0.62);
+    this.targetDepthRatio = this.depthRatio;
     const textureKey = this.customTextureKey();
     this.usesCustomTexture = textureKey !== "fish-base";
     this.sprite = scene.add.sprite(x, y, textureKey);
@@ -124,7 +140,7 @@ export class Fish {
     const hungerGrowthMultiplier = isMedicated ? 0.35 : 1;
     this.hunger = Phaser.Math.Clamp(
       this.hunger + this.hungerPerSecond() * hungerGrowthMultiplier * deltaSeconds,
-      0,
+      overfullHungerFloor,
       100
     );
 
@@ -137,29 +153,36 @@ export class Fish {
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
     this.updateFatalCareTimer(deltaSeconds);
     this.setVisualScale(this.desiredAgeScale());
-    this.sprite.setAlpha(this.state === "ill" ? 0.62 : 1);
 
     const closestFood = this.findClosestFood(foods);
+    let resting = false;
     if (closestFood) {
+      this.restUntil = 0;
+      this.hasRestedAtTarget = false;
       this.target.set(closestFood.sprite.x, closestFood.sprite.y);
+      this.targetDepthRatio = 0.08;
     } else if (Phaser.Math.Distance.BetweenPoints(this.sprite, this.target) < 16) {
-      this.pickWanderTarget();
+      resting = this.updateIdleRest();
     }
 
+    this.updateDepthRatio(deltaSeconds, closestFood !== undefined);
+
     const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier() : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
-    const moveSpeed = this.type.speed * speedMultiplier * this.movementSizeMultiplier();
-    this.moveTowardTarget(deltaSeconds, moveSpeed);
-    this.animateSwimming(deltaSeconds, moveSpeed, closestFood !== undefined);
+    const moveSpeed = this.type.speed * speedMultiplier * this.movementSizeMultiplier() * fishMovementSpeedMultiplier;
+    if (!resting) {
+      this.moveTowardTarget(deltaSeconds, moveSpeed);
+    }
+    this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined);
     this.setStateTint();
 
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
       const accepted = this.acceptsFood(closestFood);
       if (accepted) {
-        this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromFood(closestFood), 0, 100);
+        this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromFood(closestFood), overfullHungerFloor, 100);
         this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
         this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
       } else {
-        this.hunger = Phaser.Math.Clamp(this.hunger + 8, 0, 100);
+        this.hunger = Phaser.Math.Clamp(this.hunger + 8, overfullHungerFloor, 100);
         this.health = Phaser.Math.Clamp(this.health - 8, 0, 100);
       }
       this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
@@ -188,7 +211,7 @@ export class Fish {
 
   public restoreProgress(ageSeconds: number, hunger: number, health: number, nextCoinDropAt: number, fatalCareSecondsValue = 0): void {
     this.setAgeSeconds(ageSeconds);
-    this.hunger = Phaser.Math.Clamp(hunger, 0, 100);
+    this.hunger = Phaser.Math.Clamp(hunger, overfullHungerFloor, 100);
     this.health = Phaser.Math.Clamp(health, 0, 100);
     this.nextCoinDropAt = Math.max(0, nextCoinDropAt);
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
@@ -204,10 +227,23 @@ export class Fish {
 
   public applyMedicine(now: number): void {
     this.health = Phaser.Math.Clamp(Math.max(this.health + 55, 82), 0, 100);
-    this.hunger = Phaser.Math.Clamp(Math.min(this.hunger, 35), 0, 100);
+    this.hunger = Phaser.Math.Clamp(Math.min(this.hunger, 35), overfullHungerFloor, 100);
     this.medicatedUntil = now + 45000;
     this.fatalCareSeconds = 0;
     this.updateStatusBars();
+  }
+
+  public showMissedFoodEmoji(now = this.scene.time.now): void {
+    this.missedFoodEmojiUntil = now + missedFoodEmojiDurationMs;
+    this.updateStatusBars();
+  }
+
+  public isInterestedInFood(food: FoodPellet): boolean {
+    return this.willChaseFood(food);
+  }
+
+  public fullnessRatio(): number {
+    return this.currentFullnessRatio();
   }
 
   public refreshStatusBars(): void {
@@ -583,12 +619,17 @@ export class Fish {
 
   private setVisualScale(worldScale: number): void {
     this.visualWorldScale = worldScale;
+    this.applySpriteScale(worldScale, 1, 1);
+  }
+
+  private applySpriteScale(worldScale: number, stretchX: number, stretchY: number): void {
+    const projectedScale = worldScale * this.depthScaleMultiplier();
     if (this.usesCustomTexture) {
-      this.sprite.setDisplaySize(baseTextureWidth * worldScale, baseTextureWidth * this.textureAspectRatio * worldScale);
+      this.sprite.setDisplaySize(baseTextureWidth * projectedScale * stretchX, baseTextureWidth * this.textureAspectRatio * projectedScale * stretchY);
       return;
     }
 
-    this.sprite.setScale(worldScale);
+    this.sprite.setScale(projectedScale * stretchX, projectedScale * stretchY);
   }
 
   private currentVisualWorldScale(): number {
@@ -824,6 +865,23 @@ export class Fish {
     this.swimRotationBase = direction.y * 0.08;
   }
 
+  private updateIdleRest(): boolean {
+    const now = this.scene.time.now;
+    if (now < this.restUntil) {
+      return true;
+    }
+
+    if (!this.hasRestedAtTarget && Phaser.Math.FloatBetween(0, 1) < fishRestChanceAtTarget) {
+      this.restUntil = now + Phaser.Math.Between(minFishRestMs, maxFishRestMs);
+      this.hasRestedAtTarget = true;
+      return true;
+    }
+
+    this.hasRestedAtTarget = false;
+    this.pickWanderTarget();
+    return false;
+  }
+
   private animateSwimming(deltaSeconds: number, moveSpeed: number, chasingFood: boolean): void {
     const speedRatio = Phaser.Math.Clamp(moveSpeed / Math.max(1, this.type.speed), 0.25, 2.6);
     const frequency = (chasingFood ? chaseSwimFrequency : idleSwimFrequency) * Phaser.Math.Linear(0.72, 1.18, speedRatio / 2.6);
@@ -844,14 +902,7 @@ export class Fish {
     this.tailWag = wave * tailWagBasePixels * amplitude;
     this.tailFan = 1 + Math.abs(secondaryWave) * (chasingFood ? 0.18 : 0.1) * illnessDampener;
 
-    if (this.usesCustomTexture) {
-      this.sprite.setDisplaySize(
-        baseTextureWidth * this.visualWorldScale * stretchX,
-        baseTextureWidth * this.textureAspectRatio * this.visualWorldScale * stretchY
-      );
-    } else {
-      this.sprite.setScale(this.visualWorldScale * stretchX, this.visualWorldScale * stretchY);
-    }
+    this.applySpriteScale(this.visualWorldScale, stretchX, stretchY);
 
     this.swimYOffset = bob;
     this.sprite.setRotation(this.swimRotationBase + wagRotation);
@@ -863,20 +914,44 @@ export class Fish {
       Phaser.Math.Between(tankBounds.left + 48, tankBounds.right - 48),
       Phaser.Math.Between(tankBounds.top + 46, tankBounds.bottom - 56)
     );
+    this.targetDepthRatio = Phaser.Math.FloatBetween(0, 1);
   }
 
   private setStateTint(): void {
+    const depthTint = this.depthTint(this.usesCustomTexture ? 0xffffff : this.bodyTint());
     if (this.state === "ill") {
-      this.sprite.setTint(this.usesCustomTexture ? 0xb9c5bd : this.desaturatedTint(this.bodyTint(), 0.46));
+      this.sprite.setTint(this.desaturatedTint(depthTint, 0.46));
+      this.sprite.setAlpha(Phaser.Math.Linear(0.62, 0.4, this.depthRatio));
       return;
     }
 
-    if (this.usesCustomTexture) {
+    this.sprite.setAlpha(Phaser.Math.Linear(1, 0.64, this.depthRatio));
+    if (this.usesCustomTexture && this.depthRatio < 0.04) {
       this.sprite.clearTint();
       return;
     }
 
-    this.sprite.setTint(this.bodyTint());
+    this.sprite.setTint(depthTint);
+  }
+
+  private updateDepthRatio(deltaSeconds: number, chasingFood: boolean): void {
+    const smoothing = chasingFood ? 4.8 : 0.85;
+    this.depthRatio = Phaser.Math.Linear(
+      this.depthRatio,
+      this.targetDepthRatio,
+      Phaser.Math.Clamp(deltaSeconds * smoothing, 0, 1)
+    );
+    this.sprite.setDepth(Phaser.Math.Linear(8, 4.5, this.depthRatio));
+    this.tailMark.setDepth(this.sprite.depth + 0.1);
+  }
+
+  private depthScaleMultiplier(): number {
+    return Phaser.Math.Linear(1, farDepthScale, Phaser.Math.Clamp(this.depthRatio, 0, 1));
+  }
+
+  private depthTint(baseTint: number): number {
+    const blueShifted = this.mixColor(baseTint, farDepthBlueTint, this.depthRatio * 0.44);
+    return this.mixColor(blueShifted, farDepthDarkTint, this.depthRatio * 0.48);
   }
 
   private updateStatusBars(): void {
@@ -955,6 +1030,10 @@ export class Fish {
 
     if (this.state === "ill") {
       return "🤒";
+    }
+
+    if (this.scene.time.now < this.missedFoodEmojiUntil) {
+      return "😡";
     }
 
     if (this.scene.time.now < this.happyEmojiUntil) {
@@ -1058,5 +1137,20 @@ export class Fish {
     const gray = red * 0.3 + green * 0.59 + blue * 0.11;
     const mix = (channel: number) => Math.round(channel * (1 - amount) + gray * amount);
     return Phaser.Display.Color.GetColor(mix(red), mix(green), mix(blue));
+  }
+
+  private mixColor(from: number, to: number, amount: number): number {
+    const ratio = Phaser.Math.Clamp(amount, 0, 1);
+    const fromRed = (from >> 16) & 0xff;
+    const fromGreen = (from >> 8) & 0xff;
+    const fromBlue = from & 0xff;
+    const toRed = (to >> 16) & 0xff;
+    const toGreen = (to >> 8) & 0xff;
+    const toBlue = to & 0xff;
+    return Phaser.Display.Color.GetColor(
+      Math.round(Phaser.Math.Linear(fromRed, toRed, ratio)),
+      Math.round(Phaser.Math.Linear(fromGreen, toGreen, ratio)),
+      Math.round(Phaser.Math.Linear(fromBlue, toBlue, ratio))
+    );
   }
 }

@@ -11,8 +11,6 @@ export type HelperCreatureAction =
   | { kind: "feed"; fish: Fish };
 
 const helperBottomY = () => tankBounds.bottom - 36;
-const helperWallTopY = () => tankBounds.top + 132;
-const helperWallBottomY = () => tankBounds.bottom - 64;
 const helperDisplayWidths: Record<string, number> = {
   "helper-shrimp": 48,
   "helper-shell": 52,
@@ -23,7 +21,6 @@ const helperDisplayWidths: Record<string, number> = {
 export class HelperCreature {
   public readonly sprite: Phaser.GameObjects.Image;
   private targetX: number;
-  private targetY: number;
   private coinCooldown = 0;
   private cleanupCooldown = 0;
   private feedCooldown = 0;
@@ -36,18 +33,13 @@ export class HelperCreature {
     x: number,
     y = helperBottomY()
   ) {
-    const feeder = this.isFeederType(type);
-    const startX = feeder ? this.sideXFor(x) : x;
-    const startY = feeder ? Phaser.Math.Clamp(y, helperWallTopY(), helperWallBottomY()) : y;
+    const startX = x;
+    const startY = y;
     this.sprite = scene.add.image(startX, startY, type.texture);
     this.fitSpriteToGameplayScale();
     this.sprite.setDepth(8);
     this.sprite.setInteractive({ useHandCursor: true });
     this.targetX = startX;
-    this.targetY = startY;
-    if (feeder) {
-      this.applyFeederWallOrientation();
-    }
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {
@@ -92,10 +84,9 @@ export class HelperCreature {
 
   public restoreProgress(targetX: number): void {
     if (this.isFeeder()) {
-      this.targetX = this.sideXFor(targetX);
+      this.targetX = Phaser.Math.Clamp(targetX, tankBounds.left + 24, tankBounds.right - 24);
       this.sprite.x = this.targetX;
-      this.targetY = Phaser.Math.Clamp(this.sprite.y, helperWallTopY(), helperWallBottomY());
-      this.applyFeederWallOrientation();
+      this.sprite.y = helperBottomY();
       return;
     }
 
@@ -122,31 +113,22 @@ export class HelperCreature {
     const feedTarget = this.closestHungryFish(fish);
     if (feedTarget) {
       this.feedWindup += deltaSeconds;
-      this.targetY = Phaser.Math.Clamp(feedTarget.sprite.y, helperWallTopY(), helperWallBottomY());
+      this.targetX = Phaser.Math.Clamp(feedTarget.sprite.x, tankBounds.left + 34, tankBounds.right - 34);
     } else if (this.wanderCooldown <= 0) {
       this.feedWindup = 0;
-      this.targetY = Phaser.Math.Between(helperWallTopY(), helperWallBottomY());
+      this.targetX = Phaser.Math.Between(tankBounds.left + 34, tankBounds.right - 34);
       this.wanderCooldown = Phaser.Math.FloatBetween(2.2, 4.8);
     }
 
-    this.climbWall(deltaSeconds);
+    this.crawl(deltaSeconds);
 
-    if (feedTarget && this.feedCooldown <= 0 && (Math.abs(this.sprite.y - this.targetY) <= 64 || this.feedWindup >= 2.4)) {
+    if (feedTarget && this.feedCooldown <= 0 && (Math.abs(this.sprite.x - feedTarget.sprite.x) <= 92 || this.feedWindup >= 2.4)) {
       this.feedCooldown = this.type.feedSeconds ?? 5;
       this.feedWindup = 0;
       return { kind: "feed", fish: feedTarget };
     }
 
     return undefined;
-  }
-
-  private climbWall(deltaSeconds: number): void {
-    const distance = this.targetY - this.sprite.y;
-    const step = Math.sign(distance) * Math.min(Math.abs(distance), this.type.speed * deltaSeconds);
-    this.sprite.y = Phaser.Math.Clamp(this.sprite.y + step, helperWallTopY(), helperWallBottomY());
-    this.sprite.x = this.targetX + Math.sin(this.scene.time.now / 280 + this.sprite.y / 24) * 1.5;
-    this.sprite.setFlipX(false);
-    this.applyFeederWallOrientation();
   }
 
   private closestSettledCoin(coins: CoinDrop[]): CoinDrop | undefined {
@@ -162,7 +144,7 @@ export class HelperCreature {
       return undefined;
     }
 
-    return this.closestByY(fish.filter((currentFish) => currentFish.health >= 35 && currentFish.hunger >= 50));
+    return this.closestByX(fish.filter((currentFish) => currentFish.health >= 35 && currentFish.hunger >= 50));
   }
 
   private closestByX<T extends { sprite: Phaser.GameObjects.Image }>(items: T[]): T | undefined {
@@ -170,19 +152,6 @@ export class HelperCreature {
     let closestDistance = Number.POSITIVE_INFINITY;
     for (const item of items) {
       const distance = Math.abs(item.sprite.x - this.sprite.x);
-      if (distance < closestDistance) {
-        closest = item;
-        closestDistance = distance;
-      }
-    }
-    return closest;
-  }
-
-  private closestByY<T extends { sprite: Phaser.GameObjects.Image }>(items: T[]): T | undefined {
-    let closest: T | undefined;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    for (const item of items) {
-      const distance = Math.abs(item.sprite.y - this.sprite.y);
       if (distance < closestDistance) {
         closest = item;
         closestDistance = distance;
@@ -205,13 +174,4 @@ export class HelperCreature {
     this.sprite.setDisplaySize(displayWidth, displayWidth * aspectRatio);
   }
 
-  private applyFeederWallOrientation(): void {
-    this.sprite.setAngle(this.targetX < tankBounds.centerX ? 90 : -90);
-    this.sprite.setFlipX(false);
-    this.sprite.setFlipY(false);
-  }
-
-  private sideXFor(x: number): number {
-    return x < tankBounds.centerX ? tankBounds.left + 30 : tankBounds.right - 30;
-  }
 }

@@ -1,0 +1,430 @@
+{
+  "project": "Aquarium Mobile Game Production Assets",
+  "version": "1.0",
+  "purpose": "Generate separated production-ready visual assets for a polished aquarium mobile game. Fish assets are intentionally excluded.",
+  "global_art_direction": {
+    "style": "polished casual mobile game, premium aquarium simulator, bright family-friendly underwater theme",
+    "rendering": "high-quality 2D game art with soft 3D-like shading, glossy highlights, clean silhouettes, crisp edges",
+    "palette": {
+      "primary": ["turquoise", "cyan", "deep ocean blue", "teal"],
+      "accent": ["gold", "coral orange", "sapphire blue", "purple", "pearl white"],
+      "ui": ["dark navy glass", "aqua glow", "gold trim", "white readable text"]
+    },
+    "lighting": "soft underwater sunlight from top center, subtle caustic highlights, gentle ambient glow",
+    "quality": "production-ready, not concept sketch, not placeholder, not AI-looking, no messy artifacts",
+    "export_rules": {
+      "format": "PNG",
+      "background": "transparent for isolated UI, icons, particles, and decorations; full background only for environment background layers",
+      "shadow": "soft game-style contact shadows only where needed",
+      "outline": "clean soft outline or rim highlight, not thick black cartoon outline",
+      "text": "only include text when the asset specifically requires UI text"
+    }
+  },
+  "layering_note": {
+    "important": "The bubble button is a reusable glass asset. Place the bubble frame behind all menu/action icons. Icon assets should be generated separately without bubbles baked in.",
+    "suggested_layer_order_back_to_front": [
+      "background_water_layer",
+      "distant_silhouette_layer",
+      "light_ray_overlay",
+      "bubble_particle_layer",
+      "fish_layer",
+      "floating_coin_layer",
+      "foreground_sand_bed_layer",
+      "sand_caustic_overlay",
+      "placeable_decoration_layer",
+      "side_menu_bubble_layer",
+      "side_menu_icon_layer",
+      "side_menu_text_label_layer",
+      "top_hud_panel_layer",
+      "top_hud_resource_chips_layer",
+      "top_hud_text_layer"
+    ]
+  },
+  "resource_system": {
+    "common_coin": {
+      "display_name": "Common Coin",
+      "short_label": "C",
+      "color": "yellow_gold",
+      "usage": "basic currency, common rewards, normal purchases",
+      "icon_asset": "icon_common_coin_yellow",
+      "chip_asset": "resource_chip_common_coin",
+      "floating_pickup_asset": "floating_common_coin_pickup"
+    },
+    "rare_coin": {
+      "display_name": "Rare Coin",
+      "short_label": "R",
+      "color": "blue",
+      "usage": "rarer rewards, upgrades, special shop items",
+      "icon_asset": "icon_rare_coin_blue",
+      "chip_asset": "resource_chip_rare_coin",
+      "floating_pickup_asset": "floating_rare_coin_pickup"
+    },
+    "super_rare_coin": {
+      "display_name": "Super Rare Coin",
+      "short_label": "SR",
+      "color": "purple",
+      "usage": "premium or very rare rewards, high-value unlocks",
+      "icon_asset": "icon_super_rare_coin_purple",
+      "chip_asset": "resource_chip_super_rare_coin",
+      "floating_pickup_asset": "floating_super_rare_coin_pickup"
+    },
+    "total_wealth": {
+      "display_name": "Total Wealth",
+      "short_label": "W",
+      "color": "deep_blue_gold",
+      "usage": "combined total value of all currencies/assets",
+      "recommended_icon": "treasure chest with mixed yellow, blue, and purple coins/gems",
+      "icon_asset": "icon_total_wealth_treasure",
+      "chip_asset": "resource_chip_total_wealth"
+    }
+  },
+  "hud_example_mapping": {
+    "top_hud_resources": [
+      {
+        "label": "C",
+        "value": "48.5K",
+        "asset": "icon_common_coin_yellow",
+        "chip": "resource_chip_common_coin"
+      },
+      {
+        "label": "R",
+        "value": "852",
+        "asset": "icon_rare_coin_blue",
+        "chip": "resource_chip_rare_coin"
+      },
+      {
+        "label": "SR",
+        "value": "0",
+        "asset": "icon_super_rare_coin_purple",
+        "chip": "resource_chip_super_rare_coin"
+      },
+      {
+        "label": "W",
+        "value": "137.4K",
+        "asset": "icon_total_wealth_treasure",
+        "chip": "resource_chip_total_wealth"
+      }
+    ],
+    "status_rows": [
+      "Tank L4",
+      "Fish 7/22",
+      "Coin 5/5",
+      "Food 11%",
+      "Clean 0%",
+      "Happy 11%",
+      "Collect coins H7 Hu0 I0"
+    ],
+    "side_buttons_left": ["Food x2", "Herb x9"],
+    "side_buttons_right": ["Shop", "Care", "Book", "Goal", "Set"]
+  },
+  "assets": {
+    "background_water": {
+      "asset_name": "background_water_clean_aquarium",
+      "type": "environment_background",
+      "size": "portrait 9:16, 2048x3640 or larger",
+      "prompt": "Create a clean polished underwater aquarium background for a portrait mobile game screen. The background should be a calm blue water gradient with soft sunlight rays coming from the top center, subtle bubbles, tiny floating particles, and very faint distant silhouettes of rocks and aquatic plants near the far left and far right edges. The middle gameplay area must remain clean, open, and low-distraction so fish and UI are easy to read. Use premium casual mobile game art style, soft 2D/3D hybrid rendering, turquoise and deep blue palette, gentle depth fade, no foreground sand, no fish, no UI, no buttons, no text, no coins, no decorations in the center.",
+      "negative_prompt": "no fish, no UI, no text, no icons, no coins, no treasure chest, no foreground sand, no cluttered coral wall, no busy reef, no dark muddy colors, no photorealistic ocean, no horror, no deep sea darkness, no black borders"
+    },
+    "distant_silhouette_layer": {
+      "asset_name": "distant_aquarium_silhouettes",
+      "type": "parallax_background_overlay",
+      "size": "portrait 9:16 transparent PNG",
+      "prompt": "Create a subtle transparent parallax overlay for an aquarium game background. Include faint distant silhouettes of underwater rocks, soft seaweed shapes, and vague coral forms positioned mostly along the far left and far right edges. The center must remain mostly empty and transparent. Use soft blue opacity, blurred depth, low contrast, designed to sit behind fish and gameplay elements. No foreground detail, no hard edges, no bright colors.",
+      "negative_prompt": "no fish, no UI, no text, no bright coral, no solid background, no sand bed, no coins, no hard black silhouettes, no clutter in the center"
+    },
+    "light_ray_overlay": {
+      "asset_name": "underwater_light_ray_overlay",
+      "type": "environment_overlay",
+      "size": "portrait 9:16 transparent PNG",
+      "prompt": "Create a transparent underwater sunlight ray overlay for a portrait aquarium mobile game. Soft white-cyan beams descending from top center, gentle fade toward bottom, subtle caustic glow, low opacity, designed to overlay the water background without hiding fish or UI. Transparent background.",
+      "negative_prompt": "no fish, no UI, no text, no solid background, no harsh white blocks, no overexposure"
+    },
+    "bubble_particle_small": {
+      "asset_name": "bubble_particle_set_small",
+      "type": "environment_particle",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a transparent PNG set of small underwater bubble particles for a mobile aquarium game. Several small glassy bubbles of different sizes, soft white highlights, faint cyan edge, minimal opacity, designed as an overlay particle effect. Transparent background.",
+      "negative_prompt": "no fish, no UI, no text, no solid blue background, no soap foam, no dense cluster"
+    },
+    "foreground_sand_bed": {
+      "asset_name": "foreground_placeable_sand_bed",
+      "type": "foreground_environment_layer",
+      "size": "full width bottom layer, transparent PNG, around lower 25% of screen",
+      "prompt": "Create a separate foreground sandy aquarium bed asset for a mobile aquarium game. It should occupy the bottom 22 to 28 percent of a portrait screen. The sand bed must be bright, clean, and clearly readable as a separate foreground layer where players can place decorations. Use warm golden sand with soft dunes, gentle ripples, subtle underwater caustic light patterns, small scattered pebbles near the edges, and a clean open center area. The center must be intentionally empty and usable for decoration placement. Edges may have slightly raised sand and small rocks, but avoid clutter. Polished casual game style, crisp foreground detail, transparent above the sand edge.",
+      "negative_prompt": "no fish, no UI, no text, no big decorations in center, no coral covering the center, no treasure chest in center, no dark mud, no photorealistic sand, no flat rectangle, no busy texture, no black border"
+    },
+    "sand_tile_center": {
+      "asset_name": "repeatable_sand_tile_center",
+      "type": "tileable_environment_asset",
+      "size": "1024x512 transparent or tileable PNG",
+      "prompt": "Create a seamless repeatable aquarium sand tile for the center placement zone. Warm golden sand, soft ripples, subtle caustic highlights, small fine grain texture, very clean and low detail so decorations placed on top remain readable. Designed as a tileable 2D casual mobile game asset. No objects, no rocks, no shells, no plants.",
+      "negative_prompt": "no fish, no UI, no shells, no rocks, no coral, no text, no hard seams, no noisy texture, no dark patches"
+    },
+    "sand_caustic_overlay": {
+      "asset_name": "sand_caustic_light_overlay",
+      "type": "foreground_overlay",
+      "size": "full width bottom transparent PNG",
+      "prompt": "Create a soft underwater caustic light overlay for the foreground sand bed. Warm white-gold wavy light patterns, subtle and elegant, transparent background, designed to be placed over sand only. Premium mobile game style, not too bright.",
+      "negative_prompt": "no sand texture, no fish, no UI, no text, no harsh lines, no full-screen background"
+    },
+    "bubble_button_frame": {
+      "asset_name": "reusable_glass_bubble_button",
+      "type": "reusable_ui_frame",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a reusable circular glossy glass bubble button frame for a polished mobile aquarium game UI. The bubble should be transparent in the center so icons can be placed inside. It should have a clear spherical glass rim, soft cyan highlight on the upper-left edge, subtle white specular shine, faint blue inner glow, and a gentle shadow underneath. The style should feel like a premium underwater bubble UI button. Center area must be clean and empty for placing icons. No icon inside. No text.",
+      "negative_prompt": "no icon, no text, no fish, no object inside, no opaque center, no square button, no dark heavy border, no flat circle, no black outline, no noisy texture"
+    },
+    "bubble_button_pressed": {
+      "asset_name": "reusable_glass_bubble_button_pressed_state",
+      "type": "reusable_ui_frame_state",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create the pressed/active state of a reusable circular glossy glass bubble button for a mobile aquarium game. It should match the normal bubble button but appear slightly compressed/brighter, with stronger cyan inner glow, a subtle highlight ring, and a small sparkle effect. Center remains transparent and empty for icons. No icon, no text.",
+      "negative_prompt": "no icon, no text, no opaque center, no square shape, no harsh black border"
+    },
+    "top_hud_panel": {
+      "asset_name": "top_status_hud_panel",
+      "type": "ui_panel",
+      "size": "wide rounded rectangle transparent PNG",
+      "prompt": "Create a polished top HUD panel for a portrait mobile aquarium game. The panel is a wide rounded rectangle with dark navy translucent glass material, subtle cyan rim light, soft inner gradient, thin glossy border, and gentle drop shadow. It should be suitable for displaying resource counters and aquarium stats. Leave the inside mostly clean and empty, with subtle divider lines only. Premium casual game UI style, underwater glass look.",
+      "negative_prompt": "no text, no icons, no fish, no coins, no clutter, no solid black, no rough edges, no watermark"
+    },
+    "resource_chip_common_coin": {
+      "asset_name": "resource_chip_common_coin",
+      "type": "ui_resource_chip",
+      "size": "wide pill transparent PNG",
+      "prompt": "Create a glossy rounded pill-shaped Common Coin counter chip for a mobile aquarium game. Use a warm yellow-gold gradient fill, soft bevel, subtle inner shine, and a left circular slot for the yellow common coin icon. Leave the number area empty. Premium casual game UI style, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no blue, no purple, no square corners"
+    },
+    "resource_chip_rare_coin": {
+      "asset_name": "resource_chip_rare_coin",
+      "type": "ui_resource_chip",
+      "size": "wide pill transparent PNG",
+      "prompt": "Create a glossy rounded pill-shaped Rare Coin counter chip for a mobile aquarium game. Use a sapphire blue to cyan gradient fill, glassy beveled rim, subtle inner glow, and a left circular slot for the blue rare coin icon. Leave the number area empty. Premium casual game UI style, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no yellow, no purple, no square corners"
+    },
+    "resource_chip_super_rare_coin": {
+      "asset_name": "resource_chip_super_rare_coin",
+      "type": "ui_resource_chip",
+      "size": "wide pill transparent PNG",
+      "prompt": "Create a glossy rounded pill-shaped Super Rare Coin counter chip for a mobile aquarium game. Use a purple to magenta gradient fill, premium glass bevel, subtle magical glow, and a left circular slot for the purple super rare coin icon. Leave the number area empty. Premium casual game UI style, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no yellow, no blue, no square corners"
+    },
+    "resource_chip_total_wealth": {
+      "asset_name": "resource_chip_total_wealth",
+      "type": "ui_resource_chip",
+      "size": "wide pill transparent PNG",
+      "prompt": "Create a glossy rounded pill-shaped Total Wealth resource counter chip for a premium aquarium mobile game UI. Use a deep ocean blue base with subtle gold trim and soft cyan glass highlights. Leave a left circular slot for the total wealth treasure icon and an empty number area on the right. The chip should feel valuable, premium, and readable in the top HUD. Transparent background.",
+      "negative_prompt": "no text, no numbers, no water drop icon, no fish, no full background, no square corners, no clutter"
+    },
+    "icon_common_coin_yellow": {
+      "asset_name": "icon_common_coin_yellow",
+      "type": "currency_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished Common Coin icon for a casual aquarium mobile game. Round yellow-gold coin with beveled rim, star emboss in the center, glossy highlight, warm orange shadow, crisp readable silhouette, transparent background. This is the basic common currency.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no blue color, no purple color, no realistic currency symbol"
+    },
+    "icon_rare_coin_blue": {
+      "asset_name": "icon_rare_coin_blue",
+      "type": "currency_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished Rare Coin icon for a casual aquarium mobile game. Round blue coin with sapphire and cyan tones, beveled rim, star or wave emboss in the center, glossy glass-metal finish, subtle blue glow, crisp readable silhouette, transparent background. This coin should feel rarer and more valuable than the yellow common coin.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no yellow coin, no purple coin, no realistic currency symbol"
+    },
+    "icon_super_rare_coin_purple": {
+      "asset_name": "icon_super_rare_coin_purple",
+      "type": "currency_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished Super Rare Coin icon for a casual aquarium mobile game. Round purple coin with violet and magenta tones, beveled rim, premium star or crown emboss in the center, glossy magical finish, soft purple glow, crisp readable silhouette, transparent background. This coin should feel premium and more valuable than the blue rare coin.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no yellow coin, no blue coin, no realistic currency symbol"
+    },
+    "icon_total_wealth_treasure": {
+      "asset_name": "icon_total_wealth_treasure",
+      "type": "ui_resource_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished Total Wealth icon for a premium casual aquarium mobile game UI. The icon should be a small golden treasure chest or vault overflowing with mixed currencies: yellow common coins, blue rare coins, and purple super rare coins/gems. It should clearly communicate total combined wealth or total asset value. Use glossy mobile game rendering, gold trim, aqua highlights, crisp silhouette, readable at small HUD size, transparent background.",
+      "negative_prompt": "no water drop, no text, no numbers, no fish, no background, no messy pile, no realistic banknote, no cryptocurrency logo"
+    },
+    "floating_common_coin_pickup": {
+      "asset_name": "floating_common_coin_pickup",
+      "type": "gameplay_collectible",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a floating collectible Common Coin for an aquarium mobile game. Yellow-gold round coin, star emboss, glossy highlight, soft warm glow, tiny sparkle, readable against blue water, premium casual game style, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no blue, no purple"
+    },
+    "floating_rare_coin_pickup": {
+      "asset_name": "floating_rare_coin_pickup",
+      "type": "gameplay_collectible",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a floating collectible Rare Coin for an aquarium mobile game. Blue round coin with sapphire/cyan gradient, beveled rim, star or wave emboss, soft blue glow, tiny sparkle, readable against blue water but distinct from the background, premium casual game style, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no yellow, no purple"
+    },
+    "floating_super_rare_coin_pickup": {
+      "asset_name": "floating_super_rare_coin_pickup",
+      "type": "gameplay_collectible",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a floating collectible Super Rare Coin for an aquarium mobile game. Purple round coin with violet/magenta gradient, premium beveled rim, crown or star emboss, soft purple glow, small sparkle particles, readable against blue water, premium casual game style, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no yellow, no blue"
+    },
+    "reward_text_plus_7": {
+      "asset_name": "reward_text_plus_7",
+      "type": "gameplay_reward_text",
+      "size": "512x256 transparent PNG",
+      "prompt": "Create polished reward popup text reading '+7' for a casual aquarium game. Bold rounded mobile-game font style, gold/yellow fill, orange shadow, white highlight, soft glow, transparent background. The text should be large and readable.",
+      "negative_prompt": "no coin, no fish, no background, no extra text, no thin font"
+    },
+    "reward_text_plus_11": {
+      "asset_name": "reward_text_plus_11",
+      "type": "gameplay_reward_text",
+      "size": "512x256 transparent PNG",
+      "prompt": "Create polished reward popup text reading '+11' for a casual aquarium game. Bold rounded mobile-game font style, gold/yellow fill, orange shadow, white highlight, soft glow, transparent background. The text should be large and readable.",
+      "negative_prompt": "no coin, no fish, no background, no extra text, no thin font"
+    },
+    "icon_food_status": {
+      "asset_name": "icon_food_status",
+      "type": "status_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a small circular food status icon for an aquarium game HUD. Orange circular badge with fork and spoon or fish-food symbol, glossy bevel, readable at small size, premium mobile game style, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish body, no background, no clutter"
+    },
+    "icon_clean_status": {
+      "asset_name": "icon_clean_status",
+      "type": "status_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a small circular clean/water quality status icon for an aquarium game HUD. Blue circular badge with a shiny water droplet or sparkle-clean symbol, glossy bevel, readable at small size, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no dirty water"
+    },
+    "icon_happy_status": {
+      "asset_name": "icon_happy_status",
+      "type": "status_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a small circular happiness status icon for an aquarium game HUD. Green circular badge with a simple smiling face, glossy bevel, friendly casual mobile game style, readable at small size, transparent background.",
+      "negative_prompt": "no text, no numbers, no fish, no background, no creepy face"
+    },
+    "icon_food_item": {
+      "asset_name": "icon_food_jar",
+      "type": "inventory_item_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished fish food jar icon for an aquarium mobile game. A small transparent jar with golden lid, orange fish food flakes or tiny fish symbol inside, glossy highlights, readable silhouette, designed to be placed inside a reusable bubble button. Transparent background, no bubble frame.",
+      "negative_prompt": "no bubble frame, no text, no numbers, no fish animal outside jar, no background, no clutter"
+    },
+    "icon_herb_item": {
+      "asset_name": "icon_green_herb",
+      "type": "inventory_item_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished green herb/leaves item icon for an aquarium mobile game. Fresh bright green aquatic herb leaves, slightly glossy, simple readable cluster, soft highlight, designed to be placed inside a reusable bubble button. Transparent background, no bubble frame.",
+      "negative_prompt": "no bubble frame, no text, no numbers, no background, no muddy colors, no excessive leaves"
+    },
+    "icon_shop": {
+      "asset_name": "icon_shop_storefront",
+      "type": "menu_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished shop menu icon for an aquarium mobile game. Cute small storefront with red-orange striped awning, tiny ocean-themed details, gold trim, bright readable shape, premium casual game style, designed to sit centered inside a reusable glass bubble button. Transparent background, no bubble frame, no label text.",
+      "negative_prompt": "no bubble frame, no text label, no fish, no background, no complex building details"
+    },
+    "icon_care": {
+      "asset_name": "icon_care_aquarium",
+      "type": "menu_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished care menu icon for an aquarium mobile game. Friendly care symbol combining a small heart, water swirl, and aquatic leaf or small abstract fish silhouette, turquoise and green palette, glossy casual-game rendering, readable at small size, designed to sit inside a reusable glass bubble button. Transparent background, no bubble frame, no label text.",
+      "negative_prompt": "no bubble frame, no text, no realistic fish, no background, no medical cross, no clutter"
+    },
+    "icon_book": {
+      "asset_name": "icon_collection_book",
+      "type": "menu_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished blue collection book icon for an aquarium mobile game. Closed magical aquarium logbook with blue cover, gold corners, tiny star or wave emblem, glossy highlights, readable silhouette, designed to sit inside a reusable glass bubble button. Transparent background, no bubble frame, no label text.",
+      "negative_prompt": "no bubble frame, no text label, no open pages, no background, no clutter"
+    },
+    "icon_goal": {
+      "asset_name": "icon_goal_trophy",
+      "type": "menu_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished goal/achievement trophy icon for an aquarium mobile game. Gold trophy with aqua gem or small water emblem, laurel leaves, shiny highlights, premium casual game style, readable at small size, designed to sit inside a reusable glass bubble button. Transparent background, no bubble frame, no label text.",
+      "negative_prompt": "no bubble frame, no text, no background, no realistic sports trophy, no clutter"
+    },
+    "icon_settings": {
+      "asset_name": "icon_settings_gear",
+      "type": "menu_icon",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a polished settings gear icon for an aquarium mobile game. Rounded blue-cyan gear with silver rim, glossy beveled edges, soft inner glow, readable silhouette, designed to sit inside a reusable glass bubble button. Transparent background, no bubble frame, no label text.",
+      "negative_prompt": "no bubble frame, no text, no background, no industrial harsh metal, no clutter"
+    },
+    "speech_bubble_happy": {
+      "asset_name": "speech_bubble_happy_emoji",
+      "type": "gameplay_feedback_ui",
+      "size": "512x512 transparent PNG",
+      "prompt": "Create a small happy speech bubble UI asset for an aquarium mobile game. White rounded speech bubble with soft shadow, small tail pointing downward, centered yellow smiling emoji face inside, friendly polished style, readable at small size, transparent background.",
+      "negative_prompt": "no fish, no background, no text, no angry face, no messy emoji"
+    },
+    "status_bar_small": {
+      "asset_name": "small_fish_status_bar",
+      "type": "gameplay_status_ui",
+      "size": "512x128 transparent PNG",
+      "prompt": "Create a small horizontal status bar for an aquarium game fish. Rounded capsule frame with dark navy outer rim, glossy glass edge, green fill around 60 percent, subtle shine, transparent background. Designed to float near a fish.",
+      "negative_prompt": "no text, no fish, no background, no square corners, no red warning color"
+    },
+    "decoration_treasure_chest": {
+      "asset_name": "decor_treasure_chest",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a placeable aquarium decoration asset: a cute blue-and-gold treasure chest sitting on small rocks. Polished casual mobile game style, soft underwater lighting, glossy gold trim, readable silhouette, contact shadow underneath, transparent background. The asset should be suitable to place on the foreground sand bed.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no open chest full of clutter, no photorealism"
+    },
+    "decoration_clam_pearl": {
+      "asset_name": "decor_clam_with_blue_pearl",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a placeable aquarium decoration asset: an open pearl clam shell with a glowing blue pearl inside. Soft cream and pink shell tones, glossy pearl highlight, premium casual game rendering, clean silhouette, contact shadow underneath, transparent background. Designed to sit on aquarium sand.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no realistic dirty shell, no clutter"
+    },
+    "decoration_coral_purple": {
+      "asset_name": "decor_purple_coral_cluster",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a placeable purple coral cluster for an aquarium mobile game. Stylized soft coral branches, vibrant purple with subtle highlights, small base rock, polished game art style, readable silhouette, transparent background, contact shadow. Suitable for placing on the sand bed.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no huge reef wall, no excessive detail"
+    },
+    "decoration_blue_tube_coral": {
+      "asset_name": "decor_blue_tube_coral",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a placeable blue tube coral decoration for a mobile aquarium game. Bright blue tubular coral cluster on a small rock base, glossy underwater highlights, clean casual-game style, transparent background, contact shadow. Designed for foreground sand placement.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no cluttered reef"
+    },
+    "decoration_seaweed_green": {
+      "asset_name": "decor_green_seaweed_cluster",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a placeable green seaweed cluster for an aquarium mobile game. Tall curved green leaves, soft glossy highlights, small rock or sand anchor base, clean silhouette, casual polished game art, transparent background, contact shadow.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no excessive plant density"
+    },
+    "decoration_starfish": {
+      "asset_name": "decor_orange_starfish",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a placeable orange-coral starfish decoration for an aquarium mobile game. Cute stylized starfish with soft bumps, warm orange/coral color, subtle highlights, contact shadow, transparent background. Designed to sit flat on the sand bed.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no realistic wet photo texture"
+    },
+    "decoration_shell": {
+      "asset_name": "decor_spiral_shell",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a small placeable spiral seashell decoration for an aquarium mobile game. Cream and peach shell tones, glossy underwater highlight, soft shadow, clean silhouette, transparent background. Suitable for foreground sand placement.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no clutter"
+    },
+    "decoration_rock_cluster": {
+      "asset_name": "decor_rock_cluster",
+      "type": "placeable_decoration",
+      "size": "1024x1024 transparent PNG",
+      "prompt": "Create a placeable rounded rock cluster for an aquarium mobile game. Smooth dark gray-blue aquarium stones with soft underwater highlights, small contact shadow, clean casual-game rendering, transparent background. Useful as base decoration on the sand bed.",
+      "negative_prompt": "no sand background baked in, no fish, no UI, no text, no sharp dangerous rocks, no clutter"
+    }
+  },
+  "composed_screen_reference_prompt": {
+    "asset_name": "full_gameplay_screen_mockup_reference_only",
+    "type": "composition_reference",
+    "size": "portrait 9:16",
+    "prompt": "Create a polished production-quality portrait mobile aquarium game screen. Use a clean separated background and foreground layer concept. The background is calm blue underwater water with soft rays and subtle distant silhouettes. The foreground is a clear sandy bed occupying the bottom 22 to 28 percent of the screen, crisp and bright with a clean open center where players can place decorations. Place decorations only near the left and right edges. Add a top HUD panel with title Aquarium, resource chips for Common Coin yellow 48.5K, Rare Coin blue 852, Super Rare Coin purple SR 0, and Total Wealth W 137.4K with a treasure wealth icon. Include status rows Tank L4, Fish 7/22, Coin 5/5, Food 11%, Clean 0%, Happy 11%, Collect coins H7 Hu0 I0. Add left side bubble buttons Food x2 and Herb x9. Add right side glossy bubble menu buttons Shop, Care, Book, Goal, Set with icons centered inside reusable glass bubbles. Add floating coins and reward text +7 and +11. Keep fish layer implied but do not generate fish as separate assets in this pack.",
+    "negative_prompt": "no black borders, no cluttered background, no busy coral wall, no decorations in the center of the sand placement zone, no water drop icon for total wealth, no low-quality placeholder icons"
+  }
+}

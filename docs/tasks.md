@@ -17,6 +17,12 @@
 - [x] Remove the remaining solid floor band so the underwater background reaches the bottom edge.
 - [x] Generate and restore a transparent wavy sandy floor PNG instead of a solid rectangle.
 - [x] Generate and apply a runtime PNG distant underwater tank background asset.
+- [x] Generate and apply a fantasy aquarium backdrop matching the new reference direction.
+- [x] Generate and apply fantasy HUD panel, circular menu button, food pedestal, and coin sparkle trail PNG assets.
+- [x] Generate and apply a shared reusable glass bubble button frame for every tank menu and food icon.
+- [x] Apply verified runtime assets from `docs/prompt.json` via the `create-assets` workflow.
+- [x] Replace the tank background, distant silhouettes, wavy foreground sand, coin pickups, bubble button states, HUD panel, and eight decoration PNGs from the prompt pack.
+- [x] Reject generated prompt-pack outputs with wrong subjects or baked matte/checker artifacts instead of shipping them.
 - [x] Generate and apply a transparent PNG dirty-water overlay for tanks below 20% cleanliness.
 - [x] Convert image-generated chroma-key source PNGs into transparent runtime assets without procedural placeholder generation.
 - [x] Add lightweight fish swimming animation with subtle shimmer, rotation, reduced bobbing, and chase-state intensity.
@@ -25,6 +31,7 @@
 - [x] Expand decoration shop options across common, rare, and super rare lanes.
 - [x] Add Store catalog previews for food, decorations, and helper creatures.
 - [x] Add regression asset-coverage checks and visual contact-sheet artifacts for the full asset pack.
+- [x] Add high-DPI canvas rendering so the portrait game no longer looks like a stretched low-resolution canvas on retina/mobile screens.
 - [x] Add owned fish statistics page with type, age, worth, gender, evolution stage, and sell/evolve/breed actions.
 - [x] Add Evolve Pill as a rare shop item.
 - [x] Add fish gender to owned fish state and saves.
@@ -177,6 +184,9 @@
 - [x] Show fish length and weight on Book/Album owned fish cards.
 - [x] Make the tank the full-screen primary play surface in portrait mode.
 - [x] Replace tab-like global navigation with individual icon buttons for Store, Care, Album, Goals, and Settings.
+- [x] Skin tank HUD and side controls with generated fantasy aquarium UI assets.
+- [x] Use one reusable transparent-center bubble frame for both right menu buttons and left food/medicine tool buttons.
+- [x] Preserve tank taps, coin collection, and decoration drag coordinates under high-DPI rendering.
 - [x] Remove risky/incompatible placement confirmation from the current community-tank flow.
 - [x] Add safe-area handling for notches and home indicators.
 - [x] Test portrait layout on 390x844, 393x852, 412x915, and 430x932.
@@ -214,6 +224,7 @@
 - [x] Add regression coverage for the aquarium floor PNG asset loading.
 - [x] Add regression coverage for the distant underwater tank background PNG asset loading.
 - [x] Add regression coverage for the dirty tank overlay threshold and screenshot artifact.
+- [x] Visually align the tank HUD and side controls to the supplied premium aquarium layout reference.
 - [ ] Maintain screenshot artifacts for key portrait layouts.
 
 ## Done
