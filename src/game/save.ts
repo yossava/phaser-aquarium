@@ -6,6 +6,7 @@ export const MAX_OFFLINE_SECONDS = 60 * 60 * 8;
 
 export type SavedFish = {
   typeId: string;
+  tankLevel?: number;
   x: number;
   y: number;
   ageSeconds: number;
@@ -45,6 +46,8 @@ export type SavedGame = {
     cleanliness: number;
     cleanedAt: number;
     level: number;
+    ownedLevels?: number[];
+    activeLevel?: number;
   };
   settings: {
     sound: boolean;
@@ -144,7 +147,9 @@ export function loadGame(): SavedGame | undefined {
       tank: {
         cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
         cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
-        level: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.level, 1)))
+        level: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.level, 1))),
+        ownedLevels: sanitizeOwnedTankLevels(migrated.tank?.ownedLevels, migrated.tank?.level),
+        activeLevel: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.activeLevel, migrated.tank?.level ?? 1)))
       },
       settings: {
         sound: migrated.settings?.sound ?? true,
@@ -298,16 +303,32 @@ function sanitizeFish(fish: Partial<SavedFish>): SavedFish | undefined {
 
   return {
     typeId: fish.typeId,
+    tankLevel: Math.max(1, Math.floor(sanitizeNumber(fish.tankLevel, 1))),
     x: sanitizeNumber(fish.x, 0),
     y: sanitizeNumber(fish.y, 0),
     ageSeconds: Math.max(0, sanitizeNumber(fish.ageSeconds, 0)),
-    hunger: clamp(sanitizeNumber(fish.hunger, 12), 0, 100),
+    hunger: clamp(sanitizeNumber(fish.hunger, 12), -10000, 100),
     health: clamp(sanitizeNumber(fish.health, 100), 0, 100),
     nextCoinDropInMs: Math.max(0, sanitizeNumber(fish.nextCoinDropInMs, 0)),
     fatalCareSeconds: clamp(sanitizeNumber(fish.fatalCareSeconds, 0), 0, 3600),
     gender: fish.gender === "F" ? "F" : "M",
     evolutionStage: clamp(Math.floor(sanitizeNumber(fish.evolutionStage, 0)), 0, 3)
   };
+}
+
+function sanitizeOwnedTankLevels(source: number[] | undefined, legacyLevel = 1): number[] {
+  const maxLegacyLevel = Math.max(1, Math.floor(sanitizeNumber(legacyLevel, 1)));
+  const levels = new Set<number>([1]);
+  for (let level = 2; level <= maxLegacyLevel; level += 1) {
+    levels.add(level);
+  }
+  if (Array.isArray(source)) {
+    for (const value of source) {
+      const level = Math.max(1, Math.floor(sanitizeNumber(value, 1)));
+      levels.add(level);
+    }
+  }
+  return [...levels].sort((a, b) => a - b);
 }
 
 function sanitizeDecoration(decoration: Partial<SavedDecoration>): SavedDecoration | undefined {
