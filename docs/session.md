@@ -20,12 +20,23 @@
 - Use a portrait virtual canvas with the tank above and touch controls below.
 - Run visual browser QA after UI or gameplay changes.
 - Use `npm test` for repeatable regression coverage before handoff.
+- Keep generated fish sprites under one shared toy-like aquarium art DNA, with rarity shown through body/fins/glow and food identity shown through tail color instead of UI badges.
 - Fish age uses fish-time: 1 real hour equals 1 fish month, so real minutes convert into fish-days.
 - Fish size continues growing until 50 fish-years, then shows the fully grown marker.
 - Fish stats should show exact age, not size categories like baby, small, medium, big, or max.
 - Fish sizing should make early months visually readable, reaching the main species size around 6 months, then slowing into a long-tail 50-year growth curve.
+- Fish sizing now uses a first-year curve: hatchling at age zero, juvenile by one fish-month, young by six fish-months, adult by one fish-year, then slow linear growth to the 50-year cap.
 - If a fish outgrows the current tank's growth allowance, its visible growth pauses and the tank need indicator should prompt an upgrade.
 - Fish can show compact chat-bubble emoji above their status bars: hungry persists until eating, happy appears briefly after eating, sick persists until healed, and not-enough-space persists until tank upgrade.
+- Full runtime asset coverage now comes from image-generated source PNGs processed through chroma-key cleanup into transparent Phaser assets, not procedural PNG generation.
+- Fish swimming animation should stay subtle: mostly squash/rotation shimmer, very small vertical bob, and stronger motion only when chasing food.
+- Goldfish, Angelfish, and Celestial Koi are the first three runtime image-generated raster fish textures for validating the shared fish art DNA across common, rare, and super rare.
+- Store fish cards should always show a fish image: generated PNG where available, otherwise a tinted fallback fish with food-tail color.
+- Fish generation prompts must explicitly reject realistic/search-result/stock-art looks and require a straight horizontal tail axis for animation consistency.
+- Runtime sprite PNGs now cover Goldfish, Pearl Gourami, Corydoras, Angelfish, Celestial Koi, Cleaner Shrimp, and Feeder Snail, with procedural textures kept as fallback.
+- Runtime PNG coverage now spans the full current catalog: all 50 fish, all food/medicine/evolve/event items, all coin types, expanded decorations, helper creatures, and the right-side menu icons.
+- The current full-catalog asset pack is deterministic and data-driven from JSON content so future fish/items can be regenerated consistently without hand-maintaining preload lists.
+- Store cards should show item art for fish, food, decorations, and helper creatures, while the tank rails should use image icons for food tools and menu destinations.
 
 ## Session Progress
 
@@ -45,6 +56,13 @@
 - Added dependency-free regression smoke test driven through local Chrome/CDP.
 - Verified `npm test` passes and writes `artifacts/regression-smoke.png`.
 - Added long-term game spec and mechanics docs focused on mobile retention.
+- Added a 50-fish asset-generation prompt plan with shared style rules, rarity treatment, food-tail color mapping, output constraints, and per-species prompts.
+- Added three trial custom fish textures in runtime for Goldfish, Angelfish, and Celestial Koi, with regression coverage and a visual artifact.
+- Replaced those three trial fish with real generated PNG assets loaded from `public/assets/fish`, keeping procedural textures only as fallback.
+- Added image previews to all Store fish cards and visual regression coverage for the fish catalog grid.
+- Tightened the fish asset prompt plan so future generated fish should be stylized 2D mobile-game sprites with straight tails instead of realistic cutout art.
+- Regenerated Goldfish, Pearl Gourami, Corydoras, Angelfish, Cleaner Shrimp, and Feeder Snail as transparent runtime PNGs and added a visual contact sheet artifact for review.
+- Redefined fish sizing so a seven-month Goldfish reads clearly larger than a twenty-day Angelfish, with regression coverage and a comparison artifact.
 - Expanded game and mechanics specs with rarity, multi-currency economy, fish selling, age-based attributes, species food requirements, compatibility, event-only fish, and additional long-term systems.
 - Double-reviewed specs for production coverage and added release criteria, required screens, FTUE, content strategy, accessibility, localization, performance, analytics, data contracts, save/load, migrations, content validation, edge cases, and QA matrix.
 - Reorganized tasks into mechanics-aligned production phases from foundations through QA.
@@ -158,7 +176,7 @@
 - Changed fish scale to come from age-driven growth, with adult fish continuing to grow toward a very-big cap, and added age labels on Book fish cards.
 - Added a consecutive 60-minute danger timer for hungry or sick fish. The timer persists in save data, can progress offline for fish already in danger, kills the fish at one hour, and resets when the fish recovers.
 - Added helper creature cards to Book/Album so players can review hired helpers and sell them to free utility slots.
-- Added distinct procedural tank background patterns for levels 1-5 so progression changes the tank's visual identity.
+- Removed the per-level procedural tank background overlay after adding the raster underwater background, so upgrades now keep one consistent backdrop.
 - Added touch drag behavior for placed decorations, including repositioning and drag-to-trash removal.
 - Added purchasable bottom helper creatures: shrimp, shell, and crab crawlers that collect settled coins and clean wasted food or medicine without upgrades.
 - Changed tank upgrades to increase fish capacity by level, from 10 fish at L1 up to 30 fish at L5.
@@ -169,3 +187,14 @@
 - Added food calorie density: bigger fish burn hunger faster, need more calories per meal, and get less fullness from low-calorie starter food.
 - Updated Store food cards, fish details, auto-feeder choice, content validation, and regression coverage for size-based calorie needs.
 - Removed the tank level cap: upgrades continue past L5 with visible formula prices, cycling tank backgrounds, and +6 fish capacity per level.
+- Added a currency bootstrap fix:
+  - Common fish now have a deterministic Rare bonus drop meter.
+  - Rare fish now have a deterministic Super Rare bonus drop meter.
+  - Store cards and fish details now communicate bonus currency production so the progression ladder is visible.
+- Reduced tank visual clutter by hiding fish care bars unless fullness or health is below 50%, and removed above-fish rarity star badges from the tank view.
+- Added a transparent blue-green dirty-water PNG overlay that appears over tank contents below 20% cleanliness and hides again once cleanliness reaches 20%.
+- Replaced the removed solid bottom band with a generated transparent wavy sandy floor PNG, keeping a shaped sand edge over the underwater background.
+- Ported the Monopoly Godot asset-generation workflow:
+  - Added `.agents/skills/create-assets/SKILL.md` tailored to Phaser Aquarium asset paths, mobile portrait style, and validation steps.
+  - Added `tools/codex_image_job.py` for background Codex image-generation jobs with logs/status under `.codex_asset_jobs/`.
+  - Added aquarium asset folders for fish, food, decorations, helpers, UI, backgrounds, and generated scratch assets.

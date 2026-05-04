@@ -41,7 +41,7 @@
     "rarity": "common",
     "price": { "coinType": "common", "amount": 120 },
     "texture": "helper-feeder-snail",
-    "speed": 36,
+    "speed": 20,
     "coinCollectSeconds": 12,
     "cleanupSeconds": 8,
     "feedSeconds": 5,

@@ -1,0 +1,355 @@
+{
+  "generatedAt": "2026-05-03T23:32:04.107Z",
+  "assets": [
+    {
+      "file": "/assets/fish/goldfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/goldfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/guppy.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/guppy_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/molly.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/molly_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/platy.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/platy_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/tetra.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/tetra_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/minnow.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/minnow_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/medaka.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/medaka_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/rasbora.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/rasbora_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/danio.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/danio_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/swordtail.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/swordtail_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/angelfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/angelfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/pearl-gourami.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/pearl-gourami_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/rainbowfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/rainbowfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/glass-catfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/glass-catfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/cherry-barb.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/cherry-barb_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/honey-gourami.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/honey-gourami_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/corydoras.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/corydoras_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/moonlight-molly.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/moonlight-molly_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/blue-ram.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/blue-ram_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/rosy-barb.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/rosy-barb_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/koi.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/koi_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/discus.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/discus_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/clown-loach.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/clown-loach_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/arowana.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/arowana_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/flowerhorn.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/flowerhorn_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/bichir.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/bichir_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/parrot-cichlid.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/parrot-cichlid_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/leaf-fish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/leaf-fish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/electric-blue-acara.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/electric-blue-acara_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/firemouth.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/firemouth_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/betta.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/betta_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/mandarin-dragonet.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/mandarin-dragonet_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/lionfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/lionfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/seahorse.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/seahorse_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/moorish-idol.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/moorish-idol_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/royal-gramma.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/royal-gramma_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/foxface.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/foxface_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/triggerfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/triggerfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/butterflyfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/butterflyfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/wrasse.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/wrasse_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/celestial-koi.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/celestial-koi_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/moon-jelly.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/moon-jelly_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/crystal-ray.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/crystal-ray_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/starlight-betta.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/starlight-betta_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/solar-discus.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/solar-discus_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/nebula-guppy.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/nebula-guppy_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/phantom-arowana.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/phantom-arowana_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/aurora-seahorse.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/aurora-seahorse_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/ruby-dragonfish.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/ruby-dragonfish_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/fish/opal-leviathan.png",
+      "width": 256,
+      "height": 160,
+      "source": "assets/generated/source/fish/opal-leviathan_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    }
+  ]
+}

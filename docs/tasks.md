@@ -2,6 +2,29 @@
 
 ## In Progress
 
+- [x] Try replacing three procedural fish with custom styled textures for common, rare, and super rare validation.
+- [x] Generate and integrate real PNG raster assets for Goldfish, Angelfish, and Celestial Koi.
+- [x] Regenerate Goldfish, Pearl Gourami, Corydoras, Angelfish, Cleaner Shrimp, and Feeder Snail with stricter stylized sprite prompts.
+- [x] Show fish images on every Store fish card using PNG sprites or fallback previews.
+- [x] Tighten fish generation prompts to avoid realistic stock-art output and enforce straight tails.
+- [x] Add fish asset-generation plan with shared art DNA and per-species prompts for all 50 catalog fish.
+- [x] Generate and apply runtime PNG assets for all 50 fish types.
+- [x] Generate and apply runtime PNG assets for every food, medicine, evolve pill, event treat, and coin type.
+- [x] Generate and apply runtime PNG assets for menu icons, helper creatures, and expanded decorations.
+- [x] Generate and apply a runtime PNG aquarium floor asset.
+- [x] Retint the aquarium floor back toward yellow sand while preserving an underwater blue wash.
+- [x] Remove the raster floor image from the active tank view for visual comparison.
+- [x] Remove the remaining solid floor band so the underwater background reaches the bottom edge.
+- [x] Generate and restore a transparent wavy sandy floor PNG instead of a solid rectangle.
+- [x] Generate and apply a runtime PNG distant underwater tank background asset.
+- [x] Generate and apply a transparent PNG dirty-water overlay for tanks below 20% cleanliness.
+- [x] Convert image-generated chroma-key source PNGs into transparent runtime assets without procedural placeholder generation.
+- [x] Add lightweight fish swimming animation with subtle shimmer, rotation, reduced bobbing, and chase-state intensity.
+- [x] Add independent fish tail wag animation for PNG and fallback fish sprites.
+- [x] Remove separate tail overlay rendering from PNG fish so generated sprites keep clean silhouettes.
+- [x] Expand decoration shop options across common, rare, and super rare lanes.
+- [x] Add Store catalog previews for food, decorations, and helper creatures.
+- [x] Add regression asset-coverage checks and visual contact-sheet artifacts for the full asset pack.
 - [x] Add owned fish statistics page with type, age, worth, gender, evolution stage, and sell/evolve/breed actions.
 - [x] Add Evolve Pill as a rare shop item.
 - [x] Add fish gender to owned fish state and saves.
@@ -20,7 +43,8 @@
 - [x] Add content validation for unique IDs, rarity, prices, food references, production tables, and core numeric fields.
 - [ ] Add data-driven content tables for upgrades, events, daily goals, community tank bonuses, and economy constants.
 - [x] Expand content validation for community-safe species references.
-- [ ] Expand content validation for assets, localization keys, and event-only rules.
+- [x] Expand regression coverage for runtime asset availability.
+- [ ] Expand content validation for asset files, localization keys, and event-only rules.
 - [x] Add save schema versioning.
 - [x] Add save migrations.
 - [x] Add autosave for current MVP purchases, sales, placement, collection, and feeding.
@@ -52,6 +76,7 @@
 - [x] Convert minute-scale playtime into fish-day age labels.
 - [x] Keep fish visual size growing until 50 fish-years.
 - [x] Retune age-only fish sizing so four-month fish are much larger than new fish.
+- [x] Redefine fish growth formula so early age differences stay visually readable across species.
 - [x] Add tank-size growth caps so fish pause growth in tanks that are too small.
 - [x] Add growth-blocked indicators and upgrade prompts for capped fish.
 - [x] Add age-rooted fish length and weight stats to Book fish cards.
@@ -109,7 +134,10 @@
 - [x] Show next tank upgrade price in Store, Care, and tank need UI.
 - [x] Gate fish purchase and placement by tank level while allowing lower-level fish in higher-level tanks.
 - [x] Zoom the tank view out as tank level increases so upgrades make the aquarium feel larger.
-- [x] Add distinct tank background patterns for each tank level.
+- [x] Keep dropped food and coin pickup visuals screen-consistent as tank zoom changes, while fish size stays age-based.
+- [x] Replace the flat tank floor rectangle with a raster PNG aquarium floor texture and fallback.
+- [x] Add a low-distraction distant underwater raster background as the tank backdrop.
+- [x] Remove per-tank-level procedural background overlays.
 - [x] Add tank need indicator copy for fish, food, coins, and upgrades.
 - [x] Add overcrowding effects on happiness and cleanliness.
 - [x] Add MVP community tank score.
@@ -162,7 +190,7 @@
 
 ## Phase 8: QA And Regression
 
-- [ ] Expand regression tests for multi-currency wallet and coin collection.
+- [x] Expand regression tests for multi-currency wallet, coin collection, and the common-to-rare currency bridge.
 - [x] Expand regression tests for wallet, age-zero fish, common coin production, and placed-fish selling.
 - [x] Expand regression tests for sell protections.
 - [x] Expand regression tests for real-time fish age conversion and 50-year growth cap.
@@ -180,6 +208,12 @@
 - [ ] Expand regression tests for old save migration.
 - [x] Add content validation to `npm test`.
 - [x] Keep visual browser QA as part of every UI/gameplay change.
+- [x] Add regression coverage that fish sprites visibly animate while swimming.
+- [x] Add regression coverage that fish tail wag changes while swimming.
+- [x] Add regression coverage for upgraded-tank food and coin pickup sizing.
+- [x] Add regression coverage for the aquarium floor PNG asset loading.
+- [x] Add regression coverage for the distant underwater tank background PNG asset loading.
+- [x] Add regression coverage for the dirty tank overlay threshold and screenshot artifact.
 - [ ] Maintain screenshot artifacts for key portrait layouts.
 
 ## Done

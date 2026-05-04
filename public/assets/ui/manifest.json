@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-05-03T23:32:05.513Z",
+  "assets": [
+    {
+      "file": "/assets/ui/shop.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/ui/shop_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/ui/care.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/ui/care_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/ui/book.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/ui/book_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/ui/goals.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/ui/goals_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/ui/settings.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/ui/settings_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    }
+  ]
+}

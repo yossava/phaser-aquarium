@@ -53,3 +53,13 @@ export function formatPrice(price: Price): string {
 
   return `${labelByCoin[price.coinType]}${formatNumber(price.amount)}`;
 }
+
+export function formatPriceLong(price: Price): string {
+  const labelByCoin: Record<CoinType, string> = {
+    common: "Common",
+    rare: "Rare",
+    superRare: "Super Rare"
+  };
+
+  return `${formatNumber(price.amount)} ${labelByCoin[price.coinType]}`;
+}

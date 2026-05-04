@@ -200,7 +200,7 @@ The player has one active tank level starting at 1. Tank upgrades have no fixed 
 - Higher-level fish cannot be purchased or placed until the tank is upgraded.
 - The shop shows fish by the five authored fish catalog tiers so the catalog stays readable on portrait screens.
 - The HUD shows total wealth and the tank need indicator suggests the next useful purchase or upgrade, including the next tank upgrade price.
-- Authored tank background patterns cover the first five levels, then cycle for later infinite upgrades.
+- The tank uses one low-distraction raster underwater background across upgrades; tank level changes affect zoom, capacity, and economy rather than swapping background overlays.
 - Upgrade prices are fixed for early onboarding levels and formula-based after L5.
 
 ## Fish Instance State
@@ -639,6 +639,7 @@ Cleanliness effects:
 - High cleanliness: fish stay healthy and happy.
 - Medium cleanliness: minor happiness penalty.
 - Low cleanliness: illness risk increases.
+- Below 20% cleanliness: a subtle blue-green dirty-water PNG overlay appears over the tank contents while HUD and menu controls stay readable.
 
 Player actions:
 

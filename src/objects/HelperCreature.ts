@@ -13,6 +13,12 @@ export type HelperCreatureAction =
 const helperBottomY = () => tankBounds.bottom - 36;
 const helperWallTopY = () => tankBounds.top + 132;
 const helperWallBottomY = () => tankBounds.bottom - 64;
+const helperDisplayWidths: Record<string, number> = {
+  "helper-shrimp": 48,
+  "helper-shell": 52,
+  "helper-crab": 54,
+  "helper-feeder-snail": 62,
+};
 
 export class HelperCreature {
   public readonly sprite: Phaser.GameObjects.Image;
@@ -34,12 +40,13 @@ export class HelperCreature {
     const startX = feeder ? this.sideXFor(x) : x;
     const startY = feeder ? Phaser.Math.Clamp(y, helperWallTopY(), helperWallBottomY()) : y;
     this.sprite = scene.add.image(startX, startY, type.texture);
+    this.fitSpriteToGameplayScale();
     this.sprite.setDepth(8);
     this.sprite.setInteractive({ useHandCursor: true });
     this.targetX = startX;
     this.targetY = startY;
     if (feeder) {
-      this.sprite.setAngle(startX < tankBounds.centerX ? -90 : 90);
+      this.applyFeederWallOrientation();
     }
   }
 
@@ -88,7 +95,7 @@ export class HelperCreature {
       this.targetX = this.sideXFor(targetX);
       this.sprite.x = this.targetX;
       this.targetY = Phaser.Math.Clamp(this.sprite.y, helperWallTopY(), helperWallBottomY());
-      this.sprite.setAngle(this.targetX < tankBounds.centerX ? -90 : 90);
+      this.applyFeederWallOrientation();
       return;
     }
 
@@ -139,6 +146,7 @@ export class HelperCreature {
     this.sprite.y = Phaser.Math.Clamp(this.sprite.y + step, helperWallTopY(), helperWallBottomY());
     this.sprite.x = this.targetX + Math.sin(this.scene.time.now / 280 + this.sprite.y / 24) * 1.5;
     this.sprite.setFlipX(false);
+    this.applyFeederWallOrientation();
   }
 
   private closestSettledCoin(coins: CoinDrop[]): CoinDrop | undefined {
@@ -191,7 +199,19 @@ export class HelperCreature {
     return Boolean(type.feedSeconds);
   }
 
+  private fitSpriteToGameplayScale(): void {
+    const displayWidth = helperDisplayWidths[this.type.texture] ?? Math.min(62, this.sprite.width);
+    const aspectRatio = this.sprite.height / Math.max(1, this.sprite.width);
+    this.sprite.setDisplaySize(displayWidth, displayWidth * aspectRatio);
+  }
+
+  private applyFeederWallOrientation(): void {
+    this.sprite.setAngle(this.targetX < tankBounds.centerX ? 90 : -90);
+    this.sprite.setFlipX(false);
+    this.sprite.setFlipY(false);
+  }
+
   private sideXFor(x: number): number {
-    return x < tankBounds.centerX ? tankBounds.left + 18 : tankBounds.right - 18;
+    return x < tankBounds.centerX ? tankBounds.left + 30 : tankBounds.right - 30;
   }
 }

@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-05-04",
+  "generator": "codex_image_generation",
+  "assets": [
+    {
+      "filename": "aquarium_floor_source.png",
+      "dimensions": {
+        "width": 1024,
+        "height": 256
+      },
+      "format": "png",
+      "transparency": "rgba_alpha",
+      "background_notes": "Transparent water area above warm yellow wavy sand; magenta generation key removed locally.",
+      "intended_use": "Runtime wavy sandy aquarium floor layer at the bottom of the portrait tank, drawn over the underwater background without a solid rectangle.",
+      "style_notes": "Polished 2D mobile aquarium game substrate with rolling ridges, pebbles, shells, tiny grains, warm yellow color, and restrained blue underwater tint.",
+      "source_generation": {
+        "method": "codex_image_generation plus magenta-key alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df07b-6daf-7803-94af-0e6a1cb08d38/ig_04f40fb4e80e12610169f7ee8f615481919a6589d6368c1341.png",
+        "postprocess": "Resized generated image to 1024x256, removed magenta key background into alpha, lightly blue-tinted shadows, and saved as RGBA PNG."
+      }
+    },
+    {
+      "filename": "aquarium_floor_wavy_source.png",
+      "dimensions": {
+        "width": 1024,
+        "height": 256
+      },
+      "format": "png",
+      "transparency": "rgba_alpha",
+      "background_notes": "Same processed source as aquarium_floor_source.png, retained with explicit wavy-floor naming for traceability.",
+      "intended_use": "Generated source copy for the wavy sandy floor asset.",
+      "style_notes": "Warm wavy sandy floor with transparent water area and subtle underwater tint."
+    },
+    {
+      "filename": "tank_background_source.png",
+      "dimensions": {
+        "width": 1024,
+        "height": 2048
+      },
+      "format": "png",
+      "transparency": "opaque_rgb_no_alpha",
+      "background_notes": "Fully opaque soft blue/teal underwater depth gradient with faint blurred distant coral and rock silhouettes, subtle light rays, and sparse particles.",
+      "intended_use": "Portrait mobile aquarium tank background that stays low-contrast behind fish, coins, food, decorations, tank patterns, and UI overlays.",
+      "style_notes": "Bright calm toy-like painterly mobile game art; no fish, no foreground objects, no text, no UI, no photorealistic detail.",
+      "source_generation": {
+        "method": "codex_image_generation",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df04e-1603-7523-81db-9f65cd226f20/ig_0e309f143bd1f08d0169f7e2ed0c2881918a8089eee1aeb889.png",
+        "postprocess": "Resized from generated 887x1774 RGB PNG to exact requested 1024x2048 output."
+      }
+    },
+    {
+      "filename": "dirty_tank_overlay_source.png",
+      "dimensions": {
+        "width": 1024,
+        "height": 2048
+      },
+      "format": "png",
+      "transparency": "rgba_alpha",
+      "background_notes": "Transparent dirty-water overlay with subtle blue-green edge haze, algae film, cloudy wisps, and sparse speckles; center remains mostly transparent for gameplay readability.",
+      "intended_use": "Screen-space tank overlay shown when aquarium cleanliness drops below 20%, rendered over tank contents and below HUD/menu controls.",
+      "style_notes": "Low-contrast mobile aquarium grime effect with cool underwater tint; no text, no border, no hard vignette, no dark mud colors.",
+      "source_generation": {
+        "method": "codex_image_generation plus local alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019df063-f3e9-70b1-8a8d-519a8f20fcb5/ig_0a8880e0be7e0f0e0169f7e8919c608191803ed01776285b14.png",
+        "postprocess": "Resized generated 887x1774 RGB source to 1024x2048, removed baked checkerboard by deriving alpha from color/saturation and edge haze, then saved as RGBA PNG."
+      }
+    }
+  ]
+}

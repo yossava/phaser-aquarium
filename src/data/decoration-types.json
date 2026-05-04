@@ -34,5 +34,77 @@
     "texture": "decor-crystal",
     "habitatTags": ["crystal", "fantasy"],
     "happinessBonus": 10
+  },
+  {
+    "id": "driftwood",
+    "name": "Driftwood",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 45 },
+    "texture": "decor-driftwood",
+    "habitatTags": ["wood", "freshwater"],
+    "happinessBonus": 3
+  },
+  {
+    "id": "bubble-stone",
+    "name": "Bubble Stone",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 55 },
+    "texture": "decor-bubble-stone",
+    "habitatTags": ["stone", "aeration"],
+    "happinessBonus": 4
+  },
+  {
+    "id": "moss-cave",
+    "name": "Moss Cave",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 75 },
+    "texture": "decor-moss-cave",
+    "habitatTags": ["shelter", "plant"],
+    "happinessBonus": 5
+  },
+  {
+    "id": "coral-fan",
+    "name": "Coral Fan",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 3 },
+    "texture": "decor-coral-fan",
+    "habitatTags": ["coral", "reef"],
+    "happinessBonus": 7
+  },
+  {
+    "id": "shell-tower",
+    "name": "Shell Tower",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 4 },
+    "texture": "decor-shell-tower",
+    "habitatTags": ["shell", "shelter"],
+    "happinessBonus": 8
+  },
+  {
+    "id": "treasure-chest",
+    "name": "Treasure Chest",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 5 },
+    "texture": "decor-treasure-chest",
+    "habitatTags": ["treasure", "fantasy"],
+    "happinessBonus": 9
+  },
+  {
+    "id": "neon-anemone",
+    "name": "Neon Anemone",
+    "rarity": "superRare",
+    "price": { "coinType": "superRare", "amount": 2 },
+    "texture": "decor-neon-anemone",
+    "habitatTags": ["coral", "glow"],
+    "happinessBonus": 12
+  },
+  {
+    "id": "pearl-statue",
+    "name": "Pearl Statue",
+    "rarity": "superRare",
+    "price": { "coinType": "superRare", "amount": 3 },
+    "texture": "decor-pearl-statue",
+    "habitatTags": ["pearl", "fantasy"],
+    "happinessBonus": 14
   }
 ]

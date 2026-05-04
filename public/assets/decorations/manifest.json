@@ -1,0 +1,89 @@
+{
+  "generatedAt": "2026-05-03T23:32:05.116Z",
+  "assets": [
+    {
+      "file": "/assets/decorations/plant.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/plant_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/rock.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/rock_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/castle.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/castle_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/crystal-arch.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/crystal-arch_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/driftwood.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/driftwood_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/bubble-stone.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/bubble-stone_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/moss-cave.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/moss-cave_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/coral-fan.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/coral-fan_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/shell-tower.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/shell-tower_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/treasure-chest.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/treasure-chest_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/neon-anemone.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/neon-anemone_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/pearl-statue.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/pearl-statue_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    }
+  ]
+}

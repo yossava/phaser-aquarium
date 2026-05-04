@@ -1,10 +1,27 @@
 import Phaser from "phaser";
 import { gameWidth, tankBounds } from "../game/constants";
-import { fishFoodTintFor, rarityStarCount, rarityTintFor } from "../game/visuals";
+import { fishFoodTintFor } from "../game/visuals";
 import type { AgeStage, CoinProduction, FishGender, FishState, FishType, FoodType } from "../types/mechanics";
 import { FoodPellet } from "./FoodPellet";
 
 const ageStageOrder: AgeStage[] = ["baby", "juvenile", "adult", "elder", "master"];
+const coinTypeWeight: Record<CoinProduction["coinType"], number> = {
+  common: 1,
+  rare: 3,
+  superRare: 8
+};
+const coinTypeLabel: Record<CoinProduction["coinType"], string> = {
+  common: "Common",
+  rare: "Rare",
+  superRare: "Super Rare"
+};
+const bridgeChanceByStage: Record<AgeStage, number> = {
+  baby: 0.05,
+  juvenile: 0.08,
+  adult: 0.12,
+  elder: 0.16,
+  master: 0.22
+};
 const minimumHungerToEatMore = 3;
 const veryBigScaleMultiplier = 1.55;
 const secondsPerFishMonth = 60 * 60;
@@ -12,12 +29,25 @@ const monthsPerFishYear = 12;
 const daysPerFishMonth = 30;
 const growthCapYears = 50;
 const growthCapSeconds = growthCapYears * monthsPerFishYear * secondsPerFishMonth;
-const earlyGrowthSeconds = 6 * secondsPerFishMonth;
+const oneMonthGrowthSeconds = secondsPerFishMonth;
+const youngGrowthSeconds = 6 * secondsPerFishMonth;
+const adultGrowthSeconds = 12 * secondsPerFishMonth;
+const hatchlingAdultScaleRatio = 0.34;
+const oneMonthAdultScaleRatio = 0.48;
+const youngAdultScaleRatio = 0.78;
 const minimumGrowthWidthRatio = 0.24;
 const maximumGrowthWidthRatio = 0.5;
 const happyEmojiDurationMs = 3200;
 const fishLengthDisplayMultiplier = 10;
 const baselineMealCalories = 46;
+const baseTextureWidth = 64;
+const baseTextureHeight = 48;
+const idleSwimFrequency = 3.4;
+const chaseSwimFrequency = 7.2;
+const idleSwimBobPixels = 0.28;
+const chaseSwimBobPixels = 0.62;
+const idleTailWagPixels = 5.4;
+const chaseTailWagPixels = 9.2;
 export const fatalCareSeconds = 60 * 60;
 
 export class Fish {
@@ -38,7 +68,16 @@ export class Fish {
   private tailMark: Phaser.GameObjects.Graphics;
   private stateBubble: Phaser.GameObjects.Graphics;
   private stateEmoji: Phaser.GameObjects.Text;
+  private productionProgress = new Map<string, number>();
   private happyEmojiUntil = 0;
+  private visualWorldScale = 1;
+  private swimPhase: number;
+  private swimYOffset = 0;
+  private swimRotationBase = 0;
+  private tailWag = 0;
+  private tailFan = 1;
+  private readonly usesCustomTexture: boolean;
+  private readonly textureAspectRatio: number;
 
   public constructor(
     private scene: Phaser.Scene,
@@ -49,9 +88,13 @@ export class Fish {
   ) {
     this.gender = options.gender ?? (Phaser.Math.Between(0, 1) === 0 ? "M" : "F");
     this.evolutionStage = Phaser.Math.Clamp(Math.floor(options.evolutionStage ?? 0), 0, 3);
-    this.sprite = scene.add.sprite(x, y, "fish-base");
-    this.sprite.setTint(this.bodyTint());
-    this.sprite.setScale(this.desiredAgeScale());
+    this.swimPhase = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const textureKey = this.customTextureKey();
+    this.usesCustomTexture = textureKey !== "fish-base";
+    this.sprite = scene.add.sprite(x, y, textureKey);
+    this.textureAspectRatio = this.usesCustomTexture ? this.sprite.height / Math.max(1, this.sprite.width) : baseTextureHeight / baseTextureWidth;
+    this.setStateTint();
+    this.setVisualScale(this.desiredAgeScale());
     this.sprite.setDepth(8);
     this.tailMark = scene.add.graphics();
     this.tailMark.setDepth(9);
@@ -93,7 +136,7 @@ export class Fish {
 
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
     this.updateFatalCareTimer(deltaSeconds);
-    this.sprite.setScale(this.desiredAgeScale());
+    this.setVisualScale(this.desiredAgeScale());
     this.sprite.setAlpha(this.state === "ill" ? 0.62 : 1);
 
     const closestFood = this.findClosestFood(foods);
@@ -104,7 +147,9 @@ export class Fish {
     }
 
     const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier() : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
-    this.moveTowardTarget(deltaSeconds, this.type.speed * speedMultiplier * this.movementSizeMultiplier());
+    const moveSpeed = this.type.speed * speedMultiplier * this.movementSizeMultiplier();
+    this.moveTowardTarget(deltaSeconds, moveSpeed);
+    this.animateSwimming(deltaSeconds, moveSpeed, closestFood !== undefined);
     this.setStateTint();
 
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
@@ -137,6 +182,10 @@ export class Fish {
     this.nextCoinDropAt = now + this.activeProduction().intervalSeconds * 1000;
   }
 
+  public markCoinDroppedForProduction(now: number, production: CoinProduction): void {
+    this.nextCoinDropAt = now + production.intervalSeconds * 1000;
+  }
+
   public restoreProgress(ageSeconds: number, hunger: number, health: number, nextCoinDropAt: number, fatalCareSecondsValue = 0): void {
     this.setAgeSeconds(ageSeconds);
     this.hunger = Phaser.Math.Clamp(hunger, 0, 100);
@@ -149,7 +198,7 @@ export class Fish {
   public setAgeSeconds(ageSeconds: number): void {
     this.ageSeconds = Math.max(0, ageSeconds);
     this.updateAgeStage();
-    this.sprite.setScale(this.desiredAgeScale());
+    this.setVisualScale(this.desiredAgeScale());
     this.updateStatusBars();
   }
 
@@ -178,12 +227,40 @@ export class Fish {
     };
   }
 
+  public productionOptions(): CoinProduction[] {
+    const production = this.currentAgeCurve().production;
+    return this.withProgressionBridge(production.length > 0 ? production : [this.primaryProduction()]);
+  }
+
   public activeProduction(): CoinProduction {
     const production = this.primaryProduction();
     if (this.state === "ill") {
       return { ...production, amount: 1, intervalSeconds: production.intervalSeconds * 3 };
     }
     return production;
+  }
+
+  public rollActiveProduction(): CoinProduction {
+    const production = this.rollProduction();
+    if (this.state === "ill") {
+      return { ...production, amount: 1, intervalSeconds: production.intervalSeconds * 3 };
+    }
+    return production;
+  }
+
+  public productionSummary(): string {
+    const options = this.productionOptions();
+    const mainProduction = options[0] ?? this.primaryProduction();
+    const bonus = options
+      .slice(1)
+      .sort((a, b) => coinTypeWeight[b.coinType] - coinTypeWeight[a.coinType])
+      .find((production) => production.coinType !== mainProduction.coinType);
+
+    if (!bonus) {
+      return `${mainProduction.amount} ${coinTypeLabel[mainProduction.coinType]} / ${mainProduction.intervalSeconds}s`;
+    }
+
+    return `${mainProduction.amount} ${coinTypeLabel[mainProduction.coinType]} / ${mainProduction.intervalSeconds}s + ${coinTypeLabel[bonus.coinType]} bonus`;
   }
 
   public getSellValue(): number {
@@ -199,12 +276,12 @@ export class Fish {
       rare: 1.12,
       superRare: 1.28
     };
-    const productionPerMinute = this.currentAgeCurve().production.reduce((total, production) => {
-      const coinWeight = production.coinType === "superRare" ? 8 : production.coinType === "rare" ? 3 : 1;
+    const productionPerMinute = this.productionOptions().reduce((total, production) => {
+      const coinWeight = coinTypeWeight[production.coinType];
       return total + (production.amount * coinWeight * production.chance * 60) / production.intervalSeconds;
     }, 0);
     const productionMultiplier = 1 + Phaser.Math.Clamp(productionPerMinute / 90, 0, 1) * 0.34;
-    const sizeMultiplier = 0.92 + Phaser.Math.Clamp(this.sprite.scaleX / this.veryBigScaleCap(), 0, 1) * 0.2;
+    const sizeMultiplier = 0.92 + Phaser.Math.Clamp(this.currentVisualWorldScale() / this.veryBigScaleCap(), 0, 1) * 0.2;
     const resilienceMultiplier = 0.96 + this.type.illnessResistance * 0.1;
     const conditionMultiplier = Phaser.Math.Clamp(
       0.55 + (this.health / 100) * 0.4 + ((100 - this.hunger) / 100) * 0.17,
@@ -226,9 +303,9 @@ export class Fish {
   }
 
   public movementSizeMultiplier(): number {
-    const ageZeroScale = this.visibleToWorldScale(this.type.ageCurve.baby.scale);
+    const ageZeroScale = this.visibleToWorldScale(this.hatchlingScale());
     const growthRange = Math.max(0.01, this.veryBigScaleCap() - ageZeroScale);
-    const growthRatio = Phaser.Math.Clamp((this.sprite.scaleX - ageZeroScale) / growthRange, 0, 1);
+    const growthRatio = Phaser.Math.Clamp((this.currentVisualWorldScale() - ageZeroScale) / growthRange, 0, 1);
     return Phaser.Math.Linear(1, 0.46, growthRatio);
   }
 
@@ -321,7 +398,7 @@ export class Fish {
 
   public lengthCm(): number {
     const adultLengthCm = this.adultLengthCm();
-    const startingLengthCm = adultLengthCm * 0.32;
+    const startingLengthCm = adultLengthCm * 0.25;
     return Phaser.Math.Linear(startingLengthCm, adultLengthCm * veryBigScaleMultiplier, this.biologicalGrowthRatio());
   }
 
@@ -359,7 +436,7 @@ export class Fish {
     const visibleWidthRatio = Phaser.Math.Linear(minimumGrowthWidthRatio, maximumGrowthWidthRatio, tankProgress);
     const maxVisibleWidth = gameWidth * visibleWidthRatio;
     const maxWorldWidth = maxVisibleWidth / inferredTankViewScale;
-    return Math.max(this.visibleToWorldScale(this.type.ageCurve.baby.scale), maxWorldWidth / Math.max(1, this.sprite.width));
+    return Math.max(this.visibleToWorldScale(this.hatchlingScale()), maxWorldWidth / this.logicalTextureWidth());
   }
 
   public isGrowthLimitedByTank(): boolean {
@@ -372,6 +449,14 @@ export class Fish {
     this.stateBubble.destroy();
     this.stateEmoji.destroy();
     this.sprite.destroy();
+  }
+
+  public textureKey(): string {
+    return this.sprite.texture.key;
+  }
+
+  public visualScale(): number {
+    return this.currentVisualWorldScale();
   }
 
   public getStatusBarsSnapshot(): {
@@ -389,22 +474,35 @@ export class Fish {
     emojiX: number;
     emojiY: number;
     emojiBubbleVisible: boolean;
+    careBarsVisible: boolean;
   } {
+    const fullnessRatio = this.currentFullnessRatio();
+    const moodRatio = this.currentMoodRatio();
     return {
       visible: this.statusBars.visible,
       x: this.statusBars.x,
       y: this.statusBars.y,
-      fullnessRatio: this.currentFullnessRatio(),
-      moodRatio: this.currentMoodRatio(),
+      fullnessRatio,
+      moodRatio,
       tailTint: this.tailTint(),
-      rarityStars: rarityStarCount(this.type.rarity),
+      rarityStars: 0,
       fullyGrown: this.isFullyGrown(),
       growthBlockedByTank: this.isGrowthLimitedByTank(),
       emoji: this.stateEmoji.text,
       emojiVisible: this.stateEmoji.visible,
       emojiX: this.stateEmoji.x,
       emojiY: this.stateEmoji.y,
-      emojiBubbleVisible: this.stateBubble.visible
+      emojiBubbleVisible: this.stateBubble.visible,
+      careBarsVisible: this.shouldShowCareBars(fullnessRatio, moodRatio)
+    };
+  }
+
+  public getTailAnimationSnapshot(): { wag: number; fan: number; alpha: number; visible: boolean } {
+    return {
+      wag: this.tailWag,
+      fan: this.tailFan,
+      alpha: this.tailMark.alpha,
+      visible: this.tailMark.visible
     };
   }
 
@@ -412,8 +510,93 @@ export class Fish {
     return this.type.ageCurve[this.ageStage];
   }
 
+  private withProgressionBridge(production: CoinProduction[]): CoinProduction[] {
+    const options = production.map((entry) =>
+      this.type.rarity === "rare" && entry.coinType === "rare" && entry.chance < 0.55
+        ? { ...entry, chance: 0.55 }
+        : entry
+    );
+    const primary = options[0] ?? this.primaryProduction();
+
+    if (this.type.rarity === "common") {
+      return [
+        ...options,
+        {
+          coinType: "rare",
+          amount: 1,
+          intervalSeconds: Math.max(primary.intervalSeconds + 10, 18),
+          chance: bridgeChanceByStage[this.ageStage]
+        }
+      ];
+    }
+
+    if (this.type.rarity === "rare") {
+      const rareOptions: CoinProduction[] = options.some((entry) => entry.coinType === "rare")
+        ? options
+        : [
+            ...options,
+            {
+              coinType: "rare",
+              amount: Math.max(1, Math.floor(primary.amount / 10)),
+              intervalSeconds: Math.max(primary.intervalSeconds + 8, 20),
+              chance: 0.65
+            }
+          ];
+
+      return [
+        ...rareOptions,
+        {
+          coinType: "superRare",
+          amount: 1,
+          intervalSeconds: Math.max(primary.intervalSeconds + 18, 32),
+          chance: bridgeChanceByStage[this.ageStage] * 0.55
+        }
+      ];
+    }
+
+    return options;
+  }
+
+  private rollProduction(): CoinProduction {
+    const options = this.productionOptions();
+    const primary = options[0] ?? this.primaryProduction();
+    const bonusOptions = options
+      .slice(1)
+      .sort((a, b) => coinTypeWeight[b.coinType] - coinTypeWeight[a.coinType] || b.chance - a.chance);
+
+    for (const option of bonusOptions) {
+      const key = `${option.coinType}:${option.amount}:${option.intervalSeconds}`;
+      const progress = (this.productionProgress.get(key) ?? 0) + Math.max(0, option.chance);
+      if (progress >= 1) {
+        this.productionProgress.set(key, progress - 1);
+        return option;
+      }
+      this.productionProgress.set(key, progress);
+    }
+
+    return primary;
+  }
+
   private desiredAgeScale(): number {
     return Math.min(this.uncappedAgeScale(), this.tankGrowthScaleCap());
+  }
+
+  private setVisualScale(worldScale: number): void {
+    this.visualWorldScale = worldScale;
+    if (this.usesCustomTexture) {
+      this.sprite.setDisplaySize(baseTextureWidth * worldScale, baseTextureWidth * this.textureAspectRatio * worldScale);
+      return;
+    }
+
+    this.sprite.setScale(worldScale);
+  }
+
+  private currentVisualWorldScale(): number {
+    return this.visualWorldScale;
+  }
+
+  private logicalTextureWidth(): number {
+    return this.usesCustomTexture ? baseTextureWidth : Math.max(1, this.sprite.width);
   }
 
   private adultLengthCm(): number {
@@ -422,43 +605,106 @@ export class Fish {
   }
 
   private biologicalGrowthRatio(): number {
-    const babyScale = this.type.ageCurve.baby.scale;
+    const babyScale = this.hatchlingScale();
     const maxScale = this.type.maxScale * veryBigScaleMultiplier;
     return Phaser.Math.Clamp((this.rawUncappedAgeScale() - babyScale) / Math.max(0.01, maxScale - babyScale), 0, 1);
   }
 
   private rawUncappedAgeScale(): number {
     const ageSeconds = Math.max(0, this.ageSeconds);
-    if (ageSeconds <= earlyGrowthSeconds) {
+    const hatchlingScale = this.hatchlingScale();
+    const oneMonthScale = this.oneMonthScale();
+    const youngScale = this.youngScale();
+    const adultScale = this.adultScale();
+
+    if (ageSeconds <= oneMonthGrowthSeconds) {
       return Phaser.Math.Linear(
-        this.type.ageCurve.baby.scale,
-        this.type.ageCurve.adult.scale,
-        Phaser.Math.Clamp(ageSeconds / earlyGrowthSeconds, 0, 1)
+        hatchlingScale,
+        oneMonthScale,
+        this.smoothGrowthRatio(ageSeconds / oneMonthGrowthSeconds)
+      );
+    }
+
+    if (ageSeconds <= youngGrowthSeconds) {
+      return Phaser.Math.Linear(
+        oneMonthScale,
+        youngScale,
+        this.smoothGrowthRatio((ageSeconds - oneMonthGrowthSeconds) / (youngGrowthSeconds - oneMonthGrowthSeconds))
+      );
+    }
+
+    if (ageSeconds <= adultGrowthSeconds) {
+      return Phaser.Math.Linear(
+        youngScale,
+        adultScale,
+        this.smoothGrowthRatio((ageSeconds - youngGrowthSeconds) / (adultGrowthSeconds - youngGrowthSeconds))
       );
     }
 
     return Phaser.Math.Linear(
-      this.type.ageCurve.adult.scale,
+      adultScale,
       this.type.maxScale * veryBigScaleMultiplier,
-      Phaser.Math.Clamp((ageSeconds - earlyGrowthSeconds) / Math.max(1, growthCapSeconds - earlyGrowthSeconds), 0, 1)
+      Phaser.Math.Clamp((ageSeconds - adultGrowthSeconds) / Math.max(1, growthCapSeconds - adultGrowthSeconds), 0, 1)
     );
   }
 
   private uncappedAgeScale(): number {
     const ageSeconds = Math.max(0, this.ageSeconds);
-    if (ageSeconds <= earlyGrowthSeconds) {
+    const hatchlingScale = this.visibleToWorldScale(this.hatchlingScale());
+    const oneMonthScale = this.visibleToWorldScale(this.oneMonthScale());
+    const youngScale = this.visibleToWorldScale(this.youngScale());
+    const adultScale = this.visibleToWorldScale(this.adultScale());
+
+    if (ageSeconds <= oneMonthGrowthSeconds) {
       return Phaser.Math.Linear(
-        this.visibleToWorldScale(this.type.ageCurve.baby.scale),
-        this.visibleToWorldScale(this.type.ageCurve.adult.scale),
-        Phaser.Math.Clamp(ageSeconds / earlyGrowthSeconds, 0, 1)
+        hatchlingScale,
+        oneMonthScale,
+        this.smoothGrowthRatio(ageSeconds / oneMonthGrowthSeconds)
+      );
+    }
+
+    if (ageSeconds <= youngGrowthSeconds) {
+      return Phaser.Math.Linear(
+        oneMonthScale,
+        youngScale,
+        this.smoothGrowthRatio((ageSeconds - oneMonthGrowthSeconds) / (youngGrowthSeconds - oneMonthGrowthSeconds))
+      );
+    }
+
+    if (ageSeconds <= adultGrowthSeconds) {
+      return Phaser.Math.Linear(
+        youngScale,
+        adultScale,
+        this.smoothGrowthRatio((ageSeconds - youngGrowthSeconds) / (adultGrowthSeconds - youngGrowthSeconds))
       );
     }
 
     return Phaser.Math.Linear(
-      this.visibleToWorldScale(this.type.ageCurve.adult.scale),
+      adultScale,
       this.veryBigScaleCap(),
-      Phaser.Math.Clamp((ageSeconds - earlyGrowthSeconds) / Math.max(1, growthCapSeconds - earlyGrowthSeconds), 0, 1)
+      Phaser.Math.Clamp((ageSeconds - adultGrowthSeconds) / Math.max(1, growthCapSeconds - adultGrowthSeconds), 0, 1)
     );
+  }
+
+  private hatchlingScale(): number {
+    return this.adultScale() * hatchlingAdultScaleRatio;
+  }
+
+  private oneMonthScale(): number {
+    return this.adultScale() * oneMonthAdultScaleRatio;
+  }
+
+  private youngScale(): number {
+    return this.adultScale() * youngAdultScaleRatio;
+  }
+
+  private adultScale(): number {
+    return this.type.ageCurve.adult.scale;
+  }
+
+  private smoothGrowthRatio(value: number): number {
+    const clamped = Phaser.Math.Clamp(value, 0, 1);
+    return clamped * clamped * (3 - 2 * clamped);
   }
 
   private currentTankViewScale(): number {
@@ -575,7 +821,41 @@ export class Fish {
       this.sprite.setFlipX(nextFacing < 0);
     }
 
-    this.sprite.rotation = direction.y * 0.08;
+    this.swimRotationBase = direction.y * 0.08;
+  }
+
+  private animateSwimming(deltaSeconds: number, moveSpeed: number, chasingFood: boolean): void {
+    const speedRatio = Phaser.Math.Clamp(moveSpeed / Math.max(1, this.type.speed), 0.25, 2.6);
+    const frequency = (chasingFood ? chaseSwimFrequency : idleSwimFrequency) * Phaser.Math.Linear(0.72, 1.18, speedRatio / 2.6);
+    this.swimPhase += deltaSeconds * frequency;
+
+    const wave = Math.sin(this.swimPhase);
+    const secondaryWave = Math.sin(this.swimPhase * 2.05 + 0.8);
+    const chaseBoost = chasingFood ? 1.65 : 1;
+    const illnessDampener = this.state === "ill" ? 0.42 : 1;
+    const amplitude = chaseBoost * illnessDampener;
+    const stretchX = 1 + wave * 0.024 * amplitude;
+    const stretchY = 1 - wave * 0.018 * amplitude;
+    const bobBasePixels = chasingFood ? chaseSwimBobPixels : idleSwimBobPixels;
+    const bob = secondaryWave * bobBasePixels * illnessDampener;
+    const bobDelta = bob - this.swimYOffset;
+    const wagRotation = wave * 0.035 * amplitude * (this.facing >= 0 ? 1 : -1);
+    const tailWagBasePixels = chasingFood ? chaseTailWagPixels : idleTailWagPixels;
+    this.tailWag = wave * tailWagBasePixels * amplitude;
+    this.tailFan = 1 + Math.abs(secondaryWave) * (chasingFood ? 0.18 : 0.1) * illnessDampener;
+
+    if (this.usesCustomTexture) {
+      this.sprite.setDisplaySize(
+        baseTextureWidth * this.visualWorldScale * stretchX,
+        baseTextureWidth * this.textureAspectRatio * this.visualWorldScale * stretchY
+      );
+    } else {
+      this.sprite.setScale(this.visualWorldScale * stretchX, this.visualWorldScale * stretchY);
+    }
+
+    this.swimYOffset = bob;
+    this.sprite.setRotation(this.swimRotationBase + wagRotation);
+    this.sprite.y = Phaser.Math.Clamp(this.sprite.y + bobDelta, tankBounds.top + 26, tankBounds.bottom - 26);
   }
 
   private pickWanderTarget(): void {
@@ -587,7 +867,12 @@ export class Fish {
 
   private setStateTint(): void {
     if (this.state === "ill") {
-      this.sprite.setTint(this.desaturatedTint(this.bodyTint(), 0.46));
+      this.sprite.setTint(this.usesCustomTexture ? 0xb9c5bd : this.desaturatedTint(this.bodyTint(), 0.46));
+      return;
+    }
+
+    if (this.usesCustomTexture) {
+      this.sprite.clearTint();
       return;
     }
 
@@ -609,6 +894,7 @@ export class Fish {
     const fullnessColor = fullnessRatio < 0.35 ? 0xff6d75 : fullnessRatio < 0.68 ? 0xffd15c : 0x62f2a8;
     const moodColor = moodRatio < 0.35 ? 0xff6d75 : moodRatio < 0.68 ? 0xffd15c : 0x62f2a8;
     const barY = hasGrowthMarker ? 8 : 0;
+    const showCareBars = this.shouldShowCareBars(fullnessRatio, moodRatio);
 
     this.statusBars.clear();
     this.statusBars.setPosition(x, y);
@@ -630,18 +916,20 @@ export class Fish {
       this.statusBars.fillTriangle(25, -1, 29, 1, 25, 3);
     }
 
-    this.statusBars.fillStyle(0x061725, 0.72);
-    this.statusBars.fillRoundedRect(-1, barY - 1, barWidth + 2 + rarityStarCount(this.type.rarity) * 6, barHeight * 2 + gap + 2, 2);
-    this.statusBars.fillStyle(0x19364a, 0.95);
-    this.statusBars.fillRoundedRect(0, barY, barWidth, barHeight, 1);
-    this.statusBars.fillRoundedRect(0, barY + barHeight + gap, barWidth, barHeight, 1);
-    this.statusBars.fillStyle(fullnessColor, 1);
-    this.statusBars.fillRoundedRect(0, barY, Math.max(2, barWidth * fullnessRatio), barHeight, 1);
-    this.statusBars.fillStyle(moodColor, 1);
-    this.statusBars.fillRoundedRect(0, barY + barHeight + gap, Math.max(2, barWidth * moodRatio), barHeight, 1);
-    this.statusBars.lineStyle(1, 0xd7f4ff, 0.28);
-    this.statusBars.strokeRoundedRect(-1, barY - 1, barWidth + 2 + rarityStarCount(this.type.rarity) * 6, barHeight * 2 + gap + 2, 2);
-    this.drawRarityStars(barWidth + 5, barY + 4);
+    if (showCareBars) {
+      this.statusBars.fillStyle(0x061725, 0.72);
+      this.statusBars.fillRoundedRect(-1, barY - 1, barWidth + 2, barHeight * 2 + gap + 2, 2);
+      this.statusBars.fillStyle(0x19364a, 0.95);
+      this.statusBars.fillRoundedRect(0, barY, barWidth, barHeight, 1);
+      this.statusBars.fillRoundedRect(0, barY + barHeight + gap, barWidth, barHeight, 1);
+      this.statusBars.fillStyle(fullnessColor, 1);
+      this.statusBars.fillRoundedRect(0, barY, Math.max(2, barWidth * fullnessRatio), barHeight, 1);
+      this.statusBars.fillStyle(moodColor, 1);
+      this.statusBars.fillRoundedRect(0, barY + barHeight + gap, Math.max(2, barWidth * moodRatio), barHeight, 1);
+      this.statusBars.lineStyle(1, 0xd7f4ff, 0.28);
+      this.statusBars.strokeRoundedRect(-1, barY - 1, barWidth + 2, barHeight * 2 + gap + 2, 2);
+    }
+
     this.updateStateEmoji(y);
     this.updateTailMark();
   }
@@ -704,6 +992,10 @@ export class Fish {
     return Phaser.Math.Clamp(1 - this.hunger / 100, 0, 1);
   }
 
+  private shouldShowCareBars(fullnessRatio = this.currentFullnessRatio(), moodRatio = this.currentMoodRatio()): boolean {
+    return fullnessRatio < 0.5 || moodRatio < 0.5;
+  }
+
   private tailTint(): number {
     return fishFoodTintFor(this.type);
   }
@@ -712,53 +1004,51 @@ export class Fish {
     return this.type.tint;
   }
 
+  private customTextureKey(): string {
+    const textureKey = `fish-${this.type.id}`;
+    return this.scene.textures.exists(textureKey) ? textureKey : "fish-base";
+  }
+
   private isFullyGrown(): boolean {
-    return !this.isGrowthLimitedByTank() && this.sprite.scaleX >= this.veryBigScaleCap() - 0.01;
-  }
-
-  private drawRarityStars(x: number, y: number): void {
-    const stars = rarityStarCount(this.type.rarity);
-    const tint = rarityTintFor(this.type.rarity);
-
-    for (let index = 0; index < stars; index += 1) {
-      this.drawStar(x + index * 6, y, 2.5, tint);
-    }
-  }
-
-  private drawStar(x: number, y: number, radius: number, tint: number): void {
-    const points: Phaser.Math.Vector2[] = [];
-    for (let index = 0; index < 10; index += 1) {
-      const angle = -Math.PI / 2 + (index * Math.PI) / 5;
-      const pointRadius = index % 2 === 0 ? radius : radius * 0.48;
-      points.push(new Phaser.Math.Vector2(x + Math.cos(angle) * pointRadius, y + Math.sin(angle) * pointRadius));
-    }
-
-    this.statusBars.fillStyle(tint, 1);
-    this.statusBars.fillPoints(points, true);
-    this.statusBars.lineStyle(1, 0x061725, 0.55);
-    this.statusBars.strokePoints(points, true);
+    return !this.isGrowthLimitedByTank() && this.currentVisualWorldScale() >= this.veryBigScaleCap() - 0.01;
   }
 
   private updateTailMark(): void {
-    const scale = this.sprite.scaleX;
+    if (this.usesCustomTexture) {
+      this.tailMark.clear();
+      this.tailMark.setVisible(false);
+      return;
+    }
+
+    this.tailMark.setVisible(true);
+    const scale = Math.max(0.01, Math.abs(this.sprite.scaleX));
     const tailSide = this.facing >= 0 ? -1 : 1;
-    const tailEdgeX = tailSide * (this.sprite.displayWidth / 2 - 1 * scale);
-    const tailJoinX = tailSide * (this.sprite.displayWidth / 2 - 13 * scale);
-    const tailHalfHeight = 13 * scale;
+    const tailEdgeInset = this.usesCustomTexture ? 4 : 1;
+    const tailJoinInset = this.usesCustomTexture ? 18 : 13;
+    const tailEdgeX = tailSide * (this.sprite.displayWidth / 2 - tailEdgeInset * scale);
+    const tailJoinX = tailSide * (this.sprite.displayWidth / 2 - tailJoinInset * scale);
+    const tailCenterX = tailSide * (this.sprite.displayWidth / 2 - (this.usesCustomTexture ? 7 : 3) * scale);
+    const tailHalfHeight = (this.usesCustomTexture ? 10.5 : 13) * scale * this.tailFan;
+    const tailWag = this.tailWag * scale;
     const points = [
       new Phaser.Math.Vector2(tailJoinX, 0),
-      new Phaser.Math.Vector2(tailEdgeX, -tailHalfHeight),
-      new Phaser.Math.Vector2(tailEdgeX, tailHalfHeight)
+      new Phaser.Math.Vector2(tailCenterX, -tailHalfHeight * 0.74 + tailWag * 0.42),
+      new Phaser.Math.Vector2(tailEdgeX, tailWag),
+      new Phaser.Math.Vector2(tailCenterX, tailHalfHeight * 0.74 + tailWag * 0.42)
     ];
 
     this.tailMark.clear();
     this.tailMark.setPosition(this.sprite.x, this.sprite.y);
     this.tailMark.setRotation(this.sprite.rotation);
-    this.tailMark.setAlpha(this.state === "ill" ? 0.72 : 0.95);
+    this.tailMark.setAlpha(this.state === "ill" ? 0.58 : this.usesCustomTexture ? 0.72 : 0.95);
     this.tailMark.fillStyle(this.tailTint(), 1);
     this.tailMark.fillPoints(points, true);
     this.tailMark.lineStyle(1, 0x061725, 0.24);
     this.tailMark.strokePoints(points, true);
+
+    const ribAlpha = this.usesCustomTexture ? 0.22 : 0.34;
+    this.tailMark.lineStyle(1, 0xf7fbff, ribAlpha);
+    this.tailMark.lineBetween(tailJoinX, 0, tailEdgeX, tailWag);
   }
 
   private desaturatedTint(tint: number, amount: number): number {

@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+- Generated and restored a transparent wavy sandy floor PNG so the tank has a shaped sand bed instead of a flat rectangle.
+- Removed the remaining solid sand floor band so the underwater tank background reaches the bottom of the screen.
+- Removed the raster aquarium floor image from the active tank view, returning the floor to a simple built-in band for visual comparison.
+- Restored the aquarium floor PNG toward its original yellow sand color while keeping a restrained blue underwater tint.
+- Added a transparent raster PNG dirty-water overlay that appears over the tank when cleanliness drops below 20%.
+- Added regression and visual screenshot coverage for the dirty tank overlay threshold.
+- Removed the separate tail overlay from PNG fish sprites so custom raster fish keep their original silhouette while swimming.
+- Shifted the aquarium floor PNG toward a blue-green underwater tint so the sand reads as submerged instead of dry.
+- Reduced aquarium floor PNG saturation, brightness, and contrast so the substrate is calmer behind gameplay objects.
+- Removed the old per-tank-level procedural background overlay so the raster underwater background remains the single tank backdrop across upgrades.
+- Animated fish tail fins independently from the body swim motion, including custom PNG fish, with stronger wagging while chasing food.
+- Added regression coverage that verifies the tail wag changes while fish swim.
+- Generated a raster PNG distant underwater tank background and integrated it as the tank backdrop.
+- Added regression asset-coverage validation for both custom background textures.
+- Generated a raster PNG aquarium floor asset and integrated it as the tank floor texture with procedural rectangle fallback.
+- Added regression asset-coverage validation for the custom aquarium floor texture.
+- Kept dropped food pellets, medicine/evolve pills, coin sprites, and coin value labels visually consistent as tank upgrades zoom the tank view out, while fish size remains age-based and absolute.
+- Added regression and visual artifact coverage for pickup sizing in upgraded tanks.
+- Generated and applied image-generation source PNGs for the full runtime asset pack: 50 fish, 9 food/medicine/pill items, 3 coin currencies, 12 decorations, 5 menu icons, and 4 helper creatures.
+- Added `tools/apply-generated-assets.mjs` to convert magenta chroma-key image-generated sources into cropped transparent runtime PNGs under `public/assets`.
+- Added subtle fish swimming animation with body shimmer, rotation, and reduced bobbing, with stronger motion while chasing food and damped motion while ill.
+- Added regression coverage to confirm fish sprites animate over time and adjusted feeding regression to test chase/eat behavior without brittle pointer timing.
+- Removed the visible circular background and border from tank-side menu and food icons while keeping their touch targets.
+- Reduced in-tank dropped food, medicine/evolve pills, coins, and coin value labels so thrown items no longer dominate the aquarium view.
+- Revamped the tank statistics HUD into separate coin/wealth chips, tank capacity row, care row, and need/action row for better portrait readability.
+- Added a deterministic project-local aquarium asset generator that creates transparent PNGs for all 50 fish, 9 food/medicine/pill items, 3 coin currencies, 12 decorations, 5 menu icons, and 4 helper creatures.
+- Expanded the decoration catalog from 4 to 12 options with new common, rare, and super rare shop entries.
+- Replaced manual per-fish asset loading with data-driven Phaser preloads for fish, food, coins, decorations, helpers, and menu icons.
+- Added food, medicine, evolve pill, coin, decoration, helper, and menu icon asset previews to the tank rails and Store catalog cards.
+- Added asset manifests plus visual contact sheets at `artifacts/generated-fish-assets-sheet.png` and `artifacts/generated-item-assets-sheet.png`.
+- Added regression asset-coverage assertions so missing fish, food, coin, decoration, helper, or UI icon textures are caught by `npm test`.
+- Added visual Store artifacts for food/decor asset catalogs and confirmed the new assets in the in-app browser.
+- Regenerated runtime PNG assets for Goldfish, Pearl Gourami, Corydoras, Angelfish, Cleaner Shrimp, and Feeder Snail with stricter stylized sprite prompts and transparent cutouts.
+- Added Phaser preloads for Pearl Gourami, Corydoras, Cleaner Shrimp, and Feeder Snail PNG assets while keeping procedural helper/fish fallbacks.
+- Normalized helper creature sprite display sizes so large generated helper PNGs render at intended gameplay scale.
+- Nudged wall-climbing feeder helpers farther inside the glass so the new Feeder Snail sprite remains visible at screen edges.
+- Flipped Feeder Snail wall orientation so its contact side faces the tank glass on both left and right walls.
+- Slowed Feeder Snail wall movement so it reads more like a snail while keeping its feeding cooldown unchanged.
+- Redefined fish visual growth into a first-year age curve: tiny hatchling, one-month juvenile, six-month young fish, one-year adult, then slow linear growth toward the 50-year cap.
+- Added regression coverage and a visual artifact comparing a seven-month Goldfish against a twenty-day Angelfish so age differences stay readable across species.
+- Tightened the fish asset-generation prompt to require stylized 2D mobile-game sprite art, reject photo/stock/realistic outputs, and enforce straight horizontal tail geometry.
+- Added fish previews to every Store fish card, using generated PNGs when available and tinted fallback fish previews for the rest of the 50-fish catalog.
+- Added regression snapshot coverage and `fish-store-card-images.png` visual artifact for Store fish card images.
+- Added real image-generated raster PNG fish assets for Goldfish, Angelfish, and Celestial Koi under `public/assets/fish`, with Phaser loading them before falling back to procedural textures.
+- Added source image copies under `assets/generated/fish-source` plus a public fish asset manifest.
+- Replaced the procedural fish look for three trial species: Goldfish, Angelfish, and Celestial Koi now use custom colorful sprite textures covering common, rare, and super rare rarity treatments.
+- Added regression snapshot coverage and a `fish-asset-trial-pack.png` artifact for the three trial fish textures.
+- Added `docs/fish-asset-generation-plan.md` with shared art DNA, rarity visual language, food-tail color mapping, batch command patterns, and per-fish prompts for all 50 catalog fish.
 - Removed the tank upgrade cap; tanks can now upgrade indefinitely with formula-based prices after L5.
 - Added visible next-upgrade price labels in the Store, Care screen, HUD need text, and regression snapshot.
 - Extended tank capacity past L5, adding 6 fish slots per level after the L5 capacity of 30.
@@ -47,7 +95,7 @@
 - Added helper behavior so bottom creatures crawl along the sand, collect settled coins, and clean wasted food or medicine pellets.
 - Added save/load, content validation, regression coverage, and a visual artifact for helper creature cleanup.
 - Added drag controls for placed tank decorations, including a drag-to-trash target for removing decorations.
-- Added distinct procedural background patterns for each tank level so upgrades are visually recognizable beyond zoom.
+- Removed distinct procedural background patterns from the active tank view after adding raster underwater background art.
 - Changed adult fish growth so adult and older fish continue growing linearly with age until they reach a very-big cap.
 - Added fish age labels to Book/Album owned fish cards.
 - Changed tank upgrades so each higher tank level zooms the tank contents farther out, making the aquarium feel larger while keeping HUD and menu controls fixed.
@@ -74,6 +122,11 @@
 - Increased tank fish capacity to 10.
 - Changed Auto Feeder cycles to drop the needed food type for each hungry fish species and decrement inventory per pellet.
 - Added minute controls for Auto Feeder and Auto Coin Collector rentals, with scaled rental pricing.
+- Ported the Monopoly Godot asset-generation workflow into this project as a Phaser Aquarium `create-assets` skill and background Codex image-job helper.
+- Removed above-fish rarity star badges from the tank view to further reduce visual clutter.
+- Hid fish care bars while both fullness and health are above 50%, keeping rarity/growth badges visible for identity and progression.
+- Added a multi-currency progression bridge: common fish can eventually produce Rare bonus coins, and rare fish can eventually produce Super Rare bonus coins, so players are never locked out of higher currency tiers.
+- Added visible Store/Book production copy and regression coverage for the Rare coin bridge path.
 - Increased coin sink speed so coin drops fall faster than food pellets.
 - Changed Auto Feeder drops to spawn from random top-of-tank positions instead of near fish.
 - Made fish aggressively chase compatible food whenever they can still benefit from eating.

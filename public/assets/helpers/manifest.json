@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-05-03T23:32:05.329Z",
+  "assets": [
+    {
+      "file": "/assets/helpers/shrimp.png",
+      "width": 160,
+      "height": 110,
+      "source": "assets/generated/source/helpers/shrimp_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/helpers/shell.png",
+      "width": 160,
+      "height": 110,
+      "source": "assets/generated/source/helpers/shell_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/helpers/crab.png",
+      "width": 160,
+      "height": 110,
+      "source": "assets/generated/source/helpers/crab_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/helpers/feeder-snail.png",
+      "width": 160,
+      "height": 110,
+      "source": "assets/generated/helper-source/feeder-snail-source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    }
+  ]
+}

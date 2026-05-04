@@ -1,0 +1,68 @@
+{
+  "generatedAt": "2026-05-03T23:32:04.410Z",
+  "assets": [
+    {
+      "file": "/assets/food/basic.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/basic_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/micro.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/micro_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/premium.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/premium_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/herb.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/herb_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/protein.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/protein_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/coral.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/coral_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/medicine.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/medicine_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/evolve.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/evolve_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/event.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/event_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    }
+  ]
+}

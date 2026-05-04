@@ -11,6 +11,9 @@ artifacts/
 coverage/
 playwright-report/
 test-results/
+.codex_asset_jobs/
+assets/generated/
+tmp/imagegen/
 
 # Logs
 *.log
@@ -33,4 +36,3 @@ Thumbs.db
 # Package manager caches
 .npm/
 .pnpm-store/
-

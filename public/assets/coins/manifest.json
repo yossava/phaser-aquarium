@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-05-03T23:32:05.656Z",
+  "assets": [
+    {
+      "file": "/assets/coins/common.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/coins/common_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/coins/rare.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/coins/rare_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/coins/super-rare.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/coins/super_rare_source.png",
+      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    }
+  ]
+}
