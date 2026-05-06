@@ -54,6 +54,9 @@ const maxFishRestMs = 5200;
 const restDriftSpeedMultiplier = 0.08;
 const restDriftVerticalRatio = 0.35;
 const directionFlipDeadzone = 18;
+const directionFlipTransitionMs = 520;
+const directionFlipSqueezeStrength = 0.14;
+const directionFlipSwapProgress = 0.58;
 const swimPathSwayRatio = 0.035;
 const swimKickPulseStrength = 0.24;
 const overfullHungerFloor = -10000;
@@ -86,6 +89,8 @@ export class Fish {
   private velocity = new Phaser.Math.Vector2();
   private restUntil = 0;
   private hasRestedAtTarget = false;
+  private pendingFacing?: number;
+  private flipTransitionStartedAt = 0;
   private readonly usesCustomTexture: boolean;
   private readonly textureAspectRatio: number;
 
@@ -265,17 +270,29 @@ export class Fish {
   }
 
   public primaryProduction(): CoinProduction {
-    return this.currentAgeCurve().production[0] ?? {
+    const production = this.currentAgeCurve().production[0] ?? {
       coinType: "common",
       amount: this.type.coinValue,
       intervalSeconds: this.type.coinDropSeconds,
       chance: 1
     };
+    return this.scaleProductionForCareCost(production, 0);
   }
 
   public productionOptions(): CoinProduction[] {
     const production = this.currentAgeCurve().production;
-    return this.withProgressionBridge(production.length > 0 ? production : [this.primaryProduction()]);
+    const rawProduction =
+      production.length > 0
+        ? production
+        : [
+            {
+              coinType: "common" as const,
+              amount: this.type.coinValue,
+              intervalSeconds: this.type.coinDropSeconds,
+              chance: 1
+            }
+          ];
+    return this.withProgressionBridge(rawProduction).map((entry, index) => this.scaleProductionForCareCost(entry, index));
   }
 
   public activeProduction(): CoinProduction {
@@ -486,7 +503,7 @@ export class Fish {
   }
 
   public isGrowthLimitedByTank(): boolean {
-    return this.naturalAgeScale() > this.tankGrowthScaleCap() + 0.01;
+    return false;
   }
 
   public destroy(): void {
@@ -601,6 +618,20 @@ export class Fish {
     }
 
     return options;
+  }
+
+  private productionCareMultiplier(): number {
+    return Math.max(1, Math.pow(this.calorieNeedMultiplier(), 1.08));
+  }
+
+  private scaleProductionForCareCost(production: CoinProduction, index: number): CoinProduction {
+    const multiplier = this.productionCareMultiplier();
+    const primaryMultiplier = index === 0 ? multiplier : Math.sqrt(multiplier);
+    return {
+      ...production,
+      amount: Math.max(1, Math.ceil(production.amount * primaryMultiplier)),
+      intervalSeconds: Math.max(4, Math.round(production.intervalSeconds / Phaser.Math.Linear(1, 1.18, Phaser.Math.Clamp(multiplier / 4, 0, 1))))
+    };
   }
 
   private rollProduction(): CoinProduction {
@@ -897,10 +928,7 @@ export class Fish {
     const horizontalDistance = this.target.x - this.sprite.x;
     if (Math.abs(horizontalDistance) > directionFlipDeadzone) {
       const nextFacing = horizontalDistance >= 0 ? 1 : -1;
-      if (nextFacing !== this.facing) {
-        this.facing = nextFacing;
-        this.sprite.setFlipX(nextFacing < 0);
-      }
+      this.requestFacing(nextFacing);
     }
   }
 
@@ -939,8 +967,42 @@ export class Fish {
     const frequency = baseFrequency * Phaser.Math.Linear(0.72, 1.18, speedRatio / 2.6);
     this.swimPhase += deltaSeconds * frequency;
 
-    this.applySpriteScale(this.visualWorldScale, 1, 1);
+    const flipStretchX = this.updateFlipTransition();
+    this.applySpriteScale(this.visualWorldScale, flipStretchX, 1);
     this.sprite.setRotation(0);
+  }
+
+  private requestFacing(nextFacing: number): void {
+    if (nextFacing === this.facing || nextFacing === this.pendingFacing) {
+      return;
+    }
+
+    this.pendingFacing = nextFacing;
+    this.flipTransitionStartedAt = this.scene.time.now;
+  }
+
+  private updateFlipTransition(): number {
+    if (this.pendingFacing === undefined) {
+      return 1;
+    }
+
+    const progress = Phaser.Math.Clamp(
+      (this.scene.time.now - this.flipTransitionStartedAt) / directionFlipTransitionMs,
+      0,
+      1
+    );
+
+    if (progress >= directionFlipSwapProgress && this.facing !== this.pendingFacing) {
+      this.facing = this.pendingFacing;
+      this.sprite.setFlipX(this.facing < 0);
+    }
+
+    if (progress >= 1) {
+      this.pendingFacing = undefined;
+      return 1;
+    }
+
+    return 1 - Math.sin(progress * Math.PI) * directionFlipSqueezeStrength;
   }
 
   private steerTowardVelocity(targetVelocityX: number, targetVelocityY: number, deltaSeconds: number, responsiveness: number): void {

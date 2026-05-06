@@ -1,17 +1,18 @@
 import Phaser from "phaser";
-import { tankBounds } from "../game/constants";
+import { gameWidth, tankBounds } from "../game/constants";
 import { foodTintFor } from "../game/visuals";
 import type { FoodType } from "../types/mechanics";
 
-const defaultPelletDisplaySize = 18;
-const pillPelletDisplaySize = 22;
+const screenSizedPellet = (ratio: number): number => Math.round(gameWidth * ratio);
+const defaultPelletDisplaySize = screenSizedPellet(0.06);
+const pillPelletDisplaySize = screenSizedPellet(0.072);
 const maxFoodPelletAgeSeconds = 15;
 const foodPelletSizeByDensity: Record<number, number> = {
-  1: 18,
-  2: 22,
-  3: 26,
-  4: 30,
-  5: 32
+  1: screenSizedPellet(0.06),
+  2: screenSizedPellet(0.07),
+  3: screenSizedPellet(0.08),
+  4: screenSizedPellet(0.09),
+  5: screenSizedPellet(0.1)
 };
 
 export class FoodPellet {

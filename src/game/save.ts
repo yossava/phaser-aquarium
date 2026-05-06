@@ -1,6 +1,6 @@
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
 export const MAX_OFFLINE_SECONDS = 60 * 60 * 8;
 
@@ -23,6 +23,7 @@ export type SavedDecoration = {
   tankLevel?: number;
   x: number;
   y: number;
+  size?: string;
 };
 
 export type SavedHelperCreature = {
@@ -77,6 +78,10 @@ export type SavedTankState = {
   fishInventory?: Record<string, number>;
   decorationInventory?: Record<string, number>;
   creatureInventory?: Record<string, number>;
+  backgroundInventory?: Record<string, number>;
+  seabedInventory?: Record<string, number>;
+  selectedBackgroundId?: string;
+  selectedSeabedId?: string;
   cleanliness?: number;
   cleanedAt?: number;
 };
@@ -199,6 +204,13 @@ function migrateSave(
   }
 
     if (parsed.version === 6) {
+      return {
+        ...(parsed as SavedGame),
+        version: SAVE_VERSION
+      };
+    }
+
+    if (parsed.version === 7) {
       return {
         ...(parsed as SavedGame),
         version: SAVE_VERSION
@@ -373,6 +385,10 @@ function sanitizeTankStates(source: Record<string, SavedTankState> | undefined):
       fishInventory: sanitizeCountRecord(value.fishInventory),
       decorationInventory: sanitizeCountRecord(value.decorationInventory),
       creatureInventory: sanitizeCountRecord(value.creatureInventory),
+      backgroundInventory: sanitizeCountRecord(value.backgroundInventory),
+      seabedInventory: sanitizeCountRecord(value.seabedInventory),
+      selectedBackgroundId: typeof value.selectedBackgroundId === "string" ? value.selectedBackgroundId : undefined,
+      selectedSeabedId: typeof value.selectedSeabedId === "string" ? value.selectedSeabedId : undefined,
       cleanliness: clamp(sanitizeNumber(value.cleanliness, 100), 0, 100),
       cleanedAt: sanitizeNumber(value.cleanedAt, Date.now())
     };
@@ -408,7 +424,8 @@ function sanitizeDecoration(decoration: Partial<SavedDecoration>): SavedDecorati
     typeId: decoration.typeId,
     tankLevel: Math.max(1, Math.floor(sanitizeNumber(decoration.tankLevel, 1))),
     x: sanitizeNumber(decoration.x, 0),
-    y: sanitizeNumber(decoration.y, 0)
+    y: sanitizeNumber(decoration.y, 0),
+    size: typeof decoration.size === "string" ? decoration.size : undefined
   };
 }
 

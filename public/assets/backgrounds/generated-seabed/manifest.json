@@ -1,0 +1,228 @@
+{
+  "generatedAt": "2026-05-06T05:51:26.388Z",
+  "count": 20,
+  "uniqueCount": 20,
+  "keyedMagentaRemoved": true,
+  "assets": [
+    {
+      "id": "tank-seabed-01-lagoon_sand",
+      "filename": "tank-seabed-01-lagoon_sand.png",
+      "theme": "lagoon_sand",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "7240901a84edaf5c8ee37d3e492aa8b454d62b5c645edc8b52411b7ddcbae0de",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-02-coral_rubble",
+      "filename": "tank-seabed-02-coral_rubble.png",
+      "theme": "coral_rubble",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "ce1af6f47af2bb17acb0d22dd1f643fa46624c4590751f96c8a13e5bc76b1f25",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-03-kelp_mud",
+      "filename": "tank-seabed-03-kelp_mud.png",
+      "theme": "kelp_mud",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "daedff2f60831479b81d5046d704ebce512c2c0958eb2986c7e63c393a700e59",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-04-crystal_gravel",
+      "filename": "tank-seabed-04-crystal_gravel.png",
+      "theme": "crystal_gravel",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "a8675d3e3b7d2f544bf9de7059eded96de6224ca35fe914b61336cd1c5df0001",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-05-abyss_black_sand",
+      "filename": "tank-seabed-05-abyss_black_sand.png",
+      "theme": "abyss_black_sand",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "adbba1dc58800f49bc1f2eab997b28066904446ceaacfe94b45084826f14804a",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-06-sunset_sand",
+      "filename": "tank-seabed-06-sunset_sand.png",
+      "theme": "sunset_sand",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "f783c27060a30a64a706cc9478518a0fb0171f9191cb4b9a563703266c24cb06",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-07-freshwater_pebbles",
+      "filename": "tank-seabed-07-freshwater_pebbles.png",
+      "theme": "freshwater_pebbles",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "9e8e4513a72fa8dba76e0dab915fa404a86f0a9cb7eae1ec6eac7b54bed383f1",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-08-ruin_tiles",
+      "filename": "tank-seabed-08-ruin_tiles.png",
+      "theme": "ruin_tiles",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "092fef9762be61a2a6894fed2cabdbde77610e8cd3b1a94e91a02097d8873b12",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-09-mangrove_silt",
+      "filename": "tank-seabed-09-mangrove_silt.png",
+      "theme": "mangrove_silt",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "9e917f32083ee5d04972b4b3d9adcd86df83c37dcfdfbfacbb8808518264b08f",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-10-volcanic_basalt",
+      "filename": "tank-seabed-10-volcanic_basalt.png",
+      "theme": "volcanic_basalt",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "ab3f74e516102662c10125d42695f4f7a73f1d3b3efe4aa15f6a9dc338433cd1",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-11-glowing_plankton_sand",
+      "filename": "tank-seabed-11-glowing_plankton_sand.png",
+      "theme": "glowing_plankton_sand",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "a3cf64c4d7814f12e134767e9842883bd75017a2af41a7306565c814b3166492",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-12-arctic_pale_gravel",
+      "filename": "tank-seabed-12-arctic_pale_gravel.png",
+      "theme": "arctic_pale_gravel",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "8c82fe63c38d89bee48dc6f369a1a8669aa0cc24330a5a71070259aa8602dcb3",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-13-jade_moss_stone",
+      "filename": "tank-seabed-13-jade_moss_stone.png",
+      "theme": "jade_moss_stone",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "9b559d0798f148d5f42453c52f39213e54d553e498bc23bce2ac2dc3b665aeea",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-14-pearl_shell_sand",
+      "filename": "tank-seabed-14-pearl_shell_sand.png",
+      "theme": "pearl_shell_sand",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "cec30bf518ea734e1886cacd66581930b584f464960e0f3b17ddc72ffa09cc02",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-15-shipwreck_planks",
+      "filename": "tank-seabed-15-shipwreck_planks.png",
+      "theme": "shipwreck_planks",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "f00d67b7f78a52bbe2fbb07c8c9485b557d770103d4e9539be5a4712ab44ce22",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-16-lily_pond_mud",
+      "filename": "tank-seabed-16-lily_pond_mud.png",
+      "theme": "lily_pond_mud",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "dc0cf5f10eed02f069273c892dc1a3742b95f0c06953ff07198a73143d1481e4",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-17-moonlit_silver_sand",
+      "filename": "tank-seabed-17-moonlit_silver_sand.png",
+      "theme": "moonlit_silver_sand",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "7f068fd3c7b33b659568f302a5e86dbfbd625eeeb1bdb5eab59df3c3e3702f59",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-18-opal_crystal_gravel",
+      "filename": "tank-seabed-18-opal_crystal_gravel.png",
+      "theme": "opal_crystal_gravel",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "2d53858e63f68d37aebee0cbce38c3513592b1b4f100a44888eba6770223161f",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-19-golden_rippled_sand",
+      "filename": "tank-seabed-19-golden_rippled_sand.png",
+      "theme": "golden_rippled_sand",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "789eca963365a27f04f8b0f4e00d6e7c48f4afc82600ba2f13c465a396c4de8c",
+      "use": "tank seabed"
+    },
+    {
+      "id": "tank-seabed-20-deep_temple_stone",
+      "filename": "tank-seabed-20-deep_temple_stone.png",
+      "theme": "deep_temple_stone",
+      "dimensions": {
+        "width": 2048,
+        "height": 768
+      },
+      "sha256": "99aea21631d150c8835f59f31eaa835e47071c6c5070c1c53cc8c6e67de711c3",
+      "use": "tank seabed"
+    }
+  ]
+}

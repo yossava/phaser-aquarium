@@ -37,7 +37,7 @@ The player owns a growing aquarium that becomes more beautiful, rare, and person
 2. Collect coins dropped by happy fish.
 3. Check fish needs and tank state.
 4. Feed or treat fish.
-5. Buy fish, food, decorations, or upgrades.
+5. Buy fish, food, decorations, helpers, or another tank.
 6. Place and arrange items in the tank.
 7. Watch fish interact, grow, and produce rewards.
 8. Return later to see progress and collect new rewards.
@@ -47,7 +47,7 @@ The player owns a growing aquarium that becomes more beautiful, rare, and person
 1. Complete daily care goals.
 2. Unlock new fish tiers and decoration sets.
 3. Breed fish pairs, evolve special pets, or discover fish variants.
-4. Upgrade tank capacity, filters, lighting, and themes.
+4. Grow each tank's net worth to raise its derived level, capacity, and status.
 5. Complete collection albums.
 6. Build themed aquariums.
 7. Participate in weekly events.
@@ -64,12 +64,13 @@ The current MVP should prove:
 - Player can buy and drop food.
 - Hungry fish seek and eat food.
 - Fish have visible states: happy, hungry, ill.
-- Fish can show compact chat-bubble emoji feedback: hungry until eating, happy briefly after eating, sick until healed, and not-enough-space-to-grow until the tank is upgraded.
+- Fish can show compact chat-bubble emoji feedback: hungry until eating, happy briefly after eating, sick until healed, and angry briefly when a very hungry fish loses a food chase.
 - Happy fish drop coins.
 - Player can collect coins.
 - Fish grow over time with a cap per fish type.
 - Player can buy and place decorations.
 - Player can buy bottom helper creatures that collect settled coins and clean wasted food or medicine.
+- Player can own multiple isolated tanks, each with separate fish, wallet, food, helpers, decorations, cleanliness, happiness, and worth.
 - Game is portrait mobile and touch-first.
 - Regression test covers the core loop.
 
@@ -91,7 +92,7 @@ The current MVP should prove:
 - Shop categories and prices based on coin type.
 - Species-specific food needs.
 - Basic community-tank rules where all owned fish can share one aquarium.
-- Basic upgrade progression.
+- Multiple isolated tanks with net-worth-derived tank levels.
 - Daily goals.
 - Offline coin accrual with caps.
 - Mobile safe-area support.
@@ -115,7 +116,7 @@ The current MVP should prove:
 ### Day 4-7
 
 - Unlock fish variants or rarity.
-- Introduce upgrade choices.
+- Introduce a second tank and tank naming.
 - Add a small collection album.
 - Add a weekly decoration theme.
 
@@ -144,9 +145,9 @@ The current MVP should prove:
 
 Use three coin types:
 
-- Common coins: produced mostly by common fish, spent on basic food, common fish, basic decorations, and early upgrades.
-- Rare coins: produced mostly by rare fish, spent on rare fish, rare foods, better decorations, and mid-tier upgrades.
-- Super rare coins: produced by super rare or event fish, spent on high-tier in-game items, super rare habitats, special food, and high-tier upgrades.
+- Common coins: produced mostly by common fish, spent on basic food, common fish, basic decorations, helper creatures, and early tank purchases.
+- Rare coins: produced mostly by rare fish, spent on rare fish, rare foods, better decorations, and stronger utility items.
+- Super rare coins: produced by super rare or event fish, spent on high-tier in-game items, super rare habitats, special food, and prestige items.
 
 Shop items are categorized by the same rarity as the coin type:
 
@@ -168,9 +169,9 @@ Rarity tiers:
 - Rare: unlocked through progression, produces rare coins, has more specific needs.
 - Super rare: expensive, event-gated, or discovered, produces super rare coins, and has strict care or habitat needs.
 
-All fish start at age zero. Fish age uses fish-time: 1 real hour equals 1 fish month, real minutes convert into fish-days, and 12 real hours equals 1 fish year. Fish stats should show exact age, age-rooted length, and age-rooted weight, not player-facing categories like baby, medium, big, or max. Age changes size, calorie need, mood cycle, production type, production rate, and selling value. Fish visual size is based solely on exact age: early months should be visibly readable, reaching the main species size around 6 months, and long-tail growth continues until 50 fish-years, when it reaches the very-big cap. If the tank is too small, visible growth pauses and the player is prompted to upgrade, while biological length, weight, and food need continue to reflect age.
+All fish start at age zero. Fish age uses fish-time: 1 real hour equals 1 fish month, real minutes convert into fish-days, and 12 real hours equals 1 fish year. Fish stats should show exact age, age-rooted length, and age-rooted weight, not player-facing categories like baby, medium, big, or max. Age changes size, calorie need, mood cycle, production type, production rate, and selling value. Fish visual size is based on exact age and species scale: new fish are readable immediately, the first fish-year grows quickly, later years taper, and growth continues until 50 fish-years. Visible size is capped at about 50% of the portrait screen width.
 
-Fish also have gender and up to three evolution stages. Evolution spends an Evolve Pill and a fee, has a 50% success / 50% death risk in the current design, and successful evolution resets age to zero. Same-species male/female breeding creates an age-zero fish: 70% same species and 30% random rare species available to the current tank level.
+Fish also have gender and up to three evolution stages. Evolution spends an Evolve Pill and a fee, has a 50% success / 50% death risk in the current design, and successful evolution resets age to zero. Same-species male/female breeding creates an age-zero fish: 70% same species and 30% random rare species.
 
 ## Species And Community Tank Rules
 
@@ -258,7 +259,7 @@ The game is production-ready only when these are true:
 Production needs these screens or overlays:
 
 - Tank screen: main play area, HUD, fish, decorations, coins, food drops.
-- Store: fish, food, decorations, helper creatures, upgrades, event items, rarity lanes.
+- Store: fish, food, decorations, helper creatures, tanks, event items, rarity lanes.
 - Inventory: owned fish, food, decorations, and locked items.
 - Book statistics: owned fish grid showing type, exact age, age-rooted length and weight, worth, gender, evolution stage, and quick actions for sell, evolve, and breed; owned helper creature grid with sell actions for cleanup.
 - Fish details: age, length, weight, rarity, mood, hunger, health, calorie need, food compatibility, production, community status, sell value.
@@ -297,7 +298,7 @@ The tutorial should use highlights, arrows, and short labels only. Avoid long te
 Fish catalog should scale through data:
 
 - Species.
-- Tank level.
+- Derived tank level.
 - Rarity.
 - Age stages.
 - Color variants.
@@ -310,17 +311,17 @@ Fish catalog should scale through data:
 
 Initial production target:
 
-- 50 store fish, with 10 fish per tank level from L1-L5.
-- Lower-level fish can live in any higher-level tank.
-- Higher-level fish cannot be purchased or placed until the tank is upgraded to that level.
-- Fish capacity increases with tank level: 10, 14, 18, 22, 30, then +6 fish slots per level forever.
-- Tank upgrades have no max level. Early prices are authored; post-L5 prices are formula-based and always shown before purchase.
-- Total wealth should be visible and include wallet, fish, inventories, and waiting coin value.
-- The tank status line should suggest useful next purchases, such as fish, food, coin collection, or tank upgrades.
+- 50 store fish available through rarity/currency filters.
+- Up to five owned tanks.
+- Each tank is isolated: fish, helpers, food, coins, decorations, cleanliness, happiness, and worth do not transfer between tanks.
+- Tank level is derived from that tank's net worth rather than bought manually.
+- Fish capacity increases with the active tank's derived level.
+- Total wealth should be visible and include the active tank wallet, fish, inventories, and waiting coin value.
+- The tank status line should suggest useful next purchases, such as fish, food, coin collection, cleaning, helpers, or another tank.
 - 3 event-only fish.
 - 12 decorations.
 - 5 food types.
-- 3 tank upgrades.
+- Purchasable tank slots up to the five-tank cap.
 
 Later content can expand through events without changing the core systems.
 

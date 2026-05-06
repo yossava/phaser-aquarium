@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aquarium HUD Layout Editor</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, sans-serif;
+        background: #111;
+        color: #eaf8ff;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: minmax(430px, 1fr) 340px;
+        gap: 18px;
+        padding: 18px;
+        box-sizing: border-box;
+      }
+
+      .stageWrap {
+        display: grid;
+        place-items: start center;
+      }
+
+      canvas {
+        width: min(430px, calc(100vw - 400px));
+        max-width: 430px;
+        aspect-ratio: 430 / 844;
+        background: #000;
+        border: 1px solid #35576b;
+      }
+
+      aside {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 5px;
+        font-size: 12px;
+        color: #a9d8ec;
+      }
+
+      select,
+      input,
+      textarea,
+      button {
+        box-sizing: border-box;
+        width: 100%;
+        border: 1px solid #365c72;
+        background: #092234;
+        color: #eaf8ff;
+        border-radius: 6px;
+        padding: 9px;
+        font: inherit;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      button {
+        cursor: pointer;
+        background: #14506c;
+        font-weight: 700;
+      }
+
+      button:hover {
+        background: #1a6689;
+      }
+
+      textarea {
+        min-height: 230px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        resize: vertical;
+      }
+
+      .hint {
+        margin: 0;
+        color: #8dbbd0;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .status {
+        min-height: 18px;
+        margin: 0;
+        color: #c3f5ff;
+        font-size: 12px;
+      }
+
+      @media (max-width: 860px) {
+        body {
+          grid-template-columns: 1fr;
+          padding: 10px;
+        }
+
+        canvas {
+          width: min(430px, calc(100vw - 20px));
+        }
+
+        aside {
+          max-width: 430px;
+          width: 100%;
+          justify-self: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stageWrap">
+      <canvas id="stage" width="430" height="844"></canvas>
+    </main>
+
+    <aside>
+      <label>
+        Select element
+        <select id="elementSelect"></select>
+      </label>
+
+      <div class="grid">
+        <label>X <input id="xInput" type="number" step="0.5" /></label>
+        <label>Y <input id="yInput" type="number" step="0.5" /></label>
+        <label>Width <input id="widthInput" type="number" step="0.5" /></label>
+        <label>Height <input id="heightInput" type="number" step="0.5" /></label>
+      </div>
+
+      <div class="buttons">
+        <button id="copyButton">Copy JSON</button>
+        <button id="resetButton">Reset</button>
+      </div>
+
+      <p class="hint">
+        Keyboard: arrows move selected element, Shift moves by 10px, Alt/Option moves by 0.5px.
+        Use [ and ] for width, - and = for height.
+      </p>
+
+      <p id="copyStatus" class="status"></p>
+      <textarea id="jsonOutput" spellcheck="false"></textarea>
+    </aside>
+
+    <script>
+      const gameWidth = 430;
+      const gameHeight = 844;
+      const storageKey = "phaser-aquarium:hud-layout-editor:v1";
+      const hudChipIconSize = 24;
+      const hudChipIconCenterOffsetX = 18;
+      const hudChipTextOffsetX = 38;
+
+      const defaultLayout = {
+        levelBadge: { x: 64, y: 71.5, size: 92 },
+        rightFrame: { x: 260, y: 67.5, width: 309, height: 160 },
+        chips: {
+          common: { x: 160, y: 39, width: 96, height: 26 },
+          rare: { x: 267, y: 39, width: 96, height: 26 },
+          superRare: { x: 160, y: 71, width: 96, height: 26 },
+          wealth: { x: 267, y: 71, width: 96, height: 26 }
+        }
+      };
+
+      const editableElements = [
+        { id: "levelBadge", label: "Level badge", kind: "badge" },
+        { id: "rightFrame", label: "Right HUD frame", kind: "rect" },
+        { id: "common", label: "Common chip", kind: "chip" },
+        { id: "rare", label: "Rare chip", kind: "chip" },
+        { id: "superRare", label: "Super rare chip", kind: "chip" },
+        { id: "wealth", label: "Wealth chip", kind: "chip" }
+      ];
+
+      const assetPaths = {
+        background: "/assets/backgrounds/tank-background.png",
+        floor: "/assets/backgrounds/aquarium-floor.png",
+        levelBadge: "/assets/ui/hud-level-medallion.png",
+        rightFrame: "/assets/ui/hud-main-long-frame.png",
+        commonIcon: "/assets/ui/icon-common-coin.png",
+        rareIcon: "/assets/ui/icon-rare-coin.png",
+        superRareIcon: "/assets/ui/icon-super-rare-coin.png",
+        wealthIcon: "/assets/ui/icon-total-wealth.png",
+        food: "/assets/food/basicLarge.png",
+        goldfish: "/assets/fish/goldfish.png",
+        guppy: "/assets/fish/guppy.png",
+        angelfish: "/assets/fish/angelfish.png",
+        snail: "/assets/helpers/feeder-snail.png",
+        shrimp: "/assets/helpers/cleaner-shrimp.png",
+        decoration: "/assets/decorations/rock.png",
+        shop: "/assets/ui/shop.png",
+        care: "/assets/ui/care.png",
+        book: "/assets/ui/book.png",
+        goals: "/assets/ui/goals.png",
+        settings: "/assets/ui/settings.png",
+        bubble: "/assets/ui/reusable-glass-bubble-button.png"
+      };
+
+      const canvas = document.getElementById("stage");
+      const ctx = canvas.getContext("2d");
+      const elementSelect = document.getElementById("elementSelect");
+      const inputs = {
+        x: document.getElementById("xInput"),
+        y: document.getElementById("yInput"),
+        width: document.getElementById("widthInput"),
+        height: document.getElementById("heightInput")
+      };
+      const jsonOutput = document.getElementById("jsonOutput");
+      const copyButton = document.getElementById("copyButton");
+      const resetButton = document.getElementById("resetButton");
+      const copyStatus = document.getElementById("copyStatus");
+
+      const images = {};
+      let layout = loadLayout();
+      let selectedId = "rightFrame";
+
+      for (const item of editableElements) {
+        const option = document.createElement("option");
+        option.value = item.id;
+        option.textContent = item.label;
+        elementSelect.appendChild(option);
+      }
+
+      Promise.all(
+        Object.entries(assetPaths).map(([key, src]) =>
+          loadImage(src).then((image) => {
+            images[key] = image;
+          })
+        )
+      ).then(() => {
+        syncInputs();
+        render();
+      });
+
+      elementSelect.addEventListener("change", () => {
+        selectedId = elementSelect.value;
+        syncInputs();
+        render();
+      });
+
+      for (const input of Object.values(inputs)) {
+        input.addEventListener("input", () => {
+          applyInputs();
+          render();
+        });
+      }
+
+      copyButton.addEventListener("click", async () => {
+        const json = JSON.stringify(layout, null, 2);
+        jsonOutput.value = json;
+        try {
+          await navigator.clipboard.writeText(json);
+          copyStatus.textContent = "Copied layout JSON.";
+        } catch {
+          jsonOutput.select();
+          copyStatus.textContent = "Clipboard blocked. JSON is selected in the box.";
+        }
+      });
+
+      resetButton.addEventListener("click", () => {
+        layout = clone(defaultLayout);
+        saveLayout();
+        syncInputs();
+        render();
+      });
+
+      window.addEventListener("keydown", (event) => {
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") {
+          return;
+        }
+
+        const step = event.altKey ? 0.5 : event.shiftKey ? 10 : 1;
+        const sizeStep = event.altKey ? 0.5 : event.shiftKey ? 10 : 2;
+        const target = selectedTarget();
+        let handled = true;
+
+        switch (event.key) {
+          case "ArrowUp":
+            target.y -= step;
+            break;
+          case "ArrowDown":
+            target.y += step;
+            break;
+          case "ArrowLeft":
+            target.x -= step;
+            break;
+          case "ArrowRight":
+            target.x += step;
+            break;
+          case "[":
+            resizeSelected(-sizeStep, 0);
+            break;
+          case "]":
+            resizeSelected(sizeStep, 0);
+            break;
+          case "-":
+            resizeSelected(0, -sizeStep);
+            break;
+          case "=":
+            resizeSelected(0, sizeStep);
+            break;
+          default:
+            handled = false;
+        }
+
+        if (handled) {
+          event.preventDefault();
+          normalizeLayout();
+          saveLayout();
+          syncInputs();
+          render();
+        }
+      });
+
+      function loadImage(src) {
+        return new Promise((resolve) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => resolve(null);
+          image.src = src;
+        });
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, gameWidth, gameHeight);
+        drawImageCover(images.background, 0, 0, gameWidth, gameHeight);
+        drawImageCover(images.floor, 0, gameHeight - 170, gameWidth, 170);
+        drawTankProps();
+        drawSideButtons();
+        drawFoodButton();
+        drawHud();
+        drawSelection();
+        jsonOutput.value = JSON.stringify(layout, null, 2);
+      }
+
+      function drawHud() {
+        const badge = layout.levelBadge;
+        drawImageCenter(images.levelBadge, badge.x, badge.y, badge.size, badge.size);
+        drawBadgeHue(badge, 3);
+        drawText("3", badge.x, badge.y + 3, 34, "#fff8d2", "#315467", "center");
+
+        const frame = layout.rightFrame;
+        drawImageCenter(images.rightFrame, frame.x, frame.y, frame.width, frame.height);
+        drawPanelGlass(frame);
+
+        drawChip("common", images.commonIcon, "35.5K", "#fff1a6", "#3a2400");
+        drawChip("rare", images.rareIcon, "215", "#d7f8ff", "#04273d");
+        drawChip("superRare", images.superRareIcon, "SR 0", "#ffd9ff", "#2d073d");
+        drawChip("wealth", images.wealthIcon, "58.0K", "#ffffff", "#062235");
+      }
+
+      function drawPanelGlass(frame) {
+        roundedRect(frame.x - frame.width / 2 + 16, frame.y - frame.height / 2 + 20, frame.width - 32, frame.height - 48, 14, "rgba(118,231,255,0.12)", null);
+        roundedRect(frame.x - frame.width / 2 + 24, frame.y - frame.height / 2 + 25, frame.width - 48, 12, 8, "rgba(255,255,255,0.1)", null);
+      }
+
+      function drawBadgeHue(badge, level) {
+        const hue = (187 + (Math.max(1, level) - 1) * 31) % 360;
+        ctx.save();
+        ctx.globalAlpha = 0.34;
+        ctx.fillStyle = `hsl(${hue} 78% 50%)`;
+        ctx.beginPath();
+        ctx.arc(badge.x, badge.y + badge.size * 0.02, badge.size * 0.34, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawChip(id, icon, label, fill, stroke) {
+        const chip = layout.chips[id];
+        const centerY = chip.y + chip.height / 2;
+        const colorMap = {
+          common: ["rgba(211,163,49,0.58)", "rgba(255,239,154,0.72)"],
+          rare: ["rgba(15,143,202,0.58)", "rgba(144,234,255,0.72)"],
+          superRare: ["rgba(139,44,193,0.58)", "rgba(244,185,255,0.72)"],
+          wealth: ["rgba(16,127,164,0.58)", "rgba(157,242,255,0.72)"]
+        };
+
+        roundedRect(chip.x, chip.y, chip.width, chip.height, 12, colorMap[id][0], colorMap[id][1]);
+        roundedRect(chip.x + 5, chip.y + 3, chip.width - 10, 6, 4, "rgba(255,255,255,0.16)", null);
+        drawImageCenter(icon, chip.x + hudChipIconCenterOffsetX, centerY, hudChipIconSize, hudChipIconSize);
+        drawText(label, chip.x + hudChipTextOffsetX, centerY + 1, 15, fill, stroke, "left");
+      }
+
+      function drawSideButtons() {
+        const buttons = [
+          [376, 210, images.shop, "Shop"],
+          [376, 292, images.care, "Care"],
+          [376, 374, images.book, "Book"],
+          [376, 456, images.care, "Tanks"],
+          [376, 538, images.goals, "Goal"],
+          [376, 620, images.settings, "Set"]
+        ];
+
+        for (const [x, y, icon, label] of buttons) {
+          drawImageCenter(images.bubble, x, y, 58, 58);
+          drawImageCenter(icon, x, y, 37, 37);
+          drawText(label, x, y + 36, 11, "#ffffff", "#05283b", "center");
+        }
+      }
+
+      function drawFoodButton() {
+        drawImageCenter(images.bubble, 58, 210, 58, 58);
+        drawImageCenter(images.food, 58, 210, 32, 32);
+        drawText("S Food", 58, 246, 11, "#ffffff", "#05283b", "center");
+        drawText("x3", 58, 260, 11, "#ffffff", "#05283b", "center");
+      }
+
+      function drawTankProps() {
+        drawImageCenter(images.decoration, 350, 770, 42, 28);
+        drawImageCenter(images.goldfish, 270, 365, 120, 72);
+        drawImageCenter(images.guppy, 210, 495, 118, 55);
+        drawImageCenter(images.angelfish, 290, 430, 62, 72);
+        drawImageCenter(images.commonIcon, 326, 520, 24, 24);
+        drawText("+28", 326, 542, 13, "#ffe68b", "#3a2400", "center");
+        drawImageCenter(images.snail, 155, 787, 56, 35);
+        drawImageCenter(images.snail, 224, 787, 56, 35);
+        drawImageCenter(images.shrimp, 288, 790, 44, 24);
+      }
+
+      function drawSelection() {
+        const bounds = selectedBounds();
+        ctx.save();
+        ctx.strokeStyle = "#fff266";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+        ctx.restore();
+      }
+
+      function selectedTarget() {
+        if (selectedId === "levelBadge") return layout.levelBadge;
+        if (selectedId === "rightFrame") return layout.rightFrame;
+        return layout.chips[selectedId];
+      }
+
+      function selectedBounds() {
+        const target = selectedTarget();
+        if ("size" in target) {
+          return { x: target.x - target.size / 2, y: target.y - target.size / 2, width: target.size, height: target.size };
+        }
+        if (selectedId === "rightFrame") {
+          return { x: target.x - target.width / 2, y: target.y - target.height / 2, width: target.width, height: target.height };
+        }
+        return target;
+      }
+
+      function syncInputs() {
+        elementSelect.value = selectedId;
+        const target = selectedTarget();
+        inputs.x.value = target.x;
+        inputs.y.value = target.y;
+        if ("size" in target) {
+          inputs.width.value = target.size;
+          inputs.height.value = target.size;
+        } else {
+          inputs.width.value = target.width;
+          inputs.height.value = target.height;
+        }
+        jsonOutput.value = JSON.stringify(layout, null, 2);
+      }
+
+      function applyInputs() {
+        const target = selectedTarget();
+        target.x = Number(inputs.x.value);
+        target.y = Number(inputs.y.value);
+        if ("size" in target) {
+          target.size = Number(inputs.width.value);
+        } else {
+          target.width = Number(inputs.width.value);
+          target.height = Number(inputs.height.value);
+        }
+        normalizeLayout();
+        saveLayout();
+      }
+
+      function resizeSelected(dw, dh) {
+        const target = selectedTarget();
+        if ("size" in target) {
+          target.size += dw || dh;
+        } else {
+          target.width += dw;
+          target.height += dh;
+        }
+      }
+
+      function normalizeLayout() {
+        const round = (value) => Math.round(Number(value) * 10) / 10;
+        layout.levelBadge.x = round(layout.levelBadge.x);
+        layout.levelBadge.y = round(layout.levelBadge.y);
+        layout.levelBadge.size = Math.max(24, round(layout.levelBadge.size));
+        for (const rect of [layout.rightFrame, ...Object.values(layout.chips)]) {
+          rect.x = round(rect.x);
+          rect.y = round(rect.y);
+          rect.width = Math.max(20, round(rect.width));
+          rect.height = Math.max(16, round(rect.height));
+        }
+      }
+
+      function drawImageCenter(image, x, y, width, height) {
+        if (!image) return;
+        ctx.drawImage(image, x - width / 2, y - height / 2, width, height);
+      }
+
+      function drawImageCover(image, x, y, width, height) {
+        if (!image) return;
+        const scale = Math.max(width / image.width, height / image.height);
+        const drawWidth = image.width * scale;
+        const drawHeight = image.height * scale;
+        ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+      }
+
+      function drawText(text, x, y, size, fill, stroke, align) {
+        ctx.save();
+        ctx.font = `700 ${size}px Arial`;
+        ctx.textAlign = align;
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = Math.max(2, size * 0.18);
+        ctx.strokeStyle = stroke;
+        ctx.fillStyle = fill;
+        ctx.strokeText(text, x, y);
+        ctx.fillText(text, x, y);
+        ctx.restore();
+      }
+
+      function roundedRect(x, y, width, height, radius, fill, stroke) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(x, y, width, height, radius);
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        if (stroke) {
+          ctx.strokeStyle = stroke;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function loadLayout() {
+        try {
+          return mergeLayout(JSON.parse(localStorage.getItem(storageKey) || "{}"));
+        } catch {
+          return clone(defaultLayout);
+        }
+      }
+
+      function saveLayout() {
+        localStorage.setItem(storageKey, JSON.stringify(layout));
+      }
+
+      function mergeLayout(saved) {
+        return {
+          levelBadge: { ...defaultLayout.levelBadge, ...saved.levelBadge },
+          rightFrame: { ...defaultLayout.rightFrame, ...saved.rightFrame },
+          chips: {
+            common: { ...defaultLayout.chips.common, ...saved.chips?.common },
+            rare: { ...defaultLayout.chips.rare, ...saved.chips?.rare },
+            superRare: { ...defaultLayout.chips.superRare, ...saved.chips?.superRare },
+            wealth: { ...defaultLayout.chips.wealth, ...saved.chips?.wealth }
+          }
+        };
+      }
+
+      function clone(value) {
+        return JSON.parse(JSON.stringify(value));
+      }
+    </script>
+  </body>
+</html>

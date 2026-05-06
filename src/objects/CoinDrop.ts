@@ -1,10 +1,11 @@
 import Phaser from "phaser";
-import { tankBounds } from "../game/constants";
+import { gameWidth, tankBounds } from "../game/constants";
 import { formatNumber } from "../game/economy";
 import type { CoinType } from "../types/mechanics";
 
-const coinDisplaySize = 32;
-const coinValueTextOffset = 13;
+const coinDisplaySize = Math.round(gameWidth * 0.095);
+const coinValueTextOffset = Math.round(gameWidth * 0.04);
+const coinValueFontSize = Math.round(gameWidth * 0.03);
 
 export const coinVisualsByType: Record<CoinType, { tint: number; textColor: string; strokeColor: string }> = {
   common: { tint: 0xffd24f, textColor: "#ffe67a", strokeColor: "#423307" },
@@ -25,7 +26,7 @@ export class CoinDrop {
   public valueText: Phaser.GameObjects.Text;
   public readonly bottomY = tankBounds.bottom - 16;
   public readonly visual: CoinVisual;
-  public readonly sinkSpeed = 34;
+  public readonly sinkSpeed = 82;
   private tankViewScale = 1;
 
   public constructor(
@@ -48,7 +49,7 @@ export class CoinDrop {
     this.valueText = scene.add
       .text(x, y + coinValueTextOffset, `+${formatNumber(value)}`, {
         fontFamily: "Arial",
-        fontSize: "10px",
+        fontSize: `${coinValueFontSize}px`,
         color: this.visual.textColor,
         stroke: this.visual.strokeColor,
         strokeThickness: 2
@@ -71,7 +72,7 @@ export class CoinDrop {
     this.tankViewScale = Math.max(0.01, tankViewScale);
     const displaySize = coinDisplaySize / this.tankViewScale;
     this.sprite.setDisplaySize(displaySize, displaySize);
-    this.valueText.setFontSize(`${10 / this.tankViewScale}px`);
+    this.valueText.setFontSize(`${coinValueFontSize / this.tankViewScale}px`);
     this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + this.valueTextOffset(), tankBounds.bottom - 8));
   }
 

@@ -5,16 +5,20 @@
 The game should track:
 
 - Save schema version.
-- Common coins.
-- Rare coins.
-- Super rare coins.
-- Food inventory.
-- Fish inventory.
-- Placed fish.
-- Decoration inventory.
-- Placed decorations.
-- Tank cleanliness.
-- Tank happiness.
+- Owned tank slots, up to five tanks.
+- Active tank slot.
+- Per-tank common coins.
+- Per-tank rare coins.
+- Per-tank super rare coins.
+- Per-tank food inventory.
+- Per-tank fish inventory.
+- Per-tank placed fish.
+- Per-tank helper creatures.
+- Per-tank decoration inventory.
+- Per-tank placed decorations.
+- Per-tank cleanliness.
+- Per-tank happiness.
+- Per-tank net worth and derived level.
 - Last saved timestamp.
 - Settings.
 - Daily goal progress.
@@ -29,7 +33,19 @@ type Rarity = "common" | "rare" | "superRare";
 type CoinType = "common" | "rare" | "superRare";
 type AgeStage = "baby" | "juvenile" | "adult" | "elder" | "master";
 type FishState = "happy" | "hungry" | "ill";
-type FoodType = "micro" | "basic" | "premium" | "herb" | "protein" | "coral" | "medicine" | "evolve" | "event";
+type FoodType =
+  | "micro"
+  | "basic"
+  | "basicMedium"
+  | "basicLarge"
+  | "basicXL"
+  | "premium"
+  | "herb"
+  | "protein"
+  | "coral"
+  | "medicine"
+  | "evolve"
+  | "event";
 type FishGender = "M" | "F";
 
 type Wallet = Record<CoinType, number>;
@@ -152,7 +168,6 @@ Rarity values:
 
 Store design should allow a very large fish catalog through filters:
 
-- Tank level.
 - Rarity.
 - Species family.
 - Food type.
@@ -170,7 +185,7 @@ type FishType = {
   id: string;
   name: string;
   speciesFamily: string;
-  tankLevel: number;
+  tankLevel: number; // legacy/catalog metadata only; current purchases are not gated by fish level
   rarity: Rarity;
   price?: Price;
   acquisitionSources: string[];
@@ -192,16 +207,17 @@ type FishType = {
 
 ## Tank Level Progression
 
-The player has one active tank level starting at 1. Tank upgrades have no fixed maximum level.
+The player can own up to five isolated tank environments. Every tank has its own wallet, food stock, fish, helpers, decorations, cleanliness, happiness, coin drops, and net worth.
 
-- Fish have a `tankLevel` requirement.
-- A fish can enter the tank when `fish.tankLevel <= currentTankLevel`.
-- Lower-level fish remain valid in higher-level tanks.
-- Higher-level fish cannot be purchased or placed until the tank is upgraded.
-- The shop shows fish by the five authored fish catalog tiers so the catalog stays readable on portrait screens.
-- The HUD shows total wealth and the tank need indicator suggests the next useful purchase or upgrade, including the next tank upgrade price.
-- The tank uses one low-distraction raster underwater background across upgrades; tank level changes affect zoom, capacity, and economy rather than swapping background overlays.
-- Upgrade prices are fixed for early onboarding levels and formula-based after L5.
+- New fish, food, helpers, decorations, and coins belong only to the active tank.
+- Fish and helper creatures cannot be transferred between tanks.
+- Tank level is derived from that tank's net worth; players do not manually upgrade a tank.
+- Buying a tank creates another isolated tank slot, up to the five-tank cap.
+- Tank capacity is based on the derived tank level and grows as that individual tank becomes more valuable.
+- All fish species can be purchased for any tank when the player can pay the listed currency.
+- The HUD shows the active tank's level, worth, wallet, care state, fish capacity, coin capacity, and next useful need.
+- All tanks use the same camera scale and portrait viewport; there is no zoom-out mechanic tied to tank level.
+- Tank themes may vary by tank slot or presentation layer, but theme art does not change the isolation rules.
 
 ## Fish Instance State
 
@@ -229,9 +245,8 @@ Fish visual language:
 
 - Fish tail tint should match the color of its primary preferred food, so players can map fish to food quickly without changing body identity.
 - Food drops and food shop cards should use the same color language.
-- Fish rarity should be visible as one, two, or three small stars near the fish status bars.
-- Fully grown fish should show a compact max-growth marker near the status bars.
-- Fish should show compact chat-bubble emoji feedback above their status bars: hungry persists until eating, happy appears briefly after eating, sick persists until healed, and tank-too-small-to-grow persists until upgrading.
+- Fish rarity should be visible through sprite styling, catalog art, and card presentation rather than in-tank stars.
+- Fish should show compact chat-bubble emoji feedback above their bodies: hungry persists until eating, happy appears briefly after eating, sick persists until healed, and angry appears briefly when a very hungry fish loses a food chase.
 - Sick fish should keep a recognizable body color with mild desaturation instead of turning colorless gray.
 
 ## Age Stages
@@ -243,10 +258,9 @@ Age uses fish-time rather than literal wall-clock labels:
 - 1 real hour equals 1 fish month.
 - Real minutes convert into fish-days, using a 30-day fish month.
 - 12 real hours equals 1 fish year.
-- Fish visual size is based solely on exact age: early months grow fast enough to be visibly readable, reaching the main species size around 6 months, then long-tail growth continues until 50 fish-years and reaches the very-big cap.
-- Tank size can cap visible growth. Smaller tanks stop oversized fish before their natural age size; upgrading increases the growth allowance up to roughly half the screen width at the highest tank level.
+- Fish visual size is based on exact age and species scale: new fish are readable immediately, the first fish-year grows quickly, later years taper, and growth continues toward a 50-fish-year cap.
+- Fish visual size is capped at roughly 50% of the portrait screen width so a long-lived fish remains impressive without covering the whole tank.
 - Biological length and weight are derived from exact fish-time age and species scale. Displayed length uses a 10x fantasy centimeter scale, so a biological readout that would feel like `5.9 cm` is shown as `59 cm`. They do not use visible tank-capped size, so the Book can still show the fish's true age-rooted size when the tank is too small for visible growth.
-- Growth-blocked fish should show a compact marker above their status bars and should make the tank need indicator recommend a bigger tank.
 - Player-facing UI should not show size categories such as baby, small, medium, big, or max.
 
 Internal lifecycle stages, used for production and care tuning but not shown as player-facing size categories:
@@ -297,7 +311,7 @@ Breeding creates age-zero fish without direct store purchase.
 
 - Requires one male and one female fish of the same species in the tank.
 - Requires open tank capacity.
-- Result chance: 70% same species age-zero fish, 30% random rare age-zero fish available for the current tank level.
+- Result chance: 70% same species age-zero fish, 30% random rare age-zero fish.
 - The new fish starts at age zero and evolution stage 0.
 - Breeding is launched from the owned fish statistics page.
 - Later production balance may add cooldowns, pair stamina, nursery slots, or special food requirements.
@@ -644,7 +658,7 @@ Cleanliness effects:
 Player actions:
 
 - Tap clean button.
-- Buy filter upgrade.
+- Buy cleaning-related helpers or future filter items.
 - Buy helper creatures for bottom cleanup.
 
 Cleanliness edge cases:
@@ -722,7 +736,7 @@ Rules:
 
 - Buying fish adds fish to inventory.
 - Selling fish removes fish and grants sell value.
-- Placing fish consumes inventory.
+- Store fish purchases are auto-added to the active tank when capacity allows.
 - Buying decoration adds decoration to inventory.
 - Placing decoration consumes inventory.
 - Food is consumed when dropped.
@@ -736,11 +750,11 @@ Placement should support:
 
 Tank capacity rules:
 
-- Fish slot capacity scales by tank level: L1 10, L2 14, L3 18, L4 22, L5 30, then +6 fish slots for every level after L5.
+- Fish slot capacity scales with the active tank's net-worth-derived level.
 - Each tank has decoration capacity or placement footprint budget.
 - Bigger fish may count as more capacity after aging.
 - Overcrowding lowers happiness and cleanliness.
-- The game should recommend a second tank or upgrade before overcrowding becomes painful.
+- The game should recommend useful purchases, food, collection, cleaning, or buying another tank before overcrowding becomes painful.
 
 ## Progression
 
@@ -769,7 +783,7 @@ Suggested early progression:
 
 - Level 1: Goldfish, basic food, plant, rock.
 - Level 2: Angelfish, coral, premium food.
-- Level 3: Koi, castle, filter upgrade.
+- Level 3: Koi, castle, and stronger cleaning helpers.
 - Level 4: Rare variants, rare coins, and themed decorations.
 - Level 5: Species variety bonuses and advanced tank decorations.
 - Level 6: Super rare coins and event-only fish.
@@ -800,7 +814,7 @@ These systems can deepen long-term retention:
 
 - Fish personalities: lazy, playful, shy, bossy, curious. Personality modifies movement and mood cycle.
 - Tank biomes: freshwater, reef, deep sea, zen pond, fantasy. Biomes determine decoration and production bonuses.
-- Collection album: rewards coins, food, decorations, or tank upgrades for owning/growing fish.
+- Collection album: rewards coins, food, decorations, or new tank-slot progress for owning/growing fish.
 - Species mastery: rewards for raising a species from age zero to older ages.
 - Discovery recipes: certain decorations, food, and fish combinations attract hidden fish.
 - Visitor fish: temporary fish visit the tank; caring for them can unlock them later.

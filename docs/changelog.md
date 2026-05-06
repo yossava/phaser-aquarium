@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Changed tank progression to isolated owned tanks: players can own up to five tanks, each with separate wallet, food, fish, helpers, decorations, cleanliness, happiness, and worth.
+- Removed manual tank upgrades, tank zoom scaling, fish level purchase gates, and fish transfer between tanks; tank level is now derived from each tank's net worth.
+- Removed growth-blocked fish prompts and the old larger-tank emoji path, keeping fish visual size capped at roughly half of the portrait screen.
+- Updated documentation and regression targets to match the isolated multi-tank design instead of the retired upgrade-forever model.
 - Revamped runtime assets from `docs/prompt.json` using the `create-assets` workflow: applied a cleaner underwater background, distant silhouette overlay, wavy foreground sand bed, pressed/normal bubble button frames, top HUD panel, floating coin pickups, and eight refreshed decoration PNGs.
 - Updated tank background/floor scaling so the prompt-pack environment stays full-screen as tank level zooms out.
 - Expanded regression asset coverage for the prompt-pack UI/background assets and refreshed visual regression screenshots.

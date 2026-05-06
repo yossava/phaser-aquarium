@@ -1,0 +1,227 @@
+{
+  "generatedAt": "2026-05-06T02:52:20.525Z",
+  "count": 20,
+  "uniqueCount": 20,
+  "assets": [
+    {
+      "id": "tank-bg-01-lagoon_depth",
+      "filename": "tank-bg-01-lagoon_depth.png",
+      "theme": "lagoon_depth",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "af5f6179e9ba571b66bf44807777be49b21e1f658da517dbfd59f2fadc7cf9b5",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-02-coral_garden",
+      "filename": "tank-bg-02-coral_garden.png",
+      "theme": "coral_garden",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "71500addc2e8e2051fd3e1f096466eba9536b8a3f8b88234551c71712bb64ba6",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-03-kelp_forest",
+      "filename": "tank-bg-03-kelp_forest.png",
+      "theme": "kelp_forest",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "d9db61a3d5ee5e18fd5e26d1658e070a6751b1642f05c2e7416d2ae25437445d",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-04-crystal_cavern",
+      "filename": "tank-bg-04-crystal_cavern.png",
+      "theme": "crystal_cavern",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "ebab3954f524b20e91f5a9a4e1d25036b8338a385b99e541a41567cd10433475",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-05-abyss_blue",
+      "filename": "tank-bg-05-abyss_blue.png",
+      "theme": "abyss_blue",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "6bb7cbd0bc258c0f5a97e403841df0fe845641c7d8702f020f5a697ce592b31a",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-06-sunset_shallows",
+      "filename": "tank-bg-06-sunset_shallows.png",
+      "theme": "sunset_shallows",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "ff4f6b8f24c373310a16a0b41abfcd5410a08489fba03c008979a73c737f2d68",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-07-freshwater_plants",
+      "filename": "tank-bg-07-freshwater_plants.png",
+      "theme": "freshwater_plants",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "b8e80158aa007ce5e16bf40238c4574b877364de3099c03ab27350d8d11f82fb",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-08-misty_ruins",
+      "filename": "tank-bg-08-misty_ruins.png",
+      "theme": "misty_ruins",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "7e35ec042db42ce882537869ce54ab53e927d84fcba3ffc71e37642cd846c8c1",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-09-mangrove_roots",
+      "filename": "tank-bg-09-mangrove_roots.png",
+      "theme": "mangrove_roots",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "5913e19bdd4709c9a79b81fab4a9cbbe27f0cbb8d0d0511f1a22c5f95e340ce3",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-10-volcanic_reef",
+      "filename": "tank-bg-10-volcanic_reef.png",
+      "theme": "volcanic_reef",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "4d8973eee1c140f6b47c44a413f011c17e662cac4f83622237a8d0ced18e5e3a",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-11-glowing_plankton",
+      "filename": "tank-bg-11-glowing_plankton.png",
+      "theme": "glowing_plankton",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "660deb4cc99fbfe22fcf31be2a755a1702cbdbeecf4b59ab7a35a6ad5c8f5729",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-12-arctic_glass",
+      "filename": "tank-bg-12-arctic_glass.png",
+      "theme": "arctic_glass",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "c9152758c0051f48f61488e2626ca201780c78376c8f8faebf1c5a3faef9ce9f",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-13-jade_grotto",
+      "filename": "tank-bg-13-jade_grotto.png",
+      "theme": "jade_grotto",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "802e04bbffc51252d42901591eb2e8bf41e3bd02aac93913e1da5bceb6d74886",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-14-pearl_cave",
+      "filename": "tank-bg-14-pearl_cave.png",
+      "theme": "pearl_cave",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "5b565ac9a85d93523d118ae0699a7970bb358117a65df8cc9f8861dba6e2857f",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-15-distant_shipwreck",
+      "filename": "tank-bg-15-distant_shipwreck.png",
+      "theme": "distant_shipwreck",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "a4d6db90d045f5625a1ee06384f8394c1c79c9aac72b61e91385e5018e784148",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-16-lily_freshwater",
+      "filename": "tank-bg-16-lily_freshwater.png",
+      "theme": "lily_freshwater",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "10f530d5a20f272348faeb700cb24752a6705c0b5c4b59a50aa5ae27184f892f",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-17-moonlit_reef",
+      "filename": "tank-bg-17-moonlit_reef.png",
+      "theme": "moonlit_reef",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "2fdf21175e1470e49159aa3013794364d0d5c4376214bf189e6f01eb052dd84d",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-18-opal_cavern",
+      "filename": "tank-bg-18-opal_cavern.png",
+      "theme": "opal_cavern",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "28094e3f87adb36f951318a1ac508fbe501923f0c4b92474723cf5f69c5d44cc",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-19-golden_shallows",
+      "filename": "tank-bg-19-golden_shallows.png",
+      "theme": "golden_shallows",
+      "dimensions": {
+        "width": 948,
+        "height": 1660
+      },
+      "sha256": "3340201167bf5f777299547a3d3185314c92e6832309612e0358d40ed161bd2e",
+      "use": "tank background"
+    },
+    {
+      "id": "tank-bg-20-deep_temple",
+      "filename": "tank-bg-20-deep_temple.png",
+      "theme": "deep_temple",
+      "dimensions": {
+        "width": 948,
+        "height": 1659
+      },
+      "sha256": "293c21a09378cfe3d5326a76b4a516eebd9a75b6c1fc1363592ee0083eb6442f",
+      "use": "tank background"
+    }
+  ]
+}

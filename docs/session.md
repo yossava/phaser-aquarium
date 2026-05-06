@@ -18,7 +18,7 @@
 - Use generated Phaser textures for the MVP so gameplay is not blocked on art assets.
 - Keep the first MVP in a single scene until the loop is proven.
 - Use a portrait virtual canvas with the tank above and touch controls below.
-- Run visual browser QA after UI or gameplay changes.
+- Run visual browser QA when explicitly requested for UI/gameplay changes.
 - Use `npm test` for repeatable regression coverage before handoff.
 - Keep generated fish sprites under one shared toy-like aquarium art DNA, with rarity shown through body/fins/glow and food identity shown through tail color instead of UI badges.
 - Fish age uses fish-time: 1 real hour equals 1 fish month, so real minutes convert into fish-days.
@@ -26,8 +26,10 @@
 - Fish stats should show exact age, not size categories like baby, small, medium, big, or max.
 - Fish sizing should make early months visually readable, reaching the main species size around 6 months, then slowing into a long-tail 50-year growth curve.
 - Fish sizing now uses a first-year curve: hatchling at age zero, juvenile by one fish-month, young by six fish-months, adult by one fish-year, then slow linear growth to the 50-year cap.
-- If a fish outgrows the current tank's growth allowance, its visible growth pauses and the tank need indicator should prompt an upgrade.
-- Fish can show compact chat-bubble emoji above their status bars: hungry persists until eating, happy appears briefly after eating, sick persists until healed, and not-enough-space persists until tank upgrade.
+- Fish visible size is capped at roughly half of the portrait screen width instead of using larger-tank growth prompts.
+- Fish can show compact chat-bubble emoji above their bodies: hungry persists until eating, happy appears briefly after eating, sick persists until healed, and angry appears briefly when a very hungry fish loses a food chase.
+- Current tank model uses up to five isolated tanks. Each tank has its own wallet, fish, helpers, food, decorations, cleanliness, happiness, coin drops, and net worth.
+- Tank level is derived from each tank's net worth. Manual tank upgrades, fish-level purchase gates, tank zoom scaling, and fish/helper transfers between tanks are retired.
 - Full runtime asset coverage now comes from image-generated source PNGs processed through chroma-key cleanup into transparent Phaser assets, not procedural PNG generation.
 - Fish swimming animation should stay subtle: mostly squash/rotation shimmer, very small vertical bob, and stronger motion only when chasing food.
 - Goldfish, Angelfish, and Celestial Koi are the first three runtime image-generated raster fish textures for validating the shared fish art DNA across common, rare, and super rare.
@@ -48,7 +50,7 @@
   - Drop food into the tank.
   - Fish move around, get hungry, seek food, eat, grow, become ill, and become happy.
   - Happy fish drop collectible coins.
-  - Fish show emoji feedback for happy, sick, and growth-blocked states.
+  - Fish show emoji feedback for happy, hungry, and sick states.
 - Verified production build with `npm run build`.
 - Converted the MVP from desktop landscape to mobile portrait layout.
 - Added bottom tab controls for fish, food, and decorations.

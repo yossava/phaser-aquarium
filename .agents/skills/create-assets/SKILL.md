@@ -36,6 +36,16 @@ Use lowercase `snake_case` filenames. Keep generated assets inside the project u
 - UI should remain compact, mobile-first, and easy to scan.
 - Avoid dark, muddy, overly realistic, or busy stock-art looks.
 
+## Raster Transparency Workflow
+
+- For isolated raster sprites, icons, buttons, badges, coins, helpers, decorations, and UI objects, prefer a chroma-key workflow over asking the image model for true transparency.
+- Generate one asset per image on a solid flat magenta key background: `#ff00ff`. The magenta must be plain, untextured, unlit, and absent from the asset itself.
+- Prompt for the asset to be fully separated from the magenta background with clean antialiased edges, no drop shadow that blends into the key color, no checkerboard preview, no sheet, no labels, and no extra objects.
+- After generation, key out the magenta background into real alpha and export the final runtime PNG with transparent background.
+- Keep the original keyed source when useful under `assets/generated/source/` or `artifacts/`, and place only the cleaned transparent runtime PNG in the game asset path.
+- If an asset naturally contains magenta or pink details, use a different explicit key color that is absent from the asset, such as `#00ff00`, and document that choice in the manifest.
+- Do not accept generated checkerboard transparency previews as final transparency; checkerboards must be treated as failed output or manually removed only when the object can be cleanly extracted.
+
 ## Workflow
 
 1. Inspect current assets and procedural textures first:
@@ -54,9 +64,10 @@ find assets -maxdepth 3 -type f 2>/dev/null
 3. Draft a compact prompt that states:
    - asset subject and gameplay purpose
    - mobile portrait aquarium style
-   - exact output size and transparent background when appropriate
+   - exact output size and magenta key background for isolated raster assets
    - desired readability at in-game scale
    - exact output format
+   - one asset only, not a sprite collection or contact sheet
    - for SVG: `Return only valid SVG markup, no markdown fences, no explanation.`
 
 4. For background Codex image generation:
@@ -80,7 +91,15 @@ python3 tools/codex_image_job.py run --name helper-creatures \
   "Create transparent PNG bottom-crawling helper creatures..."
 ```
 
-5. Validate before reporting done:
+5. For keyed raster output, convert the key color to alpha before integration:
+
+```bash
+python3 tools/key_out_magenta.py path/to/source.png path/to/final.png
+```
+
+If the project does not yet have a key-out helper, use an image library or script that removes only the exact key background and preserves antialiasing around the asset edge. Do not ship the keyed source as a runtime asset.
+
+6. Validate before reporting done:
 
 ```bash
 file assets/path/name.png
@@ -96,9 +115,9 @@ xmllint --noout assets/path/name.svg
 
 For raster assets, inspect dimensions with `file` and view the result. If integrated into the game, run `npm test` and visually verify in the browser or regression artifact.
 
-6. If output contains prose, markdown fences, wrong dimensions, or poor transparency, rerun with a stricter prompt. Avoid hand-editing large generated image/vector files unless the fix is tiny and obvious.
+7. If output contains prose, markdown fences, wrong dimensions, checkerboard background, visible key-color spill, or poor transparency, rerun with a stricter prompt. Avoid hand-editing large generated image/vector files unless the fix is tiny and obvious.
 
-7. When adding runtime asset loading, keep fallback procedural textures until the image asset is verified, so gameplay never breaks if a file is missing.
+8. When adding runtime asset loading, keep fallback procedural textures until the image asset is verified, so gameplay never breaks if a file is missing.
 
 ## Prompt Notes
 

@@ -1,0 +1,172 @@
+{
+  "generated_for": "Phaser Aquarium runtime UI asset recreation",
+  "workflow": "single-asset prompts on #ff00ff magenta key, then tools/key_out_magenta.py to alpha",
+  "assets": [
+    {
+      "file": "public/assets/ui/reusable-glass-bubble-button.png",
+      "label": "Bubble",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "source": "assets/generated/source/ui/reusable-glass-bubble-button-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/reusable-glass-bubble-button-pressed.png",
+      "label": "Bubble Pressed",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "source": "assets/generated/source/ui/reusable-glass-bubble-button-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/icon-common-coin.png",
+      "label": "Common Coin",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "source": "assets/generated/source/ui/icon-common-coin-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/icon-rare-coin.png",
+      "label": "Rare Coin",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "source": "assets/generated/source/ui/icon-rare-coin-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/icon-super-rare-coin.png",
+      "label": "Super Rare Coin",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "source": "assets/generated/source/ui/icon-super-rare-coin-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-01.png",
+      "label": "Tank Badge 1",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-01-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-02.png",
+      "label": "Tank Badge 2",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-02-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-03.png",
+      "label": "Tank Badge 3",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-03-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-04.png",
+      "label": "Tank Badge 4",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-04-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-05.png",
+      "label": "Tank Badge 5",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-05-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-06.png",
+      "label": "Tank Badge 6",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-06-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-07.png",
+      "label": "Tank Badge 7",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-07-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-08.png",
+      "label": "Tank Badge 8",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-08-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-09.png",
+      "label": "Tank Badge 9",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-09-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+    },
+    {
+      "file": "public/assets/ui/tank-level-badge-10.png",
+      "label": "Tank Badge 10",
+      "dimensions": [
+        1024,
+        512
+      ],
+      "source": "assets/generated/source/ui/tank-level-badge-10-source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "one asset per prompt using create-assets Raster Transparency Workflow",
+      "usage_note": "Use for tank levels 10 and above."
+    }
+  ]
+}

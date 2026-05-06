@@ -48,7 +48,7 @@
 - [x] Add initial data-driven content tables for fish, food, and decorations.
 - [x] Add shared mechanics types: `Rarity`, `CoinType`, `AgeStage`, `FishState`, `FoodType`, `Wallet`, and `Price`.
 - [x] Add content validation for unique IDs, rarity, prices, food references, production tables, and core numeric fields.
-- [ ] Add data-driven content tables for upgrades, events, daily goals, community tank bonuses, and economy constants.
+- [ ] Add data-driven content tables for utility items, events, daily goals, community tank bonuses, and economy constants.
 - [x] Expand content validation for community-safe species references.
 - [x] Expand regression coverage for runtime asset availability.
 - [ ] Expand content validation for asset files, localization keys, and event-only rules.
@@ -84,8 +84,8 @@
 - [x] Keep fish visual size growing until 50 fish-years.
 - [x] Retune age-only fish sizing so four-month fish are much larger than new fish.
 - [x] Redefine fish growth formula so early age differences stay visually readable across species.
-- [x] Add tank-size growth caps so fish pause growth in tanks that are too small.
-- [x] Add growth-blocked indicators and upgrade prompts for capped fish.
+- [x] Replace tank-size growth-blocking with a global 50%-of-screen fish visual size cap.
+- [x] Remove growth-blocked indicators and larger-tank prompts from the current isolated-tank design.
 - [x] Add age-rooted fish length and weight stats to Book fish cards.
 - [x] Scale hunger growth and meal calorie need from age-rooted fish size.
 - [ ] Add age-based size, food need, mood cycle, production table, sell value, and comfort tolerance.
@@ -114,14 +114,14 @@
 - [x] Make higher-calorie food satisfy larger fish better than starter food.
 - [x] Add wrong-food rejection and wrong-food partial effects.
 - [x] Add food cleanup cleanliness penalty.
-- [x] Add right-side food tool toggles so a selected food drops on the next tank tap.
+- [x] Replace food/medicine toggles with drag-from-left-tool-drop gestures.
 - [x] Add medicine behavior that heals nearby ill fish without becoming optimal everyday food.
 - [x] Allow ill fish to keep producing slower reduced `+1` coin drops.
 - [x] Add 60-minute continuous hungry/sick death timer with reset on recovery.
-- [ ] Add food expiration over time.
+- [x] Add 15-second expiration for unconsumed food, herbs, medicine, and pills.
 - [ ] Add mood cycle separate from hunger and health.
 - [ ] Add mood smoothing so state does not flicker.
-- [x] Add chat-bubble fish state emoji for hungry, timed post-eat happy, sick, and not-enough-space-to-grow states.
+- [x] Add chat-bubble fish state emoji for hungry, timed post-eat happy, sick, and short angry feedback after a missed food chase.
 
 ## Phase 5: Tank Systems
 
@@ -135,17 +135,17 @@
 - [x] Add purchasable helper creature that helps feed hungry fish using stocked food.
 - [x] Add helper creature cards to Book/Album with sell actions to free helper capacity.
 - [ ] Add decoration habitat tags and collection set bonuses.
-- [x] Add tank capacity rules that scale fish slots by tank level and track decoration count.
-- [x] Add tank level upgrades from L1-L5.
-- [x] Remove the tank upgrade cap so tank level can increase indefinitely.
-- [x] Show next tank upgrade price in Store, Care, and tank need UI.
-- [x] Gate fish purchase and placement by tank level while allowing lower-level fish in higher-level tanks.
-- [x] Zoom the tank view out as tank level increases so upgrades make the aquarium feel larger.
-- [x] Keep dropped food and coin pickup visuals screen-consistent as tank zoom changes, while fish size stays age-based.
+- [x] Add isolated multi-tank state where each tank has separate fish, helpers, decorations, food, coins, cleanliness, happiness, and worth.
+- [x] Cap owned tanks at five.
+- [x] Remove manual tank upgrades; tank level now derives from tank net worth.
+- [x] Remove fish transfer between tanks.
+- [x] Remove fish purchase/placement gates by tank level.
+- [x] Remove tank zoom mechanics; all tanks use the same full-screen portrait viewport.
+- [x] Keep dropped food and coin pickup visuals screen-consistent under the fixed tank viewport.
 - [x] Replace the flat tank floor rectangle with a raster PNG aquarium floor texture and fallback.
 - [x] Add a low-distraction distant underwater raster background as the tank backdrop.
 - [x] Remove per-tank-level procedural background overlays.
-- [x] Add tank need indicator copy for fish, food, coins, and upgrades.
+- [x] Add tank need indicator copy for fish, food, coins, cleaning, helpers, and additional tanks.
 - [x] Add overcrowding effects on happiness and cleanliness.
 - [x] Add MVP community tank score.
 - [x] Remove incompatible species penalties so all fish can share one tank.
@@ -174,7 +174,7 @@
 - [ ] Add visitor fish.
 - [ ] Add species mastery rewards.
 - [ ] Add photo moments.
-- [ ] Add second tank support for themed collections.
+- [x] Add multi-tank support for isolated themed collections.
 
 ## Phase 7: Production Mobile
 
@@ -209,7 +209,7 @@
 - [x] Expand regression tests for helper creatures appearing in Book/Album and selling from that page.
 - [ ] Expand regression tests for wrong-food rejection.
 - [x] Expand regression tests for community-safe mixed-species behavior.
-- [x] Expand regression tests for 50-fish catalog, tank level gating, tank upgrade, and total wealth.
+- [x] Expand regression tests for the 50-fish catalog, isolated multi-tank state, tank-slot purchase flow, and tank wealth.
 - [x] Expand regression tests for save/load.
 - [x] Expand regression tests for offline progress caps.
 - [x] Expand regression tests for timed auto feeder and auto coin collector rentals, including selected duration and scaled prices.
@@ -220,7 +220,7 @@
 - [x] Keep visual browser QA as part of every UI/gameplay change.
 - [x] Add regression coverage that fish sprites visibly animate while swimming.
 - [x] Add regression coverage that fish tail wag changes while swimming.
-- [x] Add regression coverage for upgraded-tank food and coin pickup sizing.
+- [x] Add regression coverage that food and coin pickup sizing stays stable with the fixed tank viewport.
 - [x] Add regression coverage for the aquarium floor PNG asset loading.
 - [x] Add regression coverage for the distant underwater tank background PNG asset loading.
 - [x] Add regression coverage for the dirty tank overlay threshold and screenshot artifact.
