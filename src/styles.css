@@ -1,12 +1,22 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Baloo 2";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/assets/fonts/baloo-2/baloo-2-latin-400-800.woff2") format("woff2");
+}
+
 :root {
   color: #f8fbff;
   background: #000000;
   --aq-stage-width: min(100vw, calc(100dvh * 430 / 844));
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  --aq-game-font: "Baloo 2", "Trebuchet MS", sans-serif;
+  --aq-hud-edge-inset: 10px;
+  --aq-hud-scale: 1;
+  --aq-hud-min-width: 370px;
+  font-family: var(--aq-game-font);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -106,13 +116,14 @@ canvas {
   }
 
   .aq-tank-menu-button {
-    @apply pointer-events-auto absolute right-[2%] flex -translate-y-1/2 flex-col items-center border-0 bg-transparent p-0 text-white;
-    width: clamp(44px, 13.5%, 62px);
+    @apply pointer-events-auto absolute flex -translate-y-1/2 flex-col items-center border-0 bg-transparent p-0 text-white;
+    right: var(--aq-hud-edge-inset);
+    width: clamp(58px, 16.5%, 76px);
     touch-action: manipulation;
   }
 
   .aq-tank-menu-bubble {
-    @apply relative flex aspect-square w-[78%] items-center justify-center rounded-full;
+    @apply relative flex aspect-square w-[86%] items-center justify-center rounded-full;
     transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
       radial-gradient(circle at 38% 26%, rgba(255, 255, 255, 0.7) 0 8%, transparent 9%),
@@ -134,7 +145,7 @@ canvas {
   }
 
   .aq-tank-menu-bubble img {
-    @apply h-[62%] w-[62%] object-contain drop-shadow-lg;
+    @apply h-[76%] w-[76%] object-contain drop-shadow-lg;
     transition: transform 90ms ease;
   }
 
@@ -144,7 +155,10 @@ canvas {
   }
 
   .aq-tank-menu-label {
-    @apply sr-only;
+    @apply mt-0.5 max-w-full rounded-full bg-sky-950/35 px-1.5 text-center text-[clamp(9px,2.5vw,12px)] font-black leading-none text-white;
+    text-shadow:
+      0 2px 2px rgba(0, 0, 0, 0.72),
+      0 0 5px rgba(0, 62, 88, 0.62);
   }
 
   .aq-game-hud {
@@ -152,19 +166,37 @@ canvas {
     width: var(--aq-stage-width);
     height: 100dvh;
     transform: translateX(-50%);
-    padding: max(8px, env(safe-area-inset-top)) 2.8% 0;
+    padding: max(7px, env(safe-area-inset-top)) var(--aq-hud-edge-inset) 0;
   }
 
   .aq-game-level-badge {
-    @apply relative isolate flex aspect-square h-[clamp(38px,10vw,48px)] shrink-0 items-center justify-center overflow-hidden rounded-full text-[clamp(18px,4.5vw,27px)] font-black text-cyan-50;
-    text-shadow: 0 3px 2px rgba(0, 38, 78, 0.65);
+    @apply relative isolate flex aspect-square h-[clamp(64px,18vw,88px)] shrink-0 items-center justify-center overflow-visible rounded-full text-[clamp(24px,7vw,40px)] font-black text-cyan-50;
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    justify-self: center;
+    margin: 5px 0 0 -1px;
+    text-shadow:
+      0 3px 0 rgba(0, 52, 104, 0.74),
+      0 5px 4px rgba(0, 0, 0, 0.42);
     --level-badge-hue: 0deg;
   }
 
   .aq-game-level-badge::before {
     @apply absolute inset-0 -z-10 bg-contain bg-center bg-no-repeat content-[''];
     background-image: url("/assets/ui/hud-level-medallion.png");
-    filter: hue-rotate(var(--level-badge-hue)) saturate(1.22) brightness(1.04);
+    filter: hue-rotate(var(--level-badge-hue)) saturate(1.28) brightness(1.08) drop-shadow(0 4px 3px rgba(0, 36, 60, 0.38));
+  }
+
+  .aq-game-level-badge::after {
+    @apply absolute left-1/2 top-[94%] -z-10 -translate-x-1/2 rounded-[4px] border border-[#d7b879]/80 bg-[#f1d9a4] px-3 py-0.5 text-[clamp(11px,3vw,15px)] font-black leading-none text-[#5d3b1d] content-['Level'];
+    min-width: clamp(58px, 15vw, 76px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 -1px 0 rgba(112, 78, 37, 0.32),
+      0 3px 4px rgba(0, 33, 47, 0.3);
+    text-align: center;
+    text-shadow: 0 1px 0 rgba(255, 248, 216, 0.9);
   }
 
   .aq-game-level-badge span {
@@ -172,69 +204,157 @@ canvas {
   }
 
   .aq-game-stat-panel {
-    @apply min-w-0 rounded-[14px] border-2 border-[#d6b875]/75 bg-cyan-950/20 px-2 py-1.5;
+    @apply grid min-w-0 rounded-[16px] border-2 border-[#d6b875]/80 bg-cyan-950/20 px-2 py-1.5;
+    width: max(100%, var(--aq-hud-min-width));
+    grid-template-columns: clamp(72px, 20vw, 98px) minmax(0, 1fr);
+    grid-template-rows: clamp(60px, 15.5vw, 74px) auto;
+    column-gap: clamp(6px, 1.8vw, 10px);
+    row-gap: 5px;
+    transform: scale(var(--aq-hud-scale));
+    transform-origin: top left;
     box-shadow:
-      inset 0 0 0 2px rgba(205, 249, 255, 0.32),
-      inset 0 18px 40px rgba(255, 255, 255, 0.12),
+      inset 0 0 0 2px rgba(205, 249, 255, 0.38),
+      inset 0 18px 36px rgba(255, 255, 255, 0.16),
+      inset 0 -18px 30px rgba(10, 87, 116, 0.24),
       0 3px 10px rgba(0, 0, 0, 0.24);
-    backdrop-filter: blur(1px);
+    backdrop-filter: blur(1.5px);
   }
 
   .aq-game-tank-summary {
-    @apply grid grid-cols-[auto_minmax(0,1fr)] items-center gap-1.5;
+    display: contents;
   }
 
   .aq-game-wallet-grid {
-    @apply mt-1 grid grid-cols-3 gap-1;
+    @apply relative z-[2] grid grid-cols-3 gap-2 overflow-visible;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    margin-left: 0;
+    height: clamp(44px, 11.8vw, 56px);
+    min-width: 0;
+    padding: clamp(5px, 1.4vw, 7px) clamp(9px, 2.5vw, 13px);
+    border: 2px solid rgba(207, 249, 255, 0.42);
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 10% 16%, rgba(255, 255, 255, 0.6) 0 8%, transparent 9%),
+      linear-gradient(180deg, rgba(218, 250, 255, 0.34), rgba(50, 155, 189, 0.26) 42%, rgba(9, 65, 102, 0.48));
+    box-shadow:
+      inset 0 5px 0 rgba(255, 255, 255, 0.24),
+      inset 0 -10px 20px rgba(0, 41, 78, 0.34),
+      0 0 0 1px rgba(208, 180, 99, 0.42),
+      0 3px 8px rgba(0, 32, 58, 0.28);
+    backdrop-filter: blur(3px);
   }
 
   .aq-game-wallet-chip,
   .aq-game-wealth-chip {
-    @apply flex min-w-0 items-center gap-1 rounded-full border border-white/25 bg-sky-800/55 px-1.5 py-1 text-[clamp(11px,2.8vw,14px)] font-black leading-none text-white;
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18);
+    @apply relative flex min-w-0 items-center justify-center gap-1 rounded-[18px] border border-white/18 bg-sky-950/35 py-1 pr-2 text-[clamp(15px,4vw,22px)] font-black leading-none text-white;
+    padding-left: clamp(24px, 6.4vw, 34px);
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -7px 13px rgba(0, 38, 73, 0.28);
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.6);
   }
 
   .aq-game-wealth-chip {
-    @apply justify-center border-amber-200/45 bg-cyan-900/60 text-[clamp(16px,4.2vw,22px)];
-    min-height: clamp(38px, 10vw, 48px);
+    @apply relative z-[1] border-white/18 bg-sky-950/35 text-[clamp(12px,3.2vw,17px)];
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    justify-self: stretch;
+    justify-content: center;
+    min-height: clamp(26px, 7vw, 34px);
   }
 
   .aq-game-wallet-chip img,
   .aq-game-wealth-chip img {
-    @apply h-[1.35em] w-[1.35em] shrink-0 object-contain;
+    @apply absolute left-[-8px] top-1/2 h-[2.1em] w-[2.1em] shrink-0 -translate-y-1/2 object-contain;
+    filter: drop-shadow(0 3px 3px rgba(0, 35, 61, 0.42));
+  }
+
+  .aq-game-wealth-chip img {
+    @apply absolute h-[2.05em] w-[2.05em] -translate-y-1/2;
+    filter: drop-shadow(0 3px 3px rgba(0, 35, 61, 0.42));
   }
 
   .aq-game-care-row {
-    @apply mt-1 grid grid-cols-2 gap-1 text-[clamp(9px,2.15vw,12px)] font-black text-white;
+    @apply grid grid-cols-[0.82fr_1fr_1fr] gap-2 text-[clamp(12px,3.2vw,17px)] font-black text-white;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    padding-left: 0;
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.62);
   }
 
+  .aq-game-care-row .aq-game-wealth-chip {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
   .aq-game-hud-pill {
-    @apply flex min-w-0 items-center justify-center gap-0.5 rounded-full bg-sky-950/28 px-1 py-0.5;
-    min-height: 1.7em;
+    @apply relative flex min-w-0 items-center justify-center gap-1 overflow-visible rounded-[18px] border border-white/18 bg-sky-950/35 py-1 pr-2;
+    min-height: clamp(26px, 7vw, 34px);
+    padding-left: clamp(22px, 5.8vw, 31px);
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -7px 13px rgba(0, 38, 73, 0.28);
+  }
+
+  .aq-game-hud-pill::before {
+    @apply absolute inset-0 -z-10 rounded-full content-[''];
+    background:
+      radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.5) 0 10%, transparent 11%),
+      linear-gradient(180deg, rgba(218, 250, 255, 0.27), rgba(42, 139, 174, 0.2) 45%, rgba(7, 53, 89, 0.36));
+    box-shadow:
+      0 0 0 1px rgba(207, 249, 255, 0.35),
+      inset 0 3px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -8px 15px rgba(0, 41, 78, 0.3);
+    backdrop-filter: blur(3px);
   }
 
   .aq-game-hud-pill img {
-    @apply h-[1.25em] w-[1.25em] shrink-0 object-contain;
+    @apply absolute left-[-7px] top-1/2 z-10 h-[2.05em] w-[2.05em] shrink-0 -translate-y-1/2 object-contain;
+    filter: drop-shadow(0 3px 3px rgba(0, 35, 61, 0.42));
+  }
+
+  .aq-game-hud-pill span {
+    @apply relative z-10;
+  }
+
+  @media (max-width: 389px) {
+    .aq-game-hud {
+      --aq-hud-scale: 0.94;
+    }
+  }
+
+  @media (max-width: 369px) {
+    .aq-game-hud {
+      --aq-hud-scale: 0.9;
+    }
+  }
+
+  @media (max-width: 349px) {
+    .aq-game-hud {
+      --aq-hud-scale: 0.83;
+    }
   }
 
   .aq-food-dock {
-    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[8px];
+    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px];
     --food-dock-top: 132px;
-    width: min(18vw, 80px);
+    width: min(22vw, 92px);
     left: calc((100vw - var(--aq-stage-width)) / 2);
-    transform: translate(10px, var(--food-dock-top));
+    transform: translate(var(--aq-hud-edge-inset), var(--food-dock-top));
   }
 
   .aq-food-button {
     @apply pointer-events-auto flex flex-col items-center border-0 bg-transparent p-0 text-white;
-    width: clamp(44px, 13.5vw, 62px);
+    width: clamp(58px, 16.5vw, 76px);
     touch-action: none;
   }
 
   .aq-food-button-bubble {
-    @apply relative flex aspect-square w-[78%] items-center justify-center rounded-full;
+    @apply relative flex aspect-square w-[86%] items-center justify-center rounded-full;
     transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
       radial-gradient(circle at 42% 26%, rgba(255, 255, 255, 0.68) 0 8%, transparent 9%),
@@ -256,7 +376,7 @@ canvas {
   }
 
   .aq-food-button-bubble img {
-    @apply h-[62%] w-[62%] object-contain drop-shadow-lg;
+    @apply h-[76%] w-[76%] object-contain drop-shadow-lg;
     transition: transform 90ms ease;
   }
 
@@ -266,11 +386,10 @@ canvas {
   }
 
   .aq-food-button-label {
-    @apply sr-only;
-  }
-
-  .aq-food-button-label {
-    @apply mt-0;
+    @apply mt-0.5 max-w-full rounded-full bg-sky-950/35 px-1.5 text-center text-[clamp(9px,2.5vw,12px)] font-black leading-none text-white;
+    text-shadow:
+      0 2px 2px rgba(0, 0, 0, 0.72),
+      0 0 5px rgba(0, 62, 88, 0.62);
   }
 
   .aq-food-button-count {

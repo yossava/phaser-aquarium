@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { gameWidth, tankBounds } from "../game/constants";
+import { gameFontFamily } from "../game/fonts";
 import { fishFoodTintFor } from "../game/visuals";
 import type { AgeStage, CoinProduction, FishGender, FishState, FishType, FoodType } from "../types/mechanics";
 import { FoodPellet } from "./FoodPellet";
@@ -120,7 +121,7 @@ export class Fish {
     this.stateBubble.setDepth(12);
     this.stateEmoji = scene.add
       .text(x, y, "", {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: "18px",
         stroke: "#061725",
         strokeThickness: 3

@@ -5,9 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Aquarium HUD Layout Editor</title>
     <style>
+      @font-face {
+        font-family: "Baloo 2";
+        font-style: normal;
+        font-weight: 400 800;
+        font-display: swap;
+        src: url("/assets/fonts/baloo-2/baloo-2-latin-400-800.woff2") format("woff2");
+      }
+
       :root {
         color-scheme: dark;
-        font-family: Arial, sans-serif;
+        --aq-game-font: "Baloo 2", "Trebuchet MS", sans-serif;
+        font-family: var(--aq-game-font);
         background: #111;
         color: #eaf8ff;
       }
@@ -86,7 +95,7 @@
 
       textarea {
         min-height: 230px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-family: var(--aq-game-font);
         font-size: 11px;
         resize: vertical;
       }
@@ -523,7 +532,7 @@
 
       function drawText(text, x, y, size, fill, stroke, align) {
         ctx.save();
-        ctx.font = `700 ${size}px Arial`;
+        ctx.font = `700 ${size}px "Baloo 2", "Trebuchet MS", sans-serif`;
         ctx.textAlign = align;
         ctx.textBaseline = "middle";
         ctx.lineWidth = Math.max(2, size * 0.18);

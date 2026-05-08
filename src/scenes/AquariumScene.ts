@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
 import { controlPanelTop, gameHeight, gameWidth, maxRenderScale, setTankWorldScale, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, spend } from "../game/economy";
+import { gameFontFamily } from "../game/fonts";
 import {
   calculateOfflineSeconds,
   clearSave,
@@ -835,7 +836,7 @@ export class AquariumScene extends Phaser.Scene {
     this.drawHudPanel();
 
     this.hudText = this.add.text(24, 44, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "10px",
       color: "#fff1a6",
       fontStyle: "bold",
@@ -850,7 +851,7 @@ export class AquariumScene extends Phaser.Scene {
     };
 
     this.hudCommonText = this.add.text(0, 0, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "15px",
       color: "#fff1a6",
       fontStyle: "bold",
@@ -860,7 +861,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24);
 
     this.hudRareText = this.add.text(0, 0, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "15px",
       color: "#d7f8ff",
       fontStyle: "bold",
@@ -870,7 +871,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24);
 
     this.hudSuperRareText = this.add.text(0, 0, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "15px",
       color: "#ffd9ff",
       fontStyle: "bold",
@@ -880,7 +881,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24);
 
     this.hudWealthText = this.add.text(0, 0, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "15px",
       color: "#ffffff",
       fontStyle: "bold",
@@ -890,7 +891,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24);
 
     this.statusText = this.add.text(34, 65, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "13px",
       color: "#eaf9ff",
       fontStyle: "bold",
@@ -900,7 +901,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
 
     this.modeText = this.add.text(36, 84, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "11px",
       color: "#bfeeff",
       fontStyle: "bold",
@@ -912,7 +913,7 @@ export class AquariumScene extends Phaser.Scene {
     this.add.image(307, 88, "ui-icon-happy-status").setDisplaySize(20, 20).setDepth(23).setVisible(false);
 
     this.hudFoodStatusText = this.add.text(64, 89, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "11px",
       color: "#fff4dc",
       fontStyle: "bold",
@@ -922,7 +923,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
 
     this.hudCleanStatusText = this.add.text(194, 89, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "11px",
       color: "#dff8ff",
       fontStyle: "bold",
@@ -932,7 +933,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
 
     this.hudHappyStatusText = this.add.text(323, 89, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "11px",
       color: "#e8ffd5",
       fontStyle: "bold",
@@ -942,7 +943,7 @@ export class AquariumScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
 
     this.hudNeedText = this.add.text(34, 111, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "10px",
       color: "#ffe39a",
       fontStyle: "bold",
@@ -955,7 +956,7 @@ export class AquariumScene extends Phaser.Scene {
     this.tankLevelBadgeHueOverlay = this.add.graphics().setDepth(23);
 
     this.tankLevelBadgeText = this.add.text(0, 0, "", {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "30px",
       color: "#fff8d2",
       fontStyle: "bold",
@@ -1074,7 +1075,7 @@ export class AquariumScene extends Phaser.Scene {
     const bin = this.add.rectangle(0, 1, 34, 28, 0x10283a, 1).setStrokeStyle(2, 0xffccd5, 0.85);
     this.decorationTrashText = this.add
       .text(0, 23, "Trash", {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: "11px",
         color: "#ffccd5",
         fontStyle: "bold"
@@ -1493,7 +1494,6 @@ export class AquariumScene extends Phaser.Scene {
     this.gameHudLevelBadge = badge;
     this.gameHudLevelText = document.createElement("span");
     badge.append(this.gameHudLevelText);
-    this.gameHudWealthText = this.createHudChip(summary, "/assets/ui/shop/wealth_icon_treasure.png", "Wealth", "aq-game-wealth-chip");
     summary.prepend(badge);
 
     const wallet = document.createElement("div");
@@ -1504,6 +1504,7 @@ export class AquariumScene extends Phaser.Scene {
 
     const care = document.createElement("div");
     care.className = "aq-game-care-row";
+    this.gameHudWealthText = this.createHudChip(care, "/assets/ui/shop/wealth_icon_treasure.png", "Wealth", "aq-game-wealth-chip");
     this.gameHudCleanText = this.appendHudText(care, "/assets/ui/icon-clean-status.png");
     this.gameHudHappyText = this.appendHudText(care, "/assets/ui/icon-happy-status.png");
 
@@ -1880,7 +1881,7 @@ export class AquariumScene extends Phaser.Scene {
     }
     const text = this.add
       .text(0, hasIcon ? 23 : 0, label, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: hasIcon ? "8px" : "10px",
         color: isSelectedFood ? this.hexColor(fill) : "#ffffff",
         align: "center",
@@ -2124,20 +2125,20 @@ export class AquariumScene extends Phaser.Scene {
     const hasPreview = options.fishPreview !== undefined || options.assetPreview !== undefined;
     const textWidth = hasPreview ? options.width - 78 : options.width - 24;
     const title = this.add.text(12, 5, options.title, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: options.compact ? "11px" : "12px",
       color: "#ffffff",
       fontStyle: "bold",
       fixedWidth: options.compact ? 76 : textWidth
     });
     const meta = this.add.text(12, options.compact ? 18 : 22, options.meta, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#ffe67a",
       fixedWidth: options.compact ? 76 : textWidth
     });
     const detail = this.add.text(12, options.compact ? 29 : 36, options.detail, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#cfeeff",
       fixedWidth: options.compact ? 56 : textWidth
@@ -2286,33 +2287,33 @@ export class AquariumScene extends Phaser.Scene {
     const background = this.add.rectangle(width / 2, height / 2, width, height, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
     const stripe = this.add.rectangle(4, height / 2, 4, height - 8, accent, 1);
     const title = this.add.text(12, 5, `${formatNumber(index + 1)}. ${targetFish.type.name}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "12px",
       color: "#ffffff",
       fontStyle: "bold",
       fixedWidth: width - 24
     });
     const meta = this.add.text(12, 22, `${targetFish.gender} | Age ${targetFish.ageLabel()}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#ffe67a",
       fixedWidth: width - 24
     });
     const growthStatus = targetFish.isGrowthLimitedByTank() ? "Max screen size" : `Evo ${formatNumber(targetFish.evolutionStage)}/${formatNumber(maxEvolutionStage)}`;
     const detail = this.add.text(12, 36, `${this.rarityLabel(targetFish.type.rarity)} | ${this.getTankName(targetFish.tankLevel)} | ${growthStatus}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#cfeeff",
       fixedWidth: width - 24
     });
     const size = this.add.text(12, 49, `Len ${targetFish.lengthLabel()} | Wt ${targetFish.weightLabel()}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#cfeeff",
       fixedWidth: width - 24
     });
     const worth = this.add.text(12, 62, `Worth ${formatPrice({ coinType: targetFish.type.sellBaseValue.coinType, amount: targetFish.getSellValue() })}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#cfeeff",
       fixedWidth: width - 24
@@ -2365,14 +2366,14 @@ export class AquariumScene extends Phaser.Scene {
       const accent = this.tankAccentColor(level);
       const background = this.add.rectangle(94, 40, 188, 80, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
       const title = this.add.text(12, 8, `${this.getTankName(level)} Lv${formatNumber(this.tankDisplayLevel(level))}`, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: "11px",
         color: "#ffffff",
         fontStyle: "bold",
         fixedWidth: 110
       });
       const summary = this.add.text(12, 25, `Worth ${formatNumber(this.calculateTankNetWorth(level))}\n${formatNumber(count)}/${formatNumber(this.maxFishCapacityForLevel(level))} fish | ${this.tankSummary(level)}`, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: "8px",
         color: "#cfeeff",
         fixedWidth: 112,
@@ -2440,14 +2441,14 @@ export class AquariumScene extends Phaser.Scene {
     const background = this.add.rectangle(62, 18, 124, 36, 0x17364a, 0.98).setStrokeStyle(1, selected ? 0xffe67a : this.tankAccentColor(this.tankLevel), selected ? 1 : 0.55);
     const preview = this.textures.exists(asset.textureKey) ? this.add.image(16, 18, asset.textureKey).setDisplaySize(28, 22) : this.add.rectangle(16, 18, 28, 22, asset.tint, 1);
     const title = this.add.text(34, 5, asset.name, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "8px",
       color: "#ffffff",
       fontStyle: "bold",
       fixedWidth: 84
     });
     const meta = this.add.text(34, 18, owned ? selected ? "Active" : "Owned" : formatPrice(asset.price), {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "8px",
       color: owned ? "#a8ffb0" : "#ffe67a",
       fixedWidth: 84
@@ -2495,14 +2496,14 @@ export class AquariumScene extends Phaser.Scene {
     const preview = this.add.image(24, 28, decorationType.texture);
     preview.setDisplaySize(44, 36);
     const title = this.add.text(52, 6, decorationType.name, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "10px",
       color: "#ffffff",
       fontStyle: "bold",
       fixedWidth: 124
     });
     const meta = this.add.text(52, 22, `+${formatNumber(decorationType.happinessBonus)} happy`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "8px",
       color: "#ffe67a",
       fixedWidth: 124
@@ -2558,7 +2559,7 @@ export class AquariumScene extends Phaser.Scene {
     objects.push(
       this.add
         .text(x, y - height / 2 + 6, `Lv${formatNumber(this.tankDisplayLevel(level))}`, {
-          fontFamily: "Arial",
+          fontFamily: gameFontFamily,
           fontSize: "9px",
           color: "#ffffff",
           fontStyle: "bold",
@@ -2828,7 +2829,7 @@ export class AquariumScene extends Phaser.Scene {
     const background = this.add.rectangle(width / 2, height / 2, width, height, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
     const stripe = this.add.rectangle(4, height / 2, 4, height - 8, accent, 1);
     const title = this.add.text(12, 5, `${formatNumber(index + 1)}. ${helper.type.name}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "12px",
       color: "#ffffff",
       fontStyle: "bold",
@@ -2836,13 +2837,13 @@ export class AquariumScene extends Phaser.Scene {
     });
     const role = helper.type.feedSeconds ? "Feeder" : helper.type.habitatTags.includes("collector") ? "Collector" : "Cleaner";
     const meta = this.add.text(12, 22, `${this.rarityLabel(helper.type.rarity)} | ${role} | Speed ${formatNumber(helper.type.speed)}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#ffe67a",
       fixedWidth: width - 24
     });
     const detail = this.add.text(12, 36, `Sell ${formatPrice(this.helperSellPrice(helper.type))}`, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "9px",
       color: "#cfeeff",
       fixedWidth: width - 24
@@ -2919,7 +2920,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private createInfoLine(x: number, y: number, label: string): Phaser.GameObjects.Container {
     const text = this.add.text(0, 0, label, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "11px",
       color: "#eaf9ff",
       fixedWidth: 390,
@@ -2954,7 +2955,7 @@ export class AquariumScene extends Phaser.Scene {
     });
     const header = this.add.rectangle(gameWidth / 2, 36, gameWidth, 72, 0x10283a, 1);
     const titleText = this.add.text(20, 20, title, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "20px",
       color: "#ffffff",
       fontStyle: "bold"
@@ -2991,7 +2992,7 @@ export class AquariumScene extends Phaser.Scene {
       .setStrokeStyle(1, 0xbcefff, 0.5);
     const text = this.add
       .text(0, 0, label, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: `${fontSize}px`,
         color: "#ffffff",
         align: "center",
@@ -4782,14 +4783,14 @@ export class AquariumScene extends Phaser.Scene {
       event.stopPropagation();
     });
     const titleText = this.add.text(-160, -104, title, {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "17px",
       color: "#ffffff",
       fontStyle: "bold",
       fixedWidth: 320
     });
     const bodyText = this.add.text(-160, -72, lines.join("\n"), {
-      fontFamily: "Arial",
+      fontFamily: gameFontFamily,
       fontSize: "12px",
       color: "#eaf9ff",
       fixedWidth: 320,
@@ -4822,7 +4823,7 @@ export class AquariumScene extends Phaser.Scene {
     const background = this.add.rectangle(0, 0, width, 36, fill, 1).setStrokeStyle(1, 0xbcefff, 0.55);
     const text = this.add
       .text(0, 0, label, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: "13px",
         color: "#ffffff",
         fixedWidth: width - 8,
@@ -4848,7 +4849,7 @@ export class AquariumScene extends Phaser.Scene {
   private floatText(message: string, x: number, y: number, color: string): void {
     const text = this.add
       .text(x, y, message, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: "16px",
         color,
         stroke: "#062033",
@@ -4875,7 +4876,7 @@ export class AquariumScene extends Phaser.Scene {
     const icon = this.add.image(-18, 0, this.textures.exists(textureKey) ? textureKey : "coin").setDisplaySize(20, 20);
     const text = this.add
       .text(-3, 0, label, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: "17px",
         fontStyle: "700",
         color,

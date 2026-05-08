@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { gameWidth, tankBounds } from "../game/constants";
 import { formatNumber } from "../game/economy";
+import { gameFontFamily } from "../game/fonts";
 import type { CoinType } from "../types/mechanics";
 
 const coinDisplaySize = Math.round(gameWidth * 0.095);
@@ -48,7 +49,7 @@ export class CoinDrop {
     this.sprite.setInteractive({ useHandCursor: true });
     this.valueText = scene.add
       .text(x, y + coinValueTextOffset, `+${formatNumber(value)}`, {
-        fontFamily: "Arial",
+        fontFamily: gameFontFamily,
         fontSize: `${coinValueFontSize}px`,
         color: this.visual.textColor,
         stroke: this.visual.strokeColor,
