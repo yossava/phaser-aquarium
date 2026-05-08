@@ -1,0 +1,114 @@
+[
+  {
+    "name": "phone-se",
+    "file": "qa-screenshots/tank-food-dock-phone-se-375x667.png",
+    "viewport": {
+      "width": 375,
+      "height": 667
+    },
+    "hud": {
+      "x": 10.5,
+      "y": 8,
+      "width": 354,
+      "height": 104.34375,
+      "right": 364.5,
+      "bottom": 112.34375
+    },
+    "dock": {
+      "x": 10,
+      "y": 130,
+      "width": 67.5,
+      "height": 34.3125,
+      "right": 77.5,
+      "bottom": 164.3125
+    },
+    "food": {
+      "x": 10,
+      "y": 130,
+      "width": 44,
+      "height": 34.3125,
+      "right": 54,
+      "bottom": 164.3125
+    },
+    "foodGap": 18,
+    "overflow": 0
+  },
+  {
+    "name": "phone-14",
+    "file": "qa-screenshots/tank-food-dock-phone-14-390x844.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "hud": {
+      "x": 10.90625,
+      "y": 8,
+      "width": 368.1875,
+      "height": 105.34375,
+      "right": 379.09375,
+      "bottom": 113.34375
+    },
+    "dock": {
+      "x": 10,
+      "y": 131,
+      "width": 70.1875,
+      "height": 34.3125,
+      "right": 80.1875,
+      "bottom": 165.3125
+    },
+    "food": {
+      "x": 10,
+      "y": 131,
+      "width": 44,
+      "height": 34.3125,
+      "right": 54,
+      "bottom": 165.3125
+    },
+    "foodGap": 18,
+    "overflow": 0
+  },
+  {
+    "name": "tablet-mini",
+    "file": "qa-screenshots/tank-food-dock-tablet-mini-768x1024.png",
+    "viewport": {
+      "width": 768,
+      "height": 1024
+    },
+    "hud": {
+      "x": 21.5,
+      "y": 8,
+      "width": 725,
+      "height": 122.890625,
+      "right": 746.5,
+      "bottom": 130.890625
+    },
+    "dock": {
+      "x": 10,
+      "y": 149,
+      "width": 80,
+      "height": 34.3125,
+      "right": 90,
+      "bottom": 183.3125
+    },
+    "food": {
+      "x": 10,
+      "y": 149,
+      "width": 44,
+      "height": 34.3125,
+      "right": 54,
+      "bottom": 183.3125
+    },
+    "foodGap": 18,
+    "overflow": 0
+  },
+  {
+    "name": "tablet-pro12",
+    "file": "qa-screenshots/tank-food-dock-tablet-pro12-1024x1366.png",
+    "viewport": {
+      "width": 1024,
+      "height": 1366
+    },
+    "foodGap": 0,
+    "overflow": 3
+  }
+]

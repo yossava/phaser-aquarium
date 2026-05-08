@@ -21,7 +21,7 @@ new Phaser.Game({
   roundPixels: false,
   scene: [AquariumScene],
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    mode: Phaser.Scale.ENVELOP,
+    autoCenter: Phaser.Scale.CENTER_HORIZONTALLY
   }
 });

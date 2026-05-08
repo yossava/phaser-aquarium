@@ -3,6 +3,7 @@
 :root {
   color: #f8fbff;
   background: #000000;
+  --aq-stage-width: min(100vw, calc(100dvh * 430 / 844));
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
@@ -15,8 +16,7 @@
 }
 
 html,
-body,
-#app {
+body {
   width: 100%;
   height: 100%;
   margin: 0;
@@ -24,11 +24,11 @@ body,
 }
 
 #app {
-  padding:
-    env(safe-area-inset-top)
-    env(safe-area-inset-right)
-    env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
+  position: relative;
+  width: var(--aq-stage-width);
+  height: 100dvh;
+  margin: 0 auto;
+  overflow: hidden;
 }
 
 body {
@@ -99,19 +99,21 @@ canvas {
   }
 
   .aq-tank-menu {
-    @apply fixed left-1/2 top-1/2 z-40 pointer-events-none;
-    width: min(100vw, calc(100dvh * 430 / 844));
-    height: min(100dvh, calc(100vw * 844 / 430));
-    transform: translate(-50%, -50%);
+    @apply fixed left-1/2 top-0 z-40 pointer-events-none;
+    width: var(--aq-stage-width);
+    height: 100dvh;
+    transform: translateX(-50%);
   }
 
   .aq-tank-menu-button {
-    @apply pointer-events-auto absolute right-[3.5%] flex w-[17%] -translate-y-1/2 flex-col items-center border-0 bg-transparent p-0 text-white;
+    @apply pointer-events-auto absolute right-[2%] flex -translate-y-1/2 flex-col items-center border-0 bg-transparent p-0 text-white;
+    width: clamp(44px, 13.5%, 62px);
     touch-action: manipulation;
   }
 
   .aq-tank-menu-bubble {
-    @apply relative flex aspect-square w-[82%] items-center justify-center rounded-full;
+    @apply relative flex aspect-square w-[78%] items-center justify-center rounded-full;
+    transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
       radial-gradient(circle at 38% 26%, rgba(255, 255, 255, 0.7) 0 8%, transparent 9%),
       radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%, rgba(180, 244, 255, 0.35) 76%, rgba(255, 255, 255, 0.2));
@@ -121,40 +123,56 @@ canvas {
       0 2px 8px rgba(0, 25, 42, 0.35);
   }
 
+  .aq-tank-menu-button:active .aq-tank-menu-bubble,
+  .aq-tank-menu-button.is-touching .aq-tank-menu-bubble {
+    transform: scale(0.88);
+    filter: brightness(1.2) saturate(1.18);
+    box-shadow:
+      inset 0 0 0 3px rgba(255, 255, 255, 0.55),
+      inset 0 0 18px rgba(255, 255, 255, 0.34),
+      0 1px 4px rgba(0, 25, 42, 0.3);
+  }
+
   .aq-tank-menu-bubble img {
     @apply h-[62%] w-[62%] object-contain drop-shadow-lg;
+    transition: transform 90ms ease;
+  }
+
+  .aq-tank-menu-button:active .aq-tank-menu-bubble img,
+  .aq-tank-menu-button.is-touching .aq-tank-menu-bubble img {
+    transform: scale(0.94);
   }
 
   .aq-tank-menu-label {
-    @apply -mt-1 text-center text-[clamp(9px,2.1vw,12px)] font-black leading-none;
-    text-shadow:
-      0 2px 2px rgba(0, 0, 0, 0.65),
-      0 0 3px rgba(0, 0, 0, 0.75);
+    @apply sr-only;
   }
 
   .aq-game-hud {
-    @apply pointer-events-none fixed left-1/2 top-1/2 z-30 flex items-start gap-[2.5%];
-    width: min(100vw, calc(100dvh * 430 / 844));
-    height: min(100dvh, calc(100vw * 844 / 430));
-    transform: translate(-50%, -50%);
-    padding: 3.2% 3.5% 0;
+    @apply pointer-events-none fixed left-1/2 top-0 z-30;
+    width: var(--aq-stage-width);
+    height: 100dvh;
+    transform: translateX(-50%);
+    padding: max(8px, env(safe-area-inset-top)) 2.8% 0;
   }
 
   .aq-game-level-badge {
-    @apply flex aspect-square w-[19%] shrink-0 items-center justify-center rounded-full text-[clamp(28px,8vw,48px)] font-black text-cyan-50;
-    background:
-      radial-gradient(circle at 45% 34%, rgba(50, 212, 255, 0.86), rgba(8, 93, 188, 0.92) 58%, rgba(4, 44, 102, 0.95)),
-      linear-gradient(135deg, rgba(255, 231, 146, 0.92), rgba(156, 108, 35, 0.95));
-    border: 3px solid rgba(241, 207, 124, 0.92);
-    box-shadow:
-      inset 0 4px 9px rgba(255, 255, 255, 0.35),
-      inset 0 -8px 16px rgba(0, 24, 70, 0.3),
-      0 3px 8px rgba(0, 0, 0, 0.35);
+    @apply relative isolate flex aspect-square h-[clamp(38px,10vw,48px)] shrink-0 items-center justify-center overflow-hidden rounded-full text-[clamp(18px,4.5vw,27px)] font-black text-cyan-50;
     text-shadow: 0 3px 2px rgba(0, 38, 78, 0.65);
+    --level-badge-hue: 0deg;
+  }
+
+  .aq-game-level-badge::before {
+    @apply absolute inset-0 -z-10 bg-contain bg-center bg-no-repeat content-[''];
+    background-image: url("/assets/ui/hud-level-medallion.png");
+    filter: hue-rotate(var(--level-badge-hue)) saturate(1.22) brightness(1.04);
+  }
+
+  .aq-game-level-badge span {
+    @apply relative z-10;
   }
 
   .aq-game-stat-panel {
-    @apply min-w-0 flex-1 rounded-[18px] border-[3px] border-[#d6b875]/80 bg-cyan-950/20 px-3 py-2;
+    @apply min-w-0 rounded-[14px] border-2 border-[#d6b875]/75 bg-cyan-950/20 px-2 py-1.5;
     box-shadow:
       inset 0 0 0 2px rgba(205, 249, 255, 0.32),
       inset 0 18px 40px rgba(255, 255, 255, 0.12),
@@ -162,55 +180,62 @@ canvas {
     backdrop-filter: blur(1px);
   }
 
-  .aq-game-wallet-grid {
-    @apply grid grid-cols-2 gap-1.5;
+  .aq-game-tank-summary {
+    @apply grid grid-cols-[auto_minmax(0,1fr)] items-center gap-1.5;
   }
 
-  .aq-game-wallet-chip {
-    @apply flex min-w-0 items-center gap-1.5 rounded-full border border-white/25 bg-sky-800/55 px-2 py-1 text-[clamp(12px,3.2vw,16px)] font-black leading-none text-white;
+  .aq-game-wallet-grid {
+    @apply mt-1 grid grid-cols-3 gap-1;
+  }
+
+  .aq-game-wallet-chip,
+  .aq-game-wealth-chip {
+    @apply flex min-w-0 items-center gap-1 rounded-full border border-white/25 bg-sky-800/55 px-1.5 py-1 text-[clamp(11px,2.8vw,14px)] font-black leading-none text-white;
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18);
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.6);
   }
 
-  .aq-game-wallet-chip img {
+  .aq-game-wealth-chip {
+    @apply justify-center border-amber-200/45 bg-cyan-900/60 text-[clamp(16px,4.2vw,22px)];
+    min-height: clamp(38px, 10vw, 48px);
+  }
+
+  .aq-game-wallet-chip img,
+  .aq-game-wealth-chip img {
     @apply h-[1.35em] w-[1.35em] shrink-0 object-contain;
   }
 
-  .aq-game-summary-row,
   .aq-game-care-row {
-    @apply mt-1.5 flex items-center justify-between gap-1 text-[clamp(10px,2.35vw,13px)] font-black text-white;
+    @apply mt-1 grid grid-cols-2 gap-1 text-[clamp(9px,2.15vw,12px)] font-black text-white;
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.62);
   }
 
   .aq-game-hud-pill {
-    @apply flex min-w-0 items-center justify-center gap-1 rounded-full bg-sky-950/28 px-1.5 py-0.5;
+    @apply flex min-w-0 items-center justify-center gap-0.5 rounded-full bg-sky-950/28 px-1 py-0.5;
+    min-height: 1.7em;
   }
 
   .aq-game-hud-pill img {
     @apply h-[1.25em] w-[1.25em] shrink-0 object-contain;
   }
 
-  .aq-game-need-text {
-    @apply mt-1 block truncate text-[clamp(9px,2.1vw,12px)] font-black text-amber-100;
-    text-shadow: 0 2px 2px rgba(40, 24, 0, 0.7);
-  }
-
   .aq-food-dock {
-    @apply pointer-events-none fixed left-1/2 top-1/2 z-40 flex flex-col gap-[1.15%];
-    width: min(100vw, calc(100dvh * 430 / 844));
-    height: min(100dvh, calc(100vw * 844 / 430));
-    transform: translate(-50%, -50%);
-    padding-left: 3.4%;
-    padding-top: 48%;
+    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[8px];
+    --food-dock-top: 132px;
+    width: min(18vw, 80px);
+    left: calc((100vw - var(--aq-stage-width)) / 2);
+    transform: translate(10px, var(--food-dock-top));
   }
 
   .aq-food-button {
-    @apply pointer-events-auto flex w-[17%] flex-col items-center border-0 bg-transparent p-0 text-white;
+    @apply pointer-events-auto flex flex-col items-center border-0 bg-transparent p-0 text-white;
+    width: clamp(44px, 13.5vw, 62px);
     touch-action: none;
   }
 
   .aq-food-button-bubble {
-    @apply flex aspect-square w-[82%] items-center justify-center rounded-full;
+    @apply relative flex aspect-square w-[78%] items-center justify-center rounded-full;
+    transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
       radial-gradient(circle at 42% 26%, rgba(255, 255, 255, 0.68) 0 8%, transparent 9%),
       radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%, rgba(180, 244, 255, 0.35) 76%, rgba(255, 255, 255, 0.2));
@@ -220,20 +245,44 @@ canvas {
       0 2px 8px rgba(0, 25, 42, 0.35);
   }
 
-  .aq-food-button-bubble img {
-    @apply h-[62%] w-[62%] object-contain drop-shadow-lg;
+  .aq-food-button:active .aq-food-button-bubble,
+  .aq-food-button.is-touching .aq-food-button-bubble {
+    transform: scale(0.88);
+    filter: brightness(1.2) saturate(1.18);
+    box-shadow:
+      inset 0 0 0 3px rgba(255, 255, 255, 0.55),
+      inset 0 0 18px rgba(255, 255, 255, 0.34),
+      0 1px 4px rgba(0, 25, 42, 0.3);
   }
 
-  .aq-food-button-label,
-  .aq-food-button-count {
-    @apply text-center text-[clamp(9px,2.1vw,12px)] font-black leading-none;
-    text-shadow:
-      0 2px 2px rgba(0, 0, 0, 0.65),
-      0 0 3px rgba(0, 0, 0, 0.75);
+  .aq-food-button-bubble img {
+    @apply h-[62%] w-[62%] object-contain drop-shadow-lg;
+    transition: transform 90ms ease;
+  }
+
+  .aq-food-button:active .aq-food-button-bubble img,
+  .aq-food-button.is-touching .aq-food-button-bubble img {
+    transform: scale(0.94);
   }
 
   .aq-food-button-label {
-    @apply -mt-1;
+    @apply sr-only;
+  }
+
+  .aq-food-button-label {
+    @apply mt-0;
+  }
+
+  .aq-food-button-count {
+    @apply absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[10px] font-black leading-none text-white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.38);
+    text-shadow: 0 1px 1px rgba(70, 0, 16, 0.65);
+    transition: transform 90ms ease;
+  }
+
+  .aq-food-button:active .aq-food-button-count,
+  .aq-food-button.is-touching .aq-food-button-count {
+    transform: scale(1.08);
   }
 
   .aq-food-drag-ghost {

@@ -1,0 +1,210 @@
+[
+  {
+    "name": "landscape-web",
+    "file": "qa-screenshots/tank-stage-landscape-web-1366x768.png",
+    "viewport": {
+      "width": 1366,
+      "height": 768
+    },
+    "app": {
+      "x": 487,
+      "y": 0,
+      "width": 391,
+      "height": 768,
+      "right": 879,
+      "bottom": 768
+    },
+    "canvas": {
+      "x": 487,
+      "y": 0,
+      "width": 391,
+      "height": 768,
+      "right": 879,
+      "bottom": 768
+    },
+    "hud": {
+      "x": 526,
+      "y": 8,
+      "width": 315,
+      "height": 123,
+      "right": 840,
+      "bottom": 131
+    },
+    "food": {
+      "x": 497,
+      "y": 149,
+      "width": 62,
+      "height": 48,
+      "right": 559,
+      "bottom": 197
+    },
+    "menu": {
+      "x": 818,
+      "y": 191,
+      "width": 53,
+      "height": 41,
+      "right": 871,
+      "bottom": 232
+    },
+    "leftBlank": 487,
+    "rightBlank": 487,
+    "stageAspect": 0.509,
+    "overflow": 0
+  },
+  {
+    "name": "desktop-wide",
+    "file": "qa-screenshots/tank-stage-desktop-wide-1440x900.png",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "app": {
+      "x": 491,
+      "y": 0,
+      "width": 459,
+      "height": 900,
+      "right": 949,
+      "bottom": 900
+    },
+    "canvas": {
+      "x": 491,
+      "y": 0,
+      "width": 459,
+      "height": 900,
+      "right": 949,
+      "bottom": 900
+    },
+    "hud": {
+      "x": 531,
+      "y": 8,
+      "width": 378,
+      "height": 123,
+      "right": 909,
+      "bottom": 131
+    },
+    "food": {
+      "x": 501,
+      "y": 149,
+      "width": 62,
+      "height": 48,
+      "right": 563,
+      "bottom": 197
+    },
+    "menu": {
+      "x": 878,
+      "y": 223,
+      "width": 62,
+      "height": 48,
+      "right": 940,
+      "bottom": 272
+    },
+    "leftBlank": 491,
+    "rightBlank": 491,
+    "stageAspect": 0.51,
+    "overflow": 0
+  },
+  {
+    "name": "portrait-phone",
+    "file": "qa-screenshots/tank-stage-portrait-phone-390x844.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "app": {
+      "x": 0,
+      "y": 0,
+      "width": 390,
+      "height": 844,
+      "right": 390,
+      "bottom": 844
+    },
+    "canvas": {
+      "x": -20,
+      "y": 0,
+      "width": 430,
+      "height": 844,
+      "right": 410,
+      "bottom": 844
+    },
+    "hud": {
+      "x": 11,
+      "y": 8,
+      "width": 368,
+      "height": 105,
+      "right": 379,
+      "bottom": 113
+    },
+    "food": {
+      "x": 10,
+      "y": 131,
+      "width": 53,
+      "height": 41,
+      "right": 63,
+      "bottom": 172
+    },
+    "menu": {
+      "x": 330,
+      "y": 211,
+      "width": 53,
+      "height": 41,
+      "right": 382,
+      "bottom": 253
+    },
+    "leftBlank": 0,
+    "rightBlank": 0,
+    "stageAspect": 0.462,
+    "overflow": 0
+  },
+  {
+    "name": "portrait-tablet",
+    "file": "qa-screenshots/tank-stage-portrait-tablet-768x1024.png",
+    "viewport": {
+      "width": 768,
+      "height": 1024
+    },
+    "app": {
+      "x": 123,
+      "y": 0,
+      "width": 522,
+      "height": 1024,
+      "right": 645,
+      "bottom": 1024
+    },
+    "canvas": {
+      "x": 123,
+      "y": 0,
+      "width": 522,
+      "height": 1024,
+      "right": 645,
+      "bottom": 1024
+    },
+    "hud": {
+      "x": 145,
+      "y": 8,
+      "width": 479,
+      "height": 123,
+      "right": 623,
+      "bottom": 131
+    },
+    "food": {
+      "x": 133,
+      "y": 149,
+      "width": 62,
+      "height": 48,
+      "right": 195,
+      "bottom": 197
+    },
+    "menu": {
+      "x": 572,
+      "y": 257,
+      "width": 62,
+      "height": 48,
+      "right": 634,
+      "bottom": 306
+    },
+    "leftBlank": 123,
+    "rightBlank": 123,
+    "stageAspect": 0.51,
+    "overflow": 0
+  }
+]

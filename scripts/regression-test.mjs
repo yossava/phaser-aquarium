@@ -352,7 +352,7 @@ async function runRegression(cdp, appUrl) {
   assert(state.numberFormatSamples.million === "67.8M", "Millions should render with one M digit.");
   assert(state.numberFormatSamples.billion === "1.2B", "Billions should render with one B digit.");
   assert(state.tankHudText.includes("W:"), "Tank HUD should expose wallet and total wealth.");
-  assert(state.tankStatusText.includes("Lv1") && state.tankStatusText.includes("Fish"), "Tank status should visibly expose tank level and fish capacity.");
+  assert(state.tankStatusText.includes("Lv1") && !state.tankStatusText.includes("Fish") && !state.tankStatusText.includes("Coin"), "Tank status should expose tank level without fish or coin capacity text.");
   assert(state.tankCareText.includes("Clean") && state.tankCareText.includes("Happy"), "Tank care status should visibly expose cleanliness and happiness.");
   assert(state.assetCoverage.fish === 50, "All 50 fish should have loaded custom asset textures.");
   assert(state.assetCoverage.food === 12, "All food, medicine, and pill types should have loaded custom asset textures.");

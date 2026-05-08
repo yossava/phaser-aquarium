@@ -1,0 +1,502 @@
+[
+  {
+    "name": "phone-iphone-se",
+    "file": "qa-screenshots/tank-responsive-phone-iphone-se-375x667.png",
+    "viewport": {
+      "width": 375,
+      "height": 667
+    },
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 375,
+      "height": 736.03125,
+      "right": 375,
+      "bottom": 736.03125
+    },
+    "hud": {
+      "x": 10.5,
+      "y": 8,
+      "width": 354,
+      "height": 104.34375,
+      "right": 364.5,
+      "bottom": 112.34375
+    },
+    "firstFood": {
+      "x": 8.25,
+      "y": 270,
+      "width": 49.5,
+      "height": 38.609375,
+      "right": 57.75,
+      "bottom": 308.609375
+    },
+    "firstMenu": {
+      "x": 316.875,
+      "y": 163.6015625,
+      "width": 50.625,
+      "height": 39.484375,
+      "right": 367.5,
+      "bottom": 203.0859375
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.4306
+  },
+  {
+    "name": "phone-iphone-12-mini",
+    "file": "qa-screenshots/tank-responsive-phone-iphone-12-mini-360x780.png",
+    "viewport": {
+      "width": 360,
+      "height": 780
+    },
+    "canvas": {
+      "x": -19,
+      "y": 0,
+      "width": 397.390625,
+      "height": 780,
+      "right": 378.390625,
+      "bottom": 780
+    },
+    "hud": {
+      "x": 10.078125,
+      "y": 8,
+      "width": 339.84375,
+      "height": 104.34375,
+      "right": 349.921875,
+      "bottom": 112.34375
+    },
+    "firstFood": {
+      "x": 7.90625,
+      "y": 259.1875,
+      "width": 47.53125,
+      "height": 37.0625,
+      "right": 55.4375,
+      "bottom": 296.25
+    },
+    "firstMenu": {
+      "x": 304.21875,
+      "y": 195.4609375,
+      "width": 48.59375,
+      "height": 37.890625,
+      "right": 352.8125,
+      "bottom": 233.3515625
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.3984
+  },
+  {
+    "name": "phone-iphone-14",
+    "file": "qa-screenshots/tank-responsive-phone-iphone-14-390x844.png",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "canvas": {
+      "x": -20,
+      "y": 0,
+      "width": 430,
+      "height": 844,
+      "right": 410,
+      "bottom": 844
+    },
+    "hud": {
+      "x": 10.90625,
+      "y": 8,
+      "width": 368.1875,
+      "height": 105.34375,
+      "right": 379.09375,
+      "bottom": 113.34375
+    },
+    "firstFood": {
+      "x": 8.578125,
+      "y": 280.796875,
+      "width": 51.484375,
+      "height": 40.15625,
+      "right": 60.0625,
+      "bottom": 320.953125
+    },
+    "firstMenu": {
+      "x": 329.5625,
+      "y": 211.4765625,
+      "width": 52.640625,
+      "height": 41.046875,
+      "right": 382.203125,
+      "bottom": 252.5234375
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.3938
+  },
+  {
+    "name": "phone-pixel-7",
+    "file": "qa-screenshots/tank-responsive-phone-pixel-7-412x915.png",
+    "viewport": {
+      "width": 412,
+      "height": 915
+    },
+    "canvas": {
+      "x": -28,
+      "y": 0,
+      "width": 466.171875,
+      "height": 915,
+      "right": 438.171875,
+      "bottom": 915
+    },
+    "hud": {
+      "x": 11.53125,
+      "y": 8,
+      "width": 388.9375,
+      "height": 108.25,
+      "right": 400.46875,
+      "bottom": 116.25
+    },
+    "firstFood": {
+      "x": 9.0625,
+      "y": 296.625,
+      "width": 54.390625,
+      "height": 42.421875,
+      "right": 63.453125,
+      "bottom": 339.046875
+    },
+    "firstMenu": {
+      "x": 348.15625,
+      "y": 229.828125,
+      "width": 55.609375,
+      "height": 43.375,
+      "right": 403.765625,
+      "bottom": 273.203125
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.3949
+  },
+  {
+    "name": "phone-iphone-14-pro-max",
+    "file": "qa-screenshots/tank-responsive-phone-iphone-14-pro-max-430x932.png",
+    "viewport": {
+      "width": 430,
+      "height": 932
+    },
+    "canvas": {
+      "x": -23,
+      "y": 0,
+      "width": 474.828125,
+      "height": 932,
+      "right": 451.828125,
+      "bottom": 932
+    },
+    "hud": {
+      "x": 12.03125,
+      "y": 8,
+      "width": 405.9375,
+      "height": 111.125,
+      "right": 417.96875,
+      "bottom": 119.125
+    },
+    "firstFood": {
+      "x": 9.453125,
+      "y": 309.59375,
+      "width": 56.765625,
+      "height": 44.265625,
+      "right": 66.21875,
+      "bottom": 353.859375
+    },
+    "firstMenu": {
+      "x": 363.359375,
+      "y": 233.5546875,
+      "width": 58.046875,
+      "height": 45.265625,
+      "right": 421.40625,
+      "bottom": 278.8203125
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.4065
+  },
+  {
+    "name": "tablet-ipad-mini",
+    "file": "qa-screenshots/tank-responsive-tablet-ipad-mini-768x1024.png",
+    "viewport": {
+      "width": 768,
+      "height": 1024
+    },
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 768,
+      "height": 1507.421875,
+      "right": 768,
+      "bottom": 1507.421875
+    },
+    "hud": {
+      "x": 21.5,
+      "y": 8,
+      "width": 725,
+      "height": 122.890625,
+      "right": 746.5,
+      "bottom": 130.890625
+    },
+    "firstFood": {
+      "x": 16.890625,
+      "y": 552.953125,
+      "width": 62,
+      "height": 48.359375,
+      "right": 78.890625,
+      "bottom": 601.3125
+    },
+    "firstMenu": {
+      "x": 690.640625,
+      "y": 257.2890625,
+      "width": 62,
+      "height": 48.359375,
+      "right": 752.640625,
+      "bottom": 305.6484375
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.5039
+  },
+  {
+    "name": "tablet-ipad-10",
+    "file": "qa-screenshots/tank-responsive-tablet-ipad-10-810x1080.png",
+    "viewport": {
+      "width": 810,
+      "height": 1080
+    },
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 810,
+      "height": 1589.859375,
+      "right": 810,
+      "bottom": 1589.859375
+    },
+    "hud": {
+      "x": 22.671875,
+      "y": 8,
+      "width": 764.65625,
+      "height": 122.890625,
+      "right": 787.328125,
+      "bottom": 130.890625
+    },
+    "firstFood": {
+      "x": 17.8125,
+      "y": 583.1875,
+      "width": 62,
+      "height": 48.359375,
+      "right": 79.8125,
+      "bottom": 631.546875
+    },
+    "firstMenu": {
+      "x": 731.8125,
+      "y": 272.6796875,
+      "width": 62,
+      "height": 48.359375,
+      "right": 793.8125,
+      "bottom": 321.0390625
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.4867
+  },
+  {
+    "name": "tablet-ipad-pro-11",
+    "file": "qa-screenshots/tank-responsive-tablet-ipad-pro-11-834x1194.png",
+    "viewport": {
+      "width": 834,
+      "height": 1194
+    },
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 834,
+      "height": 1636.953125,
+      "right": 834,
+      "bottom": 1636.953125
+    },
+    "hud": {
+      "x": 23.34375,
+      "y": 8,
+      "width": 787.3125,
+      "height": 122.890625,
+      "right": 810.65625,
+      "bottom": 130.890625
+    },
+    "firstFood": {
+      "x": 18.34375,
+      "y": 600.46875,
+      "width": 62,
+      "height": 48.359375,
+      "right": 80.34375,
+      "bottom": 648.828125
+    },
+    "firstMenu": {
+      "x": 755.328125,
+      "y": 304.0234375,
+      "width": 62,
+      "height": 48.359375,
+      "right": 817.328125,
+      "bottom": 352.3828125
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.4737
+  },
+  {
+    "name": "tablet-ipad-pro-12",
+    "file": "qa-screenshots/tank-responsive-tablet-ipad-pro-12-1024x1366.png",
+    "viewport": {
+      "width": 1024,
+      "height": 1366
+    },
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 1024,
+      "height": 2009.890625,
+      "right": 1024,
+      "bottom": 2009.890625
+    },
+    "hud": {
+      "x": 28.671875,
+      "y": 8,
+      "width": 966.65625,
+      "height": 122.890625,
+      "right": 995.328125,
+      "bottom": 130.890625
+    },
+    "firstFood": {
+      "x": 22.515625,
+      "y": 737.265625,
+      "width": 62,
+      "height": 48.359375,
+      "right": 84.515625,
+      "bottom": 785.625
+    },
+    "firstMenu": {
+      "x": 941.53125,
+      "y": 351.3046875,
+      "width": 62,
+      "height": 48.359375,
+      "right": 1003.53125,
+      "bottom": 399.6640625
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.4903
+  },
+  {
+    "name": "tablet-android",
+    "file": "qa-screenshots/tank-responsive-tablet-android-800x1280.png",
+    "viewport": {
+      "width": 800,
+      "height": 1280
+    },
+    "canvas": {
+      "x": 0,
+      "y": 0,
+      "width": 800,
+      "height": 1570.21875,
+      "right": 800,
+      "bottom": 1570.21875
+    },
+    "hud": {
+      "x": 22.390625,
+      "y": 8,
+      "width": 755.21875,
+      "height": 122.890625,
+      "right": 777.609375,
+      "bottom": 130.890625
+    },
+    "firstFood": {
+      "x": 17.59375,
+      "y": 576,
+      "width": 62,
+      "height": 48.359375,
+      "right": 79.59375,
+      "bottom": 624.359375
+    },
+    "firstMenu": {
+      "x": 722,
+      "y": 327.6640625,
+      "width": 62,
+      "height": 48.359375,
+      "right": 784,
+      "bottom": 376.0234375
+    },
+    "overflowCount": 0,
+    "visibleFoodCount": 1,
+    "visibleMenuCount": 6,
+    "edgeBlack": {
+      "top": 0,
+      "bottom": 0,
+      "left": 0,
+      "right": 0
+    },
+    "bottomSandRatio": 0.4506
+  }
+]
