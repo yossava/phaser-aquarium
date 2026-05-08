@@ -300,8 +300,8 @@ const defaultHudLayout: HudLayout = {
     wealth: { x: 267, y: 71, width: 96, height: 26 }
   }
 };
-const dirtyTankOverlayThreshold = 20;
-const dirtyTankOverlayMaxAlpha = 0.64;
+const dirtyTankOverlayThreshold = 72;
+const dirtyTankOverlayMaxAlpha = 0.94;
 
 type AquariumTestSnapshot = {
   coins: number;
@@ -625,6 +625,7 @@ export class AquariumScene extends Phaser.Scene {
   private storeOverlay?: StoreOverlay;
   private modal?: Phaser.GameObjects.Container;
   private modalTitle?: string;
+  private draggedFish?: Fish;
 
   public constructor() {
     super("AquariumScene");
@@ -1303,6 +1304,8 @@ export class AquariumScene extends Phaser.Scene {
     const overlay = this.add
       .image(tankViewportBounds.centerX, tankViewportBounds.centerY, dirtyTankOverlayTextureKey)
       .setDisplaySize(tankViewportBounds.width, tankViewportBounds.height)
+      .setTint(0x6f7d36)
+      .setBlendMode(Phaser.BlendModes.NORMAL)
       .setDepth(17)
       .setAlpha(0)
       .setVisible(false);
@@ -1318,7 +1321,7 @@ export class AquariumScene extends Phaser.Scene {
     const dirtyRatio = Phaser.Math.Clamp((dirtyTankOverlayThreshold - this.cleanliness) / dirtyTankOverlayThreshold, 0, 1);
     const visible = dirtyRatio > 0;
     overlay.setVisible(visible);
-    overlay.setAlpha(visible ? Phaser.Math.Linear(0.18, dirtyTankOverlayMaxAlpha, dirtyRatio) : 0);
+    overlay.setAlpha(visible ? Phaser.Math.Linear(0.12, dirtyTankOverlayMaxAlpha, Math.pow(dirtyRatio, 0.72)) : 0);
   }
 
   private applyTankViewScale(): void {
@@ -1433,12 +1436,12 @@ export class AquariumScene extends Phaser.Scene {
     overlay.className = "aq-tank-menu";
 
     const screens: { label: string; screen: Exclude<AppScreen, "tank">; y: number; icon: string }[] = [
-      { label: "Shop", screen: "store", y: 232, icon: "/assets/ui/shop.png" },
-      { label: "Care", screen: "care", y: 304, icon: "/assets/ui/care.png" },
-      { label: "Book", screen: "album", y: 376, icon: "/assets/ui/book.png" },
-      { label: "Tanks", screen: "tanks", y: 448, icon: "/assets/ui/shop/icon_category_tanks.png" },
-      { label: "Goal", screen: "goals", y: 520, icon: "/assets/ui/goals.png" },
-      { label: "Set", screen: "settings", y: 592, icon: "/assets/ui/settings.png" }
+      { label: "Shop", screen: "store", y: 212, icon: "/assets/ui/shop.png" },
+      { label: "Care", screen: "care", y: 292, icon: "/assets/ui/care.png" },
+      { label: "Book", screen: "album", y: 372, icon: "/assets/ui/book.png" },
+      { label: "Tanks", screen: "tanks", y: 452, icon: "/assets/ui/shop/icon_category_tanks.png" },
+      { label: "Goal", screen: "goals", y: 532, icon: "/assets/ui/goals.png" },
+      { label: "Set", screen: "settings", y: 612, icon: "/assets/ui/settings.png" }
     ];
 
     for (const item of screens) {
@@ -4047,11 +4050,45 @@ export class AquariumScene extends Phaser.Scene {
     const placedFish = new Fish(this, type, x, y, options);
     placedFish.addToContainer(this.tankLayer);
     placedFish.setTankVisible(placedFish.tankLevel === this.tankLevel);
-    placedFish.sprite.setInteractive({ useHandCursor: true });
+    placedFish.sprite.setInteractive({ useHandCursor: true, draggable: true });
+    this.input.setDraggable(placedFish.sprite, true);
     placedFish.sprite.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       this.selectedFishIndex = this.fish.indexOf(placedFish);
-      this.showFishDetails(placedFish);
+    });
+    placedFish.sprite.on("dragstart", (_pointer: Phaser.Input.Pointer) => {
+      if (this.activeScreen !== "tank" || placedFish.tankLevel !== this.tankLevel) {
+        return;
+      }
+
+      this.draggedFish = placedFish;
+      this.selectedFishIndex = this.fish.indexOf(placedFish);
+      placedFish.beginManualDrag();
+      placedFish.sprite.setDepth(14);
+    });
+    placedFish.sprite.on("drag", (pointer: Phaser.Input.Pointer) => {
+      if (this.draggedFish !== placedFish || this.activeScreen !== "tank") {
+        return;
+      }
+
+      const pointerPoint = this.pointerDesignPoint(pointer);
+      const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
+      placedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
+    });
+    placedFish.sprite.on("dragend", (pointer: Phaser.Input.Pointer) => {
+      if (this.draggedFish !== placedFish) {
+        return;
+      }
+
+      const pointerPoint = this.pointerDesignPoint(pointer);
+      if (this.activeScreen === "tank" && tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
+        const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
+        placedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
+      }
+      placedFish.endManualDrag();
+      placedFish.sprite.setDepth(8);
+      this.draggedFish = undefined;
+      this.saveNow();
     });
     this.fish.push(placedFish);
     return placedFish;
@@ -4529,10 +4566,12 @@ export class AquariumScene extends Phaser.Scene {
     const coin = new CoinDrop(this, x, y, value, coinType);
     coin.setWorldScaleCompensation(this.tankViewScaleForLevel());
     coin.addToContainer(this.tankLayer);
-    coin.sprite.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+    const collect = (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       this.collectCoin(coin, false);
-    });
+    };
+    coin.hitZone.on("pointerdown", collect);
+    coin.sprite.on("pointerdown", collect);
     this.coinDrops.push(coin);
     return coin;
   }

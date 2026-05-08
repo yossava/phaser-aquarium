@@ -92,6 +92,7 @@ export class Fish {
   private hasRestedAtTarget = false;
   private pendingFacing?: number;
   private flipTransitionStartedAt = 0;
+  private manuallyDragging = false;
   private readonly usesCustomTexture: boolean;
   private readonly textureAspectRatio: number;
 
@@ -154,6 +155,15 @@ export class Fish {
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
     this.updateFatalCareTimer(deltaSeconds);
     this.setVisualScale(this.desiredAgeScale());
+
+    if (this.manuallyDragging) {
+      this.velocity.set(0, 0);
+      this.target.set(this.sprite.x, this.sprite.y);
+      this.setStateTint();
+      this.animateSwimming(deltaSeconds, 0, false, true);
+      this.updateStatusBars();
+      return undefined;
+    }
 
     const closestFood = this.findClosestFood(foods);
     let resting = false;
@@ -252,6 +262,29 @@ export class Fish {
   }
 
   public refreshStatusBars(): void {
+    this.updateStatusBars();
+  }
+
+  public beginManualDrag(): void {
+    this.manuallyDragging = true;
+    this.velocity.set(0, 0);
+    this.target.set(this.sprite.x, this.sprite.y);
+  }
+
+  public moveManuallyTo(x: number, y: number): void {
+    this.sprite.setPosition(
+      Phaser.Math.Clamp(x, tankBounds.left + 28, tankBounds.right - 28),
+      Phaser.Math.Clamp(y, tankBounds.top + 26, tankBounds.bottom - 26)
+    );
+    this.target.set(this.sprite.x, this.sprite.y);
+    this.velocity.set(0, 0);
+    this.updateStatusBars();
+  }
+
+  public endManualDrag(): void {
+    this.manuallyDragging = false;
+    this.velocity.set(0, 0);
+    this.target.set(this.sprite.x, this.sprite.y);
     this.updateStatusBars();
   }
 

@@ -11,14 +11,22 @@
 :root {
   color: #f8fbff;
   background: #000000;
-  --aq-stage-width: min(100vw, calc(100dvh * 430 / 844));
+  --aq-stage-width: 100vw;
   --aq-game-font: "Baloo 2", "Trebuchet MS", sans-serif;
   --aq-hud-edge-inset: 10px;
   --aq-hud-scale: 1;
   --aq-hud-min-width: 370px;
+  --aq-dock-scale: 1;
+  --aq-menu-scale: 1;
   font-family: var(--aq-game-font);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+@media (orientation: landscape) {
+  :root {
+    --aq-stage-width: min(100vw, calc(100dvh * 430 / 844));
+  }
 }
 
 * {
@@ -84,12 +92,12 @@ canvas {
   }
 
   .aq-chip {
-    @apply rounded-full border border-cyan-200/25 bg-sky-900/70 px-2.5 py-1.5 text-sm font-extrabold shadow-lg;
+    @apply min-w-0 rounded-full border border-cyan-200/25 bg-sky-900/70 px-1.5 py-1 text-xs font-extrabold shadow-lg;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   .aq-tab {
-    @apply flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl border border-cyan-200/25 bg-sky-950/70 px-1 text-xs font-extrabold text-cyan-100/75 shadow;
+    @apply flex min-h-8 flex-1 items-center justify-center gap-1 rounded-xl border border-cyan-200/25 bg-sky-950/70 px-1 text-[10px] font-extrabold text-cyan-100/75 shadow;
   }
 
   .aq-tab-active {
@@ -98,11 +106,11 @@ canvas {
   }
 
   .aq-rarity {
-    @apply flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-3 py-1.5 text-center text-sm font-extrabold;
+    @apply flex min-h-8 flex-1 items-center justify-center gap-1 rounded-xl border px-2 py-1 text-center text-xs font-extrabold;
   }
 
   .aq-card {
-    @apply flex min-h-[238px] flex-col gap-2 rounded-2xl border bg-sky-950/70 p-2.5 shadow-lg;
+    @apply flex h-full min-h-0 flex-col gap-1.5 overflow-hidden rounded-2xl border bg-sky-950/70 p-2 shadow-lg;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
   }
 
@@ -147,7 +155,7 @@ canvas {
   }
 
   .aq-page-content {
-    @apply mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-cyan-200/25 bg-sky-950/78 p-3;
+    @apply mt-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-cyan-200/25 bg-sky-950/78 p-3;
     scrollbar-width: none;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -277,7 +285,7 @@ canvas {
   }
 
   .aq-page-mini-grid {
-    @apply grid max-h-64 grid-cols-2 gap-2 overflow-y-auto pr-1;
+    @apply grid max-h-none grid-cols-2 gap-2 overflow-hidden pr-0;
     scrollbar-width: none;
   }
 
@@ -316,13 +324,13 @@ canvas {
   }
 
   .aq-buy {
-    @apply min-h-11 rounded-xl border border-lime-200/70 px-5 py-2 text-sm font-black text-white shadow-lg;
+    @apply min-h-8 rounded-xl border border-lime-200/70 px-3 py-1.5 text-xs font-black text-white shadow-lg;
     background: linear-gradient(#80e43a, #26921f);
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(8, 52, 11, 0.8);
   }
 
   .aq-qty {
-    @apply min-h-10 rounded-xl border border-cyan-200/30 bg-sky-900/80 px-3 py-2 text-xs font-black text-cyan-50;
+    @apply min-h-7 rounded-lg border border-cyan-200/30 bg-sky-900/80 px-2 py-1 text-[10px] font-black text-cyan-50;
   }
 
   .aq-tank-menu {
@@ -337,6 +345,8 @@ canvas {
     right: var(--aq-hud-edge-inset);
     width: clamp(58px, 16.5%, 76px);
     touch-action: manipulation;
+    transform: translateY(-50%) scale(var(--aq-menu-scale));
+    transform-origin: center right;
   }
 
   .aq-tank-menu-bubble {
@@ -387,7 +397,7 @@ canvas {
   }
 
   .aq-game-level-badge {
-    @apply relative isolate flex aspect-square h-[clamp(64px,18vw,88px)] shrink-0 items-center justify-center overflow-visible rounded-full text-[clamp(24px,7vw,40px)] font-black text-cyan-50;
+    @apply relative isolate flex aspect-square h-[clamp(56px,15vw,74px)] shrink-0 items-center justify-center overflow-visible rounded-full text-[clamp(22px,6vw,34px)] font-black text-cyan-50;
     grid-column: 1;
     grid-row: 1;
     align-self: start;
@@ -406,8 +416,8 @@ canvas {
   }
 
   .aq-game-level-badge::after {
-    @apply absolute left-1/2 top-[94%] -z-10 -translate-x-1/2 rounded-[4px] border border-[#d7b879]/80 bg-[#f1d9a4] px-3 py-0.5 text-[clamp(11px,3vw,15px)] font-black leading-none text-[#5d3b1d] content-['Level'];
-    min-width: clamp(58px, 15vw, 76px);
+    @apply absolute left-1/2 top-[94%] -z-10 -translate-x-1/2 rounded-[4px] border border-[#d7b879]/80 bg-[#f1d9a4] px-2.5 py-0.5 text-[clamp(10px,2.6vw,13px)] font-black leading-none text-[#5d3b1d] content-['Level'];
+    min-width: clamp(52px, 13vw, 66px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.72),
       0 -1px 0 rgba(112, 78, 37, 0.32),
@@ -422,11 +432,11 @@ canvas {
 
   .aq-game-stat-panel {
     @apply grid min-w-0 rounded-[16px] border-2 border-[#d6b875]/80 bg-cyan-950/20 px-2 py-1.5;
-    width: max(100%, var(--aq-hud-min-width));
-    grid-template-columns: clamp(72px, 20vw, 98px) minmax(0, 1fr);
-    grid-template-rows: clamp(60px, 15.5vw, 74px) auto;
-    column-gap: clamp(6px, 1.8vw, 10px);
-    row-gap: 5px;
+    width: 100%;
+    grid-template-columns: clamp(62px, 17vw, 84px) minmax(0, 1fr);
+    grid-template-rows: clamp(50px, 13vw, 62px) auto;
+    column-gap: clamp(5px, 1.4vw, 8px);
+    row-gap: 3px;
     transform: scale(var(--aq-hud-scale));
     transform-origin: top left;
     box-shadow:
@@ -442,14 +452,14 @@ canvas {
   }
 
   .aq-game-wallet-grid {
-    @apply relative z-[2] grid grid-cols-3 gap-2 overflow-visible;
+    @apply relative z-[2] grid grid-cols-3 gap-1.5 overflow-visible;
     grid-column: 2;
     grid-row: 1;
     align-self: center;
     margin-left: 0;
-    height: clamp(44px, 11.8vw, 56px);
+    height: clamp(38px, 10vw, 48px);
     min-width: 0;
-    padding: clamp(5px, 1.4vw, 7px) clamp(9px, 2.5vw, 13px);
+    padding: clamp(4px, 1vw, 6px) clamp(7px, 1.9vw, 10px);
     border: 2px solid rgba(207, 249, 255, 0.42);
     border-radius: 999px;
     background:
@@ -465,8 +475,8 @@ canvas {
 
   .aq-game-wallet-chip,
   .aq-game-wealth-chip {
-    @apply relative flex min-w-0 items-center justify-center gap-1 rounded-[18px] border border-white/18 bg-sky-950/35 py-1 pr-2 text-[clamp(15px,4vw,22px)] font-black leading-none text-white;
-    padding-left: clamp(24px, 6.4vw, 34px);
+    @apply relative flex min-w-0 items-center justify-center gap-1 rounded-[16px] border border-white/18 bg-sky-950/35 py-1 pr-1.5 text-[clamp(13px,3.4vw,18px)] font-black leading-none text-white;
+    padding-left: clamp(20px, 5.4vw, 28px);
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.22),
       inset 0 -7px 13px rgba(0, 38, 73, 0.28);
@@ -474,28 +484,28 @@ canvas {
   }
 
   .aq-game-wealth-chip {
-    @apply relative z-[1] border-white/18 bg-sky-950/35 text-[clamp(12px,3.2vw,17px)];
+    @apply relative z-[1] border-white/18 bg-sky-950/35 text-[clamp(11px,2.9vw,15px)];
     grid-column: 1;
     grid-row: 2;
     align-self: center;
     justify-self: stretch;
     justify-content: center;
-    min-height: clamp(26px, 7vw, 34px);
+    min-height: clamp(23px, 6vw, 29px);
   }
 
   .aq-game-wallet-chip img,
   .aq-game-wealth-chip img {
-    @apply absolute left-[-8px] top-1/2 h-[2.1em] w-[2.1em] shrink-0 -translate-y-1/2 object-contain;
+    @apply absolute left-[-5px] top-1/2 h-[1.85em] w-[1.85em] shrink-0 -translate-y-1/2 object-contain;
     filter: drop-shadow(0 3px 3px rgba(0, 35, 61, 0.42));
   }
 
   .aq-game-wealth-chip img {
-    @apply absolute h-[2.05em] w-[2.05em] -translate-y-1/2;
+    @apply absolute h-[1.85em] w-[1.85em] -translate-y-1/2;
     filter: drop-shadow(0 3px 3px rgba(0, 35, 61, 0.42));
   }
 
   .aq-game-care-row {
-    @apply grid grid-cols-[0.82fr_1fr_1fr] gap-2 text-[clamp(12px,3.2vw,17px)] font-black text-white;
+    @apply grid grid-cols-[0.72fr_0.9fr_0.9fr] gap-1.5 text-[clamp(10px,2.7vw,14px)] font-black text-white;
     grid-column: 2;
     grid-row: 2;
     align-self: center;
@@ -509,9 +519,9 @@ canvas {
   }
 
   .aq-game-hud-pill {
-    @apply relative flex min-w-0 items-center justify-center gap-1 overflow-visible rounded-[18px] border border-white/18 bg-sky-950/35 py-1 pr-2;
-    min-height: clamp(26px, 7vw, 34px);
-    padding-left: clamp(22px, 5.8vw, 31px);
+    @apply relative flex min-w-0 items-center justify-center gap-0.5 overflow-visible rounded-[16px] border border-white/18 bg-sky-950/35 py-1 pr-1.5;
+    min-height: clamp(23px, 6vw, 29px);
+    padding-left: clamp(18px, 4.8vw, 25px);
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.22),
       inset 0 -7px 13px rgba(0, 38, 73, 0.28);
@@ -530,12 +540,17 @@ canvas {
   }
 
   .aq-game-hud-pill img {
-    @apply absolute left-[-7px] top-1/2 z-10 h-[2.05em] w-[2.05em] shrink-0 -translate-y-1/2 object-contain;
+    @apply absolute left-[-5px] top-1/2 z-10 h-[1.85em] w-[1.85em] shrink-0 -translate-y-1/2 object-contain;
     filter: drop-shadow(0 3px 3px rgba(0, 35, 61, 0.42));
   }
 
   .aq-game-hud-pill span {
-    @apply relative z-10;
+    @apply relative z-10 whitespace-nowrap;
+  }
+
+  .aq-game-wallet-chip span,
+  .aq-game-wealth-chip span {
+    @apply whitespace-nowrap;
   }
 
   @media (max-width: 389px) {
@@ -553,6 +568,111 @@ canvas {
   @media (max-width: 349px) {
     .aq-game-hud {
       --aq-hud-scale: 0.83;
+    }
+  }
+
+  @media (max-height: 760px) {
+    :root {
+      --aq-hud-scale: 0.92;
+      --aq-hud-min-width: 350px;
+      --aq-dock-scale: 0.9;
+      --aq-menu-scale: 0.9;
+    }
+
+    .aq-game-hud {
+      padding-top: max(5px, env(safe-area-inset-top));
+    }
+
+    .aq-game-stat-panel {
+      grid-template-columns: clamp(58px, 15.5vw, 74px) minmax(0, 1fr);
+      grid-template-rows: clamp(44px, 11.8vw, 54px) auto;
+      column-gap: 5px;
+      row-gap: 2px;
+      border-radius: 14px;
+      padding: 4px 6px;
+    }
+
+    .aq-game-level-badge {
+      height: clamp(52px, 14vw, 66px);
+      margin-top: 2px;
+      font-size: clamp(20px, 5.4vw, 30px);
+    }
+
+    .aq-game-wallet-grid {
+      gap: 4px;
+      height: clamp(34px, 9vw, 42px);
+      padding: 3px 6px;
+    }
+
+    .aq-game-wallet-chip,
+    .aq-game-wealth-chip {
+      border-radius: 14px;
+      font-size: clamp(11px, 3vw, 15px);
+      padding-left: clamp(17px, 4.5vw, 23px);
+      padding-right: 5px;
+    }
+
+    .aq-game-care-row {
+      gap: 4px;
+      font-size: clamp(9px, 2.45vw, 12px);
+    }
+
+    .aq-game-hud-pill {
+      min-height: clamp(20px, 5.4vw, 25px);
+      padding-left: clamp(16px, 4.2vw, 21px);
+      padding-right: 5px;
+    }
+
+    .aq-tank-menu-button,
+    .aq-food-button {
+      width: clamp(50px, 14%, 64px);
+    }
+
+    .aq-tank-menu-label,
+    .aq-food-button-label {
+      font-size: clamp(8px, 2.1vw, 10px);
+    }
+
+    .aq-food-dock {
+      --food-dock-top: 128px;
+      gap: 7px;
+    }
+  }
+
+  @media (max-height: 680px) {
+    :root {
+      --aq-hud-scale: 0.84;
+      --aq-hud-min-width: 336px;
+      --aq-dock-scale: 0.82;
+      --aq-menu-scale: 0.82;
+    }
+
+    .aq-game-stat-panel {
+      grid-template-columns: 54px minmax(0, 1fr);
+      grid-template-rows: 40px auto;
+      column-gap: 5px;
+      row-gap: 2px;
+      padding: 4px 5px;
+    }
+
+    .aq-game-level-badge {
+      height: 50px;
+      font-size: 24px;
+    }
+
+    .aq-game-wallet-grid {
+      height: 34px;
+      gap: 4px;
+      padding: 3px 5px;
+    }
+
+    .aq-game-care-row {
+      gap: 4px;
+    }
+
+    .aq-food-dock {
+      --food-dock-top: 118px;
+      gap: 6px;
     }
   }
 
@@ -578,20 +698,21 @@ canvas {
   }
 
   .aq-helper-food-count {
-    @apply absolute -right-1 top-2 flex min-h-7 min-w-7 items-center justify-center rounded-full border border-white/85 bg-emerald-500 px-1.5 text-sm font-black leading-none text-white;
+    @apply absolute -right-0.5 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/85 bg-emerald-500 px-1 text-[10px] font-black leading-none text-white;
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.32),
-      0 3px 6px rgba(0, 38, 45, 0.42);
-    text-shadow: 0 2px 1px rgba(0, 65, 38, 0.62);
+      0 2px 5px rgba(0, 38, 45, 0.38);
+    text-shadow: 0 1px 1px rgba(0, 65, 38, 0.62);
   }
 
   .aq-food-dock {
     @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px] overflow-y-auto pb-4;
-    --food-dock-top: 132px;
+    --food-dock-top: 148px;
     width: min(22vw, 92px);
     max-height: calc(100dvh - var(--food-dock-top) - 8px);
     left: calc((100vw - var(--aq-stage-width)) / 2);
-    transform: translate(var(--aq-hud-edge-inset), var(--food-dock-top));
+    transform: translate(var(--aq-hud-edge-inset), var(--food-dock-top)) scale(var(--aq-dock-scale));
+    transform-origin: top left;
   }
 
   .aq-food-button {

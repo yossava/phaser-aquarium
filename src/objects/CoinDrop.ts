@@ -4,7 +4,8 @@ import { formatNumber } from "../game/economy";
 import { gameFontFamily } from "../game/fonts";
 import type { CoinType } from "../types/mechanics";
 
-const coinDisplaySize = Math.round(gameWidth * 0.095);
+const coinDisplaySize = Math.round(gameWidth * 0.12);
+const coinTapTargetSize = Math.round(gameWidth * 0.16);
 const coinValueTextOffset = Math.round(gameWidth * 0.04);
 const coinValueFontSize = Math.round(gameWidth * 0.03);
 
@@ -24,6 +25,7 @@ type CoinVisual = (typeof coinVisualsByType)[CoinType];
 
 export class CoinDrop {
   public sprite: Phaser.GameObjects.Image;
+  public hitZone: Phaser.GameObjects.Zone;
   public valueText: Phaser.GameObjects.Text;
   public readonly bottomY = tankBounds.bottom - 16;
   public readonly visual: CoinVisual;
@@ -46,6 +48,7 @@ export class CoinDrop {
     }
     this.sprite.setDisplaySize(coinDisplaySize, coinDisplaySize);
     this.sprite.setDepth(12);
+    this.hitZone = scene.add.zone(x, y, coinTapTargetSize, coinTapTargetSize).setOrigin(0.5).setDepth(14).setInteractive({ useHandCursor: true });
     this.sprite.setInteractive({ useHandCursor: true });
     this.valueText = scene.add
       .text(x, y + coinValueTextOffset, `+${formatNumber(value)}`, {
@@ -62,17 +65,21 @@ export class CoinDrop {
 
   public update(deltaSeconds: number): void {
     this.sprite.y = Math.min(this.bottomY, this.sprite.y + this.sinkSpeed * deltaSeconds);
+    this.hitZone.setPosition(this.sprite.x, this.sprite.y);
     this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + this.valueTextOffset(), tankBounds.bottom - 8));
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {
-    container.add([this.sprite, this.valueText]);
+    container.add([this.hitZone, this.sprite, this.valueText]);
   }
 
   public setWorldScaleCompensation(tankViewScale: number): void {
     this.tankViewScale = Math.max(0.01, tankViewScale);
     const displaySize = coinDisplaySize / this.tankViewScale;
+    const tapTargetSize = coinTapTargetSize / this.tankViewScale;
     this.sprite.setDisplaySize(displaySize, displaySize);
+    this.hitZone.setSize(tapTargetSize, tapTargetSize);
+    this.hitZone.setPosition(this.sprite.x, this.sprite.y);
     this.valueText.setFontSize(`${coinValueFontSize / this.tankViewScale}px`);
     this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + this.valueTextOffset(), tankBounds.bottom - 8));
   }
@@ -82,6 +89,7 @@ export class CoinDrop {
   }
 
   public destroy(): void {
+    this.hitZone.destroy();
     this.sprite.destroy();
     this.valueText.destroy();
   }

@@ -95,18 +95,18 @@ export class StoreOverlay {
   }
 
   private header(state: StoreOverlayState): HTMLElement {
-    const header = el("header", "aq-panel mb-2 shrink-0 p-2.5");
-    const top = el("div", "flex items-start gap-3");
+    const header = el("header", "aq-panel mb-1.5 shrink-0 p-2");
+    const top = el("div", "flex items-start gap-2");
     top.append(
-      image("/assets/ui/shop/store_icon.png", "Store", "h-14 w-14 shrink-0 object-contain"),
+      image("/assets/ui/shop/store_icon.png", "Store", "h-10 w-10 shrink-0 object-contain"),
       div("min-w-0 flex-1", [
-        div("text-3xl font-black tracking-wide drop-shadow", ["STORE"]),
+        div("text-2xl font-black leading-none tracking-wide drop-shadow", ["STORE"]),
         div("mt-0.5 text-xs font-bold text-cyan-100/80", [`${state.activeTankName} L${formatNumber(state.activeTankLevel)} · ${formatNumber(state.fishCount)}/${formatNumber(state.fishCapacity)} fish`])
       ]),
-      button("X CLOSE", "min-h-11 rounded-xl border border-white/50 bg-red-600 px-3 text-sm font-black text-white shadow-lg shadow-red-950/40", () => this.actions.close())
+      button("X CLOSE", "min-h-9 rounded-xl border border-white/50 bg-red-600 px-2.5 text-xs font-black text-white shadow-lg shadow-red-950/40", () => this.actions.close())
     );
 
-    const stats = el("div", "mt-2 grid grid-cols-2 gap-2");
+    const stats = el("div", "mt-1.5 grid grid-cols-4 gap-1.5");
     stats.append(
       this.currency("common", state.wallet.common),
       this.currency("rare", state.wallet.rare),
@@ -130,12 +130,12 @@ export class StoreOverlay {
       superRare: "Super",
       wealth: "Wealth"
     };
-    const chip = el("div", "aq-chip flex items-center gap-2");
+    const chip = el("div", "aq-chip flex items-center gap-1.5");
     chip.append(
-      image(iconByKind[kind], labelByKind[kind], "h-7 w-7 object-contain"),
+      image(iconByKind[kind], labelByKind[kind], "h-5 w-5 object-contain"),
       div("min-w-0", [
         div("text-[10px] leading-none text-cyan-100/65", [labelByKind[kind]]),
-        div("text-base leading-tight", [formatNumber(amount)])
+        div("text-sm leading-tight", [formatNumber(amount)])
       ])
     );
     return chip;
@@ -149,14 +149,14 @@ export class StoreOverlay {
       { tab: "tank", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
       { tab: "creature", label: "Helpers", icon: "/assets/helpers/feeder-snail.png" }
     ];
-    const row = el("nav", "mb-2 flex shrink-0 gap-2");
+    const row = el("nav", "mb-1.5 flex shrink-0 gap-1.5");
     tabs.forEach((item) => {
       const tabButton = button("", `aq-tab ${this.activeTab === item.tab ? "aq-tab-active" : ""}`, () => {
         this.activeTab = item.tab;
         this.page = 1;
         this.render();
       });
-      tabButton.append(image(item.icon, "", "h-6 w-6 object-contain"), document.createTextNode(item.label));
+      tabButton.append(image(item.icon, "", "h-5 w-5 object-contain"), document.createTextNode(item.label));
       row.append(tabButton);
     });
     return row;
@@ -164,7 +164,7 @@ export class StoreOverlay {
 
   private rarityFilters(): HTMLElement {
     if (this.activeTab === "tank") {
-      return div("mb-2 min-h-1 shrink-0");
+      return div("mb-1 min-h-1 shrink-0");
     }
 
     const filters: Array<{ coin: CoinType; label: string; icon: string; className: string }> = [
@@ -172,29 +172,29 @@ export class StoreOverlay {
       { coin: "rare", label: "Rare", icon: "/assets/ui/shop/rare_star_badge.png", className: "border-cyan-300/70 text-cyan-200" },
       { coin: "superRare", label: "Super", icon: "/assets/ui/shop/super_rare_star_badge.png", className: "border-fuchsia-300/70 text-fuchsia-200" }
     ];
-    const row = el("div", "mb-2 flex shrink-0 gap-2");
+    const row = el("div", "mb-1.5 flex shrink-0 gap-1.5");
     filters.forEach((filter) => {
       const filterButton = button("", `aq-rarity ${filter.className} ${this.coinFilter === filter.coin ? "bg-white/15" : "bg-sky-950/55 opacity-75"}`, () => {
         this.coinFilter = filter.coin;
         this.page = 1;
         this.render();
       });
-      filterButton.append(image(filter.icon, "", "h-7 w-7 object-contain drop-shadow"), document.createTextNode(filter.label));
+      filterButton.append(image(filter.icon, "", "h-5 w-5 object-contain drop-shadow"), document.createTextNode(filter.label));
       row.append(filterButton);
     });
     return row;
   }
 
   private catalog(state: StoreOverlayState): HTMLElement {
-    const panel = el("main", "aq-panel flex min-h-0 flex-1 flex-col overflow-hidden p-3");
-    const content = el("div", "min-h-0 flex-1 overflow-y-auto px-1");
+    const panel = el("main", "aq-panel flex min-h-0 flex-1 flex-col overflow-hidden p-2");
+    const content = el("div", "min-h-0 flex-1 overflow-hidden");
     const items = this.currentItems(state);
     const pageSize = 4;
     const maxPage = Math.max(1, Math.ceil(items.length / pageSize));
     this.page = Math.min(this.page, maxPage);
     const pageItems = items.slice((this.page - 1) * pageSize, this.page * pageSize);
 
-    const list = el("div", "grid grid-cols-2 gap-3");
+    const list = el("div", "grid h-full min-h-0 grid-cols-2 grid-rows-2 gap-2");
     if (pageItems.length === 0) {
       list.append(div("rounded-2xl border border-cyan-200/20 bg-sky-950/60 p-6 text-center text-sm font-bold text-cyan-100/80", ["No items in this lane."]));
     } else {
@@ -202,14 +202,14 @@ export class StoreOverlay {
     }
     content.append(list);
 
-    const pager = el("footer", "mt-3 flex items-center justify-between gap-3");
+    const pager = el("footer", "mt-2 flex shrink-0 items-center justify-between gap-2");
     pager.append(
-      button("<", "min-h-11 min-w-16 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-lg font-black", () => {
+      button("<", "min-h-9 min-w-14 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-base font-black", () => {
         this.page = Math.max(1, this.page - 1);
         this.render();
       }),
-      div("text-sm font-black text-cyan-100", [`Page ${formatNumber(this.page)}/${formatNumber(maxPage)}`]),
-      button(">", "min-h-11 min-w-16 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-lg font-black", () => {
+      div("text-xs font-black text-cyan-100", [`Page ${formatNumber(this.page)}/${formatNumber(maxPage)}`]),
+      button(">", "min-h-9 min-w-14 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-base font-black", () => {
         this.page = Math.min(maxPage, this.page + 1);
         this.render();
       })
@@ -252,13 +252,13 @@ export class StoreOverlay {
     const card = this.baseCard(fish.rarity);
     card.append(
       this.preview(`/assets/fish/${fish.id}.png`, fish.name),
-      div("flex min-w-0 flex-1 flex-col", [
-        div("flex items-start justify-between gap-2", [
-          div("min-w-0 text-base font-black leading-tight", [fish.name]),
+      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+        div("flex items-start justify-between gap-1.5", [
+          div("min-w-0 truncate text-sm font-black leading-tight", [fish.name]),
           this.priceBadge(fish.price)
         ]),
-        div("mt-1 text-xs font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)}`]),
-        div("mt-1 text-xs leading-snug text-cyan-50/90", [this.productionHint(fish)]),
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)}`]),
+        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [this.productionHint(fish)]),
         button(canAfford(state.wallet, fish.price) ? "Buy Fish" : `Need ${formatPrice(fish.price)}`, "aq-buy mt-auto w-full disabled:opacity-45", () => this.actions.buyFish(fish))
       ])
     );
@@ -271,7 +271,7 @@ export class StoreOverlay {
     const owned = state.foodOwned[food.id] ?? 0;
     const buyLabel = this.activeTab === "supply" ? "Buy Supply" : "Buy Food";
     const card = this.baseCard(food.rarity);
-    const controls = el("div", "mt-3 grid grid-cols-3 gap-2");
+    const controls = el("div", "mt-1.5 grid grid-cols-3 gap-1");
     [1, 10, 100, 500, 1000].forEach((amount) => {
       controls.append(button(`+${formatNumber(amount)}`, "aq-qty", () => {
         this.quantities.set(food.id, Math.min(9999, quantity + amount));
@@ -280,13 +280,13 @@ export class StoreOverlay {
     });
     card.append(
       this.preview(`/assets/food/${food.id}.png`, food.name),
-      div("flex min-w-0 flex-1 flex-col", [
-        div("flex items-start justify-between gap-2", [
-          div("min-w-0 text-base font-black leading-tight", [food.name]),
+      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+        div("flex items-start justify-between gap-1.5", [
+          div("min-w-0 truncate text-sm font-black leading-tight", [food.name]),
           this.priceBadge(totalPrice)
         ]),
-        div("mt-1 text-xs font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`]),
-        div("mt-2 flex items-center gap-2 text-xs", [
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`]),
+        div("mt-1 flex items-center gap-1 text-[10px]", [
           button(`Qty ${formatNumber(quantity)}`, "aq-qty flex-1", () => undefined),
           button("Reset", "aq-qty", () => {
             this.quantities.set(food.id, 1);
@@ -306,13 +306,13 @@ export class StoreOverlay {
     const card = this.baseCard(creature.rarity);
     card.append(
       this.preview(texture, creature.name),
-      div("flex min-w-0 flex-1 flex-col", [
-        div("flex items-start justify-between gap-2", [
-          div("min-w-0 text-base font-black leading-tight", [creature.name]),
+      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+        div("flex items-start justify-between gap-1.5", [
+          div("min-w-0 truncate text-sm font-black leading-tight", [creature.name]),
           this.priceBadge(creature.price)
         ]),
-        div("mt-1 text-xs font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.helperRole(creature)}`]),
-        div("mt-1 text-xs leading-snug text-cyan-50/90", [creature.description]),
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.helperRole(creature)}`]),
+        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [creature.description]),
         button(canAfford(state.wallet, creature.price) ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyHelper(creature))
       ])
     );
@@ -323,14 +323,14 @@ export class StoreOverlay {
     const owned = tank.owned;
     const card = this.baseCard(owned ? "rare" : "common");
     card.append(
-      div("mx-auto flex h-20 w-20 items-center justify-center rounded-2xl border border-cyan-200/30 bg-cyan-400/15 text-3xl font-black", [`L${formatNumber(tank.displayLevel)}`]),
-      div("flex min-w-0 flex-1 flex-col", [
-        div("flex items-start justify-between gap-2", [
-          div("min-w-0 text-base font-black leading-tight", [tank.name]),
+      div("mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-200/30 bg-cyan-400/15 text-2xl font-black", [`L${formatNumber(tank.displayLevel)}`]),
+      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+        div("flex items-start justify-between gap-1.5", [
+          div("min-w-0 truncate text-sm font-black leading-tight", [tank.name]),
           owned ? div("aq-chip text-xs", [tank.active ? "Active" : "Owned"]) : this.priceBadge(tank.price)
         ]),
-        div("mt-1 text-xs font-bold text-amber-200", [`Worth ${formatNumber(tank.worth)}`]),
-        div("mt-1 text-xs leading-snug text-cyan-50/90", [`${formatNumber(tank.fishCount)}/${formatNumber(tank.fishCapacity)} fish · ${formatNumber(tank.helperCount)} helpers`]),
+        div("mt-0.5 truncate text-[10px] font-bold text-amber-200", [`Worth ${formatNumber(tank.worth)}`]),
+        div("mt-0.5 text-[10px] leading-tight text-cyan-50/90", [`${formatNumber(tank.fishCount)}/${formatNumber(tank.fishCapacity)} fish · ${formatNumber(tank.helperCount)} helpers`]),
         button(tank.active ? "Current Tank" : owned ? "Switch Tank" : canAfford(state.wallet, tank.price) ? "Buy Tank" : `Need ${formatPrice(tank.price)}`, "aq-buy mt-auto w-full", () => {
           owned ? this.actions.switchTank(tank.level) : this.actions.buyTank(tank.level);
         })
@@ -349,8 +349,8 @@ export class StoreOverlay {
   }
 
   private preview(src: string, alt: string): HTMLElement {
-    const wrap = el("div", "mx-auto flex h-24 w-full items-center justify-center");
-    wrap.append(image(src, alt, "max-h-24 max-w-[92%] object-contain drop-shadow-lg"));
+    const wrap = el("div", "mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center");
+    wrap.append(image(src, alt, "max-h-full max-w-[94%] object-contain drop-shadow-lg"));
     return wrap;
   }
 
@@ -360,8 +360,8 @@ export class StoreOverlay {
       rare: "/assets/ui/shop/coin_icon_rare.png",
       superRare: "/assets/ui/shop/coin_icon_super_rare.png"
     };
-    const badge = el("div", "flex shrink-0 items-center gap-1 rounded-full border border-cyan-200/25 bg-sky-950/80 px-2 py-1 text-sm font-black text-amber-200");
-    badge.append(image(iconByCoin[price.coinType], "", "h-5 w-5 object-contain"), document.createTextNode(formatNumber(price.amount)));
+    const badge = el("div", "flex shrink-0 items-center gap-0.5 rounded-full border border-cyan-200/25 bg-sky-950/80 px-1.5 py-0.5 text-xs font-black text-amber-200");
+    badge.append(image(iconByCoin[price.coinType], "", "h-4 w-4 object-contain"), document.createTextNode(formatNumber(price.amount)));
     return badge;
   }
 
