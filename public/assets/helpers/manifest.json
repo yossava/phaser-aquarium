@@ -28,6 +28,13 @@
       "height": 110,
       "source": "assets/generated/helper-source/feeder-snail-source.png",
       "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/helpers/auto-cleaner.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/helper-source/auto_cleaner_helper_source_magenta.png",
+      "processing": "image-generated raster source, chroma-key removed, resized"
     }
   ]
 }

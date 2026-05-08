@@ -143,6 +143,19 @@
     "densityLevel": 5
   },
   {
+    "id": "creature",
+    "name": "Creature Food",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 12
+    },
+    "nutrition": 58,
+    "acceptedByDefault": false,
+    "calories": 58,
+    "densityLevel": 2
+  },
+  {
     "id": "event",
     "name": "Event Treat",
     "rarity": "superRare",

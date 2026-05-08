@@ -12,6 +12,7 @@ export const foodVisualsByType: Record<FoodTypeId, { tint: number; label: string
   coral: { tint: 0x35d6d0, label: "Coral" },
   medicine: { tint: 0x43d66f, label: "Medicine" },
   evolve: { tint: 0xb47cff, label: "Evolve" },
+  creature: { tint: 0x76e68a, label: "Creature" },
   event: { tint: 0xf39cff, label: "Event" }
 };
 

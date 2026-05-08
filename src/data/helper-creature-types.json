@@ -47,5 +47,18 @@
     "feedSeconds": 5,
     "habitatTags": ["bottom", "feeder"],
     "description": "Gentle feeder that spends stocked food to drop matching meals for hungry fish."
+  },
+  {
+    "id": "auto-cleaner",
+    "name": "Auto Cleaner",
+    "rarity": "rare",
+    "price": { "coinType": "rare", "amount": 3 },
+    "texture": "helper-auto-cleaner",
+    "speed": 38,
+    "coinCollectSeconds": 9,
+    "cleanupSeconds": 5,
+    "tankCleanSeconds": 5,
+    "habitatTags": ["bottom", "cleaner", "auto-clean"],
+    "description": "Steady tank cleaner that restores 1% cleanliness every few seconds."
   }
 ]

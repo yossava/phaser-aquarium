@@ -24,7 +24,13 @@ export class FoodPellet {
   private ageSeconds = 0;
   private expired = false;
 
-  public constructor(scene: Phaser.Scene, x: number, y: number, public readonly foodType: FoodType, options: { velocityX?: number; velocityY?: number } = {}) {
+  public constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    public readonly foodType: FoodType,
+    options: { velocityX?: number; velocityY?: number; displayScale?: number } = {}
+  ) {
     const textureKey = this.textureKey(scene);
     this.sprite = scene.add.image(x, y, textureKey);
     this.velocityX = options.velocityX ?? 0;
@@ -32,10 +38,11 @@ export class FoodPellet {
     if (foodType.id !== "medicine" && foodType.id !== "evolve") {
       this.sprite.setTint(this.tintForFood());
     }
+    const displayScale = options.displayScale ?? 1;
     this.baseDisplaySize =
-      foodType.id === "medicine" || foodType.id === "evolve"
+      (foodType.id === "medicine" || foodType.id === "evolve"
         ? pillPelletDisplaySize
-        : foodPelletSizeByDensity[foodType.densityLevel] ?? defaultPelletDisplaySize;
+        : foodPelletSizeByDensity[foodType.densityLevel] ?? defaultPelletDisplaySize) * displayScale;
     this.setWorldScaleCompensation(1);
     this.sprite.setDepth(7);
   }

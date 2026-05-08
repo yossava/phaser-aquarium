@@ -355,11 +355,11 @@ async function runRegression(cdp, appUrl) {
   assert(state.tankStatusText.includes("Lv1") && !state.tankStatusText.includes("Fish") && !state.tankStatusText.includes("Coin"), "Tank status should expose tank level without fish or coin capacity text.");
   assert(state.tankCareText.includes("Clean") && state.tankCareText.includes("Happy"), "Tank care status should visibly expose cleanliness and happiness.");
   assert(state.assetCoverage.fish === 50, "All 50 fish should have loaded custom asset textures.");
-  assert(state.assetCoverage.food === 12, "All food, medicine, and pill types should have loaded custom asset textures.");
+  assert(state.assetCoverage.food === 13, "All food, medicine, pill, and creature food types should have loaded custom asset textures.");
   assert(state.assetCoverage.decorations >= 12, "Decoration catalog should have the expanded custom asset set.");
   assert(state.assetCoverage.coins === 3, "All three coin types should have loaded custom asset textures.");
   assert(state.assetCoverage.uiIcons >= 9, "All menu icons and shared prompt-pack HUD/button UI skin textures should load.");
-  assert(state.assetCoverage.helpers === 4, "All helper creatures should have loaded custom asset textures.");
+  assert(state.assetCoverage.helpers === 5, "All helper creatures should have loaded custom asset textures.");
   assert(state.assetCoverage.backgrounds >= 4, "The prompt-pack sand floor, underwater background, distant silhouette overlay, and dirty tank overlay assets should load.");
   assert(!state.dirtyTankOverlay.visible && state.dirtyTankOverlay.alpha === 0, "Dirty tank overlay should stay hidden while the tank is clean.");
   await evaluate(cdp, "window.__aquariumTest.setCleanliness(19)");
@@ -393,7 +393,7 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('food')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "food" && current.storeCoinFilter === "rare" && current.visibleStoreCatalogCount === 4,
+    (current) => current.activeTab === "food" && current.storeCoinFilter === "rare" && current.visibleStoreCatalogCount === 3,
     "Food store rare lane should show rare foods."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('superRare')");
@@ -419,8 +419,8 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('rare')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "creature" && current.storeCoinFilter === "rare" && current.visibleStoreCatalogCount === 1,
-    "Helper store rare lane should show rare helper."
+    (current) => current.activeTab === "creature" && current.storeCoinFilter === "rare" && current.visibleStoreCatalogCount === 2,
+    "Helper store rare lane should show rare helpers."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('superRare')");
   state = await waitFor(

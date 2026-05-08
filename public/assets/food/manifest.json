@@ -58,6 +58,13 @@
       "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
     },
     {
+      "file": "/assets/food/creature.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/creature_food_raster_source.png",
+      "processing": "create-assets raster PNG, transparent background, no SVG"
+    },
+    {
       "file": "/assets/food/event.png",
       "width": 96,
       "height": 96,

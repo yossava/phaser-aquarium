@@ -32,6 +32,9 @@ export type SavedHelperCreature = {
   x: number;
   y: number;
   targetX: number;
+  hunger?: number;
+  health?: number;
+  fatalCareSeconds?: number;
 };
 
 export type SavedGame = {
@@ -439,7 +442,10 @@ function sanitizeHelperCreature(creature: Partial<SavedHelperCreature>): SavedHe
     tankLevel: Math.max(1, Math.floor(sanitizeNumber(creature.tankLevel, 1))),
     x: sanitizeNumber(creature.x, 0),
     y: sanitizeNumber(creature.y, 0),
-    targetX: sanitizeNumber(creature.targetX, creature.x ?? 0)
+    targetX: sanitizeNumber(creature.targetX, creature.x ?? 0),
+    hunger: clamp(sanitizeNumber(creature.hunger, 16), 0, 100),
+    health: clamp(sanitizeNumber(creature.health, 100), 0, 100),
+    fatalCareSeconds: clamp(sanitizeNumber(creature.fatalCareSeconds, 0), 0, 3600)
   };
 }
 

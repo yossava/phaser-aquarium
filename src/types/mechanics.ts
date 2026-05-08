@@ -14,6 +14,7 @@ export type FoodTypeId =
   | "coral"
   | "medicine"
   | "evolve"
+  | "creature"
   | "event";
 
 export type FishGender = "M" | "F";
@@ -98,8 +99,9 @@ export type HelperCreatureType = {
   coinCollectSeconds: number;
   cleanupSeconds: number;
   feedSeconds?: number;
+  tankCleanSeconds?: number;
   habitatTags: string[];
   description: string;
 };
 
-export type StoreTab = "fish" | "food" | "tank" | "decor" | "creature";
+export type StoreTab = "fish" | "food" | "supply" | "tank" | "decor" | "creature";

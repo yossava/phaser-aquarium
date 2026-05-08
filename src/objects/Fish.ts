@@ -880,6 +880,10 @@ export class Fish {
   }
 
   private willChaseFood(food: FoodPellet): boolean {
+    if (food.foodType.id === "creature") {
+      return false;
+    }
+
     if (this.state === "ill") {
       return food.foodType.id === "medicine";
     }

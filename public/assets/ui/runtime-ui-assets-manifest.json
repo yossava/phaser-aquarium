@@ -167,6 +167,18 @@
       "background": "transparent runtime PNG keyed from magenta source",
       "generation": "one asset per prompt using create-assets Raster Transparency Workflow",
       "usage_note": "Use for tank levels 10 and above."
+    },
+    {
+      "file": "public/assets/ui/helper-food-dispenser.png",
+      "label": "Helper Food Dispenser",
+      "dimensions": [
+        160,
+        160
+      ],
+      "source": "assets/generated/source/ui/helper_food_dispenser_imagegen_source.png",
+      "background": "transparent runtime PNG keyed from magenta source",
+      "generation": "create-assets imagegen raster PNG, no SVG",
+      "usage_note": "Bottom-left tank indicator for remaining Creature Food."
     }
   ]
 }

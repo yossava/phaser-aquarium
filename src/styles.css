@@ -23,6 +23,12 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 html,
@@ -56,19 +62,21 @@ canvas {
 
 @layer components {
   .aq-store-shell {
-    @apply fixed inset-0 z-50 flex justify-center bg-black/70 text-white;
+    @apply fixed left-1/2 top-0 z-50 flex h-dvh text-white;
+    width: var(--aq-stage-width);
+    transform: translateX(-50%);
     pointer-events: auto;
   }
 
   .aq-store {
-    @apply relative h-dvh w-full max-w-[430px] overflow-hidden px-4 pb-4 pt-[max(12px,env(safe-area-inset-top))];
+    @apply relative flex h-dvh w-full flex-col overflow-hidden px-3 pb-3 pt-[max(8px,env(safe-area-inset-top))];
     background:
-      radial-gradient(circle at 50% 0%, rgba(75, 211, 255, 0.2), transparent 34%),
-      linear-gradient(180deg, rgba(7, 43, 72, 0.98), rgba(1, 18, 33, 0.99));
+      radial-gradient(circle at 50% 0%, rgba(75, 211, 255, 0.28), transparent 36%),
+      linear-gradient(180deg, rgb(7, 43, 72), rgb(1, 18, 33));
   }
 
   .aq-panel {
-    @apply rounded-2xl border border-cyan-300/30 bg-sky-950/75 shadow-2xl;
+    @apply rounded-2xl border border-cyan-300/30 bg-sky-950/90 shadow-2xl;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
       inset 0 -18px 48px rgba(3, 20, 38, 0.55),
@@ -76,12 +84,12 @@ canvas {
   }
 
   .aq-chip {
-    @apply rounded-full border border-cyan-200/25 bg-sky-900/70 px-3 py-2 text-sm font-extrabold shadow-lg;
+    @apply rounded-full border border-cyan-200/25 bg-sky-900/70 px-2.5 py-1.5 text-sm font-extrabold shadow-lg;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   .aq-tab {
-    @apply flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-cyan-200/25 bg-sky-950/70 px-2 text-sm font-extrabold text-cyan-100/75 shadow;
+    @apply flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl border border-cyan-200/25 bg-sky-950/70 px-1 text-xs font-extrabold text-cyan-100/75 shadow;
   }
 
   .aq-tab-active {
@@ -90,12 +98,221 @@ canvas {
   }
 
   .aq-rarity {
-    @apply min-h-11 flex-1 rounded-2xl border px-3 py-2 text-center text-sm font-extrabold;
+    @apply flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-2xl border px-3 py-1.5 text-center text-sm font-extrabold;
   }
 
   .aq-card {
-    @apply grid min-h-[118px] grid-cols-[92px_1fr] gap-3 rounded-2xl border bg-sky-950/70 p-3 shadow-lg;
+    @apply flex min-h-[238px] flex-col gap-2 rounded-2xl border bg-sky-950/70 p-2.5 shadow-lg;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .aq-page-shell {
+    @apply fixed left-1/2 top-0 z-50 flex h-dvh text-white;
+    width: var(--aq-stage-width);
+    transform: translateX(-50%);
+    pointer-events: auto;
+  }
+
+  .aq-page {
+    @apply relative flex h-dvh w-full flex-col overflow-hidden px-3 pb-3 pt-[max(8px,env(safe-area-inset-top))];
+    background:
+      radial-gradient(circle at 50% 0%, rgba(112, 224, 255, 0.28), transparent 35%),
+      linear-gradient(180deg, rgb(8, 47, 79), rgb(1, 18, 33));
+  }
+
+  .aq-page-header {
+    @apply flex shrink-0 items-center gap-2 rounded-2xl border border-cyan-200/30 bg-sky-950/80 p-2.5 shadow-xl;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -16px 34px rgba(4, 26, 44, 0.48);
+  }
+
+  .aq-page-header-icon {
+    @apply h-12 w-12 shrink-0 object-contain drop-shadow-lg;
+  }
+
+  .aq-page-title {
+    @apply truncate text-2xl font-black leading-none text-white;
+    text-shadow: 0 3px 0 rgba(0, 31, 53, 0.72);
+  }
+
+  .aq-page-subtitle {
+    @apply mt-1 truncate text-xs font-extrabold text-cyan-100/80;
+  }
+
+  .aq-page-close {
+    @apply min-h-11 shrink-0 rounded-xl border border-red-100/70 px-3 py-2 text-sm font-black text-white shadow-lg;
+    background: linear-gradient(#ff6f75, #b91326);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 3px 0 rgba(82, 8, 15, 0.8);
+  }
+
+  .aq-page-content {
+    @apply mt-3 min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-cyan-200/25 bg-sky-950/78 p-3;
+    scrollbar-width: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -28px 58px rgba(3, 20, 38, 0.5);
+  }
+
+  .aq-page-content::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aq-page-section-title {
+    @apply mb-2 mt-4 text-base font-black leading-none text-cyan-50 first:mt-0;
+    text-shadow: 0 2px 0 rgba(0, 34, 56, 0.72);
+  }
+
+  .aq-page-card-grid,
+  .aq-page-stat-grid {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .aq-page-stat {
+    @apply min-w-0 rounded-xl border border-cyan-200/25 bg-sky-900/65 px-3 py-2 shadow;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .aq-page-stat-label,
+  .aq-page-card-meta,
+  .aq-page-mini-meta {
+    @apply block truncate text-xs font-extrabold text-cyan-100/76;
+  }
+
+  .aq-page-stat-value {
+    @apply mt-0.5 block break-words text-base font-black leading-tight text-white;
+    text-shadow: 0 2px 0 rgba(0, 31, 53, 0.65);
+  }
+
+  .aq-page-card {
+    @apply min-w-0 rounded-2xl border border-cyan-200/25 bg-sky-900/70 p-2.5 shadow-lg;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .aq-page-card.is-active {
+    @apply border-lime-200/75 bg-cyan-700/50;
+  }
+
+  .aq-page-card.is-muted {
+    @apply opacity-70;
+  }
+
+  .aq-page-card-media {
+    @apply flex flex-col items-center text-center;
+  }
+
+  .aq-page-card-title {
+    @apply w-full truncate text-base font-black leading-tight text-white;
+    text-shadow: 0 2px 0 rgba(0, 31, 53, 0.72);
+  }
+
+  .aq-page-card-copy {
+    @apply mt-1 text-xs font-bold leading-snug text-cyan-50/82;
+  }
+
+  .aq-page-card-image {
+    @apply mb-1 h-20 w-full object-contain drop-shadow-lg;
+  }
+
+  .aq-page-card-image.fish {
+    @apply h-16;
+  }
+
+  .aq-page-card-image.helper {
+    @apply h-[72px];
+  }
+
+  .aq-page-empty {
+    @apply col-span-2 text-center;
+  }
+
+  .aq-page-actions {
+    @apply mt-3 grid grid-cols-2 gap-2;
+  }
+
+  .aq-page-actions.compact {
+    @apply mt-2;
+  }
+
+  .aq-page-button {
+    @apply min-h-10 rounded-xl border border-cyan-100/45 bg-cyan-700 px-3 py-2 text-center text-sm font-black text-white shadow-lg;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.26), 0 3px 0 rgba(6, 50, 73, 0.8);
+  }
+
+  .aq-page-button-good {
+    @apply border-lime-200/70;
+    background: linear-gradient(#80e43a, #26921f);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(8, 52, 11, 0.8);
+  }
+
+  .aq-page-button-danger {
+    @apply border-red-100/70;
+    background: linear-gradient(#ff6f75, #b91326);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 3px 0 rgba(82, 8, 15, 0.8);
+  }
+
+  .aq-page-button-muted {
+    @apply bg-sky-800;
+  }
+
+  .aq-page-icon-button,
+  .aq-page-size-button {
+    @apply min-h-9 rounded-lg border border-cyan-200/30 bg-sky-800/90 px-2 py-1 text-xs font-black text-white shadow;
+  }
+
+  .aq-page-size-button.owned {
+    @apply border-lime-200/50 bg-cyan-700;
+  }
+
+  .aq-page-stepper {
+    @apply mt-3 grid grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-2;
+  }
+
+  .aq-page-stepper-value {
+    @apply rounded-lg border border-cyan-200/25 bg-sky-950/55 px-2 py-2 text-center text-sm font-black text-white;
+  }
+
+  .aq-page-size-grid {
+    @apply mt-2 grid w-full grid-cols-2 gap-1.5;
+  }
+
+  .aq-page-mini-grid {
+    @apply grid max-h-64 grid-cols-2 gap-2 overflow-y-auto pr-1;
+    scrollbar-width: none;
+  }
+
+  .aq-page-mini-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aq-page-mini-card {
+    @apply grid min-w-0 grid-cols-[56px_minmax(0,1fr)] grid-rows-[1fr_auto] items-center gap-x-2 rounded-xl border border-cyan-200/25 bg-sky-900/70 p-2 text-left shadow;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .aq-page-mini-card.is-active {
+    @apply border-lime-200/75 bg-cyan-700/55;
+  }
+
+  .aq-page-mini-thumb,
+  .aq-page-swatch {
+    @apply row-span-2 h-12 w-14 rounded-lg border border-cyan-100/20 object-cover;
+  }
+
+  .aq-page-mini-title {
+    @apply truncate text-sm font-black leading-tight text-white;
+  }
+
+  .aq-page-tank-preview {
+    @apply mb-2 flex h-24 items-center justify-center overflow-hidden rounded-xl border border-cyan-200/25;
+    background:
+      radial-gradient(circle at 50% 28%, color-mix(in srgb, var(--tank-accent) 45%, transparent), transparent 35%),
+      linear-gradient(180deg, rgba(47, 205, 230, 0.5), rgba(7, 75, 113, 0.86));
+  }
+
+  .aq-page-tank-level {
+    @apply rounded-full border border-white/30 bg-sky-950/55 px-4 py-2 text-xl font-black text-white;
+    text-shadow: 0 3px 0 rgba(0, 31, 53, 0.72);
   }
 
   .aq-buy {
@@ -339,10 +556,40 @@ canvas {
     }
   }
 
+  .aq-helper-food-dispenser {
+    @apply pointer-events-auto absolute z-[3] flex items-end;
+    left: var(--helper-food-left, 0px);
+    top: var(--helper-food-top, 70%);
+    width: clamp(66px, 18vw, 84px);
+    transform: translate(-24%, -50%);
+    filter: drop-shadow(0 5px 7px rgba(0, 28, 44, 0.42));
+    touch-action: none;
+    cursor: ns-resize;
+    transition: filter 90ms ease, transform 90ms ease;
+  }
+
+  .aq-helper-food-dispenser.is-dragging {
+    transform: translate(-24%, -50%) scale(1.04);
+    filter: brightness(1.12) drop-shadow(0 5px 7px rgba(0, 28, 44, 0.48));
+  }
+
+  .aq-helper-food-dispenser img {
+    @apply w-full object-contain;
+  }
+
+  .aq-helper-food-count {
+    @apply absolute -right-1 top-2 flex min-h-7 min-w-7 items-center justify-center rounded-full border border-white/85 bg-emerald-500 px-1.5 text-sm font-black leading-none text-white;
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.32),
+      0 3px 6px rgba(0, 38, 45, 0.42);
+    text-shadow: 0 2px 1px rgba(0, 65, 38, 0.62);
+  }
+
   .aq-food-dock {
-    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px];
+    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px] overflow-y-auto pb-4;
     --food-dock-top: 132px;
     width: min(22vw, 92px);
+    max-height: calc(100dvh - var(--food-dock-top) - 8px);
     left: calc((100vw - var(--aq-stage-width)) / 2);
     transform: translate(var(--aq-hud-edge-inset), var(--food-dock-top));
   }
@@ -387,6 +634,10 @@ canvas {
 
   .aq-food-button-label {
     @apply mt-0.5 max-w-full rounded-full bg-sky-950/35 px-1.5 text-center text-[clamp(9px,2.5vw,12px)] font-black leading-none text-white;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     text-shadow:
       0 2px 2px rgba(0, 0, 0, 0.72),
       0 0 5px rgba(0, 62, 88, 0.62);

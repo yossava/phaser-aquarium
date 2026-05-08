@@ -1,0 +1,97 @@
+[
+  {
+    "screen": "care",
+    "visible": true,
+    "title": "Care",
+    "overlay": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "content": {
+      "w": 366,
+      "h": 742,
+      "scrollHeight": 740
+    },
+    "buttons": 9,
+    "cards": 2,
+    "horizontalOverflow": false
+  },
+  {
+    "screen": "tanks",
+    "visible": true,
+    "title": "Tanks",
+    "overlay": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "content": {
+      "w": 366,
+      "h": 742,
+      "scrollHeight": 2319
+    },
+    "buttons": 106,
+    "cards": 68,
+    "horizontalOverflow": false
+  },
+  {
+    "screen": "album",
+    "visible": true,
+    "title": "Album",
+    "overlay": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "content": {
+      "w": 366,
+      "h": 742,
+      "scrollHeight": 740
+    },
+    "buttons": 1,
+    "cards": 2,
+    "horizontalOverflow": false
+  },
+  {
+    "screen": "goals",
+    "visible": true,
+    "title": "Goals",
+    "overlay": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "content": {
+      "w": 366,
+      "h": 742,
+      "scrollHeight": 740
+    },
+    "buttons": 4,
+    "cards": 3,
+    "horizontalOverflow": false
+  },
+  {
+    "screen": "settings",
+    "visible": true,
+    "title": "Settings",
+    "overlay": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    "content": {
+      "w": 366,
+      "h": 742,
+      "scrollHeight": 740
+    },
+    "buttons": 7,
+    "cards": 4,
+    "horizontalOverflow": false
+  }
+]

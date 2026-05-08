@@ -84,6 +84,13 @@
       "height": 160,
       "source": "assets/generated/source/decorations/pearl-statue_source.png",
       "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/decorations/air-stone.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations/air_stone_imagegen_source.png",
+      "processing": "create-assets imagegen raster PNG, chroma-key removed, transparent background, no SVG"
     }
   ]
 }

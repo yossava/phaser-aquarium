@@ -106,5 +106,14 @@
     "texture": "decor-pearl-statue",
     "habitatTags": ["pearl", "fantasy"],
     "happinessBonus": 14
+  },
+  {
+    "id": "air-stone",
+    "name": "Air Stone",
+    "rarity": "common",
+    "price": { "coinType": "common", "amount": 65 },
+    "texture": "decor-air-stone",
+    "habitatTags": ["stone", "aeration", "bubbles"],
+    "happinessBonus": 4
   }
 ]
