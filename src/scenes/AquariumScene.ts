@@ -71,6 +71,10 @@ type CompatibilitySummary = {
 type HudChipId = "common" | "rare" | "superRare" | "wealth";
 type HudRect = { x: number; y: number; width: number; height: number };
 type HudBadgeLayout = { x: number; y: number; size: number };
+type LegacyHudObject = Phaser.GameObjects.GameObject & {
+  setVisible: (visible: boolean) => unknown;
+  setAlpha?: (alpha: number) => unknown;
+};
 type HudLayout = {
   levelBadge: HudBadgeLayout;
   rightFrame: HudRect;
@@ -97,9 +101,11 @@ const autoFeederPrice: FishType["price"] = { coinType: "common", amount: 18 };
 const autoCollectorPrice: FishType["price"] = { coinType: "common", amount: 22 };
 const evolvePillFoodTypeId: FoodTypeId = "evolve";
 const creatureFoodTypeId: FoodTypeId = "creature";
-const supplyFoodTypeIds = new Set<FoodTypeId>(["medicine", evolvePillFoodTypeId, creatureFoodTypeId]);
+const supplyFoodTypeIds = new Set<FoodTypeId>(["medicine", evolvePillFoodTypeId]);
+const hiddenFoodTypeIds = new Set<FoodTypeId>([creatureFoodTypeId]);
 const maxEvolutionStage = 3;
 const maxFoodBuyQuantity = 99_999;
+const inventoryDockPageSize = 8;
 const overfullHungerFloor = -10000;
 const fishStatsCardHeight = 96;
 const fishStatsCardRowHeight = 104;
@@ -114,7 +120,7 @@ const tankFallbackBaseColor = 0x0b7097;
 const helperFoodDispenserStorageKey = "phaser-aquarium-helper-food-dispenser-y";
 const helperFoodDispenserMinIntervalMs = 3800;
 const helperFoodDispenserMaxIntervalMs = 8600;
-const helperFoodDispenserPelletScale = 0.48;
+const helperFoodDispenserPelletScale = 0.72;
 const coinWealthValue: Record<CoinType, number> = {
   common: 1,
   rare: 100,
@@ -459,7 +465,7 @@ type AquariumTestSnapshot = {
     };
   }>;
   foods: Array<{ x: number; y: number; displayWidth: number; foodType: FoodTypeId; textureKey: string; visualTint: number; sinkSpeed: number; calories: number; densityLevel: number }>;
-  helperCreatures: Array<{ typeId: string; typeName: string; x: number; y: number; speed: number; sellPrice: FishType["price"]; feedSeconds?: number; hunger: number; health: number; fatalCareSeconds: number; fatalCareRemainingSeconds: number }>;
+  helperCreatures: Array<{ typeId: string; typeName: string; x: number; y: number; speed: number; sellPrice: FishType["price"] }>;
   maxCoinDrops: number;
   coinsWaiting: Array<{
     x: number;
@@ -550,6 +556,8 @@ export class AquariumScene extends Phaser.Scene {
   private activeTab: StoreTab = "fish";
   private storeCoinFilter: CoinType = "common";
   private selectedFoodTypeId: FoodTypeId = basicFood.id;
+  private inventoryDockPage = 0;
+  private recentInventoryDockItemKey?: string;
   private placedDecorations: PlacedDecoration[] = [];
   private offlineProgress: OfflineProgress = { elapsedSeconds: 0, earned: createEmptyWallet() };
   private autosaveElapsed = 0;
@@ -595,6 +603,7 @@ export class AquariumScene extends Phaser.Scene {
   private hudCleanStatusText!: Phaser.GameObjects.Text;
   private hudHappyStatusText!: Phaser.GameObjects.Text;
   private hudNeedText!: Phaser.GameObjects.Text;
+  private phaserHudObjects: LegacyHudObject[] = [];
   private tankLevelBadgeHueOverlay!: Phaser.GameObjects.Graphics;
   private tankLevelBadgeImage!: Phaser.GameObjects.Image;
   private tankLevelBadgeText!: Phaser.GameObjects.Text;
@@ -623,7 +632,7 @@ export class AquariumScene extends Phaser.Scene {
   private htmlPageOverlay?: HTMLDivElement;
   private tabControls: Phaser.GameObjects.GameObject[] = [];
   private storeOverlay?: StoreOverlay;
-  private modal?: Phaser.GameObjects.Container;
+  private modal?: HTMLDivElement;
   private modalTitle?: string;
   private draggedFish?: Fish;
 
@@ -715,8 +724,8 @@ export class AquariumScene extends Phaser.Scene {
 
       this.anims.create({
         key: animationKey,
-        frames: this.anims.generateFrameNumbers(textureKey, { start: 0, end: 5 }),
-        frameRate: 5,
+        frames: this.anims.generateFrameNumbers(textureKey, { start: 0, end: 11 }),
+        frameRate: 10,
         repeat: -1
       });
     });
@@ -952,9 +961,11 @@ export class AquariumScene extends Phaser.Scene {
       fixedWidth: 356
     }).setDepth(24).setVisible(false);
 
-    this.add.image(48, 88, "ui-icon-food-status").setDisplaySize(20, 20).setDepth(23).setVisible(false);
-    this.add.image(178, 88, "ui-icon-clean-status").setDisplaySize(20, 20).setDepth(23).setVisible(false);
-    this.add.image(307, 88, "ui-icon-happy-status").setDisplaySize(20, 20).setDepth(23).setVisible(false);
+    const legacyStatusIcons = [
+      this.add.image(48, 88, "ui-icon-food-status").setDisplaySize(20, 20).setDepth(23),
+      this.add.image(178, 88, "ui-icon-clean-status").setDisplaySize(20, 20).setDepth(23),
+      this.add.image(307, 88, "ui-icon-happy-status").setDisplaySize(20, 20).setDepth(23)
+    ];
 
     this.hudFoodStatusText = this.add.text(64, 89, "", {
       fontFamily: gameFontFamily,
@@ -1012,29 +1023,38 @@ export class AquariumScene extends Phaser.Scene {
     this.createFoodDock();
     this.createDecorationTrashTarget();
     this.renderTabControls();
+    this.phaserHudObjects = [
+      this.hudFrameImage,
+      this.hudPanel,
+      this.hudText,
+      ...Object.values(this.hudIconImages),
+      this.hudCommonText,
+      this.hudRareText,
+      this.hudSuperRareText,
+      this.hudWealthText,
+      this.statusText,
+      this.modeText,
+      ...legacyStatusIcons,
+      this.hudFoodStatusText,
+      this.hudCleanStatusText,
+      this.hudHappyStatusText,
+      this.hudNeedText,
+      this.tankLevelBadgeImage,
+      this.tankLevelBadgeHueOverlay,
+      this.tankLevelBadgeText
+    ];
     this.applyHudLayout();
     this.hidePhaserHud();
     this.syncHtmlGameInterface();
   }
 
   private hidePhaserHud(): void {
-    this.hudFrameImage.setVisible(false);
-    this.hudPanel.setVisible(false);
-    this.hudText.setVisible(false);
-    Object.values(this.hudIconImages).forEach((image) => image.setVisible(false));
-    this.hudCommonText.setVisible(false);
-    this.hudRareText.setVisible(false);
-    this.hudSuperRareText.setVisible(false);
-    this.hudWealthText.setVisible(false);
-    this.statusText.setVisible(false);
-    this.modeText.setVisible(false);
-    this.hudFoodStatusText.setVisible(false);
-    this.hudCleanStatusText.setVisible(false);
-    this.hudHappyStatusText.setVisible(false);
-    this.hudNeedText.setVisible(false);
-    this.tankLevelBadgeImage.setVisible(false);
-    this.tankLevelBadgeHueOverlay.setVisible(false);
-    this.tankLevelBadgeText.setVisible(false);
+    for (const object of this.phaserHudObjects) {
+      object.setVisible(false);
+      if ("setAlpha" in object && typeof object.setAlpha === "function") {
+        object.setAlpha(0);
+      }
+    }
   }
 
   private drawHudPanel(): void {
@@ -1524,7 +1544,7 @@ export class AquariumScene extends Phaser.Scene {
     this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-warning", this.cleanliness < 72 && this.cleanliness >= 35);
     this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-danger", this.cleanliness < 35);
     this.gameHudHappyText!.textContent = `Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
-    this.helperFoodDispenserText!.textContent = this.foodBadgeLabel(this.getFoodInventory(creatureFoodTypeId));
+    this.helperFoodDispenserText!.textContent = this.foodBadgeLabel(this.getTotalFeedableFoodInventory());
     this.syncHelperFoodDispenserPosition();
     this.syncFoodDockPosition();
   }
@@ -1563,7 +1583,7 @@ export class AquariumScene extends Phaser.Scene {
     this.helperFoodDispenserElement = helperFood;
     const helperFoodIcon = document.createElement("img");
     helperFoodIcon.src = "/assets/ui/helper-food-dispenser.png";
-    helperFoodIcon.alt = "Helper food";
+    helperFoodIcon.alt = "Fish food dispenser";
     helperFoodIcon.draggable = false;
     const helperFoodBadge = document.createElement("span");
     helperFoodBadge.className = "aq-helper-food-count";
@@ -1725,11 +1745,65 @@ export class AquariumScene extends Phaser.Scene {
     }
     this.htmlFoodDock.replaceChildren();
 
-    const visibleItems = this.visibleInventoryDockItems().slice(0, 10);
+    const allItems = this.visibleInventoryDockItems();
+    this.focusRecentInventoryDockItem(allItems);
+    const pageCount = Math.max(1, Math.ceil(allItems.length / inventoryDockPageSize));
+    this.inventoryDockPage = Phaser.Math.Clamp(this.inventoryDockPage, 0, pageCount - 1);
+    const visibleItems = allItems.slice(
+      this.inventoryDockPage * inventoryDockPageSize,
+      (this.inventoryDockPage + 1) * inventoryDockPageSize
+    );
     for (const item of visibleItems) {
       this.htmlFoodDock.append(this.createHtmlInventoryDockButton(item));
     }
+    if (pageCount > 1) {
+      this.htmlFoodDock.append(this.createInventoryDockPager(pageCount));
+    }
     this.syncFoodDockPosition();
+  }
+
+  private focusRecentInventoryDockItem(items: InventoryDockItem[]): void {
+    if (!this.recentInventoryDockItemKey) {
+      return;
+    }
+
+    const index = items.findIndex((item) => this.inventoryDockItemKey(item) === this.recentInventoryDockItemKey);
+    if (index >= 0) {
+      this.inventoryDockPage = Math.floor(index / inventoryDockPageSize);
+    }
+    this.recentInventoryDockItemKey = undefined;
+  }
+
+  private createInventoryDockPager(pageCount: number): HTMLDivElement {
+    const pager = document.createElement("div");
+    pager.className = "aq-food-dock-pager";
+    const previous = this.createInventoryDockPageButton("<", () => {
+      this.inventoryDockPage = (this.inventoryDockPage - 1 + pageCount) % pageCount;
+      this.syncHtmlFoodDock();
+    });
+    const next = this.createInventoryDockPageButton(">", () => {
+      this.inventoryDockPage = (this.inventoryDockPage + 1) % pageCount;
+      this.syncHtmlFoodDock();
+    });
+    const label = document.createElement("span");
+    label.className = "aq-food-dock-page-label";
+    label.textContent = `${formatNumber(this.inventoryDockPage + 1)}/${formatNumber(pageCount)}`;
+    pager.append(previous, label, next);
+    return pager;
+  }
+
+  private createInventoryDockPageButton(label: string, onClick: () => void): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "aq-food-dock-page-button";
+    button.textContent = label;
+    this.attachTouchFeedback(button);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onClick();
+    });
+    return button;
   }
 
   private syncFoodDockPosition(): void {
@@ -1752,7 +1826,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private visibleInventoryDockItems(): InventoryDockItem[] {
     const foodItems: InventoryDockItem[] = foodTypes
-      .filter((foodType) => foodType.id !== creatureFoodTypeId && this.getFoodInventory(foodType.id) > 0)
+      .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && this.getFoodInventory(foodType.id) > 0)
       .map((foodType) => ({
         kind: "food",
         id: foodType.id,
@@ -1796,6 +1870,14 @@ export class AquariumScene extends Phaser.Scene {
       }));
 
     return [...foodItems, ...fishItems, ...decorationItems, ...helperItems];
+  }
+
+  private inventoryDockItemKey(item: InventoryDockItem): string {
+    if (item.kind === "decoration") {
+      return `${item.kind}:${item.id}:${item.size}`;
+    }
+
+    return `${item.kind}:${item.id}`;
   }
 
   private createHtmlInventoryDockButton(item: InventoryDockItem): HTMLButtonElement {
@@ -2017,6 +2099,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private destroyHtmlGameInterface(): void {
     this.cancelHtmlFoodDrag();
+    this.closeModal();
     this.gameHudOverlay?.remove();
     this.gameHudOverlay = undefined;
     this.htmlFoodDock?.remove();
@@ -2573,13 +2656,12 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createHelperHtmlCard(helper: HelperCreature, index: number): HTMLElement {
-    const role = helper.type.feedSeconds ? "Feeder" : helper.type.tankCleanSeconds ? "Auto Cleaner" : helper.type.habitatTags.includes("collector") ? "Collector" : "Cleaner";
+    const role = helper.type.id === "feeder-snail" ? "Pet" : helper.type.tankCleanSeconds ? "Auto Cleaner" : helper.type.habitatTags.includes("collector") ? "Collector" : "Cleaner";
     const card = this.htmlElement("article", "aq-page-card aq-page-card-media");
     card.append(
       this.htmlImage(`/assets/helpers/${helper.type.id}.png`, "", "aq-page-card-image helper"),
       this.htmlElement("h3", "aq-page-card-title", [helper.type.name]),
       this.htmlElement("p", "aq-page-card-meta", [`${this.rarityLabel(helper.type.rarity)} | ${role}`]),
-      this.htmlElement("p", "aq-page-card-copy", [`Hunger ${formatNumber(Math.round(helper.hunger))} | Health ${formatNumber(Math.round(helper.health))}`]),
       this.htmlElement("p", "aq-page-card-copy", [`Speed ${formatNumber(helper.type.speed)} | Sell ${formatPrice(this.helperSellPrice(helper.type))}`]),
       this.htmlButton("Sell", "aq-page-button aq-page-button-danger", () => this.showHelperSellConfirmation(index))
     );
@@ -2710,11 +2792,11 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private visibleFoodCatalog(): FoodType[] {
-    return foodTypes.filter((foodType) => !supplyFoodTypeIds.has(foodType.id) && this.matchesStoreCoinFilter(foodType.price));
+    return foodTypes.filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id) && this.matchesStoreCoinFilter(foodType.price));
   }
 
   private visibleSupplyCatalog(): FoodType[] {
-    return foodTypes.filter((foodType) => supplyFoodTypeIds.has(foodType.id) && this.matchesStoreCoinFilter(foodType.price));
+    return foodTypes.filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && supplyFoodTypeIds.has(foodType.id) && this.matchesStoreCoinFilter(foodType.price));
   }
 
   private visibleTankCatalogLevels(): number[] {
@@ -3528,7 +3610,7 @@ export class AquariumScene extends Phaser.Scene {
       fontStyle: "bold",
       fixedWidth: width - 24
     });
-    const role = helper.type.feedSeconds ? "Feeder" : helper.type.tankCleanSeconds ? "Auto Cleaner" : helper.type.habitatTags.includes("collector") ? "Collector" : "Cleaner";
+    const role = helper.type.id === "feeder-snail" ? "Pet" : helper.type.tankCleanSeconds ? "Auto Cleaner" : helper.type.habitatTags.includes("collector") ? "Collector" : "Cleaner";
     const meta = this.add.text(12, 22, `${this.rarityLabel(helper.type.rarity)} | ${role} | Speed ${formatNumber(helper.type.speed)}`, {
       fontFamily: gameFontFamily,
       fontSize: "9px",
@@ -3541,13 +3623,7 @@ export class AquariumScene extends Phaser.Scene {
       color: "#cfeeff",
       fixedWidth: width - 24
     });
-    const vitals = this.add.text(12, 49, `Hunger ${formatNumber(Math.round(helper.hunger))} | Health ${formatNumber(Math.round(helper.health))}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#cfeeff",
-      fixedWidth: width - 24
-    });
-    const card = this.add.container(x, y, [background, stripe, title, meta, detail, vitals]).setDepth(71);
+    const card = this.add.container(x, y, [background, stripe, title, meta, detail]).setDepth(71);
     this.tabControls.push(card);
     this.tabControls.push(
       this.createButton(x + width - 64, y + height - 18, 52, 18, "Sell", () => this.showHelperSellConfirmation(index), 0x76512d, 8)
@@ -3724,6 +3800,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
+    this.recentInventoryDockItemKey = `fish:${fishType.id}`;
     this.placementMode = { kind: "none" };
     this.floatText(`${fishType.name} docked`, toastX, toastY, "#a8ffb0");
     this.storeOverlay?.refresh();
@@ -3759,6 +3836,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + buyQuantity);
+    this.recentInventoryDockItemKey = `food:${foodType.id}`;
     if (this.isDroppableFood(foodType.id)) {
       this.selectedFoodTypeId = foodType.id;
     }
@@ -3809,6 +3887,7 @@ export class AquariumScene extends Phaser.Scene {
       inventoryKey,
       (this.decorationInventory.get(inventoryKey) ?? 0) + 1
     );
+    this.recentInventoryDockItemKey = `decoration:${decorationType.id}:${size}`;
     this.placementMode = { kind: "none" };
     this.floatText(`${decorationType.name} ${decorationSizes[size].label} docked`, toastX, toastY, "#a8ffb0");
     this.storeOverlay?.refresh();
@@ -3823,6 +3902,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.creatureInventory.set(creatureType.id, this.getCreatureInventory(creatureType.id) + 1);
+    this.recentInventoryDockItemKey = `helper:${creatureType.id}`;
     this.placementMode = { kind: "none" };
     this.floatText(`${creatureType.name} docked`, toastX, toastY, "#a8ffb0");
     this.storeOverlay?.refresh();
@@ -4318,7 +4398,7 @@ export class AquariumScene extends Phaser.Scene {
     helper.sprite.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       this.floatTankText(
-        `${creatureType.name} H${formatNumber(Math.round(helper.hunger))} HP${formatNumber(Math.round(helper.health))}`,
+        creatureType.name,
         helper.sprite.x,
         helper.sprite.y - 24,
         "#d7f4ff"
@@ -4469,25 +4549,6 @@ export class AquariumScene extends Phaser.Scene {
       }
     }
 
-    const offlineHelperDeaths: HelperCreature[] = [];
-    for (const helper of this.helperCreatures) {
-      helper.hunger = Phaser.Math.Clamp(helper.hunger + Math.min(52, elapsedSeconds * 0.015), 0, 100);
-      if (helper.hunger > 86) {
-        helper.health = Phaser.Math.Clamp(helper.health - Math.min(45, elapsedSeconds / 140), 0, 100);
-      }
-      helper.addFatalCareSeconds(helper.isInFatalCareState() ? elapsedSeconds : 0);
-      if (helper.isDeadFromNeglect()) {
-        offlineHelperDeaths.push(helper);
-      }
-    }
-
-    for (const deadHelper of offlineHelperDeaths) {
-      const index = this.helperCreatures.indexOf(deadHelper);
-      if (index >= 0) {
-        this.removeHelperCreatureAt(index);
-      }
-    }
-
     this.cleanliness = Phaser.Math.Clamp(
       this.cleanliness - Math.min(50, elapsedSeconds * (0.0015 + this.fish.length * 0.0004)),
       0,
@@ -4542,10 +4603,7 @@ export class AquariumScene extends Phaser.Scene {
         tankLevel: helper.tankLevel,
         x: helper.sprite.x,
         y: helper.sprite.y,
-        targetX: helper.getTargetX(),
-        hunger: helper.hunger,
-        health: helper.health,
-        fatalCareSeconds: helper.fatalCareSeconds
+        targetX: helper.getTargetX()
       })),
       tank: {
         cleanliness: this.cleanliness,
@@ -4686,6 +4744,7 @@ export class AquariumScene extends Phaser.Scene {
       }
     }
     this.refreshStatus();
+    this.hidePhaserHud();
     this.syncHtmlGameInterface();
   }
 
@@ -4784,7 +4843,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private isDroppableFood(foodTypeId: FoodTypeId): boolean {
-    return foodTypeId !== evolvePillFoodTypeId && foodTypeId !== creatureFoodTypeId;
+    return foodTypeId !== evolvePillFoodTypeId && !hiddenFoodTypeIds.has(foodTypeId);
   }
 
   private getFishInventory(fishTypeId: string): number {
@@ -4843,12 +4902,18 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private getTotalFoodInventory(): number {
-    return [...this.foodInventory.values()].reduce((total, count) => total + count, 0);
+    return [...this.foodInventory.entries()]
+      .filter(([foodTypeId]) => !hiddenFoodTypeIds.has(foodTypeId))
+      .reduce((total, [, count]) => total + count, 0);
+  }
+
+  private getTotalFeedableFoodInventory(): number {
+    return this.getFeedableFoodTypes().reduce((total, foodType) => total + this.getFoodInventory(foodType.id), 0);
   }
 
   private foodInventoryRecord(): Record<FoodTypeId, number> {
     return Object.fromEntries(
-      [...this.foodInventory.entries()].filter(([, count]) => count > 0)
+      [...this.foodInventory.entries()].filter(([foodTypeId, count]) => !hiddenFoodTypeIds.has(foodTypeId) && count > 0)
     ) as Record<FoodTypeId, number>;
   }
 
@@ -4857,8 +4922,9 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private cycleSelectedFood(): void {
-    const currentIndex = foodTypes.findIndex((foodType) => foodType.id === this.selectedFoodTypeId);
-    const nextFood = foodTypes[(currentIndex + 1 + foodTypes.length) % foodTypes.length];
+    const selectableFoods = foodTypes.filter((foodType) => !hiddenFoodTypeIds.has(foodType.id));
+    const currentIndex = selectableFoods.findIndex((foodType) => foodType.id === this.selectedFoodTypeId);
+    const nextFood = selectableFoods[(currentIndex + 1 + selectableFoods.length) % selectableFoods.length] ?? basicFood;
     this.selectedFoodTypeId = nextFood.id;
     this.placementMode = { kind: "none" };
     this.refreshUi();
@@ -4866,7 +4932,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private describeFoodInventory(): string {
     const owned = foodTypes
-      .filter((foodType) => this.getFoodInventory(foodType.id) > 0)
+      .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && this.getFoodInventory(foodType.id) > 0)
       .map((foodType) => `${foodType.name} x${formatNumber(this.getFoodInventory(foodType.id))}`);
     return owned.length > 0 ? owned.join(", ") : "empty";
   }
@@ -5033,6 +5099,9 @@ export class AquariumScene extends Phaser.Scene {
       amount: currentFish.getSellValue()
     }), 0);
     const foodValue = [...foodInventory.entries()].reduce((total, [foodTypeId, count]) => {
+      if (hiddenFoodTypeIds.has(foodTypeId)) {
+        return total;
+      }
       const foodType = foodTypes.find((item) => item.id === foodTypeId);
       return total + (foodType ? this.priceWealth(foodType.price) * count : 0);
     }, 0);
@@ -5321,26 +5390,31 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.scheduleNextHelperFoodDispense();
-    if (this.getFoodInventory(creatureFoodTypeId) <= 0 || !this.activeHelperCreatures().some((helper) => helper.wantsCreatureFood())) {
+    const targetFish = this.activeFish()
+      .filter((currentFish) => currentFish.health >= 35 && currentFish.hunger >= 50)
+      .sort((first, second) => second.hunger - first.hunger)[0];
+    if (!targetFish) {
       return;
     }
 
-    const foodType = foodTypes.find((item) => item.id === creatureFoodTypeId);
+    const foodType = this.chooseAutoFoodForFish(targetFish);
     if (!foodType) {
       return;
     }
 
     const outlet = this.helperFoodDispenserOutletPosition();
-    this.foodInventory.set(creatureFoodTypeId, Math.max(0, this.getFoodInventory(creatureFoodTypeId) - 1));
+    this.foodInventory.set(foodType.id, Math.max(0, this.getFoodInventory(foodType.id) - 1));
+    const targetDirection = Math.sign(targetFish.sprite.x - outlet.x) || 1;
     const pellet = new FoodPellet(this, outlet.x, outlet.y, foodType, {
-      velocityX: Phaser.Math.Between(42, 82),
-      velocityY: -Phaser.Math.Between(48, 96),
+      velocityX: Phaser.Math.Between(70, 145) * targetDirection,
+      velocityY: -Phaser.Math.Between(120, 220),
       displayScale: helperFoodDispenserPelletScale
     });
     pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
     pellet.addToContainer(this.tankLayer);
     this.foods.push(pellet);
-    this.floatTankText("Creature Food", outlet.x + 18, outlet.y - 10, "#a8ffb0");
+    this.cleanliness = Phaser.Math.Clamp(this.cleanliness - 0.4, 0, 100);
+    this.floatTankText("Food", outlet.x + 18, outlet.y - 10, "#f7ff9a");
     this.createFoodDock();
     this.refreshUi(false);
     this.saveNow();
@@ -5358,12 +5432,8 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private updateHelperCreatures(deltaSeconds: number): void {
-    const helpersToRemove: HelperCreature[] = [];
     for (const helper of this.activeHelperCreatures()) {
       const action = helper.update(deltaSeconds, this.coinDrops, this.foods, this.activeFish());
-      if (helper.isDeadFromNeglect()) {
-        helpersToRemove.push(helper);
-      }
 
       if (!action) {
         continue;
@@ -5381,14 +5451,6 @@ export class AquariumScene extends Phaser.Scene {
         this.saveNow();
       }
 
-      if (action.kind === "creatureFood" && this.foods.includes(action.food)) {
-        helper.consumeCreatureFood(action.food.foodType.calories);
-        this.removeFood(action.food);
-        this.floatTankText("Fed", helper.sprite.x, helper.sprite.y - 22, "#a8ffb0");
-        this.refreshUi(false);
-        this.saveNow();
-      }
-
       if (action.kind === "tankClean" && this.cleanliness < 100) {
         this.cleanliness = Phaser.Math.Clamp(this.cleanliness + 1, 0, 100);
         this.cleanedAt = Date.now();
@@ -5396,60 +5458,7 @@ export class AquariumScene extends Phaser.Scene {
         this.refreshUi(false);
         this.saveNow();
       }
-
-      if (action.kind === "feed" && this.fish.includes(action.fish)) {
-        const foodType = this.chooseAutoFoodForFish(action.fish);
-        if (!foodType) {
-          continue;
-        }
-
-        this.dropHelperFood(helper, action.fish, foodType);
-      }
     }
-
-    if (helpersToRemove.length > 0) {
-      for (const deadHelper of helpersToRemove) {
-        const index = this.helperCreatures.indexOf(deadHelper);
-        if (index < 0) {
-          continue;
-        }
-        const x = deadHelper.sprite.x;
-        const y = deadHelper.sprite.y;
-        const name = deadHelper.type.name;
-        this.removeHelperCreatureAt(index);
-        this.floatTankText(`${name} died`, x, y - 26, "#ff8f9a");
-      }
-      this.closeModal();
-      this.renderTabControls();
-      this.refreshUi();
-      this.saveNow();
-    }
-  }
-
-  private dropHelperFood(helper: HelperCreature, targetFish: Fish, foodType: FoodType): void {
-    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) - 1);
-    const launchX = Phaser.Math.Clamp(
-      helper.sprite.x + Phaser.Math.Between(-38, 38),
-      tankBounds.left + 28,
-      tankBounds.right - 28
-    );
-    const launchY = Phaser.Math.Clamp(
-      helper.sprite.y - Phaser.Math.Between(18, 34),
-      tankBounds.bottom - 82,
-      tankBounds.bottom - 44
-    );
-    const targetDirection = Math.sign(targetFish.sprite.x - helper.sprite.x) || Phaser.Math.RND.pick([-1, 1]);
-    const velocityX = Phaser.Math.Between(54, 148) * targetDirection + Phaser.Math.Between(-44, 44);
-    const velocityY = -Phaser.Math.Between(270, 390);
-    const pellet = new FoodPellet(this, launchX, launchY, foodType, { velocityX, velocityY });
-    pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
-    pellet.addToContainer(this.tankLayer);
-    this.foods.push(pellet);
-    this.cleanliness = Phaser.Math.Clamp(this.cleanliness - 0.4, 0, 100);
-    this.floatTankText(`${helper.type.name} tossed food`, launchX, launchY - 14, "#f7ff9a");
-    this.createFoodDock();
-    this.refreshUi(false);
-    this.saveNow();
   }
 
   private chooseAutoFoodForFish(targetFish: Fish): FoodType | undefined {
@@ -5491,7 +5500,7 @@ export class AquariumScene extends Phaser.Scene {
     return foodTypes.filter(
       (foodType) =>
         foodType.id !== "medicine" &&
-        foodType.id !== creatureFoodTypeId &&
+        !hiddenFoodTypeIds.has(foodType.id) &&
         this.isDroppableFood(foodType.id) &&
         this.getFoodInventory(foodType.id) > 0
     );
@@ -5675,7 +5684,7 @@ export class AquariumScene extends Phaser.Scene {
       "Sell Helper",
       [
         `${targetHelper.type.name} will leave this tank.`,
-        `Role: ${targetHelper.type.feedSeconds ? "Feeder" : targetHelper.type.habitatTags.join(", ")}`,
+        `Role: ${targetHelper.type.id === "feeder-snail" ? "Pet" : targetHelper.type.habitatTags.join(", ")}`,
         `You receive ${formatPrice(sellPrice)}.`
       ],
       [
@@ -5723,71 +5732,66 @@ export class AquariumScene extends Phaser.Scene {
     this.closeModal();
     this.modalTitle = title;
 
-    const background = this.add.rectangle(0, 0, 360, 240, 0x10283a, 0.98).setStrokeStyle(2, 0xbcefff, 0.75);
-    background.setInteractive();
-    background.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+    const shell = this.htmlElement("div", "aq-modal-shell");
+    shell.addEventListener("pointerdown", (event) => {
       event.stopPropagation();
     });
-    const titleText = this.add.text(-160, -104, title, {
-      fontFamily: gameFontFamily,
-      fontSize: "17px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      fixedWidth: 320
-    });
-    const bodyText = this.add.text(-160, -72, lines.join("\n"), {
-      fontFamily: gameFontFamily,
-      fontSize: "12px",
-      color: "#eaf9ff",
-      fixedWidth: 320,
-      lineSpacing: 7,
-      wordWrap: { width: 320 }
-    });
-    const children: Phaser.GameObjects.GameObject[] = [background, titleText, bodyText];
-
-    actions.forEach((action, index) => {
-      const twoColumn = actions.length > 1;
-      const width = twoColumn ? 142 : 300;
-      const column = twoColumn ? index % 2 : 0;
-      const row = twoColumn ? Math.floor(index / 2) : 0;
-      const x = twoColumn ? -150 + column * 158 : -150;
-      const y = 58 + row * 38;
-      children.push(this.createModalButton(x, y, width, action.label, action.fill, action.action));
+    shell.addEventListener("click", (event) => {
+      event.stopPropagation();
     });
 
-    this.modal = this.add.container(gameWidth / 2, gameHeight / 2 - 10, children).setDepth(80);
+    const panel = this.htmlElement("section", "aq-modal");
+    panel.append(
+      this.htmlElement("h2", "aq-modal-title", [title]),
+      this.htmlElement("div", "aq-modal-body", lines.map((line) => this.htmlElement("p", "aq-modal-line", [line])))
+    );
+
+    const actionRow = this.htmlElement("div", `aq-modal-actions ${actions.length === 1 ? "single" : ""}`);
+    actions.forEach((action) => {
+      actionRow.append(this.createModalButton(action.label, action.fill, action.action));
+    });
+    panel.append(actionRow);
+
+    shell.append(panel);
+    document.body.appendChild(shell);
+    this.modal = shell;
   }
 
   private createModalButton(
-    x: number,
-    y: number,
-    width: number,
     label: string,
     fill: number,
     action: () => void
-  ): Phaser.GameObjects.Container {
-    const background = this.add.rectangle(0, 0, width, 36, fill, 1).setStrokeStyle(1, 0xbcefff, 0.55);
-    const text = this.add
-      .text(0, 0, label, {
-        fontFamily: gameFontFamily,
-        fontSize: "13px",
-        color: "#ffffff",
-        fixedWidth: width - 8,
-        align: "center"
-      })
-      .setOrigin(0.5);
-    const button = this.add.container(x + width / 2, y, [background, text]);
-    button.setSize(width, 36);
-    button.setInteractive({ useHandCursor: true });
-    button.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+  ): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `aq-modal-button ${this.modalButtonTone(fill)}`;
+    button.textContent = label;
+    this.attachTouchFeedback(button);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
       event.stopPropagation();
       action();
+      if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
+        this.syncHtmlPageOverlay();
+      }
     });
     return button;
   }
 
+  private modalButtonTone(fill: number): string {
+    if (fill === 0x76512d) {
+      return "danger";
+    }
+
+    if (fill === 0x356a35) {
+      return "good";
+    }
+
+    return "muted";
+  }
+
   private closeModal(): void {
-    this.modal?.destroy(true);
+    this.modal?.remove();
     this.modal = undefined;
     this.modalTitle = undefined;
   }
@@ -6044,12 +6048,7 @@ export class AquariumScene extends Phaser.Scene {
           x: this.tankToScreenPoint(helper.sprite.x, helper.sprite.y).x,
           y: this.tankToScreenPoint(helper.sprite.x, helper.sprite.y).y,
           speed: helper.type.speed * this.tankViewScaleForLevel(),
-          sellPrice: this.helperSellPrice(helper.type),
-          feedSeconds: helper.type.feedSeconds,
-          hunger: helper.hunger,
-          health: helper.health,
-          fatalCareSeconds: helper.fatalCareSeconds,
-          fatalCareRemainingSeconds: helper.fatalCareRemainingSeconds()
+          sellPrice: this.helperSellPrice(helper.type)
         })),
         coinsWaiting: this.coinDrops.map((coin) => ({
           x: this.tankToScreenPoint(coin.sprite.x, coin.sprite.y).x,

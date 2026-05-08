@@ -80,7 +80,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a subtle wavy swim spritesheet from one transparent fish PNG.")
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--frames", type=int, default=6)
+    parser.add_argument("--frames", type=int, default=12)
     parser.add_argument("--amplitude", type=float, default=4.0)
     parser.add_argument("--tail-side", choices=["left", "right"], default="left")
     args = parser.parse_args()

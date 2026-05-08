@@ -323,6 +323,66 @@ canvas {
     text-shadow: 0 3px 0 rgba(0, 31, 53, 0.72);
   }
 
+  .aq-modal-shell {
+    @apply fixed left-1/2 top-0 z-[90] flex h-dvh items-center justify-center px-4 text-white;
+    width: var(--aq-stage-width);
+    transform: translateX(-50%);
+    pointer-events: auto;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(125, 225, 255, 0.18), transparent 42%),
+      rgba(1, 13, 24, 0.52);
+  }
+
+  .aq-modal {
+    @apply w-full max-w-[360px] rounded-2xl border border-cyan-100/65 bg-sky-950/95 p-4 shadow-2xl;
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -28px 54px rgba(2, 18, 32, 0.68),
+      0 14px 34px rgba(0, 0, 0, 0.42);
+  }
+
+  .aq-modal-title {
+    @apply text-xl font-black leading-tight text-white;
+    text-shadow: 0 3px 0 rgba(0, 31, 53, 0.72);
+  }
+
+  .aq-modal-body {
+    @apply mt-3 space-y-1.5 rounded-xl border border-cyan-200/20 bg-sky-900/54 p-3;
+  }
+
+  .aq-modal-line {
+    @apply text-sm font-bold leading-snug text-cyan-50/88;
+  }
+
+  .aq-modal-actions {
+    @apply mt-4 grid grid-cols-2 gap-2;
+  }
+
+  .aq-modal-actions.single {
+    @apply grid-cols-1;
+  }
+
+  .aq-modal-button {
+    @apply min-h-11 rounded-xl border border-cyan-100/45 bg-cyan-700 px-3 py-2 text-center text-sm font-black text-white shadow-lg;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 3px 0 rgba(6, 50, 73, 0.8);
+  }
+
+  .aq-modal-button.good {
+    @apply border-lime-200/70;
+    background: linear-gradient(#80e43a, #26921f);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(8, 52, 11, 0.8);
+  }
+
+  .aq-modal-button.danger {
+    @apply border-red-100/70;
+    background: linear-gradient(#ff6f75, #b91326);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 3px 0 rgba(82, 8, 15, 0.8);
+  }
+
+  .aq-modal-button.muted {
+    @apply bg-sky-800;
+  }
+
   .aq-buy {
     @apply min-h-8 rounded-xl border border-lime-200/70 px-3 py-1.5 text-xs font-black text-white shadow-lg;
     background: linear-gradient(#80e43a, #26921f);
@@ -735,6 +795,25 @@ canvas {
     left: calc((100vw - var(--aq-stage-width)) / 2);
     transform: translate(var(--aq-hud-edge-inset), var(--food-dock-top)) scale(var(--aq-dock-scale));
     transform-origin: top left;
+    scrollbar-width: none;
+  }
+
+  .aq-food-dock::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aq-food-dock-pager {
+    @apply pointer-events-auto grid w-[clamp(58px,16.5vw,76px)] grid-cols-[1fr_auto_1fr] items-center gap-1 rounded-full bg-sky-950/42 p-1;
+  }
+
+  .aq-food-dock-page-button {
+    @apply flex h-7 min-w-7 items-center justify-center rounded-full border border-cyan-100/45 bg-cyan-700 text-sm font-black leading-none text-white shadow;
+    touch-action: manipulation;
+  }
+
+  .aq-food-dock-page-label {
+    @apply min-w-6 text-center text-[10px] font-black leading-none text-white;
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.72);
   }
 
   .aq-food-button {

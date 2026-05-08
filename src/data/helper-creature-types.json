@@ -44,9 +44,8 @@
     "speed": 20,
     "coinCollectSeconds": 12,
     "cleanupSeconds": 8,
-    "feedSeconds": 5,
-    "habitatTags": ["bottom", "feeder"],
-    "description": "Gentle feeder that spends stocked food to drop matching meals for hungry fish."
+    "habitatTags": ["bottom", "pet"],
+    "description": "Gentle snail pet that wanders along the seabed."
   },
   {
     "id": "auto-cleaner",

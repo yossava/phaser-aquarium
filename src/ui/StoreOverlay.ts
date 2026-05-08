@@ -2,7 +2,8 @@ import { fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
 import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
-const supplyFoodIds = new Set(["medicine", "evolve", "creature"]);
+const supplyFoodIds = new Set(["medicine", "evolve"]);
+const hiddenFoodIds = new Set(["creature"]);
 
 export type StoreTankCard = {
   level: number;
@@ -223,10 +224,10 @@ export class StoreOverlay {
       return fishTypes.filter((fish) => fish.price.coinType === this.coinFilter);
     }
     if (this.activeTab === "food") {
-      return foodTypes.filter((food) => !supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
+      return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && !supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
     }
     if (this.activeTab === "supply") {
-      return foodTypes.filter((food) => supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
+      return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
     }
     if (this.activeTab === "creature") {
       return helperCreatureTypes.filter((creature) => creature.price.coinType === this.coinFilter);
@@ -370,8 +371,8 @@ export class StoreOverlay {
   }
 
   private helperRole(creature: HelperCreatureType): string {
-    if (creature.feedSeconds) {
-      return "Feeder";
+    if (creature.id === "feeder-snail") {
+      return "Pet";
     }
     if (creature.tankCleanSeconds) {
       return "Auto Cleaner";
