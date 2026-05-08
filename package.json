@@ -12,7 +12,9 @@
     "test:regression": "node scripts/regression-test.mjs"
   },
   "dependencies": {
-    "phaser": "^4.1.0"
+    "@tailwindcss/vite": "^4.2.4",
+    "phaser": "^4.1.0",
+    "tailwindcss": "^4.2.4"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

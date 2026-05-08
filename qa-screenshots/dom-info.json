@@ -1,0 +1,22 @@
+{
+  "url": "http://127.0.0.1:5173/?shop-final=1778144424083",
+  "title": "Phaser Aquarium",
+  "body": "",
+  "canvas": [
+    {
+      "w": 860,
+      "h": 1688,
+      "rect": {
+        "x": 0,
+        "y": 39,
+        "width": 390,
+        "height": 765.484375,
+        "top": 39,
+        "right": 390,
+        "bottom": 804.484375,
+        "left": 0
+      }
+    }
+  ],
+  "buttons": []
+}

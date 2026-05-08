@@ -1,0 +1,293 @@
+{
+  "version": "2.1",
+  "purpose": "Reviewable, generation-ready shop UI asset prompts. This version avoids baked text, avoids embedded icons inside holders, and splits compound UI into Photoshop/game-friendly pieces.",
+  "global_style": {
+    "project": "Aquarium mobile game shop UI",
+    "style": "polished premium casual mobile game UI, underwater aquarium theme, glossy rounded panels, beveled edges, soft neon glow, dark navy and deep ocean blue base colors, subtle underwater light rays, bubbles, coral and seaweed accents, clean readable UI, production-ready asset",
+    "rendering": "high-quality 2D game UI asset, crisp edges, soft gradients, subtle inner highlights, soft shadows, no rough sketch, no wireframe",
+    "background": "transparent alpha background preferred. If the generator cannot produce true transparency, use only a solid flat magenta background #FF00FF for chroma key removal",
+    "isolation": "single asset only, centered, separated, no other UI elements, generous padding around asset",
+    "text_rule": "no baked text in generated raster assets; all labels, numbers, titles, prices, and button copy must be rendered by the game or added later in Photoshop",
+    "composition_rule": "if an asset contains many sub-assets, generate only the main container in that prompt; icons, badges, text, button fills, and decorative objects must be generated as separate assets",
+    "output_rule": "transparent PNG game asset with clean alpha around the asset, no mockup screen, no device frame, no watermark, no checkerboard background",
+    "chroma_key_safety_rule": "no magenta, pink, or violet spill on asset edges. If a magenta fallback background is used, it must remain perfectly flat #FF00FF outside the asset only, with no glow, no shadow, no antialias haze, no particles, no lighting spill, and no semi-opaque magenta pixels",
+    "size_rule": "use the exact canvas size requested in each asset prompt; v2.1 sizes are intentionally smaller than v2.0 for easier Photoshop cleanup and faster iteration"
+  },
+  "canvas_sizes": {
+    "header": "900x260",
+    "main_panel": "1024x1300",
+    "tabs": "320x110",
+    "filters": "360x110",
+    "cards": "512x210",
+    "buttons": "210x90",
+    "pills": "320x90",
+    "icons": "256x256",
+    "badges": "256x256",
+    "scrollbar": "90x600",
+    "divider": "512x48"
+  },
+  "prompt_usage_note": "Each asset prompt is now a top-level key. Generate one top-level asset key at a time. Do not batch multiple keys into one image.",
+  "shop_header_bar_holder": {
+    "asset_name": "Shop Header Bar Holder",
+    "canvas": "900x260",
+    "prompt": "Create only the reusable header bar container for an aquarium mobile game shop. Use a 900x260 canvas. The container should be a wide premium rounded rectangle frame, not a pill, not a capsule, not stretched. Keep the main shape about 820px wide and 190px tall, centered, with moderate rounded corners around 24px radius. Deep ocean navy-blue interior panel, glossy beveled cyan-blue border, subtle inner highlights, soft underwater light rays from the top, small bubbles, faint fish silhouettes, and very subtle coral/seaweed decoration near the far left and far right edges only. Leave clean empty space for separate title text, currency chips, and icons. No text, no numbers, no store icon, no embedded icons, no buttons, no extra UI elements. Single isolated container asset only. Exact canvas size: 900x260. Chroma key safety: the outside of the frame must be flat pure magenta #FF00FF with no glow, no shadow, no antialias haze, no particles, and no lighting spill. All cyan glow and highlights must stay inside the frame or directly on the frame border, not outside on the magenta background. The asset edges must separate cleanly from the magenta key color for Photoshop cleanup. Negative constraints: no oval shape, no fully rounded capsule ends, no squashed or compressed look, no extreme border radius, no outer glow, no drop shadow, no magenta spill, no pink edge haze, no ornate clutter, no icon, no text."
+  },
+  "shop_main_content_panel_holder": {
+    "asset_name": "Main Shop Content Panel Holder",
+    "canvas": "1024x1300",
+    "prompt": "Create only the reusable main content panel container for an aquarium mobile game shop UI. Large rounded rectangle panel, deep ocean navy-blue gradient, glossy beveled border, subtle cyan glow, subtle underwater light rays and bubbles. Interior must be mostly empty for placing tabs, rarity filters, cards, and scrollbar separately. No text, no icons, no item cards, no buttons, no fish, no embedded sub-assets. Single isolated container asset only. Exact canvas size: 1024x1300."
+  },
+  "store_icon": {
+    "asset_name": "Store Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a cute aquarium shop icon for a mobile game UI. Small blue storefront with striped blue awning, rounded door, small window, coral and seaweed at the base, tiny bubbles, glossy polished 2D game icon style, soft highlights and shadows. No text, no frame, no button background, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "currency_pill_holder_gold": {
+    "asset_name": "Gold Currency Pill Holder",
+    "canvas": "320x90",
+    "prompt": "Create only a reusable currency counter pill holder for an aquarium mobile game UI. Rounded dark navy pill with glossy bevel, warm gold accent glow, empty left slot for a separate coin icon, empty center area for game-rendered number text, empty right slot for a separate plus button. No text, no numbers, no coin icon, no plus symbol, no embedded icons. Single isolated holder asset only. Exact canvas size: 320x90."
+  },
+  "currency_pill_holder_blue": {
+    "asset_name": "Blue Currency Pill Holder",
+    "canvas": "320x90",
+    "prompt": "Create only a reusable currency counter pill holder for an aquarium mobile game UI. Rounded dark navy pill with glossy bevel, cool cyan-blue accent glow, empty left slot for a separate gem icon, empty center area for game-rendered number text, empty right slot for a separate plus button. No text, no numbers, no gem icon, no plus symbol, no embedded icons. Single isolated holder asset only. Exact canvas size: 320x90."
+  },
+  "currency_pill_holder_purple": {
+    "asset_name": "Purple Currency Pill Holder",
+    "canvas": "320x90",
+    "prompt": "Create only a reusable currency counter pill holder for an aquarium mobile game UI. Use the same outer width and silhouette as the gold and blue currency pill holders so all three align in the shop header. Rounded dark navy pill with glossy bevel, purple super-rare accent glow, empty left slot for a separate super-rare coin icon, empty center area for game-rendered number text, and a clean empty right cap. No text, no numbers, no icon, no plus symbol, no embedded icons. Single isolated holder asset only. Exact canvas size: 320x90."
+  },
+  "plus_button_icon": {
+    "asset_name": "Plus Button Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a small reusable plus button icon for a mobile game UI. Rounded square button, dark navy-blue glossy surface, bright cyan-blue rim light, subtle bevel, white plus symbol in the center, soft drop shadow. No text, no currency pill, no extra UI. Single isolated button asset only. Exact canvas size: 256x256."
+  },
+  "tab_holder_active": {
+    "asset_name": "Active Category Tab Holder",
+    "canvas": "320x110",
+    "prompt": "Create only an active category tab holder for an aquarium mobile game shop UI. Rounded rectangle tab, bright glowing cyan-blue gradient, beveled border, small downward triangle pointer at bottom center, empty left area for a separate icon, empty center area for game-rendered text. No text, no fish icon, no jar icon, no tank icon, no question icon, no embedded icons. Single isolated holder asset only. Exact canvas size: 320x110."
+  },
+  "tab_holder_inactive": {
+    "asset_name": "Inactive Category Tab Holder",
+    "canvas": "320x110",
+    "prompt": "Create only an inactive category tab holder for an aquarium mobile game shop UI. Rounded rectangle tab, dark navy-blue gradient, subtle beveled border, empty left area for a separate muted icon, empty center area for game-rendered text. No text, no pointer, no fish icon, no jar icon, no tank icon, no question icon, no embedded icons. Single isolated holder asset only. Exact canvas size: 320x110."
+  },
+  "icon_category_fish": {
+    "asset_name": "Fish Category Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a simple readable fish category icon for an aquarium shop UI. White-to-light-cyan fish silhouette with glossy soft highlight, clean shape, mobile readable. No text, no tab, no circle frame, no background object. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "icon_category_food": {
+    "asset_name": "Food Category Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a fish-food jar category icon for an aquarium shop UI. Small cute jar with blue glass, dark lid, visible food pellets inside, glossy highlight, clean mobile-readable silhouette. No text, no tab, no circle frame. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "icon_category_tanks": {
+    "asset_name": "Tanks Category Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a small aquarium tank category icon for a mobile shop UI. Compact glass tank with water, tiny sand line, subtle bubbles, glossy highlights, readable at small size. No text, no tab, no frame. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "icon_category_help": {
+    "asset_name": "Help Category Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a help category icon for a mobile shop UI. Glossy circular question mark symbol in light blue-white, polished casual-game style, readable at small size. No text label, no tab, no frame. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "rarity_filter_holder_common": {
+    "asset_name": "Common Rarity Filter Holder",
+    "canvas": "360x110",
+    "prompt": "Create only a reusable common rarity filter button holder for an aquarium mobile game shop UI. Wide rounded pill button, dark navy base with gold/yellow glowing border, glossy beveled premium underwater theme. Leave empty left area for a separate star badge and empty center area for game-rendered text. No text, no star icon, no embedded icon. Single isolated holder asset only. Exact canvas size: 360x110."
+  },
+  "rarity_filter_holder_rare": {
+    "asset_name": "Rare Rarity Filter Holder",
+    "canvas": "360x110",
+    "prompt": "Create only a reusable rare rarity filter button holder for an aquarium mobile game shop UI. Wide rounded pill button, dark navy base with bright blue glowing border, glossy beveled premium underwater theme. Leave empty left area for separate star badges and empty center area for game-rendered text. No text, no stars, no embedded icons. Single isolated holder asset only. Exact canvas size: 360x110."
+  },
+  "rarity_filter_holder_super_rare": {
+    "asset_name": "Super Rare Rarity Filter Holder",
+    "canvas": "360x110",
+    "prompt": "Create only a reusable super rare rarity filter button holder for an aquarium mobile game shop UI. Wide rounded pill button, dark navy base with purple glowing border, glossy beveled premium underwater theme. Leave empty left area for separate star badges and empty center area for game-rendered text. No text, no stars, no embedded icons. Single isolated holder asset only. Exact canvas size: 360x110."
+  },
+  "fish_card_holder_common": {
+    "asset_name": "Common Fish Card Holder",
+    "canvas": "512x210",
+    "prompt": "Create only a reusable common fish shop item card holder. Horizontal rounded rectangle card, dark navy-blue glossy panel, subtle gold/yellow common accent, empty circular thumbnail frame/slot on the left, empty flat dark interior inside the thumbnail slot, empty text area on the right, empty price area, empty buy button slot. The circular thumbnail area must be completely empty: no underwater scene, no seabed, no plants, no bubbles, no fish silhouette, no decorative content inside it. No text, no fish, no star, no coin, no button text, no reward icon, no embedded thumbnail art, no placeholder illustration. Single isolated card holder only. Exact canvas size: 512x210."
+  },
+  "fish_card_holder_rare": {
+    "asset_name": "Rare Fish Card Holder",
+    "canvas": "512x210",
+    "prompt": "Create only a reusable rare fish shop item card holder. Horizontal rounded rectangle card, dark navy-blue glossy panel, bright blue rare glowing border, empty circular thumbnail frame/slot on the left, empty flat dark interior inside the thumbnail slot, empty text area on the right, empty price area, empty buy button slot. The circular thumbnail area must be completely empty: no underwater scene, no seabed, no plants, no bubbles, no fish silhouette, no decorative content inside it. No text, no fish, no stars, no coin, no button text, no reward icon, no embedded thumbnail art, no placeholder illustration. Single isolated card holder only. Exact canvas size: 512x210."
+  },
+  "fish_card_holder_super_rare": {
+    "asset_name": "Super Rare Fish Card Holder",
+    "canvas": "512x210",
+    "prompt": "Create only a reusable super rare fish shop item card holder. Horizontal rounded rectangle card, dark navy-blue glossy panel, purple super rare glowing border, empty circular thumbnail frame/slot on the left, empty flat dark interior inside the thumbnail slot, empty text area on the right, empty price area, empty buy button slot. The circular thumbnail area must be completely empty: no underwater scene, no seabed, no plants, no bubbles, no fish silhouette, no decorative content inside it. No text, no fish, no stars, no coin, no button text, no reward icon, no embedded thumbnail art, no placeholder illustration. Single isolated card holder only. Exact canvas size: 512x210."
+  },
+  "fish_thumbnail_frame": {
+    "asset_name": "Circular Fish Thumbnail Frame",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable circular fish thumbnail frame for an aquarium mobile game shop UI. Round glassy bubble frame with deep blue underwater mini-background inside, soft light rays, tiny bubbles, seabed rocks, seaweed silhouettes, glossy rim, empty center area for separate fish artwork. No text, no fish, no card, no star badge. Single isolated circular frame only. Exact canvas size: 256x256."
+  },
+  "button_holder_buy_green": {
+    "asset_name": "Green Buy Button Holder",
+    "canvas": "210x90",
+    "prompt": "Create only a reusable primary action button holder for a polished mobile game shop UI. Rounded rectangle button, bright green glossy gradient, beveled edges, soft highlight at top, subtle dark shadow, empty center for game-rendered text. No text, no icon, no price, no embedded UI. Single isolated button holder only. Exact canvas size: 210x90."
+  },
+  "button_holder_secondary_blue": {
+    "asset_name": "Blue Secondary Button Holder",
+    "canvas": "210x90",
+    "prompt": "Create only a reusable secondary action button holder for a polished mobile game shop UI. Rounded rectangle button, deep blue glossy gradient, cyan-blue beveled border, subtle highlight, empty center for game-rendered text. No text, no icon, no embedded UI. Single isolated button holder only. Exact canvas size: 210x90."
+  },
+  "button_holder_cancel_gray": {
+    "asset_name": "Gray Cancel Button Holder",
+    "canvas": "210x90",
+    "prompt": "Create only a reusable cancel/neutral button holder for a polished mobile game shop UI. Rounded rectangle button, dark gray-blue glossy gradient, soft beveled border, subtle highlight, empty center for game-rendered text. No text, no icon, no embedded UI. Single isolated button holder only. Exact canvas size: 210x90."
+  },
+  "coin_icon_common": {
+    "asset_name": "Gold Coin Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable gold coin icon for an aquarium mobile game UI. Perfect circle facing directly forward, embossed shell or star symbol, glossy highlight, beveled rim, warm yellow-orange gradient, small sparkle, premium casual game style. No text, no holder, no price pill, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "coin_icon_rare": {
+    "asset_name": "Blue Rare Coin Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable rare coin icon for an aquarium mobile game UI. Perfect circle facing directly forward, bright cyan-blue metal or crystal coin, embossed shell or star symbol, glossy highlight, beveled rim, soft blue glow. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "coin_icon_super_rare": {
+    "asset_name": "Purple Super Rare Coin Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable super rare coin icon for an aquarium mobile game UI. Perfect circle facing directly forward, purple magical coin, embossed shell or star symbol, glossy highlight, beveled rim, soft violet glow. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "gem_icon_blue": {
+    "asset_name": "Blue Gem Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable blue diamond gem icon for an aquarium mobile game UI. Bright cyan-blue faceted diamond, glossy highlights, beveled facets, soft glow, premium casual game style. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "wealth_icon_treasure": {
+    "asset_name": "Treasure Wealth Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable total wealth icon for an aquarium mobile game UI. Small fantasy treasure pile or treasure chest with gold trim, colorful gems, glossy highlights, readable at small size. No text, no currency pill, no frame. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "common_star_badge": {
+    "asset_name": "Common Star Badge",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable common rarity star badge. Single gold/yellow star, glossy, beveled, soft glow, clean silhouette, small shadow. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "rare_star_badge": {
+    "asset_name": "Rare Star Badge",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable rare rarity badge. Two bright blue stars grouped together, glossy, beveled, soft cyan glow, clean silhouette, small shadow. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "super_rare_star_badge": {
+    "asset_name": "Super Rare Star Badge",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable super rare rarity badge. Three purple stars grouped together, glossy, beveled, soft violet glow, clean silhouette, small shadow. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "shell_reward_badge": {
+    "asset_name": "Shell Reward Badge",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable shell reward badge icon for an aquarium mobile game UI. Small cream-colored seashell icon, glossy, beveled, subtle golden highlight, clean readable shape. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "treasure_chest_badge": {
+    "asset_name": "Treasure Chest Reward Badge",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable treasure chest reward badge icon for an aquarium mobile game UI. Small fantasy treasure chest with purple body, gold trim, glowing highlights, slightly open with soft magical glow. No text, no holder, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "price_pill_holder": {
+    "asset_name": "Price Pill Holder",
+    "canvas": "210x80",
+    "prompt": "Create only a reusable price badge holder for an aquarium mobile game shop UI. Small rounded dark navy pill, glossy bevel, subtle blue rim, empty left slot for separate coin icon and empty center/right space for game-rendered price text. No text, no numbers, no coin icon, no button. Single isolated holder only. Exact canvas size: 210x80."
+  },
+  "vertical_scrollbar_holder": {
+    "asset_name": "Vertical Scrollbar Holder",
+    "canvas": "90x600",
+    "prompt": "Create only a reusable vertical scrollbar holder for a mobile game shop UI. Tall narrow rounded track, dark navy glossy base, beveled edges, subtle glow. Empty track should accept a separate procedural or raster thumb. No text, no arrows, no item cards, no extra UI. Single isolated holder only. Exact canvas size: 90x600."
+  },
+  "vertical_scrollbar_thumb": {
+    "asset_name": "Vertical Scrollbar Thumb",
+    "canvas": "90x180",
+    "prompt": "Create only a reusable vertical scrollbar thumb for a mobile game shop UI. Narrow rounded cyan-blue glossy thumb, beveled edges, subtle glow. No track, no text, no arrows, no extra UI. Single isolated asset only. Exact canvas size: 90x180."
+  },
+  "footer_notification_panel_holder": {
+    "asset_name": "Footer Notification Panel Holder",
+    "canvas": "1024x180",
+    "prompt": "Create only a reusable footer notification panel holder for an aquarium mobile game shop UI. The asset must be an ultra-wide low horizontal footer bar with about 8:1 visible asset aspect ratio: approximately 970px wide and 120px tall inside a 1024x180 canvas, with only small even transparent or flat magenta margins. Do not make it tall, compact, square-ish, or centered as a small panel. Do not leave large side gutters. Wide rounded rectangle panel, deep navy-blue glossy gradient, glowing cyan-blue border, empty left icon slot, empty long title/subtitle area, empty timer pill area on the right. Keep all decorative details inside the long low frame. No text, no shield icon, no clock icon, no timer text, no embedded icons. Single isolated holder asset only. Exact canvas size: 1024x180."
+  },
+  "shield_icon": {
+    "asset_name": "Shield Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable shield icon for a mobile aquarium game UI. Glossy blue shield with silver rim, subtle underwater glow, clean readable silhouette. No text, no panel, no extra UI. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "clock_icon": {
+    "asset_name": "Clock Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a reusable clock icon for a mobile aquarium game UI. Small round golden clock face with glossy rim, readable simple hands, soft glow. No text, no panel, no timer pill. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "empty_state_panel_holder": {
+    "asset_name": "Empty State Panel Holder",
+    "canvas": "700x450",
+    "prompt": "Create only a reusable empty state panel holder for an aquarium mobile game shop UI. Large rounded rectangle panel, deep underwater navy-blue background, subtle light rays, bubbles, rocks and seaweed at bottom, glossy beveled border, soft cyan glow. Leave center empty for separate icon and game-rendered text. No text, no fish silhouette icon, no buttons. Single isolated holder only. Exact canvas size: 700x450."
+  },
+  "empty_state_fish_silhouette": {
+    "asset_name": "Empty State Fish Silhouette Icon",
+    "canvas": "256x256",
+    "prompt": "Create only a faint fish silhouette icon for an aquarium mobile game empty state. The only visible object should be a soft cyan-blue ghosted fish silhouette with subtle glow, centered on a completely flat pure magenta #FF00FF background. No square background, no panel, no dark rectangle, no water scene, no bubbles, no text, no border. Single isolated icon only. Exact canvas size: 256x256."
+  },
+  "common_fish_placeholder": {
+    "asset_name": "Common Fish Placeholder",
+    "canvas": "384x256",
+    "prompt": "Create only a reusable common fish placeholder illustration for an aquarium mobile game shop. Cute small orange/yellow fish, side view, polished 2D casual-game style, glossy fins, clean silhouette, subtle highlight, suitable as shop item thumbnail. No text, no card, no thumbnail frame, no background object. Single isolated fish asset only. Exact canvas size: 384x256."
+  },
+  "rare_fish_placeholder": {
+    "asset_name": "Rare Fish Placeholder",
+    "canvas": "384x256",
+    "prompt": "Create only a reusable rare fish placeholder illustration for an aquarium mobile game shop. Colorful blue and yellow striped fish, side view, polished 2D casual-game style, glossy fins, clean silhouette, subtle highlight, suitable as shop item thumbnail. No text, no card, no thumbnail frame, no background object. Single isolated fish asset only. Exact canvas size: 384x256."
+  },
+  "super_rare_fish_placeholder": {
+    "asset_name": "Super Rare Fish Placeholder",
+    "canvas": "384x256",
+    "prompt": "Create only a reusable super rare fish placeholder illustration for an aquarium mobile game shop. Vibrant rainbow fish with blue, orange, purple, and teal accents, side view, polished 2D casual-game style, glossy fins, clean silhouette, magical subtle glow, suitable as shop item thumbnail. No text, no card, no thumbnail frame, no background object. Single isolated fish asset only. Exact canvas size: 384x256."
+  },
+  "glowing_divider_line": {
+    "asset_name": "Glowing Divider Line",
+    "canvas": "512x48",
+    "prompt": "Create only a reusable horizontal divider line for an aquarium mobile game UI. Thin glowing cyan-blue line with soft fade at both ends, subtle highlight, underwater neon style. No text, no icons, no panel. Single isolated UI asset only. Exact canvas size: 512x48."
+  },
+  "removed_or_replaced_from_v1": [
+    {
+      "old_id": "shop_header_bar",
+      "reason": "contained STORE text and store icon; replaced by shop_header_bar_holder + store_icon + game-rendered title"
+    },
+    {
+      "old_id": "coin_currency_pill",
+      "reason": "contained coin, number, plus button; replaced by currency_pill_holder_gold + coin_icon_common + plus_button_icon + game-rendered number"
+    },
+    {
+      "old_id": "gem_currency_pill",
+      "reason": "contained gem, number, plus button; replaced by currency_pill_holder_blue + gem_icon_blue + plus_button_icon + game-rendered number"
+    },
+    {
+      "old_id": "tab_active_* and tab_inactive_*",
+      "reason": "contained icons and text; replaced by generic tab holders + separate category icons + game-rendered tab labels"
+    },
+    {
+      "old_id": "rarity_*_filter",
+      "reason": "contained stars and text; replaced by rarity holder assets + separate star badges + game-rendered labels"
+    },
+    {
+      "old_id": "fish_card_*_empty",
+      "reason": "contained placeholder text, prices, buttons, stars, and thumbnail art; replaced by clean card holders plus separate thumbnail frame, badges, icons, button holders, and game-rendered text"
+    },
+    {
+      "old_id": "price_badge_120, price_badge_280, price_badge_680",
+      "reason": "contained fixed numbers; replaced by one reusable price_pill_holder + coin icon + game-rendered dynamic price"
+    },
+    {
+      "old_id": "buy_button, more_info_button, cancel_button",
+      "reason": "contained baked text; replaced by textless button holders with game-rendered labels"
+    },
+    {
+      "old_id": "footer_notification_panel and empty_state_panel",
+      "reason": "contained baked copy and embedded icons; replaced by textless holders plus separate shield, clock, and fish-silhouette icons"
+    }
+  ]
+}

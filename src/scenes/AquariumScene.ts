@@ -19,6 +19,7 @@ import { CoinDrop, coinTextureKeyByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
 import { FoodPellet } from "../objects/FoodPellet";
 import { HelperCreature } from "../objects/HelperCreature";
+import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, StoreTab, Wallet } from "../types/mechanics";
 
 type AppScreen = "tank" | "store" | "care" | "album" | "tanks" | "goals" | "settings";
@@ -95,7 +96,7 @@ const foodBulkBuyQuantities = [1, 10, 100, 500, 1000];
 const fishStatsCardHeight = 96;
 const fishStatsCardRowHeight = 104;
 const maxPurchasableTankLevel = maxOwnedTanks;
-const tankShopPageSize = 10;
+const tankShopPageSize = 4;
 const tankUpgradePrices: Record<number, FishType["price"]> = {
   2: { coinType: "common", amount: 100 },
   3: { coinType: "common", amount: 420 },
@@ -136,6 +137,53 @@ const hudIconAssetPathByKey: Record<string, string> = {
   "ui-icon-food-status": "/assets/ui/icon-food-status.png",
   "ui-icon-clean-status": "/assets/ui/icon-clean-status.png",
   "ui-icon-happy-status": "/assets/ui/icon-happy-status.png"
+};
+const shopUiAssetPathByKey: Record<string, string> = {
+  "shop-ui-button-buy": "/assets/ui/shop/button_holder_buy_green.png",
+  "shop-ui-button-cancel": "/assets/ui/shop/button_holder_cancel_gray.png",
+  "shop-ui-button-secondary": "/assets/ui/shop/button_holder_secondary_blue.png",
+  "shop-ui-clock": "/assets/ui/shop/clock_icon.png",
+  "shop-ui-coin-common": "/assets/ui/shop/coin_icon_common.png",
+  "shop-ui-coin-rare": "/assets/ui/shop/coin_icon_rare.png",
+  "shop-ui-coin-super-rare": "/assets/ui/shop/coin_icon_super_rare.png",
+  "shop-ui-currency-blue": "/assets/ui/shop/currency_pill_holder_blue.png",
+  "shop-ui-currency-gold": "/assets/ui/shop/currency_pill_holder_gold.png",
+  "shop-ui-currency-purple": "/assets/ui/shop/currency_pill_holder_purple.png",
+  "shop-ui-divider": "/assets/ui/shop/glowing_divider_line.png",
+  "shop-ui-empty-fish": "/assets/ui/shop/empty_state_fish_silhouette.png",
+  "shop-ui-empty-panel": "/assets/ui/shop/empty_state_panel_holder.png",
+  "shop-ui-fish-card-common": "/assets/ui/shop/fish_card_holder_common.png",
+  "shop-ui-fish-card-rare": "/assets/ui/shop/fish_card_holder_rare.png",
+  "shop-ui-fish-card-super-rare": "/assets/ui/shop/fish_card_holder_super_rare.png",
+  "shop-ui-footer-panel": "/assets/ui/shop/footer_notification_panel_holder.png",
+  "shop-ui-fish-placeholder-common": "/assets/ui/shop/common_fish_placeholder.png",
+  "shop-ui-fish-placeholder-rare": "/assets/ui/shop/rare_fish_placeholder.png",
+  "shop-ui-fish-placeholder-super-rare": "/assets/ui/shop/super_rare_fish_placeholder.png",
+  "shop-ui-thumbnail-frame": "/assets/ui/shop/fish_thumbnail_frame.png",
+  "shop-ui-gem-blue": "/assets/ui/shop/gem_icon_blue.png",
+  "shop-ui-category-fish": "/assets/ui/shop/icon_category_fish.png",
+  "shop-ui-category-food": "/assets/ui/shop/icon_category_food.png",
+  "shop-ui-category-help": "/assets/ui/shop/icon_category_help.png",
+  "shop-ui-category-tanks": "/assets/ui/shop/icon_category_tanks.png",
+  "shop-ui-main-panel": "/assets/ui/shop/shop_main_content_panel_holder.png",
+  "shop-ui-plus-button": "/assets/ui/shop/plus_button_icon.png",
+  "shop-ui-price-pill": "/assets/ui/shop/price_pill_holder.png",
+  "shop-ui-rarity-common": "/assets/ui/shop/rarity_filter_holder_common.png",
+  "shop-ui-rarity-rare": "/assets/ui/shop/rarity_filter_holder_rare.png",
+  "shop-ui-rarity-super-rare": "/assets/ui/shop/rarity_filter_holder_super_rare.png",
+  "shop-ui-reward-shell": "/assets/ui/shop/shell_reward_badge.png",
+  "shop-ui-reward-treasure": "/assets/ui/shop/treasure_chest_badge.png",
+  "shop-ui-shield": "/assets/ui/shop/shield_icon.png",
+  "shop-ui-header-bar": "/assets/ui/shop/shop_header_bar_holder.png",
+  "shop-ui-store-icon": "/assets/ui/shop/store_icon.png",
+  "shop-ui-star-common": "/assets/ui/shop/common_star_badge.png",
+  "shop-ui-star-rare": "/assets/ui/shop/rare_star_badge.png",
+  "shop-ui-star-super-rare": "/assets/ui/shop/super_rare_star_badge.png",
+  "shop-ui-tab-active": "/assets/ui/shop/tab_holder_active.png",
+  "shop-ui-tab-inactive": "/assets/ui/shop/tab_holder_inactive.png",
+  "shop-ui-scrollbar-track": "/assets/ui/shop/vertical_scrollbar_holder.png",
+  "shop-ui-scrollbar-thumb": "/assets/ui/shop/vertical_scrollbar_thumb.png",
+  "shop-ui-wealth": "/assets/ui/shop/wealth_icon_treasure.png"
 };
 const aquariumFloorTextureKey = "aquarium-floor";
 const aquariumFloorAssetPath = "/assets/backgrounds/aquarium-floor.png";
@@ -564,6 +612,7 @@ export class AquariumScene extends Phaser.Scene {
   private tankNames = new Map<number, string>([[1, "Home Reef"]]);
   private tankStates = new Map<number, TankRuntimeState>();
   private tankCatalogPage = 1;
+  private storeCatalogPage = 1;
   private tankDecorPage = 1;
   private tankCosmeticPages: Record<TankCosmeticCategory, number> = { background: 1, seabed: 1 };
   private fishCatalogLevel = 1;
@@ -599,8 +648,25 @@ export class AquariumScene extends Phaser.Scene {
   private screenButtons: Phaser.GameObjects.Container[] = [];
   private foodButtons: Phaser.GameObjects.Container[] = [];
   private foodDragGhosts = new Set<Phaser.GameObjects.Image>();
+  private gameHudOverlay?: HTMLDivElement;
+  private gameHudLevelText?: HTMLSpanElement;
+  private gameHudCommonText?: HTMLSpanElement;
+  private gameHudRareText?: HTMLSpanElement;
+  private gameHudSuperRareText?: HTMLSpanElement;
+  private gameHudWealthText?: HTMLSpanElement;
+  private gameHudTankText?: HTMLSpanElement;
+  private gameHudFishText?: HTMLSpanElement;
+  private gameHudCoinText?: HTMLSpanElement;
+  private gameHudFoodText?: HTMLSpanElement;
+  private gameHudCleanText?: HTMLSpanElement;
+  private gameHudHappyText?: HTMLSpanElement;
+  private gameHudNeedText?: HTMLSpanElement;
+  private htmlFoodDock?: HTMLDivElement;
+  private htmlFoodDragGhost?: HTMLDivElement;
+  private tankMenuOverlay?: HTMLDivElement;
   private tabButtons: Phaser.GameObjects.Container[] = [];
-  private tabControls: Phaser.GameObjects.Container[] = [];
+  private tabControls: Phaser.GameObjects.GameObject[] = [];
+  private storeOverlay?: StoreOverlay;
   private modal?: Phaser.GameObjects.Container;
   private modalTitle?: string;
 
@@ -628,6 +694,9 @@ export class AquariumScene extends Phaser.Scene {
       this.load.image(textureKey, assetPath);
     });
     Object.entries(hudIconAssetPathByKey).forEach(([textureKey, assetPath]) => {
+      this.load.image(textureKey, assetPath);
+    });
+    Object.entries(shopUiAssetPathByKey).forEach(([textureKey, assetPath]) => {
       this.load.image(textureKey, assetPath);
     });
     this.load.image(aquariumFloorTextureKey, aquariumFloorAssetPath);
@@ -669,6 +738,11 @@ export class AquariumScene extends Phaser.Scene {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       this.handleTankPointer(pointer);
     });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyHtmlGameInterface());
+
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("openStore")) {
+      this.time.delayedCall(100, () => this.openScreen("store"));
+    }
   }
 
   public update(_time: number, delta: number): void {
@@ -961,6 +1035,28 @@ export class AquariumScene extends Phaser.Scene {
     this.createTabs();
     this.renderTabControls();
     this.applyHudLayout();
+    this.hidePhaserHud();
+    this.syncHtmlGameInterface();
+  }
+
+  private hidePhaserHud(): void {
+    this.hudFrameImage.setVisible(false);
+    this.hudPanel.setVisible(false);
+    this.hudText.setVisible(false);
+    Object.values(this.hudIconImages).forEach((image) => image.setVisible(false));
+    this.hudCommonText.setVisible(false);
+    this.hudRareText.setVisible(false);
+    this.hudSuperRareText.setVisible(false);
+    this.hudWealthText.setVisible(false);
+    this.statusText.setVisible(false);
+    this.modeText.setVisible(false);
+    this.hudFoodStatusText.setVisible(false);
+    this.hudCleanStatusText.setVisible(false);
+    this.hudHappyStatusText.setVisible(false);
+    this.hudNeedText.setVisible(false);
+    this.tankLevelBadgeImage.setVisible(false);
+    this.tankLevelBadgeHueOverlay.setVisible(false);
+    this.tankLevelBadgeText.setVisible(false);
   }
 
   private drawHudPanel(): void {
@@ -1350,62 +1446,308 @@ export class AquariumScene extends Phaser.Scene {
   private createScreenNav(): void {
     this.screenButtons.forEach((button) => button.destroy(true));
     this.screenButtons = [];
+    this.syncHtmlGameInterface();
+  }
 
+  private syncTankMenuOverlay(): void {
     if (this.activeScreen !== "tank") {
+      this.tankMenuOverlay?.classList.add("hidden");
       return;
     }
 
-    const screens: { label: string; screen: Exclude<AppScreen, "tank">; y: number }[] = [
-      { label: "Shop", screen: "store", y: 218 },
-      { label: "Care", screen: "care", y: 286 },
-      { label: "Book", screen: "album", y: 354 },
-      { label: "Tanks", screen: "tanks", y: 422 },
-      { label: "Goal", screen: "goals", y: 490 },
-      { label: "Set", screen: "settings", y: 558 }
+    this.tankMenuOverlay ??= this.createTankMenuOverlay();
+    this.tankMenuOverlay.classList.remove("hidden");
+  }
+
+  private createTankMenuOverlay(): HTMLDivElement {
+    const overlay = document.createElement("div");
+    overlay.className = "aq-tank-menu";
+
+    const screens: { label: string; screen: Exclude<AppScreen, "tank">; y: number; icon: string }[] = [
+      { label: "Shop", screen: "store", y: 218, icon: "/assets/ui/shop.png" },
+      { label: "Care", screen: "care", y: 290, icon: "/assets/ui/care.png" },
+      { label: "Book", screen: "album", y: 362, icon: "/assets/ui/book.png" },
+      { label: "Tanks", screen: "tanks", y: 434, icon: "/assets/ui/care.png" },
+      { label: "Goal", screen: "goals", y: 506, icon: "/assets/ui/goals.png" },
+      { label: "Set", screen: "settings", y: 578, icon: "/assets/ui/settings.png" }
     ];
 
-    for (const screen of screens) {
-      this.screenButtons.push(
-        this.createIconButton(
-          gameWidth - 42,
-          screen.y,
-          screen.label,
-          () => {
-            this.openScreen(screen.screen);
-          },
-          0x10283a,
-          menuIconTextureByScreen[screen.screen]
-        )
-      );
+    for (const item of screens) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "aq-tank-menu-button";
+      button.style.top = `${(item.y / gameHeight) * 100}%`;
+      button.setAttribute("aria-label", item.label);
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.openScreen(item.screen);
+      });
+
+      const bubble = document.createElement("span");
+      bubble.className = "aq-tank-menu-bubble";
+      const icon = document.createElement("img");
+      icon.src = item.icon;
+      icon.alt = "";
+      icon.draggable = false;
+      bubble.append(icon);
+
+      const label = document.createElement("span");
+      label.className = "aq-tank-menu-label";
+      label.textContent = item.label;
+
+      button.append(bubble, label);
+      overlay.append(button);
     }
+
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  private syncHtmlGameInterface(): void {
+    this.syncTankMenuOverlay();
+    this.syncHtmlHud();
+    this.syncHtmlFoodDock();
+  }
+
+  private syncHtmlHud(): void {
+    if (this.activeScreen !== "tank") {
+      this.gameHudOverlay?.classList.add("hidden");
+      return;
+    }
+
+    this.gameHudOverlay ??= this.createHtmlHudOverlay();
+    this.gameHudOverlay.classList.remove("hidden");
+
+    const activeFish = this.activeFish();
+    this.gameHudLevelText!.textContent = formatNumber(this.tankDisplayLevel());
+    this.gameHudCommonText!.textContent = formatNumber(this.wallet.common);
+    this.gameHudRareText!.textContent = formatNumber(this.wallet.rare);
+    this.gameHudSuperRareText!.textContent = formatNumber(this.wallet.superRare);
+    this.gameHudWealthText!.textContent = formatNumber(this.calculateTankNetWorth());
+    this.gameHudTankText!.textContent = `Tank L${formatNumber(this.tankDisplayLevel())}`;
+    this.gameHudFishText!.textContent = `Fish ${formatNumber(activeFish.length)}/${formatNumber(this.maxFishCapacityForLevel())}`;
+    this.gameHudCoinText!.textContent = `Coin ${formatNumber(this.coinDrops.length)}/${formatNumber(maxCoinDrops)}`;
+    this.gameHudFoodText!.textContent = `Food ${formatNumber(this.getTotalFoodInventory())}`;
+    this.gameHudCleanText!.textContent = `Clean ${formatNumber(Math.round(this.cleanliness))}%`;
+    this.gameHudHappyText!.textContent = `Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
+    this.gameHudNeedText!.textContent = this.getHudNeedLabel();
+  }
+
+  private createHtmlHudOverlay(): HTMLDivElement {
+    const overlay = document.createElement("div");
+    overlay.className = "aq-game-hud";
+
+    const badge = document.createElement("div");
+    badge.className = "aq-game-level-badge";
+    this.gameHudLevelText = document.createElement("span");
+    badge.append(this.gameHudLevelText);
+
+    const panel = document.createElement("section");
+    panel.className = "aq-game-stat-panel";
+
+    const wallet = document.createElement("div");
+    wallet.className = "aq-game-wallet-grid";
+    this.gameHudCommonText = this.createHudChip(wallet, "/assets/ui/shop/coin_icon_common.png", "Common");
+    this.gameHudRareText = this.createHudChip(wallet, "/assets/ui/shop/coin_icon_rare.png", "Rare");
+    this.gameHudSuperRareText = this.createHudChip(wallet, "/assets/ui/shop/coin_icon_super_rare.png", "Super Rare");
+    this.gameHudWealthText = this.createHudChip(wallet, "/assets/ui/shop/wealth_icon_treasure.png", "Wealth");
+
+    const summary = document.createElement("div");
+    summary.className = "aq-game-summary-row";
+    this.gameHudTankText = this.appendHudText(summary);
+    this.gameHudFishText = this.appendHudText(summary);
+    this.gameHudCoinText = this.appendHudText(summary);
+
+    const care = document.createElement("div");
+    care.className = "aq-game-care-row";
+    this.gameHudFoodText = this.appendHudText(care, "/assets/ui/icon-food-status.png");
+    this.gameHudCleanText = this.appendHudText(care, "/assets/ui/icon-clean-status.png");
+    this.gameHudHappyText = this.appendHudText(care, "/assets/ui/icon-happy-status.png");
+
+    this.gameHudNeedText = document.createElement("span");
+    this.gameHudNeedText.className = "aq-game-need-text";
+
+    panel.append(wallet, summary, care, this.gameHudNeedText);
+    overlay.append(badge, panel);
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  private createHudChip(parent: HTMLElement, iconSrc: string, label: string): HTMLSpanElement {
+    const chip = document.createElement("div");
+    chip.className = "aq-game-wallet-chip";
+    const icon = document.createElement("img");
+    icon.src = iconSrc;
+    icon.alt = label;
+    icon.draggable = false;
+    const text = document.createElement("span");
+    chip.append(icon, text);
+    parent.append(chip);
+    return text;
+  }
+
+  private appendHudText(parent: HTMLElement, iconSrc?: string): HTMLSpanElement {
+    const item = document.createElement("span");
+    item.className = "aq-game-hud-pill";
+    if (iconSrc) {
+      const icon = document.createElement("img");
+      icon.src = iconSrc;
+      icon.alt = "";
+      icon.draggable = false;
+      item.append(icon);
+    }
+    const text = document.createElement("span");
+    item.append(text);
+    parent.append(item);
+    return text;
+  }
+
+  private syncHtmlFoodDock(): void {
+    if (this.activeScreen !== "tank") {
+      this.htmlFoodDock?.classList.add("hidden");
+      return;
+    }
+
+    this.htmlFoodDock ??= this.createHtmlFoodDock();
+    this.htmlFoodDock.classList.remove("hidden");
+    this.htmlFoodDock.replaceChildren();
+
+    const visibleFood = foodTypes.filter((foodType) => this.isDroppableFood(foodType.id) && this.getFoodInventory(foodType.id) > 0).slice(0, 5);
+    for (const foodType of visibleFood) {
+      this.htmlFoodDock.append(this.createHtmlFoodButton(foodType));
+    }
+  }
+
+  private createHtmlFoodDock(): HTMLDivElement {
+    const dock = document.createElement("div");
+    dock.className = "aq-food-dock";
+    document.body.appendChild(dock);
+    return dock;
+  }
+
+  private createHtmlFoodButton(foodType: FoodType): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "aq-food-button";
+    button.setAttribute("aria-label", this.foodIconLabel(foodType).replace("\n", " "));
+
+    const bubble = document.createElement("span");
+    bubble.className = "aq-food-button-bubble";
+    const icon = document.createElement("img");
+    icon.src = `/assets/food/${foodType.id}.png`;
+    icon.alt = "";
+    icon.draggable = false;
+    bubble.append(icon);
+
+    const [labelText, countText] = this.foodIconLabel(foodType).split("\n");
+    const label = document.createElement("span");
+    label.className = "aq-food-button-label";
+    label.textContent = labelText;
+    const count = document.createElement("span");
+    count.className = "aq-food-button-count";
+    count.textContent = countText;
+
+    button.append(bubble, label, count);
+    button.addEventListener("pointerdown", (event) => this.startHtmlFoodDrag(event, foodType));
+    return button;
+  }
+
+  private startHtmlFoodDrag(event: PointerEvent, foodType: FoodType): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const source = event.currentTarget;
+    if (!(source instanceof HTMLElement)) {
+      return;
+    }
+
+    source.setPointerCapture(event.pointerId);
+    this.selectedFoodTypeId = foodType.id;
+    this.destroyHtmlFoodDragGhost();
+
+    const ghost = document.createElement("div");
+    ghost.className = "aq-food-drag-ghost";
+    const icon = document.createElement("img");
+    icon.src = `/assets/food/${foodType.id}.png`;
+    icon.alt = "";
+    icon.draggable = false;
+    ghost.append(icon);
+    document.body.appendChild(ghost);
+    this.htmlFoodDragGhost = ghost;
+    this.moveHtmlFoodDragGhost(event.clientX, event.clientY);
+
+    const onMove = (moveEvent: PointerEvent) => {
+      moveEvent.preventDefault();
+      this.moveHtmlFoodDragGhost(moveEvent.clientX, moveEvent.clientY);
+    };
+    const onEnd = (endEvent: PointerEvent) => {
+      endEvent.preventDefault();
+      source.releasePointerCapture(endEvent.pointerId);
+      source.removeEventListener("pointermove", onMove);
+      source.removeEventListener("pointerup", onEnd);
+      source.removeEventListener("pointercancel", onEnd);
+      this.destroyHtmlFoodDragGhost();
+
+      const point = this.clientPointToDesignPoint(endEvent.clientX, endEvent.clientY);
+      if (!point || !tankViewportBounds.contains(point.x, point.y)) {
+        return;
+      }
+      const tankPoint = this.screenToTankPoint(point.x, point.y);
+      this.dropFoodAt(foodType.id, tankPoint.x, tankPoint.y);
+    };
+
+    source.addEventListener("pointermove", onMove);
+    source.addEventListener("pointerup", onEnd);
+    source.addEventListener("pointercancel", onEnd);
+  }
+
+  private moveHtmlFoodDragGhost(clientX: number, clientY: number): void {
+    if (!this.htmlFoodDragGhost) {
+      return;
+    }
+    this.htmlFoodDragGhost.style.transform = `translate(${clientX}px, ${clientY}px) translate(-50%, -50%)`;
+  }
+
+  private destroyHtmlFoodDragGhost(): void {
+    this.htmlFoodDragGhost?.remove();
+    this.htmlFoodDragGhost = undefined;
+  }
+
+  private clientPointToDesignPoint(clientX: number, clientY: number): Phaser.Math.Vector2 | undefined {
+    const canvas = this.game.canvas;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0 || clientX < rect.left || clientX > rect.right || clientY < rect.top || clientY > rect.bottom) {
+      return undefined;
+    }
+    return new Phaser.Math.Vector2(
+      ((clientX - rect.left) / rect.width) * gameWidth,
+      ((clientY - rect.top) / rect.height) * gameHeight
+    );
+  }
+
+  private destroyTankMenuOverlay(): void {
+    this.tankMenuOverlay?.remove();
+    this.tankMenuOverlay = undefined;
+  }
+
+  private destroyHtmlGameInterface(): void {
+    this.destroyHtmlFoodDragGhost();
+    this.gameHudOverlay?.remove();
+    this.gameHudOverlay = undefined;
+    this.htmlFoodDock?.remove();
+    this.htmlFoodDock = undefined;
+    this.destroyTankMenuOverlay();
+    this.storeOverlay?.destroy();
+    this.storeOverlay = undefined;
   }
 
   private createFoodDock(): void {
     this.clearFoodDragGhosts();
     this.foodButtons.forEach((button) => button.destroy(true));
     this.foodButtons = [];
+    this.syncHtmlFoodDock();
 
-    if (this.activeScreen !== "tank") {
-      return;
-    }
-
-    const visibleFood = foodTypes.filter((foodType) => this.isDroppableFood(foodType.id) && this.getFoodInventory(foodType.id) > 0).slice(0, 5);
-    visibleFood.forEach((foodType, index) => {
-      const y = 218 + index * 68;
-      const foodButton = this.createIconButton(
-        42,
-        y,
-        this.foodIconLabel(foodType),
-        () => {
-          this.selectedFoodTypeId = foodType.id;
-        },
-        0x10283a,
-        this.foodTextureKey(foodType.id),
-        foodTintFor(foodType.id)
-      );
-      this.enableFoodDrag(foodButton, foodType);
-      this.foodButtons.push(foodButton);
-    });
+    return;
   }
 
   private enableFoodDrag(button: Phaser.GameObjects.Container, foodType: FoodType): void {
@@ -1534,9 +1876,9 @@ export class AquariumScene extends Phaser.Scene {
       .setOrigin(0.5);
     objects.push(text);
     const button = this.add.container(x, y, objects);
-    button.setSize(64, 64);
+    button.setSize(64, 66);
     button.setDepth(35);
-    button.setInteractive({ useHandCursor: true });
+    button.setInteractive(new Phaser.Geom.Rectangle(-32, -35, 64, 66), Phaser.Geom.Rectangle.Contains);
     button.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       onClick();
@@ -1554,6 +1896,14 @@ export class AquariumScene extends Phaser.Scene {
     this.closeModal();
     this.createScreenNav();
     this.createFoodDock();
+
+    if (screen === "store") {
+      this.openStoreOverlay();
+      this.refreshUi(false);
+      return;
+    }
+
+    this.storeOverlay?.hide();
     this.createTabs();
     this.renderTabControls();
     this.refreshUi(false);
@@ -1561,6 +1911,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private closePage(): void {
     this.activeScreen = "tank";
+    this.storeOverlay?.hide();
     this.pagePanel?.destroy(true);
     this.pagePanel = undefined;
     this.tabControls.forEach((control) => control.destroy(true));
@@ -1572,6 +1923,75 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi(false);
   }
 
+  private openStoreOverlay(): void {
+    this.pagePanel?.destroy(true);
+    this.pagePanel = undefined;
+    this.tabControls.forEach((control) => control.destroy(true));
+    this.tabControls = [];
+    this.tabButtons.forEach((button) => button.destroy(true));
+    this.tabButtons = [];
+    this.storeOverlay ??= new StoreOverlay(
+      () => this.storeOverlayState(),
+      {
+        close: () => this.closePage(),
+        buyFish: (fishType) => this.buyFish(fishType),
+        buyFood: (foodType, quantity) => this.buyFood(foodType, quantity),
+        buyHelper: (creatureType) => this.buyHelperCreature(creatureType),
+        buyTank: (level) => this.buyTank(level),
+        switchTank: (level) => this.switchTank(level)
+      }
+    );
+    this.storeOverlay.show();
+  }
+
+  private storeOverlayState(): StoreOverlayState {
+    const fishOwned: Record<string, number> = {};
+    for (const fishType of fishTypes) {
+      fishOwned[fishType.id] =
+        this.fish.filter((currentFish) => currentFish.type.id === fishType.id).length +
+        this.getFishInventory(fishType.id);
+    }
+
+    const foodOwned: Record<string, number> = {};
+    for (const foodType of foodTypes) {
+      foodOwned[foodType.id] = this.getFoodInventory(foodType.id);
+    }
+
+    const helperOwned: Record<string, number> = {};
+    for (const creatureType of helperCreatureTypes) {
+      helperOwned[creatureType.id] =
+        this.helperCreatures.filter((helper) => helper.type.id === creatureType.id).length +
+        this.getCreatureInventory(creatureType.id);
+    }
+
+    return {
+      wallet: { ...this.wallet },
+      wealth: this.calculateTankNetWorth(),
+      activeTankName: this.getTankName(this.tankLevel),
+      activeTankLevel: this.tankDisplayLevel(),
+      fishCount: this.activeFish().length,
+      fishCapacity: this.maxFishCapacityForLevel(),
+      fishOwned,
+      foodOwned,
+      helperOwned,
+      tankCards: Array.from({ length: maxOwnedTanks }, (_unused, index) => {
+        const level = index + 1;
+        return {
+          level,
+          name: this.getTankName(level),
+          displayLevel: this.tankDisplayLevel(level),
+          owned: this.hasTankLevel(level),
+          active: level === this.tankLevel,
+          fishCount: this.fishInTank(level).length,
+          fishCapacity: this.maxFishCapacityForLevel(level),
+          helperCount: this.helpersInTank(level).length,
+          worth: this.calculateTankNetWorth(level),
+          price: this.tankPriceForLevel(level)
+        };
+      })
+    };
+  }
+
   private createTabs(): void {
     this.tabButtons.forEach((button) => button.destroy(true));
     this.tabButtons = [];
@@ -1580,28 +2000,41 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const tabs: { label: string; tab: StoreTab; x: number; width: number }[] = [
-      { label: "Fish", tab: "fish", x: 20, width: 118 },
-      { label: "Food", tab: "food", x: 156, width: 118 },
-      { label: "Help", tab: "creature", x: 292, width: 118 }
+    const tabs: { label: string; tab: StoreTab; x: number; width: number; iconTextureKey: string }[] = [
+      { label: "Fish", tab: "fish", x: 12, width: 96, iconTextureKey: "shop-ui-category-fish" },
+      { label: "Food", tab: "food", x: 112, width: 96, iconTextureKey: "shop-ui-category-food" },
+      { label: "Tanks", tab: "tank", x: 212, width: 96, iconTextureKey: "shop-ui-category-tanks" },
+      { label: "Helpers", tab: "creature", x: 312, width: 96, iconTextureKey: "shop-ui-category-help" }
     ];
 
     for (const tab of tabs) {
-      const tabButton = this.createButton(
-        tab.x,
-        controlPanelTop + 48,
-        tab.width,
-        28,
-        tab.label,
-        () => {
-          this.activeTab = tab.tab;
-          this.createTabs();
-          this.renderTabControls();
-          this.refreshUi(false);
-        },
-        this.activeTab === tab.tab ? 0x3c93bd : 0x254d68,
-        14
-      ).setDepth(72);
+      const active = this.activeTab === tab.tab;
+      const background = this.add.image(tab.width / 2, 21, active ? "shop-ui-tab-active" : "shop-ui-tab-inactive");
+      background.setDisplaySize(tab.width, 42);
+      background.setAlpha(active ? 1 : 0.94);
+      const icon = this.add.image(24, 20, tab.iconTextureKey);
+      const iconScale = Math.min(26 / Math.max(1, icon.width), 24 / Math.max(1, icon.height));
+      icon.setDisplaySize(icon.width * iconScale, icon.height * iconScale);
+      icon.setAlpha(active ? 1 : 0.7);
+      const label = this.add.text(45, 20, tab.label, {
+        fontFamily: "Arial",
+        fontSize: tab.label.length > 5 ? "10px" : "12px",
+        color: active ? "#ffffff" : "#b7c7dc",
+        fontStyle: "bold",
+        fixedWidth: 48,
+        stroke: "#061826",
+        strokeThickness: active ? 2 : 1
+      }).setOrigin(0, 0.5);
+      const tabButton = this.add.container(tab.x, 118, [background, icon, label]).setDepth(72);
+      tabButton.setInteractive(new Phaser.Geom.Rectangle(0, 0, tab.width, 42), Phaser.Geom.Rectangle.Contains);
+      tabButton.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+        event.stopPropagation();
+        this.activeTab = tab.tab;
+        this.storeCatalogPage = 1;
+        this.createTabs();
+        this.renderTabControls();
+        this.refreshUi(false);
+      });
       this.tabButtons.push(tabButton);
     }
   }
@@ -1624,18 +2057,13 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     if (this.activeTab === "fish") {
-      this.tabControls.push(
-        this.createInfoLine(20, controlPanelTop + 20, `All fish available | Active ${this.getTankName(this.tankLevel)}`),
-        this.createButton(286, controlPanelTop + 16, 124, 26, "Tanks", () => this.openScreen("tanks"), 0x256f95, 11)
-      );
       this.renderStoreCoinFilter();
       this.renderFishCatalog();
       return;
     }
 
-    this.renderStoreCoinFilter();
-
     if (this.activeTab === "food") {
+      this.renderStoreCoinFilter();
       this.renderFoodCatalog();
       return;
     }
@@ -1646,31 +2074,38 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     if (this.activeTab === "decor") {
+      this.renderStoreCoinFilter();
       this.renderDecorationCatalog();
       return;
     }
 
+    this.renderStoreCoinFilter();
     this.renderHelperCreatureCatalog();
   }
 
   private renderFishCatalog(): void {
     const visibleFish = this.visibleFishCatalog();
-    this.renderEmptyStoreMessage(visibleFish.length, controlPanelTop + 138);
-    visibleFish.forEach((fishType, index) => {
+    const pageSize = 4;
+    const pageFish = this.storePageItems(visibleFish, pageSize);
+    this.renderEmptyStoreMessage(visibleFish.length, 232);
+    this.renderStorePaginationControls(visibleFish.length, pageSize);
+    pageFish.forEach((fishType, index) => {
       const owned = this.getFishInventory(fishType.id);
       const canUseTank = this.activeFish().length < this.maxFishCapacityForLevel();
       const buyLabel = canUseTank ? "Buy" : "Tank Full";
       this.addShopCard({
-        x: 20 + (index % 2) * 202,
-        y: controlPanelTop + 136 + Math.floor(index / 2) * 84,
-        width: 188,
-        height: 76,
+        x: 24,
+        y: 226 + index * 126,
+        width: 382,
+        height: 116,
         title: fishType.name,
-        meta: `${this.rarityStarsLabel(fishType.rarity)} ${this.rarityLabel(fishType.rarity)} | ${formatPrice(fishType.price)} | Own ${formatNumber(owned)}`,
-        detail: canUseTank ? `${this.fishTypeProductionHint(fishType)} | Added to active tank` : "Active tank full",
+        meta: `Owned: ${formatNumber(owned)}`,
+        detail: canUseTank ? this.fishTypeProductionHint(fishType) : "Active tank full",
         buyLabel,
         onBuy: () => this.buyFish(fishType),
-        accent: fishFoodTintFor(fishType),
+        accent: this.rarityCatalogAccent(fishType.rarity),
+        price: fishType.price,
+        rarity: fishType.rarity,
         fishPreview: fishType
       });
     });
@@ -1678,22 +2113,27 @@ export class AquariumScene extends Phaser.Scene {
 
   private renderFoodCatalog(): void {
     const visibleFoods = this.visibleFoodCatalog();
-    this.renderEmptyStoreMessage(visibleFoods.length, controlPanelTop + 138);
-    visibleFoods.forEach((foodType, index) => {
+    const pageSize = 3;
+    const pageFoods = this.storePageItems(visibleFoods, pageSize);
+    this.renderEmptyStoreMessage(visibleFoods.length, 232);
+    this.renderStorePaginationControls(visibleFoods.length, pageSize);
+    pageFoods.forEach((foodType, index) => {
       const owned = this.getFoodInventory(foodType.id);
       const buyQuantity = this.getFoodBuyQuantity(foodType.id);
       const totalPrice = this.quantityPrice(foodType.price, buyQuantity);
       this.addShopCard({
-        x: 20 + (index % 2) * 202,
-        y: controlPanelTop + 136 + Math.floor(index / 2) * 140,
-        width: 188,
-        height: 132,
+        x: 24,
+        y: 226 + index * 174,
+        width: 382,
+        height: 164,
         title: foodType.name,
-        meta: `${this.rarityLabel(foodType.rarity)} | D${formatNumber(foodType.densityLevel)} | ${formatNumber(foodType.calories)} cal | Own ${formatNumber(owned)}`,
+        meta: `Owned: ${formatNumber(owned)} | ${formatNumber(foodType.calories)} cal`,
         detail: foodType.id === evolvePillFoodTypeId ? "50% evolve chance" : foodType.id === "medicine" ? "Low-cal heal pill" : foodType.acceptedByDefault ? "General calories" : "Species calories",
-        buyLabel: `Buy ${formatPrice(totalPrice)}`,
+        buyLabel: "Buy",
         onBuy: () => this.buyFood(foodType, buyQuantity),
-        accent: foodTintFor(foodType.id),
+        accent: this.rarityCatalogAccent(foodType.rarity),
+        price: totalPrice,
+        rarity: foodType.rarity,
         assetPreview: { textureKey: this.foodTextureKey(foodType.id), maxWidth: 42, maxHeight: 38, tint: foodTintFor(foodType.id) },
         quantity: {
           label: `x${formatNumber(buyQuantity)}`,
@@ -1713,86 +2153,104 @@ export class AquariumScene extends Phaser.Scene {
     const pageLevels = visibleLevels.slice(pageStart, pageStart + tankShopPageSize);
 
     this.tabControls.push(
-      this.createButton(20, controlPanelTop + 116, 38, 24, "<", () => this.changeTankCatalogPage(-1), 0x254d68, 12),
-      this.createInfoLine(64, controlPanelTop + 120, `Tank shop ${formatNumber(this.tankCatalogPage)}/${formatNumber(maxPage)} | Slots 1-${formatNumber(maxOwnedTanks)}`),
-      this.createButton(362, controlPanelTop + 116, 38, 24, ">", () => this.changeTankCatalogPage(1), 0x254d68, 12)
+      this.createStoreAssetButton(24, 188, 34, 24, "shop-ui-button-secondary", "<", () => this.changeTankCatalogPage(-1), 12),
+      this.createInfoLine(72, 193, `Tank shop ${formatNumber(this.tankCatalogPage)}/${formatNumber(maxPage)} | Slots 1-${formatNumber(maxOwnedTanks)}`),
+      this.createStoreAssetButton(364, 188, 34, 24, "shop-ui-button-secondary", ">", () => this.changeTankCatalogPage(1), 12)
     );
 
-    this.renderEmptyStoreMessage(pageLevels.length, controlPanelTop + 150);
+    this.renderEmptyStoreMessage(pageLevels.length, 232);
     pageLevels.forEach((level, index) => this.addTankShopCard(level, index));
   }
 
   private addTankShopCard(level: number, index: number): void {
-    const x = 20 + (index % 2) * 202;
-    const y = controlPanelTop + 150 + Math.floor(index / 2) * 92;
-    const width = 188;
-    const height = 84;
+    const x = 24;
+    const y = 226 + index * 126;
+    const width = 382;
+    const height = 116;
     const owned = this.hasTankLevel(level);
     const active = level === this.tankLevel;
     const count = this.fishInTank(level).length;
     const capacity = this.maxFishCapacityForLevel(level);
     const price = this.tankPriceForLevel(level);
     const displayLevel = this.tankDisplayLevel(level);
-    const accent = this.tankAccentColor(level);
-    const background = this.add.rectangle(width / 2, height / 2, width, height, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
-    const title = this.add.text(12, 6, `${this.getTankName(level)} Lv${formatNumber(displayLevel)}`, {
+    const background = this.createStoreCardBackground(width, height, 0x4ca37a);
+    const title = this.add.text(128, 14, `${this.getTankName(level)} Lv${formatNumber(displayLevel)}`, {
       fontFamily: "Arial",
-      fontSize: "11px",
+      fontSize: "14px",
       color: "#ffffff",
       fontStyle: "bold",
-      fixedWidth: 108
+      fixedWidth: 228,
+      stroke: "#061826",
+      strokeThickness: 2
     });
-    const meta = this.add.text(12, 22, `Worth ${formatNumber(this.calculateTankNetWorth(level))} | ${formatNumber(count)}/${formatNumber(capacity)} fish`, {
+    const meta = this.add.text(128, 38, `Worth ${formatNumber(this.calculateTankNetWorth(level))}`, {
       fontFamily: "Arial",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#ffe67a",
-      fixedWidth: 108
+      fixedWidth: 228,
+      stroke: "#061826",
+      strokeThickness: 1
     });
-    const detail = this.add.text(12, 36, owned ? this.tankSummary(level) : `${formatPrice(price)} | ${this.tankTierLabel(level)}`, {
+    const detail = this.add.text(128, 56, owned ? `${formatNumber(count)}/${formatNumber(capacity)} fish | ${this.tankSummary(level)}` : `${this.tankTierLabel(level)} | ${formatPrice(price)}`, {
       fontFamily: "Arial",
-      fontSize: "8px",
+      fontSize: "10px",
       color: "#cfeeff",
-      fixedWidth: 108
+      fixedWidth: 228,
+      stroke: "#061826",
+      strokeThickness: 1
     });
+    const thumbFrame = this.add.image(70, height / 2, "shop-ui-thumbnail-frame").setDisplaySize(88, 78);
     const cardObjects: Phaser.GameObjects.GameObject[] = [
       background,
-      ...this.createTankThumbnailObjects(148, 34, level, 54, 36, owned),
+      thumbFrame,
+      ...this.createTankThumbnailObjects(70, height / 2, level, 78, 54, owned),
       title,
       meta,
       detail
     ];
     const card = this.add.container(x, y, cardObjects).setDepth(71);
-    this.tabControls.push(card);
+    const cardHitZone = this.add.zone(x, y, width, height).setOrigin(0).setDepth(71.5);
+    cardHitZone.setInteractive({ useHandCursor: true });
+    cardHitZone.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      owned ? this.switchTank(level) : this.buyTank(level);
+    });
+    this.tabControls.push(card, cardHitZone);
     this.tabControls.push(
-      this.createButton(
-        x + 12,
-        y + height - 24,
-        width - 24,
-        18,
+      this.createStoreAssetButton(
+        x + width - 112,
+        y + height - 42,
+        92,
+        30,
+        owned ? "shop-ui-button-secondary" : canAfford(this.wallet, price) ? "shop-ui-button-buy" : "shop-ui-button-cancel",
         active ? "Active" : owned ? "Switch" : `Buy ${formatPrice(price)}`,
         () => (owned ? this.switchTank(level) : this.buyTank(level)),
-        active ? 0x356a35 : canAfford(this.wallet, price) || owned ? 0x256f95 : 0x76512d,
-        8
+        10
       )
     );
   }
 
   private renderDecorationCatalog(): void {
     const visibleDecorations = this.visibleDecorationCatalog();
-    this.renderEmptyStoreMessage(visibleDecorations.length, controlPanelTop + 138);
-    visibleDecorations.forEach((decorationType, index) => {
+    const pageSize = 4;
+    const pageDecorations = this.storePageItems(visibleDecorations, pageSize);
+    this.renderEmptyStoreMessage(visibleDecorations.length, 232);
+    this.renderStorePaginationControls(visibleDecorations.length, pageSize);
+    pageDecorations.forEach((decorationType, index) => {
       const owned = this.getDecorationInventory(decorationType.id);
       this.addShopCard({
-        x: 20 + (index % 2) * 202,
-        y: controlPanelTop + 136 + Math.floor(index / 2) * 84,
-        width: 188,
-        height: 74,
+        x: 24,
+        y: 226 + index * 126,
+        width: 382,
+        height: 116,
         title: decorationType.name,
         meta: `${this.rarityLabel(decorationType.rarity)} | +${formatNumber(decorationType.happinessBonus)} happy | Own ${formatNumber(owned)}`,
         detail: decorationType.habitatTags.slice(0, 2).join(", "),
-        buyLabel: `Buy ${formatPrice(decorationType.price)}`,
+        buyLabel: "Buy",
         onBuy: () => this.buyDecoration(decorationType),
         accent: this.rarityCatalogAccent(decorationType.rarity),
+        price: decorationType.price,
+        rarity: decorationType.rarity,
         assetPreview: { textureKey: decorationType.texture, maxWidth: 52, maxHeight: 46 }
       });
     });
@@ -1800,47 +2258,65 @@ export class AquariumScene extends Phaser.Scene {
 
   private renderHelperCreatureCatalog(): void {
     const visibleCreatures = this.visibleHelperCreatureCatalog();
-    this.renderEmptyStoreMessage(visibleCreatures.length, controlPanelTop + 138);
-    visibleCreatures.forEach((creatureType, index) => {
+    const pageSize = 4;
+    const pageCreatures = this.storePageItems(visibleCreatures, pageSize);
+    this.renderEmptyStoreMessage(visibleCreatures.length, 232);
+    this.renderStorePaginationControls(visibleCreatures.length, pageSize);
+    pageCreatures.forEach((creatureType, index) => {
       const owned = this.activeHelperCreatures().filter((helper) => helper.type.id === creatureType.id).length + this.getCreatureInventory(creatureType.id);
       this.addShopCard({
-        x: 20 + (index % 2) * 202,
-        y: controlPanelTop + 136 + Math.floor(index / 2) * 90,
-        width: 188,
-        height: 82,
+        x: 24,
+        y: 226 + index * 126,
+        width: 382,
+        height: 116,
         title: creatureType.name,
-        meta: `${this.rarityLabel(creatureType.rarity)} | ${formatPrice(creatureType.price)} | Own ${formatNumber(owned)}`,
+        meta: `Owned: ${formatNumber(owned)}`,
         detail: creatureType.feedSeconds
           ? `Feeds fish | every ${formatNumber(creatureType.feedSeconds)}s`
           : `Cleans food | coins ${formatNumber(creatureType.coinCollectSeconds)}s`,
         buyLabel: "Buy",
         onBuy: () => this.buyHelperCreature(creatureType),
         accent: this.rarityCatalogAccent(creatureType.rarity),
+        price: creatureType.price,
+        rarity: creatureType.rarity,
         assetPreview: { textureKey: creatureType.texture, maxWidth: 52, maxHeight: 38 }
       });
     });
   }
 
   private renderStoreCoinFilter(): void {
-    const coinLanes: Array<{ coinType: CoinType; label: string; fill: number }> = [
-      { coinType: "common", label: "Common C", fill: 0x99722b },
-      { coinType: "rare", label: "Rare R", fill: 0x236f8c },
-      { coinType: "superRare", label: "Super SR", fill: 0x7b3f98 }
+    const coinLanes: Array<{ coinType: CoinType; label: string; badge: string; holder: string; textColor: string }> = [
+      { coinType: "common", label: "Common", badge: "shop-ui-star-common", holder: "shop-ui-rarity-common", textColor: "#ffd85c" },
+      { coinType: "rare", label: "Rare", badge: "shop-ui-star-rare", holder: "shop-ui-rarity-rare", textColor: "#65d7ff" },
+      { coinType: "superRare", label: "Super Rare", badge: "shop-ui-star-super-rare", holder: "shop-ui-rarity-super-rare", textColor: "#e58cff" }
     ];
 
     coinLanes.forEach((lane, index) => {
       const active = this.storeCoinFilter === lane.coinType;
+      const x = 24 + index * 128;
+      const width = 118;
+      const background = this.add.image(width / 2, 18, lane.holder).setDisplaySize(width, 36);
+      background.setAlpha(active ? 1 : 0.58);
+      const badge = this.add.image(24, 18, lane.badge);
+      badge.setDisplaySize(lane.coinType === "common" ? 20 : 28, 21);
+      badge.setAlpha(active ? 1 : 0.76);
+      const label = this.add.text(48, 18, lane.label, {
+        fontFamily: "Arial",
+        fontSize: lane.coinType === "superRare" ? "10px" : "12px",
+        color: active ? lane.textColor : "#b8d2e8",
+        fontStyle: "bold",
+        fixedWidth: width - 54,
+        stroke: "#061826",
+        strokeThickness: 2
+      }).setOrigin(0, 0.5);
+      const button = this.add.container(x, 174, [background, badge, label]).setDepth(72);
+      button.setInteractive(new Phaser.Geom.Rectangle(0, 0, width, 36), Phaser.Geom.Rectangle.Contains);
+      button.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+        event.stopPropagation();
+        this.setStoreCoinFilter(lane.coinType);
+      });
       this.tabControls.push(
-        this.createButton(
-          20 + index * 134,
-          controlPanelTop + 82,
-          122,
-          28,
-          lane.label,
-          () => this.setStoreCoinFilter(lane.coinType),
-          active ? lane.fill : 0x254d68,
-          11
-        )
+        button
       );
     });
   }
@@ -1850,12 +2326,30 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const panel = this.add.image(215, y + 82, "shop-ui-empty-panel").setDisplaySize(358, 170);
+    panel.setAlpha(0.94);
+    const fish = this.add.image(215, y + 52, "shop-ui-empty-fish").setDisplaySize(70, 70);
+    fish.setTint(this.storeCoinFilter === "common" ? 0xffe58a : this.storeCoinFilter === "rare" ? 0x9be8ff : 0xf0a4ff);
+    const title = this.add.text(52, y + 92, `No ${this.storeCoinLabel(this.storeCoinFilter)} items`, {
+      fontFamily: "Arial",
+      fontSize: "15px",
+      color: "#ffffff",
+      align: "center",
+      fixedWidth: 326,
+      fontStyle: "bold",
+      stroke: "#061826",
+      strokeThickness: 2
+    });
+    const subtitle = this.add.text(62, y + 119, "Try another coin lane or check back after the next content pass.", {
+      fontFamily: "Arial",
+      fontSize: "10px",
+      color: "#cfeeff",
+      align: "center",
+      fixedWidth: 306,
+      wordWrap: { width: 306 }
+    });
     this.tabControls.push(
-      this.createInfoLine(
-        20,
-        y,
-        `No ${this.storeCoinLabel(this.storeCoinFilter)} items in this section. Try another coin lane or fish tank level.`
-      )
+      this.add.container(0, 0, [panel, fish, title, subtitle]).setDepth(72)
     );
   }
 
@@ -1872,12 +2366,54 @@ export class AquariumScene extends Phaser.Scene {
 
   private visibleTankCatalogLevels(): number[] {
     const levels = Array.from({ length: maxOwnedTanks }, (_unused, index) => index + 1);
-    return levels.filter((level) => level === 1 || this.matchesStoreCoinFilter(this.tankPriceForLevel(level)));
+    return levels;
   }
 
   private changeTankCatalogPage(direction: number): void {
     const maxPage = Math.max(1, Math.ceil(this.visibleTankCatalogLevels().length / tankShopPageSize));
     this.tankCatalogPage = Phaser.Math.Clamp(this.tankCatalogPage + direction, 1, maxPage);
+    this.renderTabControls();
+  }
+
+  private storePageItems<T>(items: T[], pageSize: number): T[] {
+    const maxPage = Math.max(1, Math.ceil(items.length / pageSize));
+    this.storeCatalogPage = Phaser.Math.Clamp(this.storeCatalogPage, 1, maxPage);
+    const pageStart = (this.storeCatalogPage - 1) * pageSize;
+    return items.slice(pageStart, pageStart + pageSize);
+  }
+
+  private renderStorePaginationControls(totalItems: number, pageSize: number): void {
+    const maxPage = Math.max(1, Math.ceil(totalItems / pageSize));
+    if (maxPage <= 1) {
+      return;
+    }
+
+    this.tabControls.push(
+      this.createStoreAssetButton(104, 742, 42, 24, "shop-ui-button-secondary", "<", () => this.changeStoreCatalogPage(-1, pageSize, totalItems), 12),
+      this.createStorePageLabel(158, 746, `Page ${formatNumber(this.storeCatalogPage)}/${formatNumber(maxPage)}`),
+      this.createStoreAssetButton(284, 742, 42, 24, "shop-ui-button-secondary", ">", () => this.changeStoreCatalogPage(1, pageSize, totalItems), 12)
+    );
+  }
+
+  private createStorePageLabel(x: number, y: number, label: string): Phaser.GameObjects.Container {
+    const text = this.add.text(0, 0, label, {
+      fontFamily: "Arial",
+      fontSize: "11px",
+      color: "#dff7ff",
+      align: "center",
+      fixedWidth: 114,
+      fontStyle: "bold",
+      stroke: "#061826",
+      strokeThickness: 2
+    });
+    const container = this.add.container(x, y, [text]);
+    container.setDepth(72);
+    return container;
+  }
+
+  private changeStoreCatalogPage(direction: number, pageSize: number, totalItems: number): void {
+    const maxPage = Math.max(1, Math.ceil(totalItems / pageSize));
+    this.storeCatalogPage = Phaser.Math.Clamp(this.storeCatalogPage + direction, 1, maxPage);
     this.renderTabControls();
   }
 
@@ -1916,6 +2452,7 @@ export class AquariumScene extends Phaser.Scene {
   private setStoreCoinFilter(coinType: CoinType): void {
     this.storeCoinFilter = coinType;
     this.tankCatalogPage = 1;
+    this.storeCatalogPage = 1;
     this.renderTabControls();
     this.refreshUi(false);
   }
@@ -1951,6 +2488,8 @@ export class AquariumScene extends Phaser.Scene {
     buyLabel: string;
     onBuy: () => void;
     accent: number;
+    price?: Price;
+    rarity?: FishType["rarity"];
     compact?: boolean;
     fishPreview?: FishType;
     assetPreview?: {
@@ -1966,6 +2505,11 @@ export class AquariumScene extends Phaser.Scene {
       onAdd?: (quantity: number) => void;
     };
   }): void {
+    if (this.activeScreen === "store") {
+      this.addStoreCatalogCard(options);
+      return;
+    }
+
     const background = this.add
       .rectangle(options.width / 2, options.height / 2, options.width, options.height, 0x17364a, 0.98)
       .setStrokeStyle(1, options.accent, 0.9);
@@ -2046,11 +2590,134 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
-  private createFishCatalogPreview(fishType: FishType, x: number, y: number): Phaser.GameObjects.GameObject[] {
+  private addStoreCatalogCard(options: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    title: string;
+    meta: string;
+    detail: string;
+    buyLabel: string;
+    onBuy: () => void;
+    accent: number;
+    price?: Price;
+    rarity?: FishType["rarity"];
+    compact?: boolean;
+    fishPreview?: FishType;
+    assetPreview?: {
+      textureKey: string;
+      maxWidth: number;
+      maxHeight: number;
+      tint?: number;
+    };
+    quantity?: {
+      label: string;
+      onReset: () => void;
+      presets?: number[];
+      onAdd?: (quantity: number) => void;
+    };
+  }): void {
+    const rarity = options.rarity ?? "common";
+    const background = this.createStoreCardBackground(options.width, options.height, options.accent, rarity);
+    const thumbnailFrame = this.add.image(70, options.height / 2, "shop-ui-thumbnail-frame");
+    thumbnailFrame.setDisplaySize(88, 80);
+    thumbnailFrame.setAlpha(0.95);
+    const rarityBadge = this.add.image(34, 24, this.storeRarityBadgeTextureKey(rarity));
+    rarityBadge.setDisplaySize(rarity === "common" ? 22 : 32, 23);
+    const title = this.add.text(128, 14, options.title, {
+      fontFamily: "Arial",
+      fontSize: "14px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      fixedWidth: 228,
+      stroke: "#061826",
+      strokeThickness: 2
+    });
+    const meta = this.add.text(128, 38, options.meta, {
+      fontFamily: "Arial",
+      fontSize: "10px",
+      color: "#d2e4f4",
+      fixedWidth: 228,
+      stroke: "#061826",
+      strokeThickness: 1
+    });
+    const detail = this.add.text(128, 56, options.detail, {
+      fontFamily: "Arial",
+      fontSize: "10px",
+      color: rarity === "superRare" ? "#f3b6ff" : "#eaf7ff",
+      fixedWidth: 228,
+      wordWrap: { width: 228 },
+      stroke: "#061826",
+      strokeThickness: 1
+    });
+    const cardObjects: Phaser.GameObjects.GameObject[] = [background, thumbnailFrame, rarityBadge, title, meta, detail];
+
+    if (options.fishPreview) {
+      cardObjects.push(...this.createFishCatalogPreview(options.fishPreview, 70, options.height / 2, 76, 52));
+    }
+    if (options.assetPreview && this.textures.exists(options.assetPreview.textureKey)) {
+      const preview = this.add.image(70, options.height / 2, options.assetPreview.textureKey);
+      const sourceWidth = Math.max(1, preview.width);
+      const sourceHeight = Math.max(1, preview.height);
+      const scale = Math.min(70 / sourceWidth, 58 / sourceHeight, options.assetPreview.maxWidth / sourceWidth, options.assetPreview.maxHeight / sourceHeight);
+      preview.setDisplaySize(sourceWidth * scale, sourceHeight * scale);
+      if (options.assetPreview.tint !== undefined) {
+        preview.setTint(options.assetPreview.tint);
+      }
+      preview.setDepth(73);
+      cardObjects.push(preview);
+    }
+
+    const card = this.add.container(options.x, options.y, cardObjects).setDepth(71);
+    const cardHitZone = this.add.zone(options.x, options.y, options.width, options.height).setOrigin(0).setDepth(71.5);
+    cardHitZone.setInteractive({ useHandCursor: true });
+    cardHitZone.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      options.onBuy();
+    });
+    this.tabControls.push(card, cardHitZone);
+
+    if (options.quantity) {
+      const quantityY = options.y + 80;
+      this.tabControls.push(
+        this.createStoreAssetButton(options.x + 128, quantityY, 82, 24, "shop-ui-button-secondary", `Qty ${options.quantity.label}`, () => undefined, 10),
+        this.createStoreAssetButton(options.x + 218, quantityY, 70, 24, "shop-ui-button-cancel", "Reset", options.quantity.onReset, 9)
+      );
+      if (options.quantity.presets && options.quantity.onAdd) {
+        options.quantity.presets.slice(0, 5).forEach((quantity, index) => {
+          this.tabControls.push(
+            this.createStoreAssetButton(options.x + 128 + index * 48, options.y + 106, 44, 24, "shop-ui-button-secondary", `x${formatNumber(quantity)}`, () => options.quantity?.onAdd?.(quantity), 8)
+          );
+        });
+      }
+    }
+
+    if (options.price) {
+      const pricePill = this.add.image(43, 0, "shop-ui-price-pill").setDisplaySize(86, 26);
+      const priceIcon = this.add.image(14, 0, this.storeCoinIconTextureKey(options.price.coinType));
+      priceIcon.setDisplaySize(18, 18);
+      const priceText = this.add.text(29, 0, formatNumber(options.price.amount), {
+        fontFamily: "Arial",
+        fontSize: "12px",
+        color: "#ffd85c",
+        fontStyle: "bold",
+        fixedWidth: 48,
+        stroke: "#3a2400",
+        strokeThickness: 2
+      }).setOrigin(0, 0.5);
+      const priceGroup = this.add.container(options.x + 128, options.y + options.height - (options.quantity ? 18 : 24), [pricePill, priceIcon, priceText]).setDepth(73);
+      this.tabControls.push(priceGroup);
+    }
+
+    this.tabControls.push(
+      this.createStoreAssetButton(options.x + options.width - 112, options.y + options.height - (options.quantity ? 34 : 42), 92, 30, "shop-ui-button-buy", options.buyLabel, options.onBuy, options.buyLabel.length > 4 ? 9 : 11)
+    );
+  }
+
+  private createFishCatalogPreview(fishType: FishType, x: number, y: number, maxWidth = 54, maxHeight = 38): Phaser.GameObjects.GameObject[] {
     const textureKey = this.fishCatalogPreviewTextureKey(fishType);
     const preview = this.add.image(x, y, textureKey);
-    const maxWidth = 54;
-    const maxHeight = 38;
     const sourceWidth = Math.max(1, preview.width);
     const sourceHeight = Math.max(1, preview.height);
     const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
@@ -2085,6 +2752,7 @@ export class AquariumScene extends Phaser.Scene {
       ...Object.keys(menuIconAssetPathByKey),
       ...Object.keys(hudIconAssetPathByKey),
       ...Object.keys(hudTopAssetPathByKey),
+      ...Object.keys(shopUiAssetPathByKey),
       bubbleButtonFrameTextureKey,
       bubbleButtonPressedTextureKey,
       coinGlowTextureKey,
@@ -2796,6 +3464,11 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createPagePanel(title: string): void {
+    if (this.activeScreen === "store") {
+      this.createStorePagePanel();
+      return;
+    }
+
     const background = this.add
       .rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x071b2a, 1)
       .setStrokeStyle(2, 0x75c9e8, 0.65);
@@ -2812,6 +3485,192 @@ export class AquariumScene extends Phaser.Scene {
     });
     const closeButton = this.createButton(330, 18, 80, 34, "Tank", () => this.closePage(), 0x76512d, 13);
     this.pagePanel = this.add.container(0, 0, [background, header, titleText, closeButton]).setDepth(60);
+  }
+
+  private createStorePagePanel(): void {
+    const background = this.add
+      .rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x04182b, 1)
+      .setStrokeStyle(2, 0x1f8fd1, 0.5);
+    background.setInteractive();
+    background.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+    });
+
+    const headerSurface = this.add.graphics();
+    headerSurface.fillStyle(0x083150, 0.94);
+    headerSurface.fillRoundedRect(12, 12, 406, 104, 14);
+    headerSurface.fillStyle(0x0c4468, 0.46);
+    headerSurface.fillRoundedRect(20, 20, 390, 38, 10);
+    headerSurface.lineStyle(1, 0x9be9ff, 0.2);
+    headerSurface.strokeRoundedRect(12, 12, 406, 104, 14);
+
+    const contentSurface = this.add.graphics();
+    contentSurface.fillStyle(0x07243c, 0.9);
+    contentSurface.fillRoundedRect(16, 132, 398, 688, 14);
+    contentSurface.fillStyle(0x0c3858, 0.52);
+    contentSurface.fillRoundedRect(22, 138, 386, 80, 10);
+    contentSurface.lineStyle(1, 0x76dfff, 0.16);
+    contentSurface.strokeRoundedRect(16, 132, 398, 688, 14);
+
+    const divider = this.add.image(gameWidth / 2, 120, "shop-ui-divider").setDisplaySize(360, 12);
+    divider.setAlpha(0.58);
+    const shopIcon = this.add.image(43, 50, "shop-ui-store-icon").setDisplaySize(52, 52);
+    const titleText = this.add.text(78, 28, "STORE", {
+      fontFamily: "Arial",
+      fontSize: "25px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      stroke: "#0a3150",
+      strokeThickness: 5
+    });
+    const subtitleText = this.add.text(80, 62, `${this.storeCoinLabel(this.storeCoinFilter)} lane`, {
+      fontFamily: "Arial",
+      fontSize: "10px",
+      color: "#bfeaff",
+      fontStyle: "bold",
+      fixedWidth: 100,
+      stroke: "#061826",
+      strokeThickness: 2
+    });
+    const closeButton = this.createStoreAssetButton(382, 20, 32, 30, "shop-ui-button-cancel", "X", () => this.closePage(), 12);
+    closeButton.setDepth(72);
+
+    this.pagePanel = this.add.container(0, 0, [
+      background,
+      contentSurface,
+      headerSurface,
+      divider,
+      shopIcon,
+      titleText,
+      subtitleText,
+      ...this.createStoreCurrencyObjects(178, 58, "common", this.wallet.common, 92),
+      ...this.createStoreCurrencyObjects(278, 58, "rare", this.wallet.rare, 92),
+      ...this.createStoreCurrencyObjects(178, 88, "superRare", this.wallet.superRare, 92),
+      ...this.createStoreCurrencyObjects(278, 88, "common", this.calculateTankNetWorth(), 92, "shop-ui-wealth", "shop-ui-currency-blue", false),
+      closeButton
+    ]).setDepth(60);
+  }
+
+  private createStoreCurrencyObjects(x: number, y: number, coinType: CoinType, value: number, width: number, iconKey = this.storeCoinIconTextureKey(coinType), holderKey = this.storeCurrencyPillTextureKey(coinType), showPlus = true): Phaser.GameObjects.GameObject[] {
+    const background = this.add.image(width / 2, 14, holderKey).setDisplaySize(width, 28);
+    const icon = this.add.image(17, 14, iconKey).setDisplaySize(18, 18);
+    const text = this.add.text(33, 14, formatNumber(value), {
+      fontFamily: "Arial",
+      fontSize: "12px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      fixedWidth: width - 42,
+      stroke: "#061826",
+      strokeThickness: 2
+    }).setOrigin(0, 0.5);
+    const plus = this.add.image(width - 14, 14, "shop-ui-plus-button").setDisplaySize(18, 18);
+    plus.setVisible(showPlus);
+    return [this.add.container(x, y, [background, icon, text, plus])];
+  }
+
+  private createStoreCardBackground(width: number, height: number, accent: number, rarity: FishType["rarity"] = "common"): Phaser.GameObjects.Graphics {
+    const fillByRarity: Record<FishType["rarity"], number> = {
+      common: 0x083452,
+      rare: 0x083c60,
+      superRare: 0x20245d
+    };
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x02101e, 0.34);
+    graphics.fillRoundedRect(2, 4, width, height, 8);
+    graphics.fillStyle(fillByRarity[rarity], 0.94);
+    graphics.fillRoundedRect(0, 0, width, height, 8);
+    graphics.fillStyle(0xffffff, 0.06);
+    graphics.fillRoundedRect(8, 8, width - 16, Math.min(34, height - 16), 6);
+    graphics.fillStyle(accent, 0.18);
+    graphics.fillRoundedRect(0, 0, 7, height, 8);
+    graphics.lineStyle(2, accent, 0.72);
+    graphics.strokeRoundedRect(0, 0, width, height, 8);
+    graphics.lineStyle(1, 0xffffff, 0.12);
+    graphics.strokeRoundedRect(4, 4, width - 8, height - 8, 7);
+    return graphics;
+  }
+
+  private createStoreAssetButton(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    textureKey: string,
+    label: string,
+    onClick: () => void,
+    fontSize = 10
+  ): Phaser.GameObjects.Container {
+    const background = this.textures.exists(textureKey)
+      ? this.add.image(width / 2, height / 2, textureKey).setDisplaySize(width, height)
+      : this.add.rectangle(width / 2, height / 2, width, height, 0x256f95, 1).setStrokeStyle(1, 0xbcefff, 0.5);
+    const text = this.add.text(width / 2, height / 2, label, {
+      fontFamily: "Arial",
+      fontSize: `${fontSize}px`,
+      color: "#ffffff",
+      align: "center",
+      fixedWidth: width - 8,
+      fontStyle: "bold",
+      stroke: "#092033",
+      strokeThickness: 2
+    }).setOrigin(0.5);
+    const button = this.add.container(x, y, [background, text]);
+    const hitWidth = Math.max(44, width);
+    const hitHeight = Math.max(44, height);
+    button.setSize(hitWidth, hitHeight);
+    button.setDepth(72);
+    button.setInteractive(new Phaser.Geom.Rectangle((width - hitWidth) / 2, (height - hitHeight) / 2, hitWidth, hitHeight), Phaser.Geom.Rectangle.Contains);
+    button.on("pointerover", () => background.setAlpha(0.88));
+    button.on("pointerout", () => background.setAlpha(1));
+    button.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      onClick();
+    });
+    return button;
+  }
+
+  private storeCardTextureKey(rarity: FishType["rarity"]): string {
+    const textureByRarity: Record<FishType["rarity"], string> = {
+      common: "shop-ui-fish-card-common",
+      rare: "shop-ui-fish-card-rare",
+      superRare: "shop-ui-fish-card-super-rare"
+    };
+    return textureByRarity[rarity];
+  }
+
+  private storeRarityBadgeTextureKey(rarity: FishType["rarity"]): string {
+    const textureByRarity: Record<FishType["rarity"], string> = {
+      common: "shop-ui-star-common",
+      rare: "shop-ui-star-rare",
+      superRare: "shop-ui-star-super-rare"
+    };
+    return textureByRarity[rarity];
+  }
+
+  private storePlaceholderFishTextureKey(coinType: CoinType): string {
+    const textureByCoin: Record<CoinType, string> = {
+      common: "shop-ui-fish-placeholder-common",
+      rare: "shop-ui-fish-placeholder-rare",
+      superRare: "shop-ui-fish-placeholder-super-rare"
+    };
+    return textureByCoin[coinType];
+  }
+
+  private storeCoinIconTextureKey(coinType: CoinType): string {
+    const textureByCoin: Record<CoinType, string> = {
+      common: "shop-ui-coin-common",
+      rare: "shop-ui-coin-rare",
+      superRare: "shop-ui-coin-super-rare"
+    };
+    return textureByCoin[coinType];
+  }
+
+  private storeCurrencyPillTextureKey(coinType: CoinType): string {
+    const textureByCoin: Record<CoinType, string> = {
+      common: "shop-ui-currency-gold",
+      rare: "shop-ui-currency-blue",
+      superRare: "shop-ui-currency-purple"
+    };
+    return textureByCoin[coinType];
   }
 
   private pageTitle(): string {
@@ -2850,9 +3709,11 @@ export class AquariumScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
     const button = this.add.container(x + width / 2, y + height / 2, [background, text]);
-    button.setSize(width, height);
+    const hitWidth = Math.max(44, width);
+    const hitHeight = Math.max(44, height);
+    button.setSize(hitWidth, hitHeight);
     button.setDepth(this.activeScreen === "tank" ? 22 : 72);
-    button.setInteractive({ useHandCursor: true });
+    button.setInteractive(new Phaser.Geom.Rectangle(-hitWidth / 2, -hitHeight / 2, hitWidth, hitHeight), Phaser.Geom.Rectangle.Contains);
     button.on("pointerover", () => background.setFillStyle(0x3c93bd));
     button.on("pointerout", () => background.setFillStyle(fill));
     button.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
@@ -2888,6 +3749,10 @@ export class AquariumScene extends Phaser.Scene {
     this.placementMode = { kind: "none" };
     this.closeModal();
     this.refreshFishTankVisibility();
+    if (this.activeScreen === "store") {
+      this.floatText(`${fishType.name} added`, toastX, toastY, "#a8ffb0");
+      this.storeOverlay?.refresh();
+    }
     this.refreshUi();
     this.saveNow();
   }
@@ -2905,7 +3770,9 @@ export class AquariumScene extends Phaser.Scene {
     }
     this.placementMode = { kind: "none" };
     this.floatText(`${foodType.name} x${formatNumber(buyQuantity)}`, toastX, toastY, "#a8ffb0");
-    if (this.activeScreen !== "tank" && this.isDroppableFood(foodType.id)) {
+    if (this.activeScreen === "store") {
+      this.storeOverlay?.refresh();
+    } else if (this.activeScreen !== "tank" && this.isDroppableFood(foodType.id)) {
       this.closePage();
     }
     this.refreshUi();
@@ -2950,7 +3817,9 @@ export class AquariumScene extends Phaser.Scene {
     );
     this.placementMode = { kind: "decoration", decorationTypeId: decorationType.id, size };
     this.floatText(`${decorationType.name} ${decorationSizes[size].label} bought`, toastX, toastY, "#a8ffb0");
-    if (this.activeScreen !== "tank") {
+    if (this.activeScreen === "store") {
+      this.storeOverlay?.refresh();
+    } else if (this.activeScreen !== "tank") {
       this.closePage();
     }
     this.refreshUi();
@@ -2971,7 +3840,10 @@ export class AquariumScene extends Phaser.Scene {
     this.addHelperCreatureToTank(creatureType, x);
     this.placementMode = { kind: "none" };
     this.floatTankText(`${creatureType.name} hired`, x, tankBounds.bottom - 62, "#a8ffb0");
-    if (this.activeScreen !== "tank") {
+    if (this.activeScreen === "store") {
+      this.floatText(`${creatureType.name} hired`, toastX, toastY, "#a8ffb0");
+      this.storeOverlay?.refresh();
+    } else if (this.activeScreen !== "tank") {
       this.closePage();
     }
     this.refreshUi();
@@ -3661,11 +4533,17 @@ export class AquariumScene extends Phaser.Scene {
     this.drawTankLevelBadgeHue(displayLevel);
     this.refreshCareStatusTexts();
     this.hudNeedText.setText(this.getHudNeedLabel());
+    this.storeOverlay?.refresh();
     if (renderControls) {
       this.createFoodDock();
-      this.renderTabControls();
+      if (this.activeScreen === "store") {
+        this.openStoreOverlay();
+      } else {
+        this.renderTabControls();
+      }
     }
     this.refreshStatus();
+    this.syncHtmlGameInterface();
   }
 
   private refreshStatus(): void {
@@ -3674,6 +4552,7 @@ export class AquariumScene extends Phaser.Scene {
       this.statusText.setText(`${this.getTankName(this.tankLevel)} Lv${formatNumber(this.tankDisplayLevel())}   Fish 0/${formatNumber(this.maxFishCapacityForLevel())}   Coin ${formatNumber(this.coinDrops.length)}/${formatNumber(maxCoinDrops)}`);
       this.refreshCareStatusTexts();
       this.hudNeedText.setText(this.getHudNeedLabel());
+      this.syncHtmlHud();
       return;
     }
 
@@ -3690,6 +4569,7 @@ export class AquariumScene extends Phaser.Scene {
     );
     this.refreshCareStatusTexts();
     this.hudNeedText.setText(`${this.getHudNeedLabel()}   H${formatNumber(counts.happy)} Hu${formatNumber(counts.hungry)} I${formatNumber(counts.ill)}`);
+    this.syncHtmlHud();
   }
 
   private getCareStatusLabel(): string {
@@ -4464,15 +5344,6 @@ export class AquariumScene extends Phaser.Scene {
   private fishTypeProductionHint(fishType: FishType): string {
     const babyProduction = fishType.ageCurve.baby.production[0];
     const mainCoin = babyProduction?.coinType ?? fishType.price.coinType;
-
-    if (fishType.rarity === "common") {
-      return `Drops ${this.storeCoinLabel(mainCoin)} + Rare bonus`;
-    }
-
-    if (fishType.rarity === "rare") {
-      return `Drops ${this.storeCoinLabel(mainCoin)} + Rare/Super bonus`;
-    }
-
     return `Drops ${this.storeCoinLabel(mainCoin)}`;
   }
 
