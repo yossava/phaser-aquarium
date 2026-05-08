@@ -548,6 +548,28 @@ canvas {
     @apply relative z-10 whitespace-nowrap;
   }
 
+  .aq-game-hud-pill.is-clean-warning {
+    @apply border-amber-200/70 text-amber-50;
+    background: rgba(120, 82, 12, 0.46);
+  }
+
+  .aq-game-hud-pill.is-clean-warning::before {
+    background:
+      radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.46) 0 10%, transparent 11%),
+      linear-gradient(180deg, rgba(255, 221, 125, 0.34), rgba(161, 112, 20, 0.3) 46%, rgba(80, 51, 7, 0.46));
+  }
+
+  .aq-game-hud-pill.is-clean-danger {
+    @apply border-red-200/75 text-red-50;
+    background: rgba(116, 24, 18, 0.58);
+  }
+
+  .aq-game-hud-pill.is-clean-danger::before {
+    background:
+      radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.42) 0 10%, transparent 11%),
+      linear-gradient(180deg, rgba(255, 132, 104, 0.36), rgba(168, 40, 30, 0.35) 48%, rgba(78, 11, 9, 0.52));
+  }
+
   .aq-game-wallet-chip span,
   .aq-game-wealth-chip span {
     @apply whitespace-nowrap;

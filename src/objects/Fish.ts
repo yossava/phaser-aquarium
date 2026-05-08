@@ -110,6 +110,7 @@ export class Fish {
     const textureKey = this.customTextureKey();
     this.usesCustomTexture = textureKey !== "fish-base";
     this.sprite = scene.add.sprite(x, y, textureKey);
+    this.playSwimAnimation();
     this.textureAspectRatio = this.usesCustomTexture ? this.sprite.height / Math.max(1, this.sprite.width) : baseTextureHeight / baseTextureWidth;
     this.setStateTint();
     this.setVisualScale(this.desiredAgeScale());
@@ -1192,8 +1193,20 @@ export class Fish {
   }
 
   private customTextureKey(): string {
+    const animatedTexture = `fish-${this.type.id}-swim`;
+    if (this.scene.textures.exists(animatedTexture)) {
+      return animatedTexture;
+    }
+
     const textureKey = `fish-${this.type.id}`;
     return this.scene.textures.exists(textureKey) ? textureKey : "fish-base";
+  }
+
+  private playSwimAnimation(): void {
+    const animationKey = `fish-${this.type.id}-swim-idle`;
+    if (this.scene.anims.exists(animationKey)) {
+      this.sprite.play(animationKey);
+    }
   }
 
   private isFullyGrown(): boolean {

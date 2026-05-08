@@ -301,7 +301,7 @@ const defaultHudLayout: HudLayout = {
   }
 };
 const dirtyTankOverlayThreshold = 72;
-const dirtyTankOverlayMaxAlpha = 0.94;
+const dirtyTankOverlayMaxAlpha = 0.5;
 
 type AquariumTestSnapshot = {
   coins: number;
@@ -634,6 +634,10 @@ export class AquariumScene extends Phaser.Scene {
   public preload(): void {
     fishTypes.forEach((fishType) => {
       this.load.image(`fish-${fishType.id}`, `/assets/fish/${fishType.id}.png`);
+      this.load.spritesheet(`fish-${fishType.id}-swim`, `/assets/fish/${fishType.id}-swim.png`, {
+        frameWidth: 256,
+        frameHeight: 160
+      });
     });
     foodTypes.forEach((foodType) => {
       this.load.image(this.foodTextureKey(foodType.id), `/assets/food/${foodType.id}.png`);
@@ -682,6 +686,7 @@ export class AquariumScene extends Phaser.Scene {
   public create(): void {
     this.configureCameraForHighDpi();
     this.createTextures();
+    this.createFishAnimations();
     this.loadHelperFoodDispenserY();
     this.createWorld();
     this.createUi();
@@ -698,6 +703,23 @@ export class AquariumScene extends Phaser.Scene {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("openStore")) {
       this.time.delayedCall(100, () => this.openScreen("store"));
     }
+  }
+
+  private createFishAnimations(): void {
+    fishTypes.forEach((fishType) => {
+      const textureKey = `fish-${fishType.id}-swim`;
+      const animationKey = `${textureKey}-idle`;
+      if (!this.textures.exists(textureKey) || this.anims.exists(animationKey)) {
+        return;
+      }
+
+      this.anims.create({
+        key: animationKey,
+        frames: this.anims.generateFrameNumbers(textureKey, { start: 0, end: 5 }),
+        frameRate: 5,
+        repeat: -1
+      });
+    });
   }
 
   public update(_time: number, delta: number): void {
@@ -1304,7 +1326,6 @@ export class AquariumScene extends Phaser.Scene {
     const overlay = this.add
       .image(tankViewportBounds.centerX, tankViewportBounds.centerY, dirtyTankOverlayTextureKey)
       .setDisplaySize(tankViewportBounds.width, tankViewportBounds.height)
-      .setTint(0x6f7d36)
       .setBlendMode(Phaser.BlendModes.NORMAL)
       .setDepth(17)
       .setAlpha(0)
@@ -1314,14 +1335,14 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private updateDirtyTankOverlay(overlay = this.dirtyTankOverlay): void {
-    if (!overlay) {
-      return;
-    }
-
     const dirtyRatio = Phaser.Math.Clamp((dirtyTankOverlayThreshold - this.cleanliness) / dirtyTankOverlayThreshold, 0, 1);
     const visible = dirtyRatio > 0;
-    overlay.setVisible(visible);
-    overlay.setAlpha(visible ? Phaser.Math.Linear(0.12, dirtyTankOverlayMaxAlpha, Math.pow(dirtyRatio, 0.72)) : 0);
+    const easedRatio = Math.pow(dirtyRatio, 0.72);
+
+    if (overlay) {
+      overlay.setVisible(visible);
+      overlay.setAlpha(visible ? Phaser.Math.Linear(0.12, dirtyTankOverlayMaxAlpha, easedRatio) : 0);
+    }
   }
 
   private applyTankViewScale(): void {
@@ -1500,6 +1521,8 @@ export class AquariumScene extends Phaser.Scene {
     this.gameHudSuperRareText!.textContent = formatNumber(this.wallet.superRare);
     this.gameHudWealthText!.textContent = formatNumber(this.calculateTankNetWorth());
     this.gameHudCleanText!.textContent = `Clean ${formatNumber(Math.round(this.cleanliness))}%`;
+    this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-warning", this.cleanliness < 72 && this.cleanliness >= 35);
+    this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-danger", this.cleanliness < 35);
     this.gameHudHappyText!.textContent = `Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
     this.helperFoodDispenserText!.textContent = this.foodBadgeLabel(this.getFoodInventory(creatureFoodTypeId));
     this.syncHelperFoodDispenserPosition();

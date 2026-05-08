@@ -68,21 +68,22 @@
       "runtime_notes": "Promoted to current runtime tank background for the fantasy UI revamp."
     },
     {
-      "filename": "dirty_tank_overlay_source.png",
+      "filename": "dirty_tank_overlay_imagegen_source.png",
       "dimensions": {
-        "width": 1024,
-        "height": 2048
+        "width": 946,
+        "height": 1662
       },
       "format": "png",
-      "transparency": "rgba_alpha",
-      "background_notes": "Transparent dirty-water overlay with subtle blue-green edge haze, algae film, cloudy wisps, and sparse speckles; center remains mostly transparent for gameplay readability.",
-      "intended_use": "Screen-space tank overlay shown when aquarium cleanliness drops below 20%, rendered over tank contents and below HUD/menu controls.",
-      "style_notes": "Low-contrast mobile aquarium grime effect with cool underwater tint; no text, no border, no hard vignette, no dark mud colors.",
+      "transparency": "magenta_chroma_key_source",
+      "background_notes": "Generated dirty-glass overlay with green-brown algae and sediment concentrated around the edges and bottom; center remains open for gameplay readability.",
+      "intended_use": "Source artwork for the screen-space tank overlay shown as aquarium cleanliness drops, rendered over tank contents and below HUD/menu controls.",
+      "style_notes": "Mobile aquarium grime effect from authored bitmap art; no text, UI, fish, border frame, hose, or decoration props.",
       "source_generation": {
-        "method": "codex_image_generation plus local alpha postprocess",
-        "original_generated_image": "/Users/yossava/.codex/generated_images/019df063-f3e9-70b1-8a8d-519a8f20fcb5/ig_0a8880e0be7e0f0e0169f7e8919c608191803ed01776285b14.png",
-        "postprocess": "Resized generated 887x1774 RGB source to 1024x2048, removed baked checkerboard by deriving alpha from color/saturation and edge haze, then saved as RGBA PNG."
-      }
+        "method": "imagegen with magenta chroma-key background plus local alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019e0516-3a15-7e93-8738-c68afcadaf01/ig_02ce368ff85aa6f50169fdd30e0e74819185b45a52c3bab2a3.png",
+        "postprocess": "Removed #ff00ff chroma key to alpha, neutralized magenta edge spill, resized to 1024x2048, and saved as public/assets/backgrounds/dirty-tank-overlay.png."
+      },
+      "runtime_filename": "dirty-tank-overlay.png"
     }
   ]
 }
