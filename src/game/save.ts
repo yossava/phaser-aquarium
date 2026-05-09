@@ -86,6 +86,7 @@ export type SavedTankState = {
   selectedSeabedId?: string;
   cleanliness?: number;
   cleanedAt?: number;
+  maxDisplayLevel?: number;
 };
 
 export type OfflineProgress = {
@@ -391,7 +392,8 @@ function sanitizeTankStates(source: Record<string, SavedTankState> | undefined):
       selectedBackgroundId: typeof value.selectedBackgroundId === "string" ? value.selectedBackgroundId : undefined,
       selectedSeabedId: typeof value.selectedSeabedId === "string" ? value.selectedSeabedId : undefined,
       cleanliness: clamp(sanitizeNumber(value.cleanliness, 100), 0, 100),
-      cleanedAt: sanitizeNumber(value.cleanedAt, Date.now())
+      cleanedAt: sanitizeNumber(value.cleanedAt, Date.now()),
+      maxDisplayLevel: Math.max(1, Math.floor(sanitizeNumber(value.maxDisplayLevel, 1)))
     };
   }
   return result;

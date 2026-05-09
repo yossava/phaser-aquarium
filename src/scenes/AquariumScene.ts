@@ -74,6 +74,7 @@ type TankRuntimeState = {
   selectedSeabedId: string;
   cleanliness: number;
   cleanedAt: number;
+  maxDisplayLevel: number;
 };
 
 type CompatibilitySummary = {
@@ -668,6 +669,7 @@ export class AquariumScene extends Phaser.Scene {
   private draggedFish?: Fish;
   private nativeCanvasInputCleanup?: () => void;
   private nativeDraggedFish?: Fish;
+  private nativeDraggedDecoration?: PlacedDecoration;
   private pendingTextureLoads = new Set<string>();
   private pendingFishTextureLoads = new Set<string>();
   private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
@@ -1255,7 +1257,8 @@ export class AquariumScene extends Phaser.Scene {
       selectedBackgroundId: this.defaultTankCosmeticId(level),
       selectedSeabedId: this.defaultTankCosmeticId(level),
       cleanliness: 100,
-      cleanedAt: Date.now()
+      cleanedAt: Date.now(),
+      maxDisplayLevel: 1
     };
   }
 
@@ -1275,6 +1278,7 @@ export class AquariumScene extends Phaser.Scene {
     }
     state.selectedBackgroundId ??= fallbackCosmeticId;
     state.selectedSeabedId ??= fallbackCosmeticId;
+    state.maxDisplayLevel = Math.max(1, Math.floor(state.maxDisplayLevel ?? 1));
     return state;
   }
 
@@ -1291,7 +1295,8 @@ export class AquariumScene extends Phaser.Scene {
       selectedBackgroundId: state.selectedBackgroundId,
       selectedSeabedId: state.selectedSeabedId,
       cleanliness: this.cleanliness,
-      cleanedAt: this.cleanedAt
+      cleanedAt: this.cleanedAt,
+      maxDisplayLevel: Math.max(state.maxDisplayLevel ?? 1, this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(this.tankLevel)))
     });
   }
 
@@ -3847,7 +3852,8 @@ export class AquariumScene extends Phaser.Scene {
         selectedBackgroundId: this.validTankCosmeticId("background", value.selectedBackgroundId, level),
         selectedSeabedId: this.validTankCosmeticId("seabed", value.selectedSeabedId, level),
         cleanliness: Phaser.Math.Clamp(value.cleanliness ?? 100, 0, 100),
-        cleanedAt: value.cleanedAt ?? Date.now()
+        cleanedAt: value.cleanedAt ?? Date.now(),
+        maxDisplayLevel: Math.max(1, Math.floor(value.maxDisplayLevel ?? 1))
       });
     }
 
@@ -3863,7 +3869,8 @@ export class AquariumScene extends Phaser.Scene {
         selectedBackgroundId: this.validTankCosmeticId("background", undefined, 1),
         selectedSeabedId: this.validTankCosmeticId("seabed", undefined, 1),
         cleanliness: saved.tank.cleanliness,
-        cleanedAt: saved.tank.cleanedAt
+        cleanedAt: saved.tank.cleanedAt,
+        maxDisplayLevel: 1
       });
     }
 
@@ -3885,7 +3892,8 @@ export class AquariumScene extends Phaser.Scene {
         selectedBackgroundId: state.selectedBackgroundId,
         selectedSeabedId: state.selectedSeabedId,
         cleanliness: state.cleanliness,
-        cleanedAt: state.cleanedAt
+        cleanedAt: state.cleanedAt,
+        maxDisplayLevel: Math.max(state.maxDisplayLevel ?? 1, this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(level)))
       };
     }
     return result;
@@ -4637,6 +4645,21 @@ export class AquariumScene extends Phaser.Scene {
     return nearestFish;
   }
 
+  private decorationAtPointer(designX: number, designY: number): PlacedDecoration | undefined {
+    if (this.activeScreen !== "tank") {
+      return undefined;
+    }
+
+    const tankPoint = this.screenToTankPoint(designX, designY);
+    return this.activeDecorations()
+      .filter((decoration) => {
+        const radiusX = Math.max(34, decoration.image.displayWidth * 0.58);
+        const radiusY = Math.max(34, decoration.image.displayHeight * 0.58);
+        return Math.abs(tankPoint.x - decoration.image.x) <= radiusX && Math.abs(tankPoint.y - decoration.image.y) <= radiusY;
+      })
+      .sort((first, second) => second.image.depth - first.image.depth || second.image.y - first.image.y)[0];
+  }
+
   private installNativeCanvasInputFallback(): void {
     const canvas = this.game.canvas;
     let activePointerId: number | undefined;
@@ -4661,6 +4684,27 @@ export class AquariumScene extends Phaser.Scene {
       activePointerId = undefined;
       this.saveNow();
     };
+    const endNativeDecorationDrag = (event?: PointerEvent) => {
+      if (!this.nativeDraggedDecoration) {
+        return;
+      }
+
+      const decoration = this.nativeDraggedDecoration;
+      decoration.image.setAlpha(1);
+      this.showDecorationTrashTarget(false);
+      const point = event ? designPointFromEvent(event) : undefined;
+      if (point && this.activeScreen === "tank" && decorationTrashZone.contains(point.x, point.y)) {
+        this.trashDecoration(decoration);
+      } else if (point && tankViewportBounds.contains(point.x, point.y) && this.activeScreen === "tank") {
+        const tankPoint = this.screenToTankPoint(point.x, point.y);
+        this.moveDecoration(decoration, tankPoint.x, tankPoint.y);
+        this.saveNow();
+      }
+
+      this.draggedDecoration = undefined;
+      this.nativeDraggedDecoration = undefined;
+      activePointerId = undefined;
+    };
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0 || this.htmlDockDragging || this.activeScreen !== "tank") {
         return;
@@ -4676,6 +4720,21 @@ export class AquariumScene extends Phaser.Scene {
         event.preventDefault();
         event.stopPropagation();
         this.collectCoin(tappedCoin, false);
+        return;
+      }
+
+      const decoration = this.decorationAtPointer(point.x, point.y);
+      if (decoration) {
+        event.preventDefault();
+        event.stopPropagation();
+        activePointerId = event.pointerId;
+        this.capturePointerSafely(canvas, event.pointerId);
+        this.nativeDraggedDecoration = decoration;
+        this.draggedDecoration = decoration;
+        decoration.image.setAlpha(0.78);
+        decoration.image.setDepth(9);
+        this.showDecorationTrashTarget(true);
+        this.floatTankText("Drag to move", decoration.image.x, decoration.image.y - 36, "#d7f4ff");
         return;
       }
 
@@ -4695,7 +4754,7 @@ export class AquariumScene extends Phaser.Scene {
       fish.sprite.setDepth(14);
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (activePointerId !== event.pointerId || !this.nativeDraggedFish || this.activeScreen !== "tank") {
+      if (activePointerId !== event.pointerId || this.activeScreen !== "tank") {
         return;
       }
 
@@ -4706,7 +4765,12 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       const tankPoint = this.screenToTankPoint(point.x, point.y);
-      this.nativeDraggedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
+      if (this.nativeDraggedDecoration) {
+        this.moveDecoration(this.nativeDraggedDecoration, tankPoint.x, tankPoint.y);
+        this.highlightDecorationTrashTarget(decorationTrashZone.contains(point.x, point.y));
+      } else if (this.nativeDraggedFish) {
+        this.nativeDraggedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
+      }
     };
     const onPointerUp = (event: PointerEvent) => {
       if (activePointerId !== event.pointerId) {
@@ -4715,6 +4779,7 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       this.releasePointerSafely(canvas, event.pointerId);
+      endNativeDecorationDrag(event);
       endNativeFishDrag(event);
     };
     const onPointerCancel = (event: PointerEvent) => {
@@ -4724,6 +4789,7 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       this.releasePointerSafely(canvas, event.pointerId);
+      endNativeDecorationDrag(event);
       endNativeFishDrag(event);
     };
 
@@ -4736,6 +4802,7 @@ export class AquariumScene extends Phaser.Scene {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
+      endNativeDecorationDrag();
       endNativeFishDrag();
     };
   }
@@ -5191,6 +5258,7 @@ export class AquariumScene extends Phaser.Scene {
       }
 
       currentFish.nextCoinDropAt = this.time.now + primaryProduction.intervalSeconds * 1000;
+      currentFish.resumeAfterOfflineProgress();
     }
 
     for (const deadFish of offlineDeaths) {
@@ -5861,7 +5929,15 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private tankDisplayLevel(level = this.tankLevel): number {
-    const worth = this.calculateTankNetWorth(level);
+    const state = this.ensureTankState(level);
+    const currentLevel = this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(level));
+    if (currentLevel > (state.maxDisplayLevel ?? 1)) {
+      state.maxDisplayLevel = currentLevel;
+    }
+    return Math.max(1, state.maxDisplayLevel ?? currentLevel);
+  }
+
+  private rawTankDisplayLevelFromWorth(worth: number): number {
     return Math.max(1, Math.floor(Math.log10(Math.max(1, worth) / 250 + 1)) + 1);
   }
 
@@ -6109,7 +6185,7 @@ export class AquariumScene extends Phaser.Scene {
       return { date: today, claimed: [] };
     }
 
-    return { date: today, claimed: savedGoals.claimed };
+    return { date: today, claimed: [...new Set(savedGoals.claimed.filter((entry) => typeof entry === "string"))] };
   }
 
   private dailyQuestItems(): DailyQuestItem[] {
@@ -6249,10 +6325,12 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private recordFishPurchase(fishType: FishType): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
     this.dailyGoals.claimed.push(`fish-buy:${fishType.price.coinType}:${Date.now()}:${Phaser.Math.RND.uuid()}`);
   }
 
   private recordDailyQuestAction(action: string): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
     this.dailyGoals.claimed.push(`action:${action}:${Date.now()}:${Phaser.Math.RND.uuid()}`);
   }
 
@@ -6265,6 +6343,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private claimDailyGoal(id: string, complete: boolean): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
     const quest = this.dailyQuestItems().find((item) => item.id === id);
     if (this.dailyGoals.claimed.includes(id)) {
       this.floatText("Already claimed", toastX, toastY, "#d7f4ff");

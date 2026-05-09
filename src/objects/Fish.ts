@@ -244,6 +244,16 @@ export class Fish {
     this.fatalCareSeconds = this.isInFatalCareState() ? Phaser.Math.Clamp(fatalCareSecondsValue, 0, fatalCareSeconds) : 0;
   }
 
+  public resumeAfterOfflineProgress(): void {
+    this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
+    this.restUntil = 0;
+    this.hasRestedAtTarget = false;
+    this.velocity.set(0, 0);
+    this.target.set(this.sprite.x, this.sprite.y);
+    this.setStateTint();
+    this.updateStatusBars();
+  }
+
   public refreshTextureIfAvailable(): void {
     const textureKey = this.customTextureKey();
     if (this.sprite.texture.key === textureKey) {
