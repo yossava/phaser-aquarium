@@ -129,16 +129,16 @@
       "prompt_source": "docs/prompt.json assets.icon_common_coin_yellow"
     },
     {
-      "filename": "icon_rare_coin_blue.png",
+      "filename": "rare_currency_pearl.png",
       "runtime_filename": "icon-rare-coin.png",
-      "intended_use": "Prompt-generated glossy rare coin HUD icon for the top resource chip row.",
-      "prompt_source": "docs/prompt.json assets.icon_rare_coin_blue"
+      "intended_use": "Prompt-generated pearl rare currency HUD icon for the top resource chip row.",
+      "prompt_source": "assets/generated/currency-icons/rare_currency_pearl_source_magenta.png"
     },
     {
-      "filename": "icon_super_rare_coin_purple.png",
+      "filename": "icon_super_rare_single_blue_diamond.png",
       "runtime_filename": "icon-super-rare-coin.png",
-      "intended_use": "Prompt-generated glossy super rare coin HUD icon for the top resource chip row.",
-      "prompt_source": "docs/prompt.json assets.icon_super_rare_coin_purple"
+      "intended_use": "Imagegen-created single blue diamond super rare currency HUD icon for the top resource chip row.",
+      "prompt_source": "create-assets/imagegen single blue diamond currency prompt"
     },
     {
       "filename": "icon_food_status.png",

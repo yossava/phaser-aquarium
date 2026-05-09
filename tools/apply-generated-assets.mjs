@@ -2,6 +2,7 @@ import { deflateSync, inflateSync } from "node:zlib";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const root = process.cwd();
 const sourceRoot = path.join(root, "assets", "generated");
@@ -394,4 +395,8 @@ function crc32(buffer) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-await main();
+export { chromaKey, cropToAlpha, decodePng, encodePng, fitImage, resizeBilinear };
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

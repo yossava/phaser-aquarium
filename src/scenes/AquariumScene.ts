@@ -113,6 +113,7 @@ const overfullHungerFloor = -10000;
 const fishStatsCardHeight = 96;
 const fishStatsCardRowHeight = 104;
 const tankCleaningRatePerSecond = 2;
+const automatedCoinCollectFeeRate = 0.5;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
 const helperCreatureDropDisplayWidths: Record<string, number> = {
@@ -122,14 +123,20 @@ const helperCreatureDropDisplayWidths: Record<string, number> = {
   "helper-feeder-snail": 62,
   "helper-auto-cleaner": 56
 };
-const maxPurchasableTankLevel = 2;
+const maxPurchasableTankLevel = 4;
 const storeTankNames: Record<number, string> = {
   1: "Normal Tank",
-  2: "Fish Bowl"
+  2: "Fish Bowl",
+  3: "Normal Tank",
+  4: "Fish Bowl",
+  5: "Royal Tank"
 };
 const storeTankStarterWallets: Record<number, Wallet> = {
   1: createWallet(120, 0, 0),
-  2: createWallet(120, 0, 0)
+  2: createWallet(120, 0, 0),
+  3: createWallet(120, 0, 0),
+  4: createWallet(120, 0, 0),
+  5: createWallet(680, 14, 2)
 };
 const tankUpgradePrices: Record<number, FishType["price"]> = {
   2: { coinType: "common", amount: 100 },
@@ -2549,12 +2556,16 @@ export class AquariumScene extends Phaser.Scene {
 
   private createTankHtmlCard(level: number): HTMLElement {
     const owned = this.hasTankLevel(level);
-    const card = this.htmlElement("article", `aq-page-card ${level === this.tankLevel ? "is-active" : ""}`);
-    const preview = this.htmlElement("div", "aq-page-tank-preview");
-    preview.style.setProperty("--tank-accent", this.hexColor(this.tankAccentColor(level)));
-    preview.append(this.htmlElement("span", "aq-page-tank-level", [`Lv${formatNumber(this.tankDisplayLevel(level))}`]));
-    card.append(
-      preview,
+    const card = this.htmlElement("article", `aq-tank-grid-card ${level === this.tankLevel ? "is-active" : ""}`);
+    const imageUrl = this.tankCardBackgroundUrl(level);
+    if (imageUrl) {
+      card.append(this.htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
+    } else {
+      card.style.setProperty("--tank-accent", this.hexColor(this.tankAccentColor(level)));
+    }
+    const overlay = this.htmlElement("div", "aq-tank-grid-overlay");
+    overlay.append(
+      this.htmlElement("span", "aq-page-tank-level", [`Lv${formatNumber(this.tankDisplayLevel(level))}`]),
       this.htmlElement("h3", "aq-page-card-title", [this.getTankName(level)]),
       this.htmlElement("p", "aq-page-card-meta", [`${owned ? "Owned" : "Locked"} | ${formatNumber(this.fishInTank(level).length)}/${formatNumber(this.maxFishCapacityForLevel(level))} fish`]),
       this.htmlElement("p", "aq-page-card-copy", [`Worth ${formatNumber(this.calculateTankNetWorth(level))} | ${this.tankSummary(level)}`])
@@ -2566,10 +2577,11 @@ export class AquariumScene extends Phaser.Scene {
         this.htmlButton("Name", "aq-page-button aq-page-button-muted", () => this.renameTank(level)),
         this.htmlButton(level === this.tankLevel ? "Active" : "Switch", "aq-page-button aq-page-button-good", () => this.switchTank(level))
       );
-      card.append(actions);
+      overlay.append(actions);
     } else {
-      card.append(this.htmlElement("p", "aq-page-card-meta", ["Available in Shop"]));
+      overlay.append(this.htmlElement("p", "aq-page-card-meta", ["Available in Shop"]));
     }
+    card.append(overlay);
     return card;
   }
 
@@ -2586,7 +2598,7 @@ export class AquariumScene extends Phaser.Scene {
     const inventory = this.tankCosmeticInventory(asset.category);
     const owned = (inventory.get(asset.id) ?? 0) > 0;
     const selected = this.selectedTankCosmeticId(asset.category) === asset.id;
-    const card = this.htmlElement("button", `aq-page-mini-card ${selected ? "is-active" : ""}`) as HTMLButtonElement;
+    const card = this.htmlElement("button", `aq-tank-grid-card aq-tank-grid-button ${selected ? "is-active" : ""}`) as HTMLButtonElement;
     card.type = "button";
     this.attachTouchFeedback(card);
     card.addEventListener("click", () => {
@@ -2595,14 +2607,16 @@ export class AquariumScene extends Phaser.Scene {
       }
     });
     const imageUrl = this.tankCosmeticImageUrl(asset);
-    const preview = imageUrl ? this.htmlImage(imageUrl, "", "aq-page-mini-thumb") : this.htmlElement("span", "aq-page-swatch");
-    if (!imageUrl && preview instanceof HTMLElement) {
-      preview.style.backgroundColor = this.hexColor(asset.tint);
+    if (imageUrl) {
+      card.append(this.htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
+    } else {
+      card.style.backgroundColor = this.hexColor(asset.tint);
     }
     card.append(
-      preview,
-      this.htmlElement("span", "aq-page-mini-title", [asset.name]),
-      this.htmlElement("span", "aq-page-mini-meta", [selected ? "Active" : "Owned"])
+      this.htmlElement("div", "aq-tank-grid-overlay", [
+        this.htmlElement("span", "aq-page-mini-title", [asset.name]),
+        this.htmlElement("span", "aq-page-mini-meta", [selected ? "Active" : "Owned"])
+      ])
     );
     return card;
   }
@@ -2620,9 +2634,10 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createDecorationHtmlCard(decorationType: DecorationType): HTMLElement {
-    const card = this.htmlElement("article", "aq-page-card aq-page-card-media");
-    card.append(
-      this.htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-page-card-image"),
+    const card = this.htmlElement("article", "aq-tank-grid-card");
+    card.append(this.htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-tank-grid-image contain"));
+    const overlay = this.htmlElement("div", "aq-tank-grid-overlay");
+    overlay.append(
       this.htmlElement("h3", "aq-page-card-title", [decorationType.name]),
       this.htmlElement("p", "aq-page-card-meta", [`${this.rarityStarsLabel(decorationType.rarity)} | +${formatNumber(decorationType.happinessBonus)} happy`])
     );
@@ -2641,17 +2656,20 @@ export class AquariumScene extends Phaser.Scene {
         )
       );
     });
-    card.append(sizeGrid);
+    overlay.append(sizeGrid);
+    card.append(overlay);
     return card;
   }
 
   private createFoodDispenserHtmlCard(): HTMLElement {
-    const card = this.htmlElement("article", "aq-page-card aq-page-card-media");
+    const card = this.htmlElement("article", "aq-tank-grid-card");
     card.append(
-      this.htmlImage("/assets/ui/helper-food-dispenser.png", "", "aq-page-card-image helper"),
-      this.htmlElement("h3", "aq-page-card-title", ["Food Dispenser"]),
-      this.htmlElement("p", "aq-page-card-meta", [`Food ${this.foodBadgeLabel(this.getTotalFeedableFoodInventory())}`]),
-      this.htmlElement("p", "aq-page-card-copy", ["Drag on the tank edge to reposition. Dispenses owned fish food automatically."])
+      this.htmlImage("/assets/ui/helper-food-dispenser.png", "", "aq-tank-grid-image contain"),
+      this.htmlElement("div", "aq-tank-grid-overlay", [
+        this.htmlElement("h3", "aq-page-card-title", ["Food Dispenser"]),
+        this.htmlElement("p", "aq-page-card-meta", [`Food ${this.foodBadgeLabel(this.getTotalFeedableFoodInventory())}`]),
+        this.htmlElement("p", "aq-page-card-copy", ["Drag on the tank edge to reposition. Dispenses owned fish food automatically."])
+      ])
     );
     return card;
   }
@@ -2823,6 +2841,11 @@ export class AquariumScene extends Phaser.Scene {
     }
     const theme = tankThemeTexturePairs.find((item) => item.backgroundKey === asset.textureKey || item.floorKey === asset.textureKey);
     return theme ? asset.category === "background" ? theme.backgroundPath : theme.floorPath : undefined;
+  }
+
+  private tankCardBackgroundUrl(level: number): string | undefined {
+    const asset = this.tankCosmeticById("background", this.selectedTankCosmeticId("background", level));
+    return asset ? this.tankCosmeticImageUrl(asset) : aquariumBackgroundAssetPath;
   }
 
   private visibleFishCatalog(): FishType[] {
@@ -3391,7 +3414,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private getTankName(level: number): string {
     const sanitizedLevel = Math.max(1, Math.floor(level));
-    return this.tankNames.get(sanitizedLevel) ?? `Tank ${formatNumber(sanitizedLevel)}`;
+    return this.tankNames.get(sanitizedLevel) ?? storeTankNames[sanitizedLevel] ?? `Tank ${formatNumber(sanitizedLevel)}`;
   }
 
   private tankNamesFromRecord(source: Record<string, string> | undefined): Map<number, string> {
@@ -3664,6 +3687,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.ownedTankLevels.add(targetLevel);
+    this.tankNames.set(targetLevel, storeTankNames[targetLevel] ?? `Tank ${formatNumber(targetLevel)}`);
     const tankState = this.ensureTankState(targetLevel);
     const starterWallet = storeTankStarterWallets[targetLevel] ?? createEmptyWallet();
     tankState.wallet = createWallet(starterWallet.common, starterWallet.rare, starterWallet.superRare);
@@ -4863,8 +4887,10 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    earn(this.wallet, coin.coinType, coin.value);
-    this.floatCoinClaimText(coin.value, coin.coinType, coin.sprite.x, coin.sprite.y - 20, coin.visual.textColor, automated);
+    const fee = automated ? Math.floor(coin.value * automatedCoinCollectFeeRate) : 0;
+    const claimedValue = Math.max(0, coin.value - fee);
+    earn(this.wallet, coin.coinType, claimedValue);
+    this.floatCoinClaimText(claimedValue, coin.coinType, coin.sprite.x, coin.sprite.y - 20, coin.visual.textColor, automated, fee);
     this.coinDrops = this.coinDrops.filter((drop) => drop !== coin);
     coin.destroy();
     this.refreshUi();
@@ -5249,6 +5275,11 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     const sanitizedTargetLevel = Math.max(2, Math.floor(targetLevel));
+    const configuredPrice = tankUpgradePrices[sanitizedTargetLevel];
+    if (configuredPrice) {
+      return configuredPrice;
+    }
+
     return {
       coinType: "common",
       amount: Math.ceil(350 * Math.pow(2.35, sanitizedTargetLevel - 2))
@@ -5904,10 +5935,10 @@ export class AquariumScene extends Phaser.Scene {
     });
   }
 
-  private floatCoinClaimText(value: number, coinType: CoinType, x: number, y: number, color: string, automated: boolean): void {
+  private floatCoinClaimText(value: number, coinType: CoinType, x: number, y: number, color: string, automated: boolean, fee = 0): void {
     const position = this.tankToScreenPoint(x, y);
     const textureKey = coinTextureKeyByType[coinType];
-    const label = automated ? `Auto +${formatNumber(value)}` : `+${formatNumber(value)}`;
+    const label = automated ? `Auto +${formatNumber(value)}${fee > 0 ? ` (-${formatNumber(fee)})` : ""}` : `+${formatNumber(value)}`;
     const container = this.add.container(position.x, position.y).setDepth(61).setAlpha(1).setScale(0.9);
     const icon = this.add.image(-18, 0, this.textures.exists(textureKey) ? textureKey : "coin").setDisplaySize(20, 20);
     const text = this.add

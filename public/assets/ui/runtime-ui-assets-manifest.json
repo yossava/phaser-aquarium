@@ -37,14 +37,14 @@
     },
     {
       "file": "public/assets/ui/icon-rare-coin.png",
-      "label": "Rare Coin",
+      "label": "Rare Blue Diamond",
       "dimensions": [
         1024,
         1024
       ],
-      "source": "assets/generated/source/ui/icon-rare-coin-source.png",
+      "source": "assets/generated/source/ui/icon-rare-coin-blue-diamond-transparent-source.png",
       "background": "transparent runtime PNG keyed from magenta source",
-      "generation": "one asset per prompt using create-assets Raster Transparency Workflow"
+      "generation": "imagegen single blue diamond prompt using create-assets Raster Transparency Workflow"
     },
     {
       "file": "public/assets/ui/icon-super-rare-coin.png",

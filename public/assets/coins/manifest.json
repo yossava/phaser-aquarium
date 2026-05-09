@@ -12,15 +12,15 @@
       "file": "/assets/coins/rare.png",
       "width": 96,
       "height": 96,
-      "source": "assets/generated/source/coins/rare_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+      "source": "assets/generated/currency-icons/transparent/rare_currency_pearl_alpha.png",
+      "processing": "image-generated pearl rare currency, chroma-key removed, resized"
     },
     {
       "file": "/assets/coins/super-rare.png",
       "width": 96,
       "height": 96,
-      "source": "assets/generated/source/coins/super_rare_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+      "source": "assets/generated/source/ui/icon-rare-coin-blue-diamond-transparent-source.png",
+      "processing": "imagegen single blue diamond super rare currency, chroma-key removed, edge decontaminated, resized"
     }
   ]
 }

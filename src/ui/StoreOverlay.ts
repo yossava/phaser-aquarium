@@ -111,6 +111,12 @@ export class StoreOverlay {
   }
 
   show(): void {
+    if (this.visible) {
+      this.root.classList.remove("hidden");
+      this.render();
+      return;
+    }
+
     this.visible = true;
     this.browseLevel = "categories";
     this.page = 1;
@@ -305,12 +311,12 @@ export class StoreOverlay {
     const panel = el("main", "aq-panel flex min-h-0 flex-1 flex-col overflow-hidden p-2");
     const content = el("div", "min-h-0 flex-1 overflow-hidden");
     const items = this.currentItems(state);
-    const pageSize = 4;
+    const pageSize = 9;
     const maxPage = Math.max(1, Math.ceil(items.length / pageSize));
     this.page = Math.min(this.page, maxPage);
     const pageItems = items.slice((this.page - 1) * pageSize, this.page * pageSize);
 
-    const list = el("div", "grid h-full min-h-0 grid-cols-2 grid-rows-2 gap-2");
+    const list = el("div", "grid h-full min-h-0 grid-cols-3 grid-rows-3 gap-1.5");
     if (pageItems.length === 0) {
       list.append(div("rounded-2xl border border-cyan-200/20 bg-sky-950/60 p-6 text-center text-sm font-bold text-cyan-100/80", ["No items in this lane."]));
     } else {
@@ -354,6 +360,12 @@ export class StoreOverlay {
       tools: state.tankUtilityCards,
       decorations: state.tankDecorationCards
     };
+    if (this.tankCategory === "tank") {
+      return state.tankCards.filter((tank) => !tank.owned);
+    }
+    if (this.tankCategory === "background" || this.tankCategory === "seabed") {
+      return tankItemsByCategory[this.tankCategory].filter((item) => !item.owned && item.price.coinType === this.coinFilter);
+    }
     return tankItemsByCategory[this.tankCategory].filter((item) => item.owned || item.price.coinType === this.coinFilter);
   }
 
