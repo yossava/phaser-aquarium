@@ -2698,6 +2698,7 @@ export class AquariumScene extends Phaser.Scene {
   private createFishHtmlCard(fish: Fish, index: number): HTMLElement {
     const card = this.htmlElement("article", "aq-page-card aq-page-card-media");
     const growthStatus = fish.isGrowthLimitedByTank() ? "Max screen size" : `Evo ${formatNumber(fish.evolutionStage)}/${formatNumber(maxEvolutionStage)}`;
+    const evolutionStatus = this.fishEvolutionStatus(fish);
     card.append(
       this.htmlImage(`/assets/fish/${fish.type.id}.png`, "", "aq-page-card-image fish"),
       this.htmlElement("h3", "aq-page-card-title", [fish.type.name]),
@@ -2708,7 +2709,7 @@ export class AquariumScene extends Phaser.Scene {
     const actions = this.htmlElement("div", "aq-page-actions compact");
     actions.append(
       this.htmlButton("Sell", "aq-page-button aq-page-button-danger", () => this.showSellConfirmation(index)),
-      this.htmlButton("Evolve", "aq-page-button", () => this.tryEvolveFish(index))
+      this.htmlButton(evolutionStatus.label, "aq-page-button", () => this.tryEvolveFish(index), evolutionStatus.disabled)
     );
     card.append(actions);
     return card;
@@ -2785,15 +2786,19 @@ export class AquariumScene extends Phaser.Scene {
     return stat;
   }
 
-  private htmlButton(label: string, className: string, onClick: () => void): HTMLButtonElement {
+  private htmlButton(label: string, className: string, onClick: () => void, disabled = false): HTMLButtonElement {
     const button = document.createElement("button");
     button.type = "button";
     button.className = className;
     button.textContent = label;
+    button.disabled = disabled;
     this.attachTouchFeedback(button);
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (button.disabled) {
+        return;
+      }
       onClick();
       if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
         this.syncHtmlPageOverlay();
@@ -4181,6 +4186,23 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi();
     this.createFoodDock();
     this.saveNow();
+  }
+
+  private fishEvolutionStatus(fish: Fish): { disabled: boolean; label: string } {
+    if (!fish.canEvolve()) {
+      return { disabled: true, label: "Max Evo" };
+    }
+
+    if (this.getFoodInventory(evolvePillFoodTypeId) <= 0) {
+      return { disabled: true, label: "Need Pill" };
+    }
+
+    const fee = this.evolutionFee(fish);
+    if (!canAfford(this.wallet, fee)) {
+      return { disabled: true, label: `Need ${formatPrice(fee)}` };
+    }
+
+    return { disabled: false, label: "Evolve" };
   }
 
   private evolveNearestFishAt(x: number, y: number): void {
