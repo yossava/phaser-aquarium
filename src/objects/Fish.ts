@@ -94,8 +94,8 @@ export class Fish {
   private pendingFacing?: number;
   private flipTransitionStartedAt = 0;
   private manuallyDragging = false;
-  private readonly usesCustomTexture: boolean;
-  private readonly textureAspectRatio: number;
+  private usesCustomTexture: boolean;
+  private textureAspectRatio: number;
 
   public constructor(
     private scene: Phaser.Scene,
@@ -240,6 +240,23 @@ export class Fish {
     this.nextCoinDropAt = Math.max(0, nextCoinDropAt);
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
     this.fatalCareSeconds = this.isInFatalCareState() ? Phaser.Math.Clamp(fatalCareSecondsValue, 0, fatalCareSeconds) : 0;
+  }
+
+  public refreshTextureIfAvailable(): void {
+    const textureKey = this.customTextureKey();
+    if (this.sprite.texture.key === textureKey) {
+      this.playSwimAnimation();
+      return;
+    }
+
+    this.sprite.setTexture(textureKey);
+    this.usesCustomTexture = textureKey !== "fish-base";
+    this.textureAspectRatio = this.usesCustomTexture ? this.sprite.height / Math.max(1, this.sprite.width) : baseTextureHeight / baseTextureWidth;
+    this.playSwimAnimation();
+    this.setStateTint();
+    this.setVisualScale(this.visualWorldScale);
+    this.updateTailMark();
+    this.updateStatusBars();
   }
 
   public setAgeSeconds(ageSeconds: number): void {

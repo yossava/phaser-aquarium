@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
-import { controlPanelTop, gameHeight, gameWidth, maxRenderScale, setTankWorldScale, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
+import { controlPanelTop, gameHeight, gameWidth, maxRenderScale, setTankWorldScale, shouldUseLowPowerMode, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, spend } from "../game/economy";
 import { gameFontFamily } from "../game/fonts";
 import {
@@ -119,6 +119,7 @@ const fishStatsCardHeight = 96;
 const fishStatsCardRowHeight = 104;
 const tankCleaningRatePerSecond = 2;
 const automatedCoinCollectFeeRate = 0.5;
+const hudStatusSyncIntervalSeconds = 0.25;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
 const helperCreatureDropDisplayWidths: Record<string, number> = {
@@ -257,6 +258,16 @@ const generatedTankSeabedTexturePairs = generatedTankSeabeds.map(([themeId, name
   textureKey: `tank-generated-seabed-${String(index + 1).padStart(2, "0")}`,
   path: `/assets/backgrounds/generated-seabed/tank-seabed-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
 }));
+const tankTextureAssetPathByKey = new Map<string, string>([
+  [aquariumBackgroundTextureKey, aquariumBackgroundAssetPath],
+  [aquariumFloorTextureKey, aquariumFloorAssetPath],
+  ...tankThemeTexturePairs.flatMap((theme) => [
+    [theme.backgroundKey, theme.backgroundPath] as const,
+    [theme.floorKey, theme.floorPath] as const
+  ]),
+  ...generatedTankBackgroundTexturePairs.map((theme) => [theme.textureKey, theme.path] as const),
+  ...generatedTankSeabedTexturePairs.map((theme) => [theme.textureKey, theme.path] as const)
+]);
 type TankCosmetic = {
   id: string;
   name: string;
@@ -579,6 +590,7 @@ export class AquariumScene extends Phaser.Scene {
   private placedDecorations: PlacedDecoration[] = [];
   private offlineProgress: OfflineProgress = { elapsedSeconds: 0, earned: createEmptyWallet() };
   private autosaveElapsed = 0;
+  private hudStatusSyncElapsed = 0;
   private cleanliness = 100;
   private cleanedAt = Date.now();
   private cleaningTank = false;
@@ -651,19 +663,15 @@ export class AquariumScene extends Phaser.Scene {
   private modal?: HTMLDivElement;
   private modalTitle?: string;
   private draggedFish?: Fish;
+  private pendingTextureLoads = new Set<string>();
+  private pendingFishTextureLoads = new Set<string>();
+  private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
 
   public constructor() {
     super("AquariumScene");
   }
 
   public preload(): void {
-    fishTypes.forEach((fishType) => {
-      this.load.image(`fish-${fishType.id}`, `/assets/fish/${fishType.id}.png`);
-      this.load.spritesheet(`fish-${fishType.id}-swim`, `/assets/fish/${fishType.id}-swim.webp`, {
-        frameWidth: 256,
-        frameHeight: 160
-      });
-    });
     foodTypes.forEach((foodType) => {
       this.load.image(this.foodTextureKey(foodType.id), `/assets/food/${foodType.id}.png`);
     });
@@ -687,16 +695,6 @@ export class AquariumScene extends Phaser.Scene {
     this.load.image(distantSilhouetteTextureKey, distantSilhouetteAssetPath);
     this.load.image(dirtyTankOverlayTextureKey, dirtyTankOverlayAssetPath);
     this.load.image(tankThumbnailBaseTextureKey, tankThumbnailBaseAssetPath);
-    tankThemeTexturePairs.forEach((theme) => {
-      this.load.image(theme.backgroundKey, theme.backgroundPath);
-      this.load.image(theme.floorKey, theme.floorPath);
-    });
-    generatedTankBackgroundTexturePairs.forEach((theme) => {
-      this.load.image(theme.textureKey, theme.path);
-    });
-    generatedTankSeabedTexturePairs.forEach((theme) => {
-      this.load.image(theme.textureKey, theme.path);
-    });
     this.load.image(bubbleButtonFrameTextureKey, bubbleButtonFrameAssetPath);
     this.load.image(bubbleButtonPressedTextureKey, bubbleButtonPressedAssetPath);
     this.load.image(coinGlowTextureKey, coinGlowAssetPath);
@@ -732,18 +730,22 @@ export class AquariumScene extends Phaser.Scene {
 
   private createFishAnimations(): void {
     fishTypes.forEach((fishType) => {
-      const textureKey = `fish-${fishType.id}-swim`;
-      const animationKey = `${textureKey}-idle`;
-      if (!this.textures.exists(textureKey) || this.anims.exists(animationKey)) {
-        return;
-      }
+      this.createFishAnimation(fishType);
+    });
+  }
 
-      this.anims.create({
-        key: animationKey,
-        frames: this.anims.generateFrameNumbers(textureKey, { start: 0, end: 11 }),
-        frameRate: 10,
-        repeat: -1
-      });
+  private createFishAnimation(fishType: FishType): void {
+    const textureKey = `fish-${fishType.id}-swim`;
+    const animationKey = `${textureKey}-idle`;
+    if (!this.textures.exists(textureKey) || this.anims.exists(animationKey)) {
+      return;
+    }
+
+    this.anims.create({
+      key: animationKey,
+      frames: this.anims.generateFrameNumbers(textureKey, { start: 0, end: 11 }),
+      frameRate: 10,
+      repeat: -1
     });
   }
 
@@ -827,7 +829,11 @@ export class AquariumScene extends Phaser.Scene {
       this.saveNow();
     }
 
-    this.refreshStatus();
+    this.hudStatusSyncElapsed += deltaSeconds;
+    if (this.hudStatusSyncElapsed >= hudStatusSyncIntervalSeconds) {
+      this.hudStatusSyncElapsed = 0;
+      this.refreshStatus();
+    }
   }
 
   private configureCameraForHighDpi(): void {
@@ -869,7 +875,8 @@ export class AquariumScene extends Phaser.Scene {
     this.layoutTankFloor();
     this.dirtyTankOverlay = this.createDirtyTankOverlay();
 
-    for (let i = 0; i < 18; i += 1) {
+    const ambientBubbleCount = shouldUseLowPowerMode() ? 8 : 18;
+    for (let i = 0; i < ambientBubbleCount; i += 1) {
       const bubble = this.add.circle(
         Phaser.Math.Between(tankBounds.left + 20, tankBounds.right - 20),
         Phaser.Math.Between(tankBounds.top + 20, tankBounds.bottom - 40),
@@ -1354,6 +1361,80 @@ export class AquariumScene extends Phaser.Scene {
     return this.add.image(tankBounds.centerX, tankBounds.bottom, textureKey).setOrigin(0.5, 1).setDepth(2);
   }
 
+  private ensureTextureLoaded(textureKey: string, assetPath: string | undefined, onLoad: () => void): boolean {
+    if (this.textures.exists(textureKey)) {
+      return true;
+    }
+
+    if (!assetPath || this.pendingTextureLoads.has(textureKey)) {
+      return false;
+    }
+
+    this.pendingTextureLoads.add(textureKey);
+    this.load.once(`filecomplete-image-${textureKey}`, () => {
+      this.pendingTextureLoads.delete(textureKey);
+      onLoad();
+    });
+    this.load.once("loaderror", () => {
+      this.pendingTextureLoads.delete(textureKey);
+    });
+    this.load.image(textureKey, assetPath);
+
+    const loader = this.load as unknown as { isLoading?: () => boolean };
+    if (!loader.isLoading?.()) {
+      this.load.start();
+    }
+
+    return false;
+  }
+
+  private ensureFishTexturesLoaded(fishType: FishType, onLoad?: () => void): boolean {
+    const staticKey = `fish-${fishType.id}`;
+    const swimKey = `fish-${fishType.id}-swim`;
+    const texturesReady = this.textures.exists(staticKey) && this.textures.exists(swimKey);
+    if (texturesReady) {
+      this.createFishAnimation(fishType);
+      onLoad?.();
+      return true;
+    }
+
+    if (onLoad) {
+      const callbacks = this.fishTextureLoadCallbacks.get(fishType.id) ?? new Set<() => void>();
+      callbacks.add(onLoad);
+      this.fishTextureLoadCallbacks.set(fishType.id, callbacks);
+    }
+
+    if (this.pendingFishTextureLoads.has(fishType.id)) {
+      return false;
+    }
+
+    this.pendingFishTextureLoads.add(fishType.id);
+    if (!this.textures.exists(staticKey)) {
+      this.load.image(staticKey, `/assets/fish/${fishType.id}.png`);
+    }
+    if (!this.textures.exists(swimKey)) {
+      this.load.spritesheet(swimKey, `/assets/fish/${fishType.id}-swim.webp`, {
+        frameWidth: 256,
+        frameHeight: 160
+      });
+    }
+
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      this.pendingFishTextureLoads.delete(fishType.id);
+      this.createFishAnimation(fishType);
+      const callbacks = this.fishTextureLoadCallbacks.get(fishType.id);
+      this.fishTextureLoadCallbacks.delete(fishType.id);
+      callbacks?.forEach((callback) => callback());
+    });
+
+    const loader = this.load as unknown as { isLoading?: () => boolean };
+    if (!loader.isLoading?.()) {
+      this.load.start();
+    }
+
+    return false;
+  }
+
   private createDirtyTankOverlay(): Phaser.GameObjects.Image | undefined {
     if (!this.textures.exists(dirtyTankOverlayTextureKey)) {
       return undefined;
@@ -1406,7 +1487,9 @@ export class AquariumScene extends Phaser.Scene {
     this.tankBackground.setPosition(tankBounds.centerX, tankBounds.centerY);
     if (this.tankBackground instanceof Phaser.GameObjects.Image) {
       const textureKeys = this.themedTankTextureKeys();
-      this.tankBackground.setTexture(this.textures.exists(textureKeys.backgroundKey) ? textureKeys.backgroundKey : aquariumBackgroundTextureKey);
+      const textureKey = this.textures.exists(textureKeys.backgroundKey) ? textureKeys.backgroundKey : aquariumBackgroundTextureKey;
+      this.ensureTextureLoaded(textureKeys.backgroundKey, tankTextureAssetPathByKey.get(textureKeys.backgroundKey), () => this.layoutTankBackground());
+      this.tankBackground.setTexture(textureKey);
       this.tankBackground.setDisplaySize(screenCompensatedWidth, screenCompensatedHeight);
       this.tankBackground.setAlpha(1);
       this.tankBackground.setTint(this.tankThemeTint(this.tankLevel));
@@ -1427,7 +1510,9 @@ export class AquariumScene extends Phaser.Scene {
 
     const scale = Math.max(0.01, this.tankViewScaleForLevel());
     const textureKeys = this.themedTankTextureKeys();
-    this.tankSand.setTexture(this.textures.exists(textureKeys.floorKey) ? textureKeys.floorKey : aquariumFloorTextureKey);
+    const textureKey = this.textures.exists(textureKeys.floorKey) ? textureKeys.floorKey : aquariumFloorTextureKey;
+    this.ensureTextureLoaded(textureKeys.floorKey, tankTextureAssetPathByKey.get(textureKeys.floorKey), () => this.layoutTankFloor());
+    this.tankSand.setTexture(textureKey);
     this.tankSand.setOrigin(0.5, 1);
     this.tankSand.setPosition(tankBounds.centerX, this.visibleTankBottomDesignY());
     const displayHeight = tankBounds.height / 6 / scale;
@@ -4419,6 +4504,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number } = {}): Fish {
     const placedFish = new Fish(this, type, x, y, options);
+    this.ensureFishTexturesLoaded(type, () => placedFish.refreshTextureIfAvailable());
     placedFish.addToContainer(this.tankLayer);
     placedFish.setTankVisible(placedFish.tankLevel === this.tankLevel);
     placedFish.sprite.setInteractive({ useHandCursor: true, draggable: true });
@@ -5078,6 +5164,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private refreshStatus(): void {
+    this.hudStatusSyncElapsed = 0;
     const activeFish = this.activeFish();
     if (activeFish.length === 0) {
       this.statusText.setText(`${this.getTankName(this.tankLevel)} Lv${formatNumber(this.tankDisplayLevel())}`);

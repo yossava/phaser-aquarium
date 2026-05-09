@@ -354,7 +354,10 @@ async function runRegression(cdp, appUrl) {
   assert(state.tankHudText.includes("W:"), "Tank HUD should expose wallet and total wealth.");
   assert(state.tankStatusText.includes("Lv1") && !state.tankStatusText.includes("Fish") && !state.tankStatusText.includes("Coin"), "Tank status should expose tank level without fish or coin capacity text.");
   assert(state.tankCareText.includes("Clean") && state.tankCareText.includes("Happy"), "Tank care status should visibly expose cleanliness and happiness.");
-  assert(state.assetCoverage.fish === state.fishTypeCount, "All fish should have loaded custom asset textures.");
+  assert(
+    state.assetCoverage.fish < state.fishTypeCount,
+    "Fish texture assets should be lazy-loaded instead of preloading the whole catalog."
+  );
   assert(state.assetCoverage.food >= 12, "All food, medicine, and supply types should have loaded custom asset textures.");
   assert(state.assetCoverage.decorations >= 12, "Decoration catalog should have the expanded custom asset set.");
   assert(state.assetCoverage.coins === 3, "All three coin types should have loaded custom asset textures.");
