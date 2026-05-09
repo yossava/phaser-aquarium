@@ -2,7 +2,7 @@ import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanic
 
 export const SAVE_VERSION = 8;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
-export const MAX_OFFLINE_SECONDS = 60 * 60 * 8;
+export const MAX_OFFLINE_SECONDS = 60 * 60 * 3;
 
 export type SavedFish = {
   typeId: string;
@@ -15,7 +15,6 @@ export type SavedFish = {
   nextCoinDropInMs: number;
   fatalCareSeconds?: number;
   gender?: FishGender;
-  evolutionStage?: number;
 };
 
 export type SavedDecoration = {
@@ -349,8 +348,7 @@ function sanitizeFish(fish: Partial<SavedFish>): SavedFish | undefined {
     health: clamp(sanitizeNumber(fish.health, 100), 0, 100),
     nextCoinDropInMs: Math.max(0, sanitizeNumber(fish.nextCoinDropInMs, 0)),
     fatalCareSeconds: clamp(sanitizeNumber(fish.fatalCareSeconds, 0), 0, 3600),
-    gender: fish.gender === "F" ? "F" : "M",
-    evolutionStage: clamp(Math.floor(sanitizeNumber(fish.evolutionStage, 0)), 0, 3)
+    gender: fish.gender === "F" ? "F" : "M"
   };
 }
 

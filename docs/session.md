@@ -36,7 +36,7 @@
 - Store fish cards should always show a fish image: generated PNG where available, otherwise a tinted fallback fish with food-tail color.
 - Fish generation prompts must explicitly reject realistic/search-result/stock-art looks and require a straight horizontal tail axis for animation consistency.
 - Runtime sprite PNGs now cover Goldfish, Pearl Gourami, Corydoras, Angelfish, Celestial Koi, Cleaner Shrimp, and Feeder Snail, with procedural textures kept as fallback.
-- Runtime PNG coverage now spans the full current catalog: all 50 fish, all food/medicine/evolve/event items, all coin types, expanded decorations, helper creatures, and the right-side menu icons.
+- Runtime PNG coverage now spans the full current catalog: all 50 fish, all food/medicine/event items, all coin types, expanded decorations, helper creatures, and the right-side menu icons.
 - The current full-catalog asset pack is deterministic and data-driven from JSON content so future fish/items can be regenerated consistently without hand-maintaining preload lists.
 - Store cards should show item art for fish, food, decorations, and helper creatures, while the tank rails should use image icons for food tools and menu destinations.
 
@@ -170,8 +170,8 @@
 - Removed secondary Use/Place actions from Store cards; bought items are handled by tank tools, the Book, or auto-add behavior after purchase.
 - Increased rental duration controls so Auto Feeder and Auto Coin Collector can be rented for up to 60 minutes.
 - Changed active rental purchases to extend the current timer instead of being ignored.
-- Added the owned fish statistics page under Book/Album with type, gender, exact age, worth, evolution, and Sell/Evo/Breed controls.
-- Added Evolve Pill, fish gender, three evolution stages, 50% evolution failure death risk, and same-species M/F breeding with rare baby chances.
+- Added the owned fish statistics page under Book/Album with type, gender, exact age, worth, and Sell/Breed controls.
+- Added fish gender and same-species M/F breeding with rare baby chances.
 - Added compact number formatting across visible game UI so large values use one decimal digit suffixes like `K`, `M`, and `B`.
 - Added a tank view scale tied to tank level, so upgraded tanks render fish, food, coins, decorations, bubbles, and sand more zoomed out while UI stays fixed.
 - Reworked tank view scaling so upgrades expand the tank world behind the viewport instead of shrinking the rendered aquarium, keeping the background, floor, contents, and pointer interactions full-screen.

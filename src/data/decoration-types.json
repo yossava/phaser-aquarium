@@ -3,117 +3,196 @@
     "id": "plant",
     "name": "Plant",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 20 },
+    "price": {
+      "coinType": "common",
+      "amount": 120
+    },
     "texture": "decor-plant",
-    "habitatTags": ["plant", "freshwater"],
+    "habitatTags": [
+      "plant",
+      "freshwater"
+    ],
     "happinessBonus": 3
   },
   {
     "id": "rock",
     "name": "Rock",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 25 },
+    "price": {
+      "coinType": "common",
+      "amount": 150
+    },
     "texture": "decor-rock",
-    "habitatTags": ["rock", "freshwater"],
+    "habitatTags": [
+      "rock",
+      "freshwater"
+    ],
     "happinessBonus": 2
   },
   {
     "id": "castle",
     "name": "Castle",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 2 },
+    "price": {
+      "coinType": "rare",
+      "amount": 12
+    },
     "texture": "decor-castle",
-    "habitatTags": ["shelter", "fantasy"],
+    "habitatTags": [
+      "shelter",
+      "fantasy"
+    ],
     "happinessBonus": 6
   },
   {
     "id": "crystal-arch",
     "name": "Crystal Arch",
     "rarity": "superRare",
-    "price": { "coinType": "superRare", "amount": 1 },
+    "price": {
+      "coinType": "superRare",
+      "amount": 5
+    },
     "texture": "decor-crystal",
-    "habitatTags": ["crystal", "fantasy"],
+    "habitatTags": [
+      "crystal",
+      "fantasy"
+    ],
     "happinessBonus": 10
   },
   {
     "id": "driftwood",
     "name": "Driftwood",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 45 },
+    "price": {
+      "coinType": "common",
+      "amount": 260
+    },
     "texture": "decor-driftwood",
-    "habitatTags": ["wood", "freshwater"],
+    "habitatTags": [
+      "wood",
+      "freshwater"
+    ],
     "happinessBonus": 3
   },
   {
     "id": "bubble-stone",
     "name": "Bubble Stone",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 55 },
+    "price": {
+      "coinType": "common",
+      "amount": 340
+    },
     "texture": "decor-bubble-stone",
-    "habitatTags": ["stone", "aeration"],
+    "habitatTags": [
+      "stone",
+      "aeration"
+    ],
     "happinessBonus": 4
   },
   {
     "id": "moss-cave",
     "name": "Moss Cave",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 75 },
+    "price": {
+      "coinType": "common",
+      "amount": 500
+    },
     "texture": "decor-moss-cave",
-    "habitatTags": ["shelter", "plant"],
+    "habitatTags": [
+      "shelter",
+      "plant"
+    ],
     "happinessBonus": 5
   },
   {
     "id": "coral-fan",
     "name": "Coral Fan",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 3 },
+    "price": {
+      "coinType": "rare",
+      "amount": 18
+    },
     "texture": "decor-coral-fan",
-    "habitatTags": ["coral", "reef"],
+    "habitatTags": [
+      "coral",
+      "reef"
+    ],
     "happinessBonus": 7
   },
   {
     "id": "shell-tower",
     "name": "Shell Tower",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 4 },
+    "price": {
+      "coinType": "rare",
+      "amount": 24
+    },
     "texture": "decor-shell-tower",
-    "habitatTags": ["shell", "shelter"],
+    "habitatTags": [
+      "shell",
+      "shelter"
+    ],
     "happinessBonus": 8
   },
   {
     "id": "treasure-chest",
     "name": "Treasure Chest",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 5 },
+    "price": {
+      "coinType": "rare",
+      "amount": 30
+    },
     "texture": "decor-treasure-chest",
-    "habitatTags": ["treasure", "fantasy"],
+    "habitatTags": [
+      "treasure",
+      "fantasy"
+    ],
     "happinessBonus": 9
   },
   {
     "id": "neon-anemone",
     "name": "Neon Anemone",
     "rarity": "superRare",
-    "price": { "coinType": "superRare", "amount": 2 },
+    "price": {
+      "coinType": "superRare",
+      "amount": 8
+    },
     "texture": "decor-neon-anemone",
-    "habitatTags": ["coral", "glow"],
+    "habitatTags": [
+      "coral",
+      "glow"
+    ],
     "happinessBonus": 12
   },
   {
     "id": "pearl-statue",
     "name": "Pearl Statue",
     "rarity": "superRare",
-    "price": { "coinType": "superRare", "amount": 3 },
+    "price": {
+      "coinType": "superRare",
+      "amount": 12
+    },
     "texture": "decor-pearl-statue",
-    "habitatTags": ["pearl", "fantasy"],
+    "habitatTags": [
+      "pearl",
+      "fantasy"
+    ],
     "happinessBonus": 14
   },
   {
     "id": "air-stone",
     "name": "Air Stone",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 65 },
+    "price": {
+      "coinType": "common",
+      "amount": 420
+    },
     "texture": "decor-air-stone",
-    "habitatTags": ["stone", "aeration", "bubbles"],
+    "habitatTags": [
+      "stone",
+      "aeration",
+      "bubbles"
+    ],
     "happinessBonus": 4
   }
 ]

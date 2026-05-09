@@ -111,7 +111,18 @@ canvas {
 
   .aq-card {
     @apply flex h-full min-h-0 flex-col gap-1.5 overflow-hidden rounded-2xl border bg-sky-950/70 p-2 shadow-lg;
+    container-type: size;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .aq-food-preview {
+    height: clamp(42px, 28%, 72px);
+  }
+
+  .aq-food-card-body {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(30px, auto);
+    gap: clamp(0.2rem, 1.25cqh, 0.42rem);
   }
 
   .aq-page-shell {
@@ -435,13 +446,32 @@ canvas {
   }
 
   .aq-buy {
-    @apply min-h-8 rounded-xl border border-lime-200/70 px-3 py-1.5 text-xs font-black text-white shadow-lg;
+    @apply min-h-0 rounded-xl border border-lime-200/70 px-3 py-1 text-xs font-black text-white shadow-lg;
+    height: clamp(30px, 15%, 38px);
     background: linear-gradient(#80e43a, #26921f);
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(8, 52, 11, 0.8);
   }
 
+  .aq-food-qty-row {
+    display: grid;
+    grid-template-columns: clamp(30px, 21%, 38px) minmax(0, 1fr) clamp(30px, 21%, 38px);
+    gap: clamp(0.25rem, 1.25cqw, 0.45rem);
+    align-items: center;
+    min-height: 0;
+  }
+
   .aq-qty {
-    @apply min-h-7 rounded-lg border border-cyan-200/30 bg-sky-900/80 px-2 py-1 text-[10px] font-black text-cyan-50;
+    @apply min-h-0 rounded-lg border border-cyan-200/30 bg-sky-900/80 px-2 py-1 text-center text-[10px] font-black text-cyan-50;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .aq-qty-step {
+    @apply grid aspect-square h-auto min-h-0 w-full place-items-center px-0 text-lg leading-none;
+  }
+
+  .aq-qty-value {
+    @apply grid h-full min-h-0 place-items-center truncate text-sm;
   }
 
   .aq-buy:disabled,

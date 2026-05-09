@@ -476,7 +476,6 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].lengthCm > 0 && state.fish[0].weightGrams > 0, "Fish snapshot should expose age-rooted length and weight.");
   assert(state.fish[0].lengthCm >= 20, "Fish length labels should use the larger 10x fantasy centimeter scale.");
   assert(state.fish[0].lengthLabel.endsWith(" cm") && / (g|kg)$/.test(state.fish[0].weightLabel), "Fish size labels should use readable metric units.");
-  assert(state.fish[0].evolutionStage === 0, "New fish should start at evolution stage zero.");
   assert(!state.fish[0].statusBars.careBarsVisible, "Fish care bars should stay hidden while fullness and health are both above 50%.");
   assert(state.fish[0].statusBars.y < state.fish[0].y, "Fish alert markers should sit above the fish when shown.");
   assert(state.fish[0].statusBars.fullnessRatio > 0.8 && state.fish[0].statusBars.moodRatio > 0.9, "Fish status bars should show full as good for fullness and mood.");
@@ -644,13 +643,6 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('food')");
   state = await waitFor(cdp, (current) => current.activeTab === "food", "Food tab did not activate.");
   assert(state.foodBuyQuantities.basic === 1, "Food buy quantity should default to one.");
-  await evaluate(cdp, "window.__aquariumTest.addWallet('rare', 4)");
-  await evaluate(cdp, "window.__aquariumTest.buyFood('evolve')");
-  state = await waitFor(
-    cdp,
-    (current) => current.foodInventoryByType.evolve === 1 && current.wallet.rare === 2 && current.placementMode === "none",
-    "Buying an evolve pill should add stock without activating tank drop mode."
-  );
 
   await evaluate(cdp, "window.__aquariumTest.setFoodBuyQuantity('basic', 3)");
   state = await waitFor(cdp, (current) => current.foodBuyQuantities.basic === 3, "Food buy quantity did not update.");
@@ -879,8 +871,7 @@ async function runRegression(cdp, appUrl) {
       current.saved &&
       current.fishCount === 1 &&
       current.wallet.common === walletAfterHappyCoinCollection &&
-      current.foodInventoryByType.basic === basicFoodBeforeSave &&
-      current.foodInventoryByType.evolve === 1,
+      current.foodInventoryByType.basic === basicFoodBeforeSave,
     "Saved tank state did not restore after reload."
   );
   assert(state.fish[0].ageLabel === "0d", "Reloaded fish should retain its fish-time age label without stage categories.");
@@ -1105,27 +1096,6 @@ async function runRegression(cdp, appUrl) {
   state = await waitFor(cdp, (current) => current.activeScreen === "album", "Fish stats page did not open from the album screen.");
   assert(state.fish[0].lengthLabel.endsWith(" cm") && / (g|kg)$/.test(state.fish[0].weightLabel), "Book fish stats should have readable length and weight labels.");
   await captureNamedScreenshot(cdp, "book-fish-length-weight.png");
-  await evaluate(cdp, "window.__aquariumTest.addFood('evolve', 1)");
-  const evolutionFee = state.fish[0].evolutionFee;
-  await evaluate(cdp, `window.__aquariumTest.addWallet('${evolutionFee.coinType}', ${evolutionFee.amount})`);
-  state = await waitFor(
-    cdp,
-    (current) => current.foodInventoryByType.evolve >= 2 && current.wallet[evolutionFee.coinType] >= evolutionFee.amount,
-    "Evolution setup did not add pill stock and fee."
-  );
-  const walletBeforeEvolution = state.wallet[evolutionFee.coinType];
-  await evaluate(cdp, "window.__aquariumTest.forceFishAge(0, 10000)");
-  await evaluate(cdp, "window.__aquariumTest.evolveFishAt(0, 'success')");
-  state = await waitFor(
-    cdp,
-    (current) =>
-      current.fishCount === 1 &&
-      current.fish[0].evolutionStage === 1 &&
-      current.fish[0].ageLabel === "0d" &&
-      current.fish[0].ageMonths < 0.01 &&
-      current.wallet[evolutionFee.coinType] === walletBeforeEvolution - evolutionFee.amount,
-    "Successful evolution should spend pill and fee, raise evolution, and reset age to zero."
-  );
 
   await evaluate(cdp, "window.__aquariumTest.addFishForTest('goldfish', 350, 420)");
   await evaluate(cdp, "window.__aquariumTest.setFishGender(0, 'M')");
@@ -1140,7 +1110,7 @@ async function runRegression(cdp, appUrl) {
     cdp,
     (current) =>
       current.fishCount === 3 &&
-      current.fish.some((fish) => fish.typeId === "goldfish" && fish.ageLabel === "0d" && fish.evolutionStage === 0),
+      current.fish.some((fish) => fish.typeId === "goldfish" && fish.ageLabel === "0d"),
     "Breeding an M/F same-species pair should create a new age-zero fish."
   );
   const statsSellValue = state.fish[1].sellValue;
@@ -1152,16 +1122,6 @@ async function runRegression(cdp, appUrl) {
     "Fish stats page should allow selling owned fish."
   );
   await evaluate(cdp, "window.__aquariumTest.closeModal()");
-  await evaluate(cdp, "window.__aquariumTest.addFood('evolve', 1)");
-  const deathFee = state.fish[0].evolutionFee;
-  await evaluate(cdp, `window.__aquariumTest.addWallet('${deathFee.coinType}', ${deathFee.amount})`);
-  state = await waitFor(
-    cdp,
-    (current) => current.foodInventoryByType.evolve >= 1 && current.wallet[deathFee.coinType] >= deathFee.amount,
-    "Forced evolution failure setup did not add pill stock and fee."
-  );
-  await evaluate(cdp, "window.__aquariumTest.evolveFishAt(0, 'death')");
-  state = await waitFor(cdp, (current) => current.fishCount === 1, "Failed evolution should remove the fish.");
   await evaluate(cdp, "window.__aquariumTest.setScreen('tank')");
   const walletAfterSelling = state.wallet.common;
 

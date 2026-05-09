@@ -5,7 +5,7 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 5
+      "amount": 4
     },
     "nutrition": 46,
     "acceptedByDefault": true,
@@ -18,7 +18,7 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 25
+      "amount": 22
     },
     "nutrition": 230,
     "acceptedByDefault": true,
@@ -31,7 +31,7 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 125
+      "amount": 110
     },
     "nutrition": 1150,
     "acceptedByDefault": true,
@@ -44,7 +44,7 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 625
+      "amount": 550
     },
     "nutrition": 5750,
     "acceptedByDefault": true,
@@ -57,7 +57,7 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 6
+      "amount": 5
     },
     "nutrition": 40,
     "acceptedByDefault": true,
@@ -70,7 +70,7 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 1
+      "amount": 2
     },
     "nutrition": 70,
     "acceptedByDefault": true,
@@ -96,7 +96,7 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 1
+      "amount": 3
     },
     "nutrition": 76,
     "acceptedByDefault": false,
@@ -109,7 +109,7 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 2
+      "amount": 4
     },
     "nutrition": 62,
     "acceptedByDefault": false,
@@ -122,25 +122,12 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 18
+      "amount": 45
     },
     "nutrition": 12,
     "acceptedByDefault": true,
     "calories": 10,
     "densityLevel": 1
-  },
-  {
-    "id": "evolve",
-    "name": "Evolve Pill",
-    "rarity": "rare",
-    "price": {
-      "coinType": "rare",
-      "amount": 2
-    },
-    "nutrition": 1,
-    "acceptedByDefault": false,
-    "calories": 1,
-    "densityLevel": 5
   },
   {
     "id": "creature",
@@ -161,7 +148,7 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 1
+      "amount": 2
     },
     "nutrition": 90,
     "acceptedByDefault": false,

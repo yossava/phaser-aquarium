@@ -13,7 +13,6 @@ export type FoodTypeId =
   | "protein"
   | "coral"
   | "medicine"
-  | "evolve"
   | "creature"
   | "event";
 

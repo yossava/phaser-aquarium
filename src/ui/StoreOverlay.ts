@@ -2,7 +2,7 @@ import { fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
 import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
-const supplyFoodIds = new Set(["medicine", "evolve"]);
+const supplyFoodIds = new Set(["medicine"]);
 const hiddenFoodIds = new Set(["creature"]);
 type StoreDecorationSize = "s" | "m" | "l" | "xl";
 type TankStoreCategory = "tank" | "background" | "seabed" | "tools" | "decorations";
@@ -66,6 +66,8 @@ export type StoreOverlayState = {
   wealth: number;
   activeTankName: string;
   activeTankLevel: number;
+  fishPurchasesToday: number;
+  fishPurchaseDailyLimit: number;
   fishCount: number;
   fishCapacity: number;
   fishOwned: Record<string, number>;
@@ -99,6 +101,8 @@ export class StoreOverlay {
   private coinFilter: CoinType = "common";
   private page = 1;
   private quantities = new Map<string, number>();
+  private quantityHoldDelay?: number;
+  private quantityHoldInterval?: number;
   private visible = false;
 
   constructor(
@@ -126,6 +130,7 @@ export class StoreOverlay {
 
   hide(): void {
     this.visible = false;
+    this.stopQuantityHold();
     this.root.classList.add("hidden");
   }
 
@@ -342,7 +347,7 @@ export class StoreOverlay {
 
   private currentItems(state: StoreOverlayState): Array<FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard> {
     if (this.activeTab === "fish") {
-      return fishTypes.filter((fish) => fish.price.coinType === this.coinFilter);
+      return fishTypes.filter((fish) => fish.price.coinType === this.coinFilter && fish.tankLevel <= Math.max(1, state.activeTankLevel));
     }
     if (this.activeTab === "food") {
       return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && !supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
@@ -394,6 +399,8 @@ export class StoreOverlay {
   private fishCard(fish: FishType, state: StoreOverlayState): HTMLElement {
     const owned = state.fishOwned[fish.id] ?? 0;
     const affordable = canAfford(state.wallet, fish.price);
+    const dailyLimitReached = state.fishPurchasesToday >= state.fishPurchaseDailyLimit;
+    const disabled = !affordable || dailyLimitReached;
     const card = this.baseCard(fish.rarity);
     card.append(
       this.preview(`/assets/fish/${fish.id}.png`, fish.name),
@@ -404,7 +411,12 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)}`]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [this.productionHint(fish)]),
-        button(affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyFish(fish), !affordable)
+        button(
+          dailyLimitReached ? "Daily Limit" : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
+          "aq-buy mt-auto w-full",
+          () => this.actions.buyFish(fish),
+          disabled
+        )
       ])
     );
     return card;
@@ -417,33 +429,89 @@ export class StoreOverlay {
     const owned = state.foodOwned[food.id] ?? 0;
     const buyLabel = this.activeTab === "supply" ? "Buy Supply" : "Buy Food";
     const card = this.baseCard(food.rarity);
-    const controls = el("div", "mt-1.5 grid grid-cols-3 gap-1");
-    [1, 10, 100, 500, 1000].forEach((amount) => {
-      controls.append(button(`+${formatNumber(amount)}`, "aq-qty", () => {
-        this.quantities.set(food.id, Math.min(9999, quantity + amount));
-        this.render();
-      }));
-    });
+    const controls = div("aq-food-qty-row", [
+      this.quantityHoldButton("-", food.id, -1, quantity <= 1),
+      div("aq-qty aq-qty-value", [formatNumber(quantity)]),
+      this.quantityHoldButton("+", food.id, 1)
+    ]);
     card.append(
-      this.preview(`/assets/food/${food.id}.png`, food.name),
-      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+      this.preview(`/assets/food/${food.id}.png`, food.name, "aq-food-preview"),
+      div("flex min-w-0 flex-1 flex-col overflow-hidden aq-food-card-body", [
         div("flex items-start justify-between gap-1.5", [
           div("min-w-0 truncate text-sm font-black leading-tight", [food.name]),
           this.priceBadge(totalPrice)
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`]),
-        div("mt-1 flex items-center gap-1 text-[10px]", [
-          button(`Qty ${formatNumber(quantity)}`, "aq-qty flex-1", () => undefined),
-          button("Reset", "aq-qty", () => {
-            this.quantities.set(food.id, 1);
-            this.render();
-          })
-        ]),
         controls,
         button(affordable ? buyLabel : `Need ${formatPrice(totalPrice)}`, "aq-buy mt-auto w-full", () => this.actions.buyFood(food, quantity), !affordable)
       ])
     );
     return card;
+  }
+
+  private quantityHoldButton(label: string, foodId: string, delta: number, disabled = false): HTMLButtonElement {
+    const node = el("button", "aq-qty aq-qty-step") as HTMLButtonElement;
+    node.type = "button";
+    node.textContent = label;
+    node.disabled = disabled;
+    let pointerStarted = false;
+
+    const applyDelta = (): void => {
+      this.changeQuantity(foodId, delta);
+    };
+    const stop = (): void => this.stopQuantityHold();
+    const start = (event: Event): void => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (node.disabled) {
+        return;
+      }
+      pointerStarted = event.type === "pointerdown";
+      applyDelta();
+      this.stopQuantityHold();
+      this.quantityHoldDelay = window.setTimeout(() => {
+        this.quantityHoldInterval = window.setInterval(applyDelta, 70);
+      }, 320);
+      window.addEventListener("pointerup", stop, { once: true });
+      window.addEventListener("pointercancel", stop, { once: true });
+    };
+
+    node.addEventListener("pointerdown", start);
+    node.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (pointerStarted) {
+        pointerStarted = false;
+        return;
+      }
+      if (!node.disabled) {
+        applyDelta();
+      }
+    });
+    node.addEventListener("contextmenu", (event) => event.preventDefault());
+    return node;
+  }
+
+  private changeQuantity(foodId: string, delta: number): void {
+    const current = this.quantities.get(foodId) ?? 1;
+    const next = Math.max(1, Math.min(9999, current + delta));
+    if (next === current) {
+      this.stopQuantityHold();
+      return;
+    }
+    this.quantities.set(foodId, next);
+    this.render();
+  }
+
+  private stopQuantityHold(): void {
+    if (this.quantityHoldDelay !== undefined) {
+      window.clearTimeout(this.quantityHoldDelay);
+      this.quantityHoldDelay = undefined;
+    }
+    if (this.quantityHoldInterval !== undefined) {
+      window.clearInterval(this.quantityHoldInterval);
+      this.quantityHoldInterval = undefined;
+    }
   }
 
   private helperCard(creature: HelperCreatureType, state: StoreOverlayState): HTMLElement {
@@ -579,8 +647,8 @@ export class StoreOverlay {
     return el("article", `aq-card ${classByRarity[rarity]}`);
   }
 
-  private preview(src: string, alt: string): HTMLElement {
-    const wrap = el("div", "mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center");
+  private preview(src: string, alt: string, className = ""): HTMLElement {
+    const wrap = el("div", `mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center ${className}`.trim());
     wrap.append(image(src, alt, "max-h-full max-w-[94%] object-contain drop-shadow-lg"));
     return wrap;
   }

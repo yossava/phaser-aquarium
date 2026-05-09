@@ -9,7 +9,7 @@
 - [x] Tighten fish generation prompts to avoid realistic stock-art output and enforce straight tails.
 - [x] Add fish asset-generation plan with shared art DNA and per-species prompts for all 50 catalog fish.
 - [x] Generate and apply runtime PNG assets for all 50 fish types.
-- [x] Generate and apply runtime PNG assets for every food, medicine, evolve pill, event treat, and coin type.
+- [x] Generate and apply runtime PNG assets for every food, medicine, event treat, and coin type.
 - [x] Generate and apply runtime PNG assets for menu icons, helper creatures, and expanded decorations.
 - [x] Generate and apply a runtime PNG aquarium floor asset.
 - [x] Retint the aquarium floor back toward yellow sand while preserving an underwater blue wash.
@@ -32,13 +32,10 @@
 - [x] Add Store catalog previews for food, decorations, and helper creatures.
 - [x] Add regression asset-coverage checks and visual contact-sheet artifacts for the full asset pack.
 - [x] Add high-DPI canvas rendering so the portrait game no longer looks like a stretched low-resolution canvas on retina/mobile screens.
-- [x] Add owned fish statistics page with type, age, worth, gender, evolution stage, and sell/evolve/breed actions.
-- [x] Add Evolve Pill as a rare shop item.
+- [x] Add owned fish statistics page with type, age, worth, gender, and sell/breed actions.
 - [x] Add fish gender to owned fish state and saves.
-- [x] Add fish evolution stages with successful evolution resetting age to zero.
-- [x] Add 50% evolution success / 50% death resolution.
 - [x] Add same-species M/F breeding with 70% same species and 30% rare age-zero outcome.
-- [ ] Balance evolution fees, breed pacing, and death-risk messaging for production.
+- [ ] Balance breed pacing for production.
 
 ## Phase 1: Foundations
 
@@ -93,8 +90,6 @@
 - [x] Remove player-facing fish size category labels: baby, small, med, big, and max.
 - [x] Add continuous adult growth toward a very-big size cap.
 - [x] Make fish visual size scale directly from exact age instead of size categories.
-- [x] Add three fish evolution stages.
-- [x] Add Evolve Pill evolution item and fee.
 - [x] Add breeding for M/F same-species pairs.
 - [ ] Add clear age-up visual moment.
 - [x] Add fish details view with age, rarity, mood, hunger, health, food need, production, community status, and sell value.
@@ -205,7 +200,7 @@
 - [x] Expand regression tests for sell protections.
 - [x] Expand regression tests for real-time fish age conversion and 50-year growth cap.
 - [ ] Expand regression tests for age-up and age-based production.
-- [x] Expand regression tests for gender, exact age, Evolve Pill purchase, evolution success/death, breeding, and selling from the fish statistics page.
+- [x] Expand regression tests for gender, exact age, breeding, and selling from the fish statistics page.
 - [x] Expand regression tests for helper creatures appearing in Book/Album and selling from that page.
 - [ ] Expand regression tests for wrong-food rejection.
 - [x] Expand regression tests for community-safe mixed-species behavior.

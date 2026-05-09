@@ -15,7 +15,6 @@ const foodColors = {
   protein: 0xff5b5b,
   coral: 0x35d6d0,
   medicine: 0x43d66f,
-  evolve: 0xb47cff,
   event: 0xf39cff
 };
 
@@ -426,15 +425,12 @@ function drawFoodAsset(food) {
   const light = mixColor(color, 0xffffff, 0.45);
   const dark = mixColor(color, 0x061725, 0.35);
   canvas.fillEllipse(48, 58, 27, 9, rgba(0x061725, 34));
-  if (food.id === "medicine" || food.id === "evolve") {
+  if (food.id === "medicine") {
     canvas.fillRoundedRect(18, 34, 60, 28, 14, rgba(color, 255));
     canvas.line(48, 36, 48, 60, 3, rgba(dark, 150));
     canvas.strokeEllipse(48, 48, 31, 15, 2.5, rgba(0xffffff, 165));
     canvas.fillEllipse(34, 43, 4, 4, rgba(light, 220));
     canvas.fillEllipse(62, 53, 4, 4, rgba(light, 180));
-    if (food.id === "evolve") {
-      canvas.star(48, 48, 10, rgba(0xffffff, 190), 4, 5);
-    }
     return canvas;
   }
   if (food.id === "herb") {

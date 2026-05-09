@@ -51,13 +51,6 @@
       "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
     },
     {
-      "file": "/assets/food/evolve.png",
-      "width": 96,
-      "height": 96,
-      "source": "assets/generated/source/food/evolve_source.png",
-      "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
-    },
-    {
       "file": "/assets/food/creature.png",
       "width": 96,
       "height": 96,

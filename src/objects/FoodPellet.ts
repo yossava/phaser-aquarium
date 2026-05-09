@@ -35,12 +35,12 @@ export class FoodPellet {
     this.sprite = scene.add.image(x, y, textureKey);
     this.velocityX = options.velocityX ?? 0;
     this.velocityY = options.velocityY ?? this.sinkSpeed;
-    if (foodType.id !== "medicine" && foodType.id !== "evolve") {
+    if (foodType.id !== "medicine") {
       this.sprite.setTint(this.tintForFood());
     }
     const displayScale = options.displayScale ?? 1;
     this.baseDisplaySize =
-      (foodType.id === "medicine" || foodType.id === "evolve"
+      (foodType.id === "medicine"
         ? pillPelletDisplaySize
         : foodPelletSizeByDensity[foodType.densityLevel] ?? defaultPelletDisplaySize) * displayScale;
     this.setWorldScaleCompensation(1);
@@ -95,7 +95,7 @@ export class FoodPellet {
       return customTextureKey;
     }
 
-    return this.foodType.id === "medicine" ? "medicine-pill" : this.foodType.id === "evolve" ? "evolve-pill" : "food";
+    return this.foodType.id === "medicine" ? "medicine-pill" : "food";
   }
 
   private tintForFood(): number {

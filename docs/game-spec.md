@@ -46,7 +46,7 @@ The player owns a growing aquarium that becomes more beautiful, rare, and person
 
 1. Complete daily care goals.
 2. Unlock new fish tiers and decoration sets.
-3. Breed fish pairs, evolve special pets, or discover fish variants.
+3. Breed fish pairs or discover fish variants.
 4. Grow each tank's net worth to raise its derived level, capacity, and status.
 5. Complete collection albums.
 6. Build themed aquariums.
@@ -86,7 +86,7 @@ The current MVP should prove:
 - More fish types.
 - More decorations.
 - Fish selling.
-- Owned fish statistics page with type, exact age, worth, gender, evolution, and sell actions.
+- Owned fish statistics page with type, exact age, worth, gender, and sell actions.
 - Fish rarity: common, rare, and super rare.
 - Three coin types: common, rare, and super rare.
 - Shop categories and prices based on coin type.
@@ -171,7 +171,7 @@ Rarity tiers:
 
 All fish start at age zero. Fish age uses fish-time: 1 real hour equals 1 fish month, real minutes convert into fish-days, and 12 real hours equals 1 fish year. Fish stats should show exact age, age-rooted length, and age-rooted weight, not player-facing categories like baby, medium, big, or max. Age changes size, calorie need, mood cycle, production type, production rate, and selling value. Fish visual size is based on exact age and species scale: new fish are readable immediately, the first fish-year grows quickly, later years taper, and growth continues until 50 fish-years. Visible size is capped at about 50% of the portrait screen width.
 
-Fish also have gender and up to three evolution stages. Evolution spends an Evolve Pill and a fee, has a 50% success / 50% death risk in the current design, and successful evolution resets age to zero. Same-species male/female breeding creates an age-zero fish: 70% same species and 30% random rare species.
+Fish also have gender. Same-species male/female breeding creates an age-zero fish: 70% same species and 30% random rare species.
 
 ## Species And Community Tank Rules
 
@@ -261,7 +261,7 @@ Production needs these screens or overlays:
 - Tank screen: main play area, HUD, fish, decorations, coins, food drops.
 - Store: fish, food, decorations, helper creatures, tanks, event items, rarity lanes.
 - Inventory: owned fish, food, decorations, and locked items.
-- Book statistics: owned fish grid showing type, exact age, age-rooted length and weight, worth, gender, evolution stage, and quick actions for sell, evolve, and breed; owned helper creature grid with sell actions for cleanup.
+- Book statistics: owned fish grid showing type, exact age, age-rooted length and weight, worth, gender, and quick actions for sell and breed; owned helper creature grid with sell actions for cleanup.
 - Fish details: age, length, weight, rarity, mood, hunger, health, calorie need, food compatibility, production, community status, sell value.
 - Placement confirmation: warns about tank limits where needed.
 - Sell confirmation: shows payout and extra warning for event-only fish.

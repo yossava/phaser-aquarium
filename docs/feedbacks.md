@@ -59,8 +59,6 @@
 - Renting an active Auto Feeder or Auto Coin Collector should add duration to the current timer.
 - Add a fish statistics page showing owned fish type, age, worth, and gender.
 - Fish can be sold from the fish statistics page.
-- Add fish evolution with three stages and age reset after successful evolution.
-- Add Evolve Pill purchase and fee-based evolution with success/death chance.
 - Add M/F same-species breeding with same-species or rare baby outcomes.
 - Large in-game numbers should abbreviate visually with one decimal digit, such as `24.7K` or `67.8M`.
 - Each tank level increase should zoom the aquarium view out so the tank feels bigger.

@@ -16,13 +16,6 @@ const coinTypeLabel: Record<CoinProduction["coinType"], string> = {
   rare: "Rare",
   superRare: "Super Rare"
 };
-const bridgeChanceByStage: Record<AgeStage, number> = {
-  baby: 0.05,
-  juvenile: 0.08,
-  adult: 0.12,
-  elder: 0.16,
-  master: 0.22
-};
 const minimumHungerToEatMore = 3;
 const veryBigScaleMultiplier = 1.55;
 const secondsPerFishMonth = 60 * 60;
@@ -76,7 +69,6 @@ export class Fish {
   public medicatedUntil = 0;
   public fatalCareSeconds = 0;
   public gender: FishGender;
-  public evolutionStage: number;
   public tankLevel: number;
   private statusBars: Phaser.GameObjects.Graphics;
   private tailMark: Phaser.GameObjects.Graphics;
@@ -101,10 +93,9 @@ export class Fish {
     public readonly type: FishType,
     x: number,
     y: number,
-    options: { gender?: FishGender; evolutionStage?: number; tankLevel?: number } = {}
+    options: { gender?: FishGender; tankLevel?: number } = {}
   ) {
     this.gender = options.gender ?? (Phaser.Math.Between(0, 1) === 0 ? "M" : "F");
-    this.evolutionStage = Phaser.Math.Clamp(Math.floor(options.evolutionStage ?? 0), 0, 3);
     this.tankLevel = Math.max(1, Math.floor(options.tankLevel ?? 1));
     this.swimPhase = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const textureKey = this.customTextureKey();
@@ -390,7 +381,6 @@ export class Fish {
       this.type.sellBaseValue.amount *
       ageMultiplierByStage[this.ageStage] *
       rarityMultiplier[this.type.rarity] *
-      (1 + this.evolutionStage * 0.42) *
       productionMultiplier *
       sizeMultiplier *
       resilienceMultiplier *
@@ -426,24 +416,6 @@ export class Fish {
     const preferredMultiplier = this.type.preferredFoodTypes.includes(foodType.id) ? 1.08 : 1;
     const medicineMultiplier = foodType.id === "medicine" ? 0.55 : 1;
     return (foodType.calories * preferredMultiplier * medicineMultiplier) / this.calorieNeedMultiplier();
-  }
-
-  public canEvolve(): boolean {
-    return this.evolutionStage < 3;
-  }
-
-  public evolve(): void {
-    if (!this.canEvolve()) {
-      return;
-    }
-
-    this.evolutionStage += 1;
-    this.setAgeSeconds(0);
-    this.hunger = 12;
-    this.health = 100;
-    this.medicatedUntil = 0;
-    this.fatalCareSeconds = 0;
-    this.updateStatusBars();
   }
 
   public isInFatalCareState(): boolean {
@@ -609,50 +581,7 @@ export class Fish {
   }
 
   private withProgressionBridge(production: CoinProduction[]): CoinProduction[] {
-    const options = production.map((entry) =>
-      this.type.rarity === "rare" && entry.coinType === "rare" && entry.chance < 0.55
-        ? { ...entry, chance: 0.55 }
-        : entry
-    );
-    const primary = options[0] ?? this.primaryProduction();
-
-    if (this.type.rarity === "common") {
-      return [
-        ...options,
-        {
-          coinType: "rare",
-          amount: 1,
-          intervalSeconds: Math.max(primary.intervalSeconds + 10, 18),
-          chance: bridgeChanceByStage[this.ageStage]
-        }
-      ];
-    }
-
-    if (this.type.rarity === "rare") {
-      const rareOptions: CoinProduction[] = options.some((entry) => entry.coinType === "rare")
-        ? options
-        : [
-            ...options,
-            {
-              coinType: "rare",
-              amount: Math.max(1, Math.floor(primary.amount / 10)),
-              intervalSeconds: Math.max(primary.intervalSeconds + 8, 20),
-              chance: 0.65
-            }
-          ];
-
-      return [
-        ...rareOptions,
-        {
-          coinType: "superRare",
-          amount: 1,
-          intervalSeconds: Math.max(primary.intervalSeconds + 18, 32),
-          chance: bridgeChanceByStage[this.ageStage] * 0.55
-        }
-      ];
-    }
-
-    return options;
+    return production;
   }
 
   private productionCareMultiplier(): number {

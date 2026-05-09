@@ -30,19 +30,19 @@
 - Added regression asset-coverage validation for both custom background textures.
 - Generated a raster PNG aquarium floor asset and integrated it as the tank floor texture with procedural rectangle fallback.
 - Added regression asset-coverage validation for the custom aquarium floor texture.
-- Kept dropped food pellets, medicine/evolve pills, coin sprites, and coin value labels visually consistent as tank upgrades zoom the tank view out, while fish size remains age-based and absolute.
+- Kept dropped food pellets, medicine, coin sprites, and coin value labels visually consistent as tank upgrades zoom the tank view out, while fish size remains age-based and absolute.
 - Added regression and visual artifact coverage for pickup sizing in upgraded tanks.
-- Generated and applied image-generation source PNGs for the full runtime asset pack: 50 fish, 9 food/medicine/pill items, 3 coin currencies, 12 decorations, 5 menu icons, and 4 helper creatures.
+- Generated and applied image-generation source PNGs for the runtime asset pack: 50 fish, food/medicine items, 3 coin currencies, 12 decorations, 5 menu icons, and 4 helper creatures.
 - Added `tools/apply-generated-assets.mjs` to convert magenta chroma-key image-generated sources into cropped transparent runtime PNGs under `public/assets`.
 - Added subtle fish swimming animation with body shimmer, rotation, and reduced bobbing, with stronger motion while chasing food and damped motion while ill.
 - Added regression coverage to confirm fish sprites animate over time and adjusted feeding regression to test chase/eat behavior without brittle pointer timing.
 - Removed the visible circular background and border from tank-side menu and food icons while keeping their touch targets.
-- Reduced in-tank dropped food, medicine/evolve pills, coins, and coin value labels so thrown items no longer dominate the aquarium view.
+- Reduced in-tank dropped food, medicine, coins, and coin value labels so thrown items no longer dominate the aquarium view.
 - Revamped the tank statistics HUD into separate coin/wealth chips, tank capacity row, care row, and need/action row for better portrait readability.
-- Added a deterministic project-local aquarium asset generator that creates transparent PNGs for all 50 fish, 9 food/medicine/pill items, 3 coin currencies, 12 decorations, 5 menu icons, and 4 helper creatures.
+- Added a deterministic project-local aquarium asset generator that creates transparent PNGs for all 50 fish, food/medicine items, 3 coin currencies, 12 decorations, 5 menu icons, and 4 helper creatures.
 - Expanded the decoration catalog from 4 to 12 options with new common, rare, and super rare shop entries.
 - Replaced manual per-fish asset loading with data-driven Phaser preloads for fish, food, coins, decorations, helpers, and menu icons.
-- Added food, medicine, evolve pill, coin, decoration, helper, and menu icon asset previews to the tank rails and Store catalog cards.
+- Added food, medicine, coin, decoration, helper, and menu icon asset previews to the tank rails and Store catalog cards.
 - Added asset manifests plus visual contact sheets at `artifacts/generated-fish-assets-sheet.png` and `artifacts/generated-item-assets-sheet.png`.
 - Added regression asset-coverage assertions so missing fish, food, coin, decoration, helper, or UI icon textures are caught by `npm test`.
 - Added visual Store artifacts for food/decor asset catalogs and confirmed the new assets in the in-app browser.
@@ -88,7 +88,7 @@
 - Retuned age-only fish sizing so a four-month fish is much larger than a new fish while growth still continues to 50 years.
 - Removed player-facing fish size categories such as baby, small, medium, big, and max from fish stats and tank HUD.
 - Changed fish visual size to scale directly from exact age until 50 fish-years instead of stepping through size categories.
-- Changed new/evolved/bred fish copy to describe age-zero fish without labeling them as babies.
+- Changed new/bred fish copy to describe age-zero fish without labeling them as babies.
 - Changed fish age to fish-time: 1 real hour equals 1 fish month, with minute playtime shown as fish-days.
 - Changed long-term fish growth so size keeps scaling until the fish reaches 50 fish-years.
 - Added regression and visual artifact coverage for the 50-year fully grown fish state.
@@ -112,13 +112,11 @@
 - Added fish age labels to Book/Album owned fish cards.
 - Changed tank upgrades so each higher tank level zooms the tank contents farther out, making the aquarium feel larger while keeping HUD and menu controls fixed.
 - Added compact visual number formatting for in-game values: thousands, millions, billions, and trillions render with one decimal digit, such as `24.7K` and `67.8M`.
-- Added a fish statistics page under Book/Album showing owned fish type, gender, age, worth, rarity, tank level, and evolution stage.
-- Added sell, evolve, and breed actions to the owned fish statistics page.
+- Added a fish statistics page under Book/Album showing owned fish type, gender, age, worth, rarity, and tank level.
+- Added sell and breed actions to the owned fish statistics page.
 - Added fish gender to owned fish state, save data, and regression snapshots.
-- Added Evolve Pill as a rare shop item used for fish evolution.
-- Added three fish evolution stages: successful evolution spends an Evolve Pill and fee, increases evolution by one, and resets age to zero; failure kills the fish.
 - Added same-species M/F breeding with a same-species age-zero outcome or rare age-zero outcome.
-- Expanded regression coverage for fish statistics, Evolve Pill purchase, evolution success/failure, breeding, age categories, gender, and stats-page selling.
+- Expanded regression coverage for fish statistics, breeding, age categories, gender, and stats-page selling.
 - Changed Auto Feeder and Auto Coin Collector rentals so buying again while active adds duration to the current timer.
 - Increased Auto Feeder and Auto Coin Collector rental duration caps to 60 minutes.
 - Added minus/plus quantity controls to food shop cards so players can buy multiple food items at once.

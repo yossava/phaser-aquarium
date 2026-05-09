@@ -3,61 +3,93 @@
     "id": "shrimp",
     "name": "Cleaner Shrimp",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 80 },
+    "price": {
+      "coinType": "common",
+      "amount": 650
+    },
     "texture": "helper-shrimp",
     "speed": 52,
     "coinCollectSeconds": 6,
     "cleanupSeconds": 3,
-    "habitatTags": ["bottom", "cleaner"],
+    "habitatTags": [
+      "bottom",
+      "cleaner"
+    ],
     "description": "Quick cleaner that eats wasted food and helps pick up settled coins."
   },
   {
     "id": "shell",
     "name": "Shell Crawler",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 2 },
+    "price": {
+      "coinType": "rare",
+      "amount": 35
+    },
     "texture": "helper-shell",
     "speed": 32,
     "coinCollectSeconds": 4,
     "cleanupSeconds": 4,
-    "habitatTags": ["bottom", "collector"],
+    "habitatTags": [
+      "bottom",
+      "collector"
+    ],
     "description": "Slow shell helper that steadily scoops coins from the sand."
   },
   {
     "id": "crab",
     "name": "Tiny Crab",
     "rarity": "superRare",
-    "price": { "coinType": "superRare", "amount": 1 },
+    "price": {
+      "coinType": "superRare",
+      "amount": 15
+    },
     "texture": "helper-crab",
     "speed": 44,
     "coinCollectSeconds": 3,
     "cleanupSeconds": 2,
-    "habitatTags": ["bottom", "cleaner", "collector"],
+    "habitatTags": [
+      "bottom",
+      "cleaner",
+      "collector"
+    ],
     "description": "Premium crawler that cleans leftovers and collects coins faster."
   },
   {
     "id": "feeder-snail",
     "name": "Feeder Snail",
     "rarity": "common",
-    "price": { "coinType": "common", "amount": 120 },
+    "price": {
+      "coinType": "common",
+      "amount": 900
+    },
     "texture": "helper-feeder-snail",
     "speed": 20,
     "coinCollectSeconds": 12,
     "cleanupSeconds": 8,
-    "habitatTags": ["bottom", "pet"],
+    "habitatTags": [
+      "bottom",
+      "pet"
+    ],
     "description": "Gentle snail pet that wanders along the seabed."
   },
   {
     "id": "auto-cleaner",
     "name": "Auto Cleaner",
     "rarity": "rare",
-    "price": { "coinType": "rare", "amount": 3 },
+    "price": {
+      "coinType": "rare",
+      "amount": 50
+    },
     "texture": "helper-auto-cleaner",
     "speed": 38,
     "coinCollectSeconds": 9,
     "cleanupSeconds": 5,
     "tankCleanSeconds": 5,
-    "habitatTags": ["bottom", "cleaner", "auto-clean"],
+    "habitatTags": [
+      "bottom",
+      "cleaner",
+      "auto-clean"
+    ],
     "description": "Steady tank cleaner that restores 1% cleanliness every few seconds."
   }
 ]

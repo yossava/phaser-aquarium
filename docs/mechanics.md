@@ -44,7 +44,6 @@ type FoodType =
   | "protein"
   | "coral"
   | "medicine"
-  | "evolve"
   | "event";
 type FishGender = "M" | "F";
 
@@ -226,7 +225,6 @@ Each placed fish should track:
 - Unique ID.
 - Fish type ID.
 - Gender: male or female.
-- Evolution stage from 0 to 3.
 - Age stage.
 - Position.
 - Target position.
@@ -292,19 +290,6 @@ Suggested behavior:
 - Elder fish produce better rewards but may need more specific care.
 - Master fish unlock collection bonuses, special looks, or breeding/discovery bonuses later.
 
-## Evolution
-
-Fish can evolve up to three times.
-
-- Every fish starts at evolution stage 0.
-- Successful evolution increases the stage by 1.
-- After a successful evolution, age resets to zero so players can grow the fish again.
-- Evolution requires an owned Evolve Pill plus the fish's evolution fee.
-- Evolve Pill is a rare shop item and is used from the fish statistics page, not dropped into the tank.
-- Current MVP chance: 50% success and 50% death.
-- Evolution should increase long-term worth and production potential enough to feel exciting, but the death risk should be clear before production release.
-- Stage 3 fish cannot evolve further.
-
 ## Breeding
 
 Breeding creates age-zero fish without direct store purchase.
@@ -312,7 +297,7 @@ Breeding creates age-zero fish without direct store purchase.
 - Requires one male and one female fish of the same species in the tank.
 - Requires open tank capacity.
 - Result chance: 70% same species age-zero fish, 30% random rare age-zero fish.
-- The new fish starts at age zero and evolution stage 0.
+- The new fish starts at age zero.
 - Breeding is launched from the owned fish statistics page.
 - Later production balance may add cooldowns, pair stamina, nursery slots, or special food requirements.
 
@@ -338,8 +323,7 @@ sellValue =
   productionMultiplier *
   sizeMultiplier *
   resilienceMultiplier *
-  conditionMultiplier *
-  evolutionMultiplier
+  conditionMultiplier
 ```
 
 Condition multiplier combines health and hunger/fullness. Age-zero resale is capped below purchase price to prevent instant buy/sell profit.
@@ -675,7 +659,7 @@ Helper creatures are utility tank inhabitants, not fish.
 
 - MVP types: Cleaner Shrimp, Shell Crawler, and Tiny Crab.
 - They crawl along the sand at the bottom of the tank.
-- They do not age, evolve, breed, produce coins, or count toward fish capacity.
+- They do not age, breed, produce coins, or count toward fish capacity.
 - They collect settled coin drops from the bottom.
 - They clean wasted food and medicine pellets that reach the bottom.
 - They should help reduce cleanup friction without fully replacing active feeding and coin collection.
