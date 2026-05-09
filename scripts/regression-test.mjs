@@ -799,43 +799,46 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].state !== "ill", "Medicine should keep a treated fish stable instead of relapsing immediately.");
   assert(state.fish[0].health > 70, "Medicine recovery should preserve health for more than a few seconds.");
 
+  const fatalCareLimitSeconds = 24 * 60 * 60;
+  const almostFatalCareLimitSeconds = fatalCareLimitSeconds - 1;
+
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 80, 100)");
-  await evaluate(cdp, "window.__aquariumTest.setFishFatalCareSeconds(0, 3599)");
+  await evaluate(cdp, `window.__aquariumTest.setFishFatalCareSeconds(0, ${almostFatalCareLimitSeconds})`);
   state = await waitFor(
     cdp,
-    (current) => current.fishCount === 1 && current.fish[0].fatalCareSeconds >= 3599,
+    (current) => current.fishCount === 1 && current.fish[0].fatalCareSeconds >= 86399,
     "Hungry fish fatal-care timer setup failed."
   );
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 20, 100)");
   state = await waitFor(
     cdp,
     (current) => current.fishCount === 1 && current.fish[0].fatalCareSeconds === 0,
-    "Recovering from hunger should reset the 60-minute death timer."
+    "Recovering from hunger should reset the 24-hour death timer."
   );
   await delay(1200);
   state = await snapshot(cdp);
   assert(state.fishCount === 1, "Recovered fish should not die from a cleared hunger timer.");
 
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 80, 100)");
-  await evaluate(cdp, "window.__aquariumTest.setFishFatalCareSeconds(0, 3599.4)");
-  state = await waitFor(cdp, (current) => current.fishCount === 0, "Fish hungry for 60 minutes should die.", 3000);
+  await evaluate(cdp, `window.__aquariumTest.setFishFatalCareSeconds(0, ${fatalCareLimitSeconds - 0.6})`);
+  state = await waitFor(cdp, (current) => current.fishCount === 0, "Fish hungry for 24 hours should die.", 3000);
 
   await evaluate(cdp, "window.__aquariumTest.addFishForTest('goldfish', 225, 420)");
   state = await waitFor(cdp, (current) => current.fishCount === 1, "Adding a fish for sickness death coverage failed.");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 20, 20)");
-  await evaluate(cdp, "window.__aquariumTest.setFishFatalCareSeconds(0, 3599.4)");
-  state = await waitFor(cdp, (current) => current.fishCount === 0, "Fish sick for 60 minutes should die.", 3000);
+  await evaluate(cdp, `window.__aquariumTest.setFishFatalCareSeconds(0, ${fatalCareLimitSeconds - 0.6})`);
+  state = await waitFor(cdp, (current) => current.fishCount === 0, "Fish sick for 24 hours should die.", 3000);
 
   await evaluate(cdp, "window.__aquariumTest.addFishForTest('goldfish', 225, 420)");
   state = await waitFor(cdp, (current) => current.fishCount === 1, "Adding a fish for offline death coverage failed.");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 80, 100)");
-  await evaluate(cdp, "window.__aquariumTest.setFishFatalCareSeconds(0, 3599)");
+  await evaluate(cdp, `window.__aquariumTest.setFishFatalCareSeconds(0, ${fatalCareLimitSeconds - 1})`);
   await evaluate(cdp, "window.__aquariumTest.backdateSave(3600)");
   await reloadApp(cdp, appUrl);
   state = await waitFor(
     cdp,
     (current) => current.offlineProgress.elapsedSeconds >= 3500 && current.fishCount === 0,
-    "Already-hungry fish should die if its saved 60-minute timer finishes offline."
+    "Already-hungry fish should die if its saved 24-hour timer finishes offline."
   );
   await evaluate(cdp, "window.__aquariumTest.closeModal()");
 

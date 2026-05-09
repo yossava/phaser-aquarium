@@ -6507,7 +6507,7 @@ export class AquariumScene extends Phaser.Scene {
           return;
         }
 
-        targetFish.fatalCareSeconds = targetFish.isInFatalCareState() ? Phaser.Math.Clamp(seconds, 0, 3600) : 0;
+        targetFish.fatalCareSeconds = targetFish.isInFatalCareState() ? Phaser.Math.Clamp(seconds, 0, 24 * 60 * 60) : 0;
       },
       setFishPosition: (index: number, x: number, y: number) => {
         const targetFish = this.fish[index];

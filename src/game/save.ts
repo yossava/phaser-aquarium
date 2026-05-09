@@ -347,7 +347,7 @@ function sanitizeFish(fish: Partial<SavedFish>): SavedFish | undefined {
     hunger: clamp(sanitizeNumber(fish.hunger, 12), -10000, 100),
     health: clamp(sanitizeNumber(fish.health, 100), 0, 100),
     nextCoinDropInMs: Math.max(0, sanitizeNumber(fish.nextCoinDropInMs, 0)),
-    fatalCareSeconds: clamp(sanitizeNumber(fish.fatalCareSeconds, 0), 0, 3600),
+    fatalCareSeconds: clamp(sanitizeNumber(fish.fatalCareSeconds, 0), 0, 24 * 60 * 60),
     gender: fish.gender === "F" ? "F" : "M"
   };
 }

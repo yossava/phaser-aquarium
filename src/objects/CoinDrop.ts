@@ -9,6 +9,7 @@ const coinTapTargetSize = Math.round(gameWidth * 0.16);
 const coinValueTextOffset = Math.round(gameWidth * 0.04);
 const coinValueFontSize = Math.round(gameWidth * 0.03);
 const coinBottomPadding = Math.round(gameWidth * 0.1);
+const coinSeabedDepthBand = Math.round(gameWidth * 0.1);
 
 export const coinVisualsByType: Record<CoinType, { tint: number; textColor: string; strokeColor: string }> = {
   common: { tint: 0xffd24f, textColor: "#ffe67a", strokeColor: "#423307" },
@@ -28,9 +29,10 @@ export class CoinDrop {
   public sprite: Phaser.GameObjects.Image;
   public hitZone: Phaser.GameObjects.Zone;
   public valueText: Phaser.GameObjects.Text;
-  public readonly bottomY = tankBounds.bottom - coinBottomPadding;
+  public readonly bottomY: number;
   public readonly visual: CoinVisual;
   public readonly sinkSpeed = 82;
+  private readonly landingX: number;
   private tankViewScale = 1;
 
   public constructor(
@@ -40,6 +42,15 @@ export class CoinDrop {
     public readonly value: number,
     public readonly coinType: CoinType
   ) {
+    const horizontalPadding = coinTapTargetSize * 0.5;
+    this.landingX = Phaser.Math.Between(
+      Math.round(tankBounds.left + horizontalPadding),
+      Math.round(tankBounds.right - horizontalPadding)
+    );
+    this.bottomY = Phaser.Math.Between(
+      Math.round(tankBounds.bottom - coinBottomPadding - coinSeabedDepthBand),
+      Math.round(tankBounds.bottom - coinBottomPadding)
+    );
     this.visual = coinVisualsByType[coinType];
     const customTextureKey = coinTextureKeyByType[coinType];
     const textureKey = scene.textures.exists(customTextureKey) ? customTextureKey : "coin";
@@ -66,6 +77,9 @@ export class CoinDrop {
 
   public update(deltaSeconds: number): void {
     this.sprite.y = Math.min(this.bottomY, this.sprite.y + this.sinkSpeed * deltaSeconds);
+    if (!this.atBottom) {
+      this.sprite.x = Phaser.Math.Linear(this.sprite.x, this.landingX, Math.min(1, deltaSeconds * 1.4));
+    }
     this.hitZone.setPosition(this.sprite.x, this.sprite.y);
     this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + this.valueTextOffset(), tankBounds.bottom - 8));
   }

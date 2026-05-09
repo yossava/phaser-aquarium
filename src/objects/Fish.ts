@@ -62,7 +62,7 @@ const directionFlipSwapProgress = 0.58;
 const swimPathSwayRatio = 0.035;
 const swimKickPulseStrength = 0.24;
 const overfullHungerFloor = -10000;
-export const fatalCareSeconds = 60 * 60;
+export const fatalCareSeconds = 24 * 60 * 60;
 
 export class Fish {
   public sprite: Phaser.GameObjects.Sprite;
