@@ -316,12 +316,12 @@ export class StoreOverlay {
     const panel = el("main", "aq-panel flex min-h-0 flex-1 flex-col overflow-hidden p-2");
     const content = el("div", "min-h-0 flex-1 overflow-hidden");
     const items = this.currentItems(state);
-    const pageSize = 9;
+    const pageSize = this.catalogPageSize();
     const maxPage = Math.max(1, Math.ceil(items.length / pageSize));
     this.page = Math.min(this.page, maxPage);
     const pageItems = items.slice((this.page - 1) * pageSize, this.page * pageSize);
 
-    const list = el("div", "grid h-full min-h-0 grid-cols-3 grid-rows-3 gap-1.5");
+    const list = el("div", "aq-store-catalog-grid");
     if (pageItems.length === 0) {
       list.append(div("rounded-2xl border border-cyan-200/20 bg-sky-950/60 p-6 text-center text-sm font-bold text-cyan-100/80", ["No items in this lane."]));
     } else {
@@ -343,6 +343,10 @@ export class StoreOverlay {
     );
     panel.append(content, pager);
     return panel;
+  }
+
+  private catalogPageSize(): number {
+    return window.matchMedia("(max-height: 760px), (max-width: 389px)").matches ? 6 : 9;
   }
 
   private currentItems(state: StoreOverlayState): Array<FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard> {
@@ -408,16 +412,16 @@ export class StoreOverlay {
     }
     card.append(
       this.preview(`/assets/fish/${fish.id}.png`, fish.name),
-      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
-        div("flex items-start justify-between gap-1.5", [
-          div("min-w-0 truncate text-sm font-black leading-tight", [fish.name]),
+      div("aq-card-body", [
+        div("aq-card-title-row", [
+          div("aq-card-title", [fish.name]),
           this.priceBadge(fish.price)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)} · L${formatNumber(fish.tankLevel)}`]),
-        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [this.productionHint(fish)]),
+        div("aq-card-meta", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)} · L${formatNumber(fish.tankLevel)}`]),
+        div("aq-card-copy", [this.productionHint(fish)]),
         button(
           levelLocked ? `Need Tank L${formatNumber(fish.tankLevel)}` : dailyLimitReached ? "Daily Limit" : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
-          "aq-buy mt-auto w-full",
+          "aq-buy w-full",
           () => this.actions.buyFish(fish),
           disabled
         )
@@ -525,14 +529,14 @@ export class StoreOverlay {
     const card = this.baseCard(creature.rarity);
     card.append(
       this.preview(texture, creature.name),
-      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
-        div("flex items-start justify-between gap-1.5", [
-          div("min-w-0 truncate text-sm font-black leading-tight", [creature.name]),
+      div("aq-card-body", [
+        div("aq-card-title-row", [
+          div("aq-card-title", [creature.name]),
           this.priceBadge(creature.price)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.helperRole(creature)}`]),
-        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [creature.description]),
-        button(affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyHelper(creature), !affordable)
+        div("aq-card-meta", [`Owned ${formatNumber(owned)} · ${this.helperRole(creature)}`]),
+        div("aq-card-copy", [creature.description]),
+        button(affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy w-full", () => this.actions.buyHelper(creature), !affordable)
       ])
     );
     return card;
@@ -652,7 +656,7 @@ export class StoreOverlay {
   }
 
   private preview(src: string, alt: string, className = ""): HTMLElement {
-    const wrap = el("div", `mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center ${className}`.trim());
+    const wrap = el("div", `aq-card-preview ${className}`.trim());
     wrap.append(image(src, alt, "max-h-full max-w-[94%] object-contain drop-shadow-lg"));
     return wrap;
   }

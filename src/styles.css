@@ -109,10 +109,46 @@ canvas {
     @apply flex min-h-8 flex-1 items-center justify-center gap-1 rounded-xl border px-2 py-1 text-center text-xs font-extrabold;
   }
 
+  .aq-store-catalog-grid {
+    @apply grid h-full min-h-0 grid-cols-3 grid-rows-3 gap-1.5;
+  }
+
   .aq-card {
     @apply flex h-full min-h-0 flex-col gap-1.5 overflow-hidden rounded-2xl border bg-sky-950/70 p-2 shadow-lg;
     container-type: size;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  }
+
+  .aq-card-preview {
+    @apply mx-auto flex w-full shrink-0 items-center justify-center;
+    height: clamp(52px, 32cqh, 82px);
+  }
+
+  .aq-card-preview img {
+    @apply max-h-full max-w-[94%] object-contain drop-shadow-lg;
+  }
+
+  .aq-card-body {
+    @apply grid min-h-0 flex-1 overflow-hidden;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: clamp(0.1rem, 0.8cqh, 0.28rem);
+    padding-bottom: 3px;
+  }
+
+  .aq-card-title-row {
+    @apply flex min-w-0 items-start justify-between gap-1.5;
+  }
+
+  .aq-card-title {
+    @apply min-w-0 truncate text-sm font-black leading-tight;
+  }
+
+  .aq-card-meta {
+    @apply truncate text-[10px] font-bold leading-tight text-cyan-100/80;
+  }
+
+  .aq-card-copy {
+    @apply line-clamp-2 min-h-0 overflow-hidden text-[10px] leading-tight text-cyan-50/90;
   }
 
   .aq-food-preview {
@@ -752,6 +788,54 @@ canvas {
     padding: max(7px, env(safe-area-inset-top)) var(--aq-hud-edge-inset) 0;
   }
 
+  .aq-coin-combo {
+    @apply pointer-events-none fixed left-1/2 z-[85] text-center font-black uppercase tracking-normal text-[#fff4a8];
+    top: clamp(180px, 31dvh, 280px);
+    width: var(--aq-stage-width);
+    transform: translate(-50%, -50%) scale(0.86);
+    opacity: 0;
+    font-size: clamp(34px, 12vw, 58px);
+    line-height: 0.95;
+    text-shadow:
+      0 5px 0 rgba(86, 47, 0, 0.9),
+      0 9px 14px rgba(0, 0, 0, 0.42),
+      0 0 18px rgba(255, 221, 96, 0.68);
+    -webkit-text-stroke: 1px rgba(89, 48, 0, 0.65);
+  }
+
+  .aq-coin-combo.is-showing {
+    animation: aq-coin-combo-pop 780ms ease-out both;
+  }
+
+  .aq-coin-combo.is-bonus {
+    color: #9dffb9;
+    font-size: clamp(24px, 8.5vw, 40px);
+    text-shadow:
+      0 4px 0 rgba(0, 76, 38, 0.9),
+      0 8px 12px rgba(0, 0, 0, 0.42),
+      0 0 18px rgba(113, 255, 172, 0.68);
+    -webkit-text-stroke: 1px rgba(0, 75, 41, 0.68);
+  }
+
+  @keyframes aq-coin-combo-pop {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.68);
+    }
+    14% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1.16);
+    }
+    38% {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, -78%) scale(0.96);
+    }
+  }
+
   .aq-game-level-badge {
     @apply relative isolate flex h-[clamp(72px,18vw,88px)] w-[clamp(62px,17vw,84px)] shrink-0 items-start justify-center overflow-hidden text-[clamp(22px,6vw,34px)] font-black text-cyan-50;
     grid-column: 1;
@@ -951,6 +1035,34 @@ canvas {
   }
 
   @media (max-width: 389px) {
+    .aq-store-catalog-grid {
+      @apply grid-rows-2 gap-2;
+    }
+
+    .aq-card {
+      @apply gap-1 p-1.5;
+    }
+
+    .aq-card-preview {
+      height: clamp(44px, 28cqh, 60px);
+    }
+
+    .aq-card-meta {
+      @apply hidden;
+    }
+
+    .aq-card-copy {
+      @apply line-clamp-1;
+    }
+
+    .aq-card-body {
+      padding-bottom: 2px;
+    }
+
+    .aq-buy {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    }
+
     .aq-game-hud {
       --aq-hud-scale: 0.94;
     }
@@ -969,6 +1081,40 @@ canvas {
   }
 
   @media (max-height: 760px) {
+    .aq-store-catalog-grid {
+      @apply grid-rows-2 gap-2;
+    }
+
+    .aq-store {
+      @apply px-2 pb-2;
+    }
+
+    .aq-card {
+      @apply gap-1 p-1.5;
+    }
+
+    .aq-card-preview {
+      height: clamp(44px, 28cqh, 60px);
+    }
+
+    .aq-card-meta {
+      @apply hidden;
+    }
+
+    .aq-card-copy {
+      @apply line-clamp-1;
+    }
+
+    .aq-card-body {
+      padding-bottom: 2px;
+    }
+
+    .aq-buy {
+      height: 28px;
+      @apply px-1 py-0 text-[10px] leading-none;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    }
+
     :root {
       --aq-hud-scale: 0.92;
       --aq-hud-min-width: 350px;

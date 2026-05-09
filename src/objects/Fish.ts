@@ -43,6 +43,7 @@ const firstOnboardingCoinDelayMs = 5000;
 const minOnboardingCoinDelayMs = 8000;
 const maxOnboardingCoinDelayMs = maxCoinDropIntervalSeconds * 1000;
 const hungryBubbleFullnessThreshold = 0.7;
+const minimumMealCalorieRatio = 0.55;
 const fishLengthDisplayMultiplier = 10;
 const baselineMealCalories = 46;
 const baseTextureWidth = 64;
@@ -135,7 +136,7 @@ export class Fish {
     this.updateStatusBars();
   }
 
-  public update(deltaSeconds: number, foods: FoodPellet[]): { food: FoodPellet; accepted: boolean } | undefined {
+  public update(deltaSeconds: number, foods: FoodPellet[]): { food: FoodPellet; accepted: boolean; reason?: "tooSmall" } | undefined {
     this.ageSeconds += deltaSeconds;
     this.updateAgeStage();
 
@@ -187,7 +188,8 @@ export class Fish {
     this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined, resting);
 
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
-      const accepted = this.acceptsFood(closestFood);
+      const tooSmall = this.isFoodTooSmall(closestFood);
+      const accepted = this.acceptsFood(closestFood) && !tooSmall;
       if (accepted) {
         this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromFood(closestFood), overfullHungerFloor, 100);
         this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
@@ -201,7 +203,7 @@ export class Fish {
         this.fatalCareSeconds = 0;
       }
       this.updateStatusBars();
-      return { food: closestFood, accepted };
+      return { food: closestFood, accepted, reason: tooSmall ? "tooSmall" : undefined };
     }
 
     this.updateStatusBars();
@@ -455,6 +457,15 @@ export class Fish {
     const preferredMultiplier = this.type.preferredFoodTypes.includes(foodType.id) ? 1.08 : 1;
     const medicineMultiplier = foodType.id === "medicine" ? 0.55 : 1;
     return (foodType.calories * preferredMultiplier * medicineMultiplier) / this.calorieNeedMultiplier();
+  }
+
+  public isFoodTooSmall(food: FoodPellet | FoodType): boolean {
+    const foodType = food instanceof FoodPellet ? food.foodType : food;
+    if (foodType.id === "medicine" || foodType.id === "creature") {
+      return false;
+    }
+
+    return this.acceptsFoodType(foodType) && foodType.calories < this.mealCaloriesNeeded() * minimumMealCalorieRatio;
   }
 
   public isInFatalCareState(): boolean {
@@ -889,10 +900,14 @@ export class Fish {
   }
 
   private acceptsFood(food: FoodPellet): boolean {
+    return this.acceptsFoodType(food.foodType);
+  }
+
+  private acceptsFoodType(foodType: FoodType): boolean {
     return (
-      food.foodType.acceptedByDefault ||
-      this.type.requiredFoodTypes.includes(food.foodType.id) ||
-      this.type.preferredFoodTypes.includes(food.foodType.id)
+      foodType.acceptedByDefault ||
+      this.type.requiredFoodTypes.includes(foodType.id) ||
+      this.type.preferredFoodTypes.includes(foodType.id)
     );
   }
 

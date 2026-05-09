@@ -119,6 +119,8 @@ const fishStatsCardHeight = 96;
 const fishStatsCardRowHeight = 104;
 const tankCleaningRatePerSecond = 2;
 const automatedCoinCollectFeeRate = 0.5;
+const coinComboWindowMs = 900;
+const coinComboRewardRate = 0.2;
 const hudStatusSyncIntervalSeconds = 0.25;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
@@ -666,6 +668,10 @@ export class AquariumScene extends Phaser.Scene {
   private pendingTextureLoads = new Set<string>();
   private pendingFishTextureLoads = new Set<string>();
   private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
+  private coinComboCount = 0;
+  private coinComboTimer?: Phaser.Time.TimerEvent;
+  private coinComboLastPosition = new Phaser.Math.Vector2(toastX, toastY);
+  private coinComboOverlay?: HTMLDivElement;
 
   public constructor() {
     super("AquariumScene");
@@ -782,7 +788,8 @@ export class AquariumScene extends Phaser.Scene {
           this.recordDailyQuestAction("medicine");
           this.floatTankText("Healed", currentFish.sprite.x, currentFish.sprite.y - 26, "#a8ffb0");
         } else {
-          this.floatTankText(eatenFood.accepted ? "Yum" : "Nope", currentFish.sprite.x, currentFish.sprite.y - 26, eatenFood.accepted ? "#f7ff9a" : "#ffb0a8");
+          const message = eatenFood.accepted ? "Yum" : eatenFood.reason === "tooSmall" ? "need bigger food.." : "Nope";
+          this.floatTankText(message, currentFish.sprite.x, currentFish.sprite.y - 26, eatenFood.accepted ? "#f7ff9a" : "#ffb0a8");
         }
         if (!eatenFood.accepted) {
           this.cleanliness = Phaser.Math.Clamp(this.cleanliness - 4, 0, 100);
@@ -1580,13 +1587,14 @@ export class AquariumScene extends Phaser.Scene {
     const overlay = document.createElement("div");
     overlay.className = "aq-tank-menu";
 
+    const menuDockLowerOffset = 32;
     const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
-      { id: "shop", label: "Shop", y: 212, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
-      { id: "clean", label: "Clean", y: 292, icon: "/assets/ui/care.png", action: () => this.cleanTank() },
-      { id: "book", label: "Book", y: 372, icon: "/assets/ui/book.png", action: () => this.openScreen("album") },
-      { id: "tanks", label: "Tanks", y: 452, icon: "/assets/ui/shop/icon_category_tanks.png", action: () => this.openScreen("tanks") },
-      { id: "quest", label: "Quest", y: 532, icon: "/assets/ui/goals.png", action: () => this.openScreen("goals") },
-      { id: "settings", label: "Set", y: 612, icon: "/assets/ui/settings.png", action: () => this.openScreen("settings") }
+      { id: "shop", label: "Shop", y: 212 + menuDockLowerOffset, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
+      { id: "clean", label: "Clean", y: 292 + menuDockLowerOffset, icon: "/assets/ui/care.png", action: () => this.cleanTank() },
+      { id: "book", label: "Book", y: 372 + menuDockLowerOffset, icon: "/assets/ui/book.png", action: () => this.openScreen("album") },
+      { id: "tanks", label: "Tanks", y: 452 + menuDockLowerOffset, icon: "/assets/ui/shop/icon_category_tanks.png", action: () => this.openScreen("tanks") },
+      { id: "quest", label: "Quest", y: 532 + menuDockLowerOffset, icon: "/assets/ui/goals.png", action: () => this.openScreen("goals") },
+      { id: "settings", label: "Set", y: 612 + menuDockLowerOffset, icon: "/assets/ui/settings.png", action: () => this.openScreen("settings") }
     ];
 
     for (const item of screens) {
@@ -2287,6 +2295,8 @@ export class AquariumScene extends Phaser.Scene {
     this.htmlFoodDock = undefined;
     this.htmlPageOverlay?.remove();
     this.htmlPageOverlay = undefined;
+    this.coinComboOverlay?.remove();
+    this.coinComboOverlay = undefined;
     this.destroyTankMenuOverlay();
     this.storeOverlay?.destroy();
     this.storeOverlay = undefined;
@@ -5106,10 +5116,60 @@ export class AquariumScene extends Phaser.Scene {
     earn(this.wallet, coin.coinType, claimedValue);
     this.recordDailyQuestAction("coin");
     this.floatCoinClaimText(claimedValue, coin.coinType, coin.sprite.x, coin.sprite.y - 20, coin.visual.textColor, automated, fee);
+    if (!automated) {
+      this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42);
+    }
     this.coinDrops = this.coinDrops.filter((drop) => drop !== coin);
     coin.destroy();
     this.refreshUi();
     this.saveNow();
+  }
+
+  private registerCoinCombo(x: number, y: number): void {
+    this.coinComboCount += 1;
+    this.coinComboLastPosition.set(x, y);
+
+    if (this.coinComboCount >= 2) {
+      this.showCoinComboOverlay(`${formatNumber(this.coinComboCount)}x COMBO`);
+    }
+
+    this.coinComboTimer?.remove(false);
+    this.coinComboTimer = this.time.delayedCall(coinComboWindowMs, () => this.resolveCoinCombo());
+  }
+
+  private resolveCoinCombo(): void {
+    const comboCount = this.coinComboCount;
+    const position = this.coinComboLastPosition.clone();
+    this.coinComboCount = 0;
+    this.coinComboTimer = undefined;
+
+    const bonus = Math.floor(comboCount * coinComboRewardRate);
+    if (bonus <= 0) {
+      return;
+    }
+
+    earn(this.wallet, "common", bonus);
+    this.showCoinComboOverlay(`COMBO BONUS +${formatNumber(bonus)}`, true);
+    this.floatTankText(`Combo +${formatNumber(bonus)}`, position.x, position.y - 24, coinVisualsByType.common.textColor);
+    this.refreshUi(false);
+    this.saveNow();
+  }
+
+  private showCoinComboOverlay(message: string, bonus = false): void {
+    this.coinComboOverlay ??= this.createCoinComboOverlay();
+    this.coinComboOverlay.textContent = message;
+    this.coinComboOverlay.classList.toggle("is-bonus", bonus);
+    this.coinComboOverlay.classList.remove("is-showing");
+    this.coinComboOverlay.getBoundingClientRect();
+    this.coinComboOverlay.classList.add("is-showing");
+  }
+
+  private createCoinComboOverlay(): HTMLDivElement {
+    const overlay = document.createElement("div");
+    overlay.className = "aq-coin-combo";
+    overlay.setAttribute("aria-live", "polite");
+    document.body.appendChild(overlay);
+    return overlay;
   }
 
   private removeFood(food: FoodPellet): void {
