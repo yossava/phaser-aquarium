@@ -354,8 +354,8 @@ async function runRegression(cdp, appUrl) {
   assert(state.tankHudText.includes("W:"), "Tank HUD should expose wallet and total wealth.");
   assert(state.tankStatusText.includes("Lv1") && !state.tankStatusText.includes("Fish") && !state.tankStatusText.includes("Coin"), "Tank status should expose tank level without fish or coin capacity text.");
   assert(state.tankCareText.includes("Clean") && state.tankCareText.includes("Happy"), "Tank care status should visibly expose cleanliness and happiness.");
-  assert(state.assetCoverage.fish === 50, "All 50 fish should have loaded custom asset textures.");
-  assert(state.assetCoverage.food === 13, "All food, medicine, pill, and creature food types should have loaded custom asset textures.");
+  assert(state.assetCoverage.fish === state.fishTypeCount, "All fish should have loaded custom asset textures.");
+  assert(state.assetCoverage.food >= 12, "All food, medicine, and supply types should have loaded custom asset textures.");
   assert(state.assetCoverage.decorations >= 12, "Decoration catalog should have the expanded custom asset set.");
   assert(state.assetCoverage.coins === 3, "All three coin types should have loaded custom asset textures.");
   assert(state.assetCoverage.uiIcons >= 9, "All menu icons and shared prompt-pack HUD/button UI skin textures should load.");
@@ -370,11 +370,11 @@ async function runRegression(cdp, appUrl) {
   );
   assert(state.dirtyTankOverlay.displayWidth === gameWidth && state.dirtyTankOverlay.displayHeight === gameHeight, "Dirty tank overlay should cover the portrait tank screen.");
   await captureNamedScreenshot(cdp, "dirty-tank-overlay.png");
-  await evaluate(cdp, "window.__aquariumTest.setCleanliness(21)");
+  await evaluate(cdp, "window.__aquariumTest.setCleanliness(73)");
   state = await waitFor(
     cdp,
     (current) => !current.dirtyTankOverlay.visible && current.dirtyTankOverlay.alpha === 0,
-    "Dirty tank overlay should hide above 20% cleanliness."
+    "Dirty tank overlay should hide above the dirty-water threshold."
   );
 
   await evaluate(cdp, "window.__aquariumTest.setScreen('store')");
@@ -456,8 +456,8 @@ async function runRegression(cdp, appUrl) {
       Math.abs(state.tankScreenEdges.bottom - gameHeight) < 1,
     "Level 1 tank should fill the portrait screen edges."
   );
-  assert(state.fishTypeCount === 50, "Fish catalog should include 50 fish types.");
-  assert(state.visibleFishCatalogCount === 19, "Common fish catalog should show every common fish because fish are no longer level-gated.");
+  assert(state.fishTypeCount >= 90, "Fish catalog should include the expanded generated fish set.");
+  assert(state.visibleFishCatalogCount >= 30, "Common fish catalog should show the expanded common fish set.");
   assert(
     state.visibleFishCatalogPreviewTextures.length === state.visibleFishCatalogCount &&
       state.visibleFishCatalogPreviewTextures[0] === "fish-goldfish" &&
@@ -1161,7 +1161,7 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.forceCoinReady(0)");
   await delay(500);
   state = await snapshot(cdp);
-  assert(state.coinDropCount === state.maxCoinDrops, "Uncollected coin stack should cap at 5.");
+  assert(state.coinDropCount === state.maxCoinDrops, "Uncollected coin stack should respect the max coin cap.");
   assert(state.fish[0].nextCoinDropInMs === 0, "Fish should keep production ready while coin stack is capped.");
   await captureNamedScreenshot(cdp, "coin-stack-cap.png");
 

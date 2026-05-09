@@ -125,6 +125,42 @@ canvas {
     gap: clamp(0.2rem, 1.25cqh, 0.42rem);
   }
 
+  .aq-decor-card {
+    gap: clamp(0.12rem, 0.9cqh, 0.3rem);
+    padding: clamp(0.32rem, 1.05cqh, 0.45rem);
+    padding-bottom: clamp(0.45rem, 1.45cqh, 0.62rem);
+  }
+
+  .aq-decor-preview {
+    height: clamp(30px, 20%, 52px);
+  }
+
+  .aq-decor-card-body {
+    display: grid;
+    min-height: 0;
+    flex: 1 1 auto;
+    grid-template-rows: auto minmax(42px, 1fr) minmax(26px, auto);
+    gap: clamp(0.1rem, 0.55cqh, 0.22rem);
+    overflow: hidden;
+  }
+
+  .aq-decor-size-grid {
+    @apply grid min-h-0 grid-cols-2 gap-0.5;
+  }
+
+  .aq-decor-card .aq-qty {
+    min-height: 0;
+    height: clamp(19px, 45%, 24px);
+    @apply px-1 py-0 text-[9px] leading-none;
+  }
+
+  .aq-decor-buy {
+    align-self: end;
+    height: clamp(23px, 11%, 28px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    @apply flex items-center justify-center px-1 py-0 text-[10px] leading-none;
+  }
+
   .aq-page-shell {
     @apply fixed left-1/2 top-0 z-50 flex h-dvh text-white;
     width: var(--aq-stage-width);
@@ -175,6 +211,11 @@ canvas {
 
   .aq-page-content::-webkit-scrollbar {
     display: none;
+  }
+
+  .aq-page-content-scroll {
+    @apply overflow-y-auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .aq-page-section-title {
@@ -323,6 +364,141 @@ canvas {
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08);
     filter: grayscale(0.35);
     transform: none;
+  }
+
+  .aq-album-list {
+    @apply flex flex-col gap-2;
+  }
+
+  .aq-album-row {
+    @apply grid min-h-[82px] grid-cols-[58px_minmax(0,1fr)_62px] items-center gap-2 rounded-2xl border border-cyan-200/25 bg-sky-900/70 p-2 shadow-lg;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .aq-album-row-image {
+    @apply h-14 w-14 object-contain drop-shadow-lg;
+  }
+
+  .aq-album-row-image.fish {
+    @apply h-12 w-14;
+  }
+
+  .aq-album-row-image.helper {
+    @apply h-14 w-14;
+  }
+
+  .aq-album-row-body {
+    @apply min-w-0;
+  }
+
+  .aq-album-row-title {
+    @apply truncate text-sm font-black leading-tight text-white;
+    text-shadow: 0 2px 0 rgba(0, 31, 53, 0.72);
+  }
+
+  .aq-album-row-meta {
+    @apply mt-0.5 truncate text-[11px] font-extrabold leading-tight text-cyan-100/78;
+  }
+
+  .aq-album-row-copy {
+    @apply mt-0.5 truncate text-[11px] font-bold leading-tight text-cyan-50/82;
+  }
+
+  .aq-album-stat-grid {
+    @apply mt-1 grid grid-cols-2 gap-1;
+  }
+
+  .aq-album-stat {
+    @apply min-w-0 rounded-lg border border-cyan-100/18 bg-sky-950/45 px-1.5 py-1 leading-none;
+  }
+
+  .aq-album-stat small {
+    @apply block truncate text-[9px] font-extrabold text-cyan-100/60;
+  }
+
+  .aq-album-stat strong {
+    @apply mt-0.5 block truncate text-[11px] font-black text-white;
+  }
+
+  .aq-album-bar-stat {
+    @apply flex flex-col justify-center;
+  }
+
+  .aq-album-bar {
+    @apply mt-1 block h-2.5 overflow-hidden rounded-full border border-white/20 bg-sky-950/65;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.34);
+  }
+
+  .aq-album-bar-fill {
+    @apply block h-full rounded-full;
+    background: linear-gradient(90deg, #6ee7ff, #22d3ee);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  }
+
+  .aq-album-bar-stat.is-good .aq-album-bar-fill {
+    background: linear-gradient(90deg, #79e943, #22c55e);
+  }
+
+  .aq-album-bar-stat.is-warn .aq-album-bar-fill {
+    background: linear-gradient(90deg, #ffe66d, #f59e0b);
+  }
+
+  .aq-album-bar-stat.is-bad .aq-album-bar-fill {
+    background: linear-gradient(90deg, #ff8a7a, #ef4444);
+  }
+
+  .aq-album-row-button {
+    @apply min-h-9 px-2 py-1 text-xs;
+  }
+
+  .aq-quest-list {
+    @apply flex flex-col gap-2;
+  }
+
+  .aq-quest-row {
+    @apply grid min-h-[58px] grid-cols-[54px_minmax(0,1fr)_76px] items-center gap-2 rounded-2xl border border-cyan-200/25 bg-sky-900/70 px-2.5 py-2 shadow-lg;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .aq-quest-row.is-ready {
+    @apply border-lime-200/60 bg-cyan-700/55;
+  }
+
+  .aq-quest-row.is-muted {
+    @apply opacity-70;
+  }
+
+  .aq-quest-status {
+    @apply rounded-full border border-cyan-100/25 bg-sky-950/55 px-1.5 py-1 text-center text-[10px] font-black leading-none text-cyan-50;
+  }
+
+  .aq-quest-row.is-ready .aq-quest-status {
+    @apply border-lime-200/60 bg-lime-600/70 text-white;
+  }
+
+  .aq-quest-body {
+    @apply min-w-0;
+  }
+
+  .aq-quest-title {
+    @apply truncate text-sm font-black leading-tight text-white;
+    text-shadow: 0 2px 0 rgba(0, 31, 53, 0.72);
+  }
+
+  .aq-quest-reward {
+    @apply mt-0.5 truncate text-xs font-extrabold leading-tight text-cyan-100/78;
+  }
+
+  .aq-quest-button {
+    @apply min-h-9 px-2 py-1 text-xs;
+  }
+
+  .aq-quest-claimed {
+    @apply text-center text-xs font-black text-cyan-100/65;
+  }
+
+  .aq-quest-pending {
+    @apply block;
   }
 
   .aq-page-icon-button,
@@ -528,6 +704,12 @@ canvas {
     transition: transform 90ms ease;
   }
 
+  .aq-tank-menu-badge {
+    @apply absolute -right-0.5 -top-0.5 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[10px] font-black leading-none text-white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.38);
+    text-shadow: 0 1px 1px rgba(70, 0, 16, 0.65);
+  }
+
   .aq-tank-menu-button:active .aq-tank-menu-bubble img,
   .aq-tank-menu-button.is-touching .aq-tank-menu-bubble img {
     transform: scale(0.94);
@@ -587,7 +769,7 @@ canvas {
     @apply grid min-w-0 rounded-[16px] border-2 border-[#d6b875]/80 bg-cyan-950/20 px-2 py-1.5;
     width: 100%;
     grid-template-columns: clamp(62px, 17vw, 84px) minmax(0, 1fr);
-    grid-template-rows: clamp(50px, 13vw, 62px) auto;
+    grid-template-rows: clamp(50px, 13vw, 62px) auto auto;
     column-gap: clamp(5px, 1.4vw, 8px);
     row-gap: 3px;
     transform: scale(var(--aq-hud-scale));
@@ -701,6 +883,24 @@ canvas {
     @apply relative z-10 whitespace-nowrap;
   }
 
+  .aq-game-quest-hint {
+    @apply mt-1 flex min-w-0 items-center gap-1.5 rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-1 text-[clamp(10px,2.7vw,13px)] font-black leading-none text-white;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 2px 5px rgba(0, 29, 48, 0.22);
+    text-shadow: 0 2px 2px rgba(0, 0, 0, 0.62);
+  }
+
+  .aq-game-quest-hint img {
+    @apply h-[1.4em] w-[1.4em] shrink-0 object-contain drop-shadow;
+  }
+
+  .aq-game-quest-hint span {
+    @apply min-w-0 truncate;
+  }
+
   .aq-game-hud-pill.is-clean-warning {
     @apply border-amber-200/70 text-amber-50;
     background: rgba(120, 82, 12, 0.46);
@@ -760,7 +960,7 @@ canvas {
 
     .aq-game-stat-panel {
       grid-template-columns: clamp(56px, 15.5vw, 74px) minmax(0, 1fr);
-      grid-template-rows: clamp(44px, 11.8vw, 54px) auto;
+      grid-template-rows: clamp(44px, 11.8vw, 54px) auto auto;
       column-gap: 5px;
       row-gap: 2px;
       border-radius: 14px;
@@ -799,6 +999,11 @@ canvas {
       padding-right: 5px;
     }
 
+    .aq-game-quest-hint {
+      margin-top: 3px;
+      padding-block: 3px;
+    }
+
     .aq-tank-menu-button,
     .aq-food-button {
       width: clamp(50px, 14%, 64px);
@@ -825,7 +1030,7 @@ canvas {
 
     .aq-game-stat-panel {
       grid-template-columns: 54px minmax(0, 1fr);
-      grid-template-rows: 40px auto;
+      grid-template-rows: 40px auto auto;
       column-gap: 5px;
       row-gap: 2px;
       padding: 4px 5px;
@@ -849,6 +1054,12 @@ canvas {
 
     .aq-game-care-row {
       gap: 4px;
+    }
+
+    .aq-game-quest-hint {
+      margin-top: 2px;
+      padding-block: 2px;
+      font-size: clamp(8px, 2.15vw, 10px);
     }
 
     .aq-food-dock {
@@ -887,9 +1098,9 @@ canvas {
   }
 
   .aq-food-dock {
-    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px] overflow-y-auto pb-4;
+    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px] overflow-y-auto pb-4 pr-2 pt-1;
     --food-dock-top: 160px;
-    width: min(22vw, 92px);
+    width: min(24vw, 100px);
     max-height: calc(100dvh - var(--food-dock-top) - 8px);
     left: calc((100vw - var(--aq-stage-width)) / 2);
     transform: translate(var(--aq-hud-edge-inset), var(--food-dock-top)) scale(var(--aq-dock-scale));
@@ -964,7 +1175,7 @@ canvas {
   }
 
   .aq-food-button-count {
-    @apply absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[10px] font-black leading-none text-white;
+    @apply absolute -right-0.5 -top-0.5 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[10px] font-black leading-none text-white;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.38);
     text-shadow: 0 1px 1px rgba(70, 0, 16, 0.65);
     transition: transform 90ms ease;

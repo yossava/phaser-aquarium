@@ -347,7 +347,7 @@ export class StoreOverlay {
 
   private currentItems(state: StoreOverlayState): Array<FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard> {
     if (this.activeTab === "fish") {
-      return fishTypes.filter((fish) => fish.price.coinType === this.coinFilter && fish.tankLevel <= Math.max(1, state.activeTankLevel));
+      return fishTypes.filter((fish) => fish.price.coinType === this.coinFilter);
     }
     if (this.activeTab === "food") {
       return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && !supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
@@ -399,9 +399,13 @@ export class StoreOverlay {
   private fishCard(fish: FishType, state: StoreOverlayState): HTMLElement {
     const owned = state.fishOwned[fish.id] ?? 0;
     const affordable = canAfford(state.wallet, fish.price);
+    const levelLocked = fish.tankLevel > Math.max(1, state.activeTankLevel);
     const dailyLimitReached = state.fishPurchasesToday >= state.fishPurchaseDailyLimit;
-    const disabled = !affordable || dailyLimitReached;
+    const disabled = levelLocked || !affordable || dailyLimitReached;
     const card = this.baseCard(fish.rarity);
+    if (levelLocked) {
+      card.classList.add("opacity-70");
+    }
     card.append(
       this.preview(`/assets/fish/${fish.id}.png`, fish.name),
       div("flex min-w-0 flex-1 flex-col overflow-hidden", [
@@ -409,10 +413,10 @@ export class StoreOverlay {
           div("min-w-0 truncate text-sm font-black leading-tight", [fish.name]),
           this.priceBadge(fish.price)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)}`]),
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)} · L${formatNumber(fish.tankLevel)}`]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [this.productionHint(fish)]),
         button(
-          dailyLimitReached ? "Daily Limit" : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
+          levelLocked ? `Need Tank L${formatNumber(fish.tankLevel)}` : dailyLimitReached ? "Daily Limit" : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy mt-auto w-full",
           () => this.actions.buyFish(fish),
           disabled
@@ -587,7 +591,8 @@ export class StoreOverlay {
 
   private tankDecorationCard(decoration: StoreTankDecorationCard, state: StoreOverlayState): HTMLElement {
     const card = this.baseCard(decoration.rarity);
-    const controls = el("div", "mt-1.5 grid grid-cols-2 gap-1");
+    card.classList.add("aq-decor-card");
+    const controls = el("div", "aq-decor-size-grid");
     decoration.variants.forEach((variant) => {
       const label = variant.owned > 0
         ? `${variant.label} x${formatNumber(variant.owned)}`
@@ -602,15 +607,14 @@ export class StoreOverlay {
     });
     const mediumAffordable = canAfford(state.wallet, decoration.price);
     card.append(
-      this.preview(`/assets/decorations/${decoration.id}.png`, decoration.name),
-      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+      this.preview(`/assets/decorations/${decoration.id}.png`, decoration.name, "aq-decor-preview"),
+      div("aq-decor-card-body", [
         div("flex items-start justify-between gap-1.5", [
           div("min-w-0 truncate text-sm font-black leading-tight", [decoration.name]),
           this.priceBadge(decoration.price)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`+${formatNumber(decoration.happinessBonus)} happy decor`]),
         controls,
-        button(mediumAffordable ? "Buy Medium" : `Need ${formatPrice(decoration.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyTankDecoration(decoration.id, "m"), !mediumAffordable)
+        button(mediumAffordable ? "Buy Medium" : `Need ${formatPrice(decoration.price)}`, "aq-buy aq-decor-buy w-full", () => this.actions.buyTankDecoration(decoration.id, "m"), !mediumAffordable)
       ])
     );
     return card;
@@ -680,7 +684,7 @@ export class StoreOverlay {
 
   private productionHint(fish: FishType): string {
     const production = fish.ageCurve.baby.production[0];
-    return `Drops ${formatNumber(production.amount)} ${this.rarityLabel(production.coinType)} coins every ${formatNumber(production.intervalSeconds)}s`;
+    return `Drops ${formatNumber(production.amount)} ${this.rarityLabel(production.coinType)} coins every ${formatNumber(Math.min(10, production.intervalSeconds))}s`;
   }
 }
 

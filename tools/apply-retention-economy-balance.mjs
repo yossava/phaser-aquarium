@@ -138,7 +138,7 @@ const foodPrices = {
   basicXL: { coinType: "common", amount: 550 },
   micro: { coinType: "common", amount: 5 },
   herb: { coinType: "common", amount: 8 },
-  medicine: { coinType: "common", amount: 45 },
+  medicine: { coinType: "common", amount: 10 },
   creature: { coinType: "common", amount: 12 },
   premium: { coinType: "rare", amount: 2 },
   protein: { coinType: "rare", amount: 3 },

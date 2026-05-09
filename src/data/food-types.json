@@ -122,7 +122,7 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 45
+      "amount": 10
     },
     "nutrition": 12,
     "acceptedByDefault": true,

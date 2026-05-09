@@ -23,6 +23,8 @@ const monthsPerFishYear = 12;
 const secondsPerFishYear = monthsPerFishYear * secondsPerFishMonth;
 const daysPerFishMonth = 30;
 const growthCapYears = 50;
+const earlyVisualGrowthDays = 7;
+const earlyVisualGrowthMultiplier = 3;
 const oneMonthGrowthSeconds = secondsPerFishMonth;
 const adultGrowthSeconds = 12 * secondsPerFishMonth;
 const hatchlingTankWidthRatio = 0.16;
@@ -35,6 +37,12 @@ const minimumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const maximumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const happyEmojiDurationMs = 3200;
 const missedFoodEmojiDurationMs = 1000;
+const onboardingCoinDropCount = 3;
+const maxCoinDropIntervalSeconds = 10;
+const firstOnboardingCoinDelayMs = 5000;
+const minOnboardingCoinDelayMs = 8000;
+const maxOnboardingCoinDelayMs = maxCoinDropIntervalSeconds * 1000;
+const hungryBubbleFullnessThreshold = 0.7;
 const fishLengthDisplayMultiplier = 10;
 const baselineMealCalories = 46;
 const baseTextureWidth = 64;
@@ -75,6 +83,7 @@ export class Fish {
   private stateBubble: Phaser.GameObjects.Graphics;
   private stateEmoji: Phaser.GameObjects.Text;
   private productionProgress = new Map<string, number>();
+  private onboardingCoinDropsRemaining = 0;
   private happyEmojiUntil = 0;
   private missedFoodEmojiUntil = 0;
   private visualWorldScale = 1;
@@ -208,7 +217,20 @@ export class Fish {
   }
 
   public markCoinDroppedForProduction(now: number, production: CoinProduction): void {
+    if (this.onboardingCoinDropsRemaining > 0) {
+      this.onboardingCoinDropsRemaining -= 1;
+      if (this.onboardingCoinDropsRemaining > 0) {
+        this.nextCoinDropAt = now + Phaser.Math.Between(minOnboardingCoinDelayMs, maxOnboardingCoinDelayMs);
+        return;
+      }
+    }
+
     this.nextCoinDropAt = now + production.intervalSeconds * 1000;
+  }
+
+  public primeOnboardingCoinDrops(now: number): void {
+    this.onboardingCoinDropsRemaining = onboardingCoinDropCount;
+    this.nextCoinDropAt = now + firstOnboardingCoinDelayMs;
   }
 
   public restoreProgress(ageSeconds: number, hunger: number, health: number, nextCoinDropAt: number, fatalCareSecondsValue = 0): void {
@@ -324,7 +346,7 @@ export class Fish {
   public activeProduction(): CoinProduction {
     const production = this.primaryProduction();
     if (this.state === "ill") {
-      return { ...production, amount: 1, intervalSeconds: production.intervalSeconds * 3 };
+      return { ...production, amount: 1, intervalSeconds: Math.min(maxCoinDropIntervalSeconds, production.intervalSeconds * 3) };
     }
     return production;
   }
@@ -332,7 +354,7 @@ export class Fish {
   public rollActiveProduction(): CoinProduction {
     const production = this.rollProduction();
     if (this.state === "ill") {
-      return { ...production, amount: 1, intervalSeconds: production.intervalSeconds * 3 };
+      return { ...production, amount: 1, intervalSeconds: Math.min(maxCoinDropIntervalSeconds, production.intervalSeconds * 3) };
     }
     return production;
   }
@@ -594,7 +616,11 @@ export class Fish {
     return {
       ...production,
       amount: Math.max(1, Math.ceil(production.amount * primaryMultiplier)),
-      intervalSeconds: Math.max(4, Math.round(production.intervalSeconds / Phaser.Math.Linear(1, 1.18, Phaser.Math.Clamp(multiplier / 4, 0, 1))))
+      intervalSeconds: Phaser.Math.Clamp(
+        Math.round(production.intervalSeconds / Phaser.Math.Linear(1, 1.18, Phaser.Math.Clamp(multiplier / 4, 0, 1))),
+        4,
+        maxCoinDropIntervalSeconds
+      )
     };
   }
 
@@ -779,6 +805,17 @@ export class Fish {
   }
 
   private visualAgeSecondsInCurrentTank(): number {
+    const earlyVisualGrowthSeconds = (secondsPerFishMonth / daysPerFishMonth) * earlyVisualGrowthDays;
+    if (this.ageSeconds <= earlyVisualGrowthSeconds) {
+      return this.ageSeconds * earlyVisualGrowthMultiplier;
+    }
+
+    if (this.ageSeconds < oneMonthGrowthSeconds) {
+      const visualAgeAtEarlyCutoff = earlyVisualGrowthSeconds * earlyVisualGrowthMultiplier;
+      const taperRatio = (this.ageSeconds - earlyVisualGrowthSeconds) / Math.max(1, oneMonthGrowthSeconds - earlyVisualGrowthSeconds);
+      return Phaser.Math.Linear(visualAgeAtEarlyCutoff, oneMonthGrowthSeconds, this.smoothGrowthRatio(taperRatio));
+    }
+
     return this.ageSeconds;
   }
 
@@ -1021,7 +1058,7 @@ export class Fish {
     this.statusBars.clear();
     this.statusBars.setPosition(x, y);
 
-    if (showCareBars) {
+    if (showCareBars && !this.shouldShowHungryBubble()) {
       this.statusBars.fillStyle(0x061725, 0.72);
       this.statusBars.fillRoundedRect(-1, barY - 1, barWidth + 2, barHeight * 2 + gap + 2, 2);
       this.statusBars.fillStyle(0x19364a, 0.95);
@@ -1078,8 +1115,8 @@ export class Fish {
       return "😊";
     }
 
-    if (this.state === "hungry") {
-      return "😫";
+    if (this.shouldShowHungryBubble()) {
+      return "hungry..";
     }
 
     return "";
@@ -1093,12 +1130,12 @@ export class Fish {
 
     this.stateBubble.setPosition(this.stateEmoji.x, this.stateEmoji.y);
     this.stateBubble.fillStyle(0xf7fbff, 0.92);
-    this.stateBubble.fillRoundedRect(-16, -15, 32, 25, 8);
-    this.stateBubble.fillTriangle(-5, 8, 0, 15, 6, 8);
-    this.stateBubble.lineStyle(1, 0x0c3144, 0.46);
-    this.stateBubble.strokeRoundedRect(-16, -15, 32, 25, 8);
-    this.stateBubble.lineBetween(-5, 8, 0, 15);
-    this.stateBubble.lineBetween(0, 15, 6, 8);
+    const bubbleWidth = Math.max(44, Math.ceil(this.stateEmoji.displayWidth) + 24);
+    const bubbleHeight = 32;
+    const halfWidth = bubbleWidth / 2;
+    const halfHeight = bubbleHeight / 2;
+    this.stateBubble.fillRoundedRect(-halfWidth, -halfHeight, bubbleWidth, bubbleHeight, 10);
+    this.stateBubble.fillTriangle(-6, halfHeight - 4, 0, halfHeight + 8, 7, halfHeight - 4);
   }
 
   private currentMoodRatio(): number {
@@ -1111,6 +1148,10 @@ export class Fish {
 
   private shouldShowCareBars(fullnessRatio = this.currentFullnessRatio(), moodRatio = this.currentMoodRatio()): boolean {
     return fullnessRatio < 0.5 || moodRatio < 0.5;
+  }
+
+  private shouldShowHungryBubble(): boolean {
+    return this.currentFullnessRatio() < hungryBubbleFullnessThreshold;
   }
 
   private tailTint(): number {
