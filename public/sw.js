@@ -1,6 +1,5 @@
-const CACHE_NAME = "coral-haven-v1";
+const CACHE_NAME = "coral-haven-v2";
 const APP_SHELL = [
-  "/",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -32,13 +31,24 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse.ok) {
+            const responseCopy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseCopy));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request).then((cachedResponse) => cachedResponse ?? caches.match("/")))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then((networkResponse) => {
+      const networkFetch = fetch(event.request).then((networkResponse) => {
         if (networkResponse.ok && CACHEABLE_DESTINATIONS.has(event.request.destination)) {
           const responseCopy = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseCopy));
@@ -46,6 +56,8 @@ self.addEventListener("fetch", (event) => {
 
         return networkResponse;
       });
+
+      return cachedResponse ?? networkFetch;
     })
   );
 });

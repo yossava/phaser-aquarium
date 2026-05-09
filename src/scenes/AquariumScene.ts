@@ -659,12 +659,15 @@ export class AquariumScene extends Phaser.Scene {
   private htmlDockDragging = false;
   private gameHudLevelBadge?: HTMLDivElement;
   private tankMenuOverlay?: HTMLDivElement;
+  private tankMenuCollapsed = false;
   private htmlPageOverlay?: HTMLDivElement;
   private tabControls: Phaser.GameObjects.GameObject[] = [];
   private storeOverlay?: StoreOverlay;
   private modal?: HTMLDivElement;
   private modalTitle?: string;
   private draggedFish?: Fish;
+  private nativeCanvasInputCleanup?: () => void;
+  private nativeDraggedFish?: Fish;
   private pendingTextureLoads = new Set<string>();
   private pendingFishTextureLoads = new Set<string>();
   private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
@@ -727,6 +730,7 @@ export class AquariumScene extends Phaser.Scene {
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       this.handleTankPointer(pointer);
     });
+    this.installNativeCanvasInputFallback();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyHtmlGameInterface());
 
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("openStore")) {
@@ -1579,6 +1583,7 @@ export class AquariumScene extends Phaser.Scene {
 
     this.tankMenuOverlay ??= this.createTankMenuOverlay();
     this.tankMenuOverlay.classList.remove("hidden");
+    this.syncTankMenuCollapsedState();
     this.syncGoalMenuBadge();
     this.syncCleanMenuProgress();
   }
@@ -1587,7 +1592,7 @@ export class AquariumScene extends Phaser.Scene {
     const overlay = document.createElement("div");
     overlay.className = "aq-tank-menu";
 
-    const menuDockLowerOffset = 32;
+    const menuDockLowerOffset = 56;
     const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
       { id: "shop", label: "Shop", y: 212 + menuDockLowerOffset, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
       { id: "clean", label: "Clean", y: 292 + menuDockLowerOffset, icon: "/assets/ui/care.png", action: () => this.cleanTank() },
@@ -1639,8 +1644,47 @@ export class AquariumScene extends Phaser.Scene {
       overlay.append(button);
     }
 
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "aq-tank-menu-toggle";
+    toggle.style.top = `${204 / gameHeight * 100}%`;
+    toggle.setAttribute("aria-label", "Toggle menu");
+    this.attachTouchFeedback(toggle, true);
+    toggle.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.tankMenuCollapsed = !this.tankMenuCollapsed;
+      this.syncTankMenuCollapsedState();
+    });
+
+    const toggleBubble = document.createElement("span");
+    toggleBubble.className = "aq-tank-menu-bubble aq-tank-menu-toggle-bubble";
+    const toggleIcon = document.createElement("span");
+    toggleIcon.className = "aq-tank-menu-toggle-icon";
+    toggleIcon.setAttribute("aria-hidden", "true");
+    toggleBubble.append(toggleIcon);
+    toggle.append(toggleBubble);
+    overlay.append(toggle);
+
     document.body.appendChild(overlay);
+    this.syncTankMenuCollapsedState();
     return overlay;
+  }
+
+  private syncTankMenuCollapsedState(): void {
+    if (!this.tankMenuOverlay) {
+      return;
+    }
+
+    this.tankMenuOverlay.classList.toggle("is-collapsed", this.tankMenuCollapsed);
+    const toggle = this.tankMenuOverlay.querySelector(".aq-tank-menu-toggle");
+    const icon = toggle?.querySelector(".aq-tank-menu-toggle-icon");
+    if (toggle instanceof HTMLElement) {
+      toggle.setAttribute("aria-expanded", String(!this.tankMenuCollapsed));
+    }
+    if (icon instanceof HTMLElement) {
+      icon.textContent = this.tankMenuCollapsed ? "<" : ">";
+    }
   }
 
   private syncGoalMenuBadge(): void {
@@ -2287,6 +2331,8 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private destroyHtmlGameInterface(): void {
+    this.nativeCanvasInputCleanup?.();
+    this.nativeCanvasInputCleanup = undefined;
     this.cancelHtmlFoodDrag();
     this.closeModal();
     this.gameHudOverlay?.remove();
@@ -4566,6 +4612,132 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     return nearestCoin;
+  }
+
+  private fishAtPointer(designX: number, designY: number): Fish | undefined {
+    if (this.activeScreen !== "tank") {
+      return undefined;
+    }
+
+    const tankPoint = this.screenToTankPoint(designX, designY);
+    const scale = this.tankViewScaleForLevel();
+    const minimumTapRadius = 42 / Math.max(0.01, scale);
+    let nearestFish: Fish | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const fish of this.activeFish()) {
+      const tapRadius = Math.max(minimumTapRadius, fish.sprite.displayWidth * 0.48, fish.sprite.displayHeight * 0.7);
+      const distance = Phaser.Math.Distance.Between(tankPoint.x, tankPoint.y, fish.sprite.x, fish.sprite.y);
+      if (distance <= tapRadius && distance < nearestDistance) {
+        nearestFish = fish;
+        nearestDistance = distance;
+      }
+    }
+
+    return nearestFish;
+  }
+
+  private installNativeCanvasInputFallback(): void {
+    const canvas = this.game.canvas;
+    let activePointerId: number | undefined;
+
+    const designPointFromEvent = (event: PointerEvent): Phaser.Math.Vector2 | undefined => this.clientPointToDesignPoint(event.clientX, event.clientY);
+    const endNativeFishDrag = (event?: PointerEvent) => {
+      if (!this.nativeDraggedFish) {
+        return;
+      }
+
+      const fish = this.nativeDraggedFish;
+      const point = event ? designPointFromEvent(event) : undefined;
+      if (point && tankViewportBounds.contains(point.x, point.y) && this.activeScreen === "tank") {
+        const tankPoint = this.screenToTankPoint(point.x, point.y);
+        fish.moveManuallyTo(tankPoint.x, tankPoint.y);
+      }
+
+      fish.endManualDrag();
+      fish.sprite.setDepth(8);
+      this.draggedFish = undefined;
+      this.nativeDraggedFish = undefined;
+      activePointerId = undefined;
+      this.saveNow();
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || this.htmlDockDragging || this.activeScreen !== "tank") {
+        return;
+      }
+
+      const point = designPointFromEvent(event);
+      if (!point || !tankViewportBounds.contains(point.x, point.y)) {
+        return;
+      }
+
+      const tappedCoin = this.coinAtPointer(point.x, point.y);
+      if (tappedCoin) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.collectCoin(tappedCoin, false);
+        return;
+      }
+
+      const fish = this.fishAtPointer(point.x, point.y);
+      if (!fish) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      activePointerId = event.pointerId;
+      this.capturePointerSafely(canvas, event.pointerId);
+      this.nativeDraggedFish = fish;
+      this.draggedFish = fish;
+      this.selectedFishIndex = this.fish.indexOf(fish);
+      fish.beginManualDrag();
+      fish.sprite.setDepth(14);
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (activePointerId !== event.pointerId || !this.nativeDraggedFish || this.activeScreen !== "tank") {
+        return;
+      }
+
+      const point = designPointFromEvent(event);
+      if (!point) {
+        return;
+      }
+
+      event.preventDefault();
+      const tankPoint = this.screenToTankPoint(point.x, point.y);
+      this.nativeDraggedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (activePointerId !== event.pointerId) {
+        return;
+      }
+
+      event.preventDefault();
+      this.releasePointerSafely(canvas, event.pointerId);
+      endNativeFishDrag(event);
+    };
+    const onPointerCancel = (event: PointerEvent) => {
+      if (activePointerId !== event.pointerId) {
+        return;
+      }
+
+      event.preventDefault();
+      this.releasePointerSafely(canvas, event.pointerId);
+      endNativeFishDrag(event);
+    };
+
+    canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
+    canvas.addEventListener("pointermove", onPointerMove, { passive: false });
+    canvas.addEventListener("pointerup", onPointerUp, { passive: false });
+    canvas.addEventListener("pointercancel", onPointerCancel, { passive: false });
+    this.nativeCanvasInputCleanup = () => {
+      canvas.removeEventListener("pointerdown", onPointerDown);
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", onPointerUp);
+      canvas.removeEventListener("pointercancel", onPointerCancel);
+      endNativeFishDrag();
+    };
   }
 
   private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number } = {}): Fish {
