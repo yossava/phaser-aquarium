@@ -6,7 +6,7 @@
   "assets": [
     {
       "id": "tank-seabed-01-lagoon_sand",
-      "filename": "tank-seabed-01-lagoon_sand.png",
+      "filename": "tank-seabed-01-lagoon_sand.webp",
       "theme": "lagoon_sand",
       "dimensions": {
         "width": 2048,
@@ -17,7 +17,7 @@
     },
     {
       "id": "tank-seabed-02-coral_rubble",
-      "filename": "tank-seabed-02-coral_rubble.png",
+      "filename": "tank-seabed-02-coral_rubble.webp",
       "theme": "coral_rubble",
       "dimensions": {
         "width": 2048,
@@ -28,7 +28,7 @@
     },
     {
       "id": "tank-seabed-03-kelp_mud",
-      "filename": "tank-seabed-03-kelp_mud.png",
+      "filename": "tank-seabed-03-kelp_mud.webp",
       "theme": "kelp_mud",
       "dimensions": {
         "width": 2048,
@@ -39,7 +39,7 @@
     },
     {
       "id": "tank-seabed-04-crystal_gravel",
-      "filename": "tank-seabed-04-crystal_gravel.png",
+      "filename": "tank-seabed-04-crystal_gravel.webp",
       "theme": "crystal_gravel",
       "dimensions": {
         "width": 2048,
@@ -50,7 +50,7 @@
     },
     {
       "id": "tank-seabed-05-abyss_black_sand",
-      "filename": "tank-seabed-05-abyss_black_sand.png",
+      "filename": "tank-seabed-05-abyss_black_sand.webp",
       "theme": "abyss_black_sand",
       "dimensions": {
         "width": 2048,
@@ -61,7 +61,7 @@
     },
     {
       "id": "tank-seabed-06-sunset_sand",
-      "filename": "tank-seabed-06-sunset_sand.png",
+      "filename": "tank-seabed-06-sunset_sand.webp",
       "theme": "sunset_sand",
       "dimensions": {
         "width": 2048,
@@ -72,7 +72,7 @@
     },
     {
       "id": "tank-seabed-07-freshwater_pebbles",
-      "filename": "tank-seabed-07-freshwater_pebbles.png",
+      "filename": "tank-seabed-07-freshwater_pebbles.webp",
       "theme": "freshwater_pebbles",
       "dimensions": {
         "width": 2048,
@@ -83,7 +83,7 @@
     },
     {
       "id": "tank-seabed-08-ruin_tiles",
-      "filename": "tank-seabed-08-ruin_tiles.png",
+      "filename": "tank-seabed-08-ruin_tiles.webp",
       "theme": "ruin_tiles",
       "dimensions": {
         "width": 2048,
@@ -94,7 +94,7 @@
     },
     {
       "id": "tank-seabed-09-mangrove_silt",
-      "filename": "tank-seabed-09-mangrove_silt.png",
+      "filename": "tank-seabed-09-mangrove_silt.webp",
       "theme": "mangrove_silt",
       "dimensions": {
         "width": 2048,
@@ -105,7 +105,7 @@
     },
     {
       "id": "tank-seabed-10-volcanic_basalt",
-      "filename": "tank-seabed-10-volcanic_basalt.png",
+      "filename": "tank-seabed-10-volcanic_basalt.webp",
       "theme": "volcanic_basalt",
       "dimensions": {
         "width": 2048,
@@ -116,7 +116,7 @@
     },
     {
       "id": "tank-seabed-11-glowing_plankton_sand",
-      "filename": "tank-seabed-11-glowing_plankton_sand.png",
+      "filename": "tank-seabed-11-glowing_plankton_sand.webp",
       "theme": "glowing_plankton_sand",
       "dimensions": {
         "width": 2048,
@@ -127,7 +127,7 @@
     },
     {
       "id": "tank-seabed-12-arctic_pale_gravel",
-      "filename": "tank-seabed-12-arctic_pale_gravel.png",
+      "filename": "tank-seabed-12-arctic_pale_gravel.webp",
       "theme": "arctic_pale_gravel",
       "dimensions": {
         "width": 2048,
@@ -138,7 +138,7 @@
     },
     {
       "id": "tank-seabed-13-jade_moss_stone",
-      "filename": "tank-seabed-13-jade_moss_stone.png",
+      "filename": "tank-seabed-13-jade_moss_stone.webp",
       "theme": "jade_moss_stone",
       "dimensions": {
         "width": 2048,
@@ -149,7 +149,7 @@
     },
     {
       "id": "tank-seabed-14-pearl_shell_sand",
-      "filename": "tank-seabed-14-pearl_shell_sand.png",
+      "filename": "tank-seabed-14-pearl_shell_sand.webp",
       "theme": "pearl_shell_sand",
       "dimensions": {
         "width": 2048,
@@ -160,7 +160,7 @@
     },
     {
       "id": "tank-seabed-15-shipwreck_planks",
-      "filename": "tank-seabed-15-shipwreck_planks.png",
+      "filename": "tank-seabed-15-shipwreck_planks.webp",
       "theme": "shipwreck_planks",
       "dimensions": {
         "width": 2048,
@@ -171,7 +171,7 @@
     },
     {
       "id": "tank-seabed-16-lily_pond_mud",
-      "filename": "tank-seabed-16-lily_pond_mud.png",
+      "filename": "tank-seabed-16-lily_pond_mud.webp",
       "theme": "lily_pond_mud",
       "dimensions": {
         "width": 2048,
@@ -182,7 +182,7 @@
     },
     {
       "id": "tank-seabed-17-moonlit_silver_sand",
-      "filename": "tank-seabed-17-moonlit_silver_sand.png",
+      "filename": "tank-seabed-17-moonlit_silver_sand.webp",
       "theme": "moonlit_silver_sand",
       "dimensions": {
         "width": 2048,
@@ -193,7 +193,7 @@
     },
     {
       "id": "tank-seabed-18-opal_crystal_gravel",
-      "filename": "tank-seabed-18-opal_crystal_gravel.png",
+      "filename": "tank-seabed-18-opal_crystal_gravel.webp",
       "theme": "opal_crystal_gravel",
       "dimensions": {
         "width": 2048,
@@ -204,7 +204,7 @@
     },
     {
       "id": "tank-seabed-19-golden_rippled_sand",
-      "filename": "tank-seabed-19-golden_rippled_sand.png",
+      "filename": "tank-seabed-19-golden_rippled_sand.webp",
       "theme": "golden_rippled_sand",
       "dimensions": {
         "width": 2048,
@@ -215,7 +215,7 @@
     },
     {
       "id": "tank-seabed-20-deep_temple_stone",
-      "filename": "tank-seabed-20-deep_temple_stone.png",
+      "filename": "tank-seabed-20-deep_temple_stone.webp",
       "theme": "deep_temple_stone",
       "dimensions": {
         "width": 2048,

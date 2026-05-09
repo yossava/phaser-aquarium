@@ -183,22 +183,22 @@ const hudIconAssetPathByKey: Record<string, string> = {
   "ui-icon-happy-status": "/assets/ui/icon-happy-status.png"
 };
 const aquariumFloorTextureKey = "aquarium-floor";
-const aquariumFloorAssetPath = "/assets/backgrounds/aquarium-floor.png";
+const aquariumFloorAssetPath = "/assets/backgrounds/aquarium-floor.webp";
 const aquariumBackgroundTextureKey = "aquarium-background";
-const aquariumBackgroundAssetPath = "/assets/backgrounds/tank-background.png";
+const aquariumBackgroundAssetPath = "/assets/backgrounds/tank-background.webp";
 const distantSilhouetteTextureKey = "aquarium-distant-silhouettes";
-const distantSilhouetteAssetPath = "/assets/backgrounds/distant-silhouettes.png";
+const distantSilhouetteAssetPath = "/assets/backgrounds/distant-silhouettes.webp";
 const dirtyTankOverlayTextureKey = "dirty-tank-overlay";
-const dirtyTankOverlayAssetPath = "/assets/backgrounds/dirty-tank-overlay.png";
+const dirtyTankOverlayAssetPath = "/assets/backgrounds/dirty-tank-overlay.webp";
 const tankThumbnailBaseTextureKey = "tank-thumbnail-base";
-const tankThumbnailBaseAssetPath = "/assets/backgrounds/tank-thumbnail-base.png";
+const tankThumbnailBaseAssetPath = "/assets/backgrounds/tank-thumbnail-base.webp";
 const tankThemeIds = ["lagoon", "coral", "kelp", "crystal", "abyss", "sunset"] as const;
 const tankThemeTexturePairs = tankThemeIds.map((themeId) => ({
   id: themeId,
   backgroundKey: `tank-theme-${themeId}-bg`,
-  backgroundPath: `/assets/backgrounds/theme-${themeId}-bg.png`,
+  backgroundPath: `/assets/backgrounds/theme-${themeId}-bg.webp`,
   floorKey: `tank-theme-${themeId}-floor`,
-  floorPath: `/assets/backgrounds/theme-${themeId}-floor.png`
+  floorPath: `/assets/backgrounds/theme-${themeId}-floor.webp`
 }));
 type TankThemeTexturePair = (typeof tankThemeTexturePairs)[number];
 const generatedTankBackgrounds = [
@@ -249,13 +249,13 @@ const generatedTankBackgroundTexturePairs = generatedTankBackgrounds.map(([theme
   id: `generated-bg-${String(index + 1).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
   name,
   textureKey: `tank-generated-bg-${String(index + 1).padStart(2, "0")}`,
-  path: `/assets/backgrounds/generated-bg/tank-bg-${String(index + 1).padStart(2, "0")}-${themeId}.png`
+  path: `/assets/backgrounds/generated-bg/tank-bg-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
 }));
 const generatedTankSeabedTexturePairs = generatedTankSeabeds.map(([themeId, name], index) => ({
   id: `generated-seabed-${String(index + 1).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
   name,
   textureKey: `tank-generated-seabed-${String(index + 1).padStart(2, "0")}`,
-  path: `/assets/backgrounds/generated-seabed/tank-seabed-${String(index + 1).padStart(2, "0")}-${themeId}.png`
+  path: `/assets/backgrounds/generated-seabed/tank-seabed-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
 }));
 type TankCosmetic = {
   id: string;
@@ -659,7 +659,7 @@ export class AquariumScene extends Phaser.Scene {
   public preload(): void {
     fishTypes.forEach((fishType) => {
       this.load.image(`fish-${fishType.id}`, `/assets/fish/${fishType.id}.png`);
-      this.load.spritesheet(`fish-${fishType.id}-swim`, `/assets/fish/${fishType.id}-swim.png`, {
+      this.load.spritesheet(`fish-${fishType.id}-swim`, `/assets/fish/${fishType.id}-swim.webp`, {
         frameWidth: 256,
         frameHeight: 160
       });

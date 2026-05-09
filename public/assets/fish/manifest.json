@@ -359,11 +359,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_zebra_danio-swim.png",
+      "file": "/assets/fish/common_zebra_danio-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_zebra_danio.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_neon_tetra.png",
@@ -373,11 +373,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_neon_tetra-swim.png",
+      "file": "/assets/fish/common_neon_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_neon_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_ember_tetra.png",
@@ -387,11 +387,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_ember_tetra-swim.png",
+      "file": "/assets/fish/common_ember_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_ember_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_cardinal_tetra.png",
@@ -401,11 +401,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_cardinal_tetra-swim.png",
+      "file": "/assets/fish/common_cardinal_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_cardinal_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_harlequin_rasbora.png",
@@ -415,11 +415,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_harlequin_rasbora-swim.png",
+      "file": "/assets/fish/common_harlequin_rasbora-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_harlequin_rasbora.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_cherry_barb.png",
@@ -429,11 +429,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_cherry_barb-swim.png",
+      "file": "/assets/fish/common_cherry_barb-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_cherry_barb.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_rosy_barb.png",
@@ -443,11 +443,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_rosy_barb-swim.png",
+      "file": "/assets/fish/common_rosy_barb-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_rosy_barb.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_tiger_barb.png",
@@ -457,11 +457,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_tiger_barb-swim.png",
+      "file": "/assets/fish/common_tiger_barb-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_tiger_barb.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_endler_guppy.png",
@@ -471,11 +471,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_endler_guppy-swim.png",
+      "file": "/assets/fish/common_endler_guppy-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_endler_guppy.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_platy.png",
@@ -485,11 +485,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_platy-swim.png",
+      "file": "/assets/fish/common_platy-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_platy.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_swordtail.png",
@@ -499,11 +499,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_swordtail-swim.png",
+      "file": "/assets/fish/common_swordtail-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_swordtail.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_molly.png",
@@ -513,11 +513,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_molly-swim.png",
+      "file": "/assets/fish/common_molly-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_molly.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_medaka.png",
@@ -527,11 +527,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_medaka-swim.png",
+      "file": "/assets/fish/common_medaka-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_medaka.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_japanese_ricefish.png",
@@ -541,11 +541,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_japanese_ricefish-swim.png",
+      "file": "/assets/fish/common_japanese_ricefish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_japanese_ricefish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_lampeye_killifish.png",
@@ -555,11 +555,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_lampeye_killifish-swim.png",
+      "file": "/assets/fish/common_lampeye_killifish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_lampeye_killifish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_lemon_tetra.png",
@@ -569,11 +569,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_lemon_tetra-swim.png",
+      "file": "/assets/fish/common_lemon_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_lemon_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_glowlight_tetra.png",
@@ -583,11 +583,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_glowlight_tetra-swim.png",
+      "file": "/assets/fish/common_glowlight_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_glowlight_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_black_neon_tetra.png",
@@ -597,11 +597,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_black_neon_tetra-swim.png",
+      "file": "/assets/fish/common_black_neon_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_black_neon_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_xray_tetra.png",
@@ -611,11 +611,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_xray_tetra-swim.png",
+      "file": "/assets/fish/common_xray_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_xray_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_rummy_nose_tetra.png",
@@ -625,11 +625,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_rummy_nose_tetra-swim.png",
+      "file": "/assets/fish/common_rummy_nose_tetra-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_rummy_nose_tetra.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_pearl_danio.png",
@@ -639,11 +639,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_pearl_danio-swim.png",
+      "file": "/assets/fish/common_pearl_danio-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_pearl_danio.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_celestial_pearl_danio.png",
@@ -653,11 +653,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_celestial_pearl_danio-swim.png",
+      "file": "/assets/fish/common_celestial_pearl_danio-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_celestial_pearl_danio.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_corydoras_panda.png",
@@ -667,11 +667,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_corydoras_panda-swim.png",
+      "file": "/assets/fish/common_corydoras_panda-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_corydoras_panda.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_corydoras_bronze.png",
@@ -681,11 +681,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_corydoras_bronze-swim.png",
+      "file": "/assets/fish/common_corydoras_bronze-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_corydoras_bronze.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_otocinclus.png",
@@ -695,11 +695,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_otocinclus-swim.png",
+      "file": "/assets/fish/common_otocinclus-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_otocinclus.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_kuhli_loach.png",
@@ -709,11 +709,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_kuhli_loach-swim.png",
+      "file": "/assets/fish/common_kuhli_loach-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_kuhli_loach.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_bristlenose_pleco.png",
@@ -723,11 +723,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_bristlenose_pleco-swim.png",
+      "file": "/assets/fish/common_bristlenose_pleco-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_bristlenose_pleco.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_honey_gourami.png",
@@ -737,11 +737,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_honey_gourami-swim.png",
+      "file": "/assets/fish/common_honey_gourami-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_honey_gourami.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_dwarf_rainbowfish.png",
@@ -751,11 +751,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_dwarf_rainbowfish-swim.png",
+      "file": "/assets/fish/common_dwarf_rainbowfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_dwarf_rainbowfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/common_threadfin_rainbowfish.png",
@@ -765,11 +765,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/common_threadfin_rainbowfish-swim.png",
+      "file": "/assets/fish/common_threadfin_rainbowfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/common/common_threadfin_rainbowfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_freshwater_angelfish.png",
@@ -779,11 +779,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_freshwater_angelfish-swim.png",
+      "file": "/assets/fish/rare_freshwater_angelfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_freshwater_angelfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_discus.png",
@@ -793,11 +793,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_discus-swim.png",
+      "file": "/assets/fish/rare_discus-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_discus.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_koi.png",
@@ -807,11 +807,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_koi-swim.png",
+      "file": "/assets/fish/rare_koi-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_koi.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_betta.png",
@@ -821,11 +821,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_betta-swim.png",
+      "file": "/assets/fish/rare_betta-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_betta.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_mandarin_dragonet.png",
@@ -835,11 +835,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_mandarin_dragonet-swim.png",
+      "file": "/assets/fish/rare_mandarin_dragonet-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_mandarin_dragonet.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_pearl_gourami.png",
@@ -849,11 +849,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_pearl_gourami-swim.png",
+      "file": "/assets/fish/rare_pearl_gourami-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_pearl_gourami.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_dwarf_gourami.png",
@@ -863,11 +863,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_dwarf_gourami-swim.png",
+      "file": "/assets/fish/rare_dwarf_gourami-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_dwarf_gourami.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_blue_ram_cichlid.png",
@@ -877,11 +877,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_blue_ram_cichlid-swim.png",
+      "file": "/assets/fish/rare_blue_ram_cichlid-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_blue_ram_cichlid.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_apistogramma.png",
@@ -891,11 +891,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_apistogramma-swim.png",
+      "file": "/assets/fish/rare_apistogramma-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_apistogramma.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_electric_blue_acara.png",
@@ -905,11 +905,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_electric_blue_acara-swim.png",
+      "file": "/assets/fish/rare_electric_blue_acara-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_electric_blue_acara.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_firemouth_cichlid.png",
@@ -919,11 +919,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_firemouth_cichlid-swim.png",
+      "file": "/assets/fish/rare_firemouth_cichlid-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_firemouth_cichlid.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_kribensis.png",
@@ -933,11 +933,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_kribensis-swim.png",
+      "file": "/assets/fish/rare_kribensis-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_kribensis.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_clown_loach.png",
@@ -947,11 +947,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_clown_loach-swim.png",
+      "file": "/assets/fish/rare_clown_loach-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_clown_loach.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_yoyo_loach.png",
@@ -961,11 +961,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_yoyo_loach-swim.png",
+      "file": "/assets/fish/rare_yoyo_loach-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_yoyo_loach.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_hillstream_loach.png",
@@ -975,11 +975,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_hillstream_loach-swim.png",
+      "file": "/assets/fish/rare_hillstream_loach-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_hillstream_loach.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_glass_catfish.png",
@@ -989,11 +989,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_glass_catfish-swim.png",
+      "file": "/assets/fish/rare_glass_catfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_glass_catfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_marble_hatchetfish.png",
@@ -1003,11 +1003,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_marble_hatchetfish-swim.png",
+      "file": "/assets/fish/rare_marble_hatchetfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_marble_hatchetfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_peacock_gudgeon.png",
@@ -1017,11 +1017,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_peacock_gudgeon-swim.png",
+      "file": "/assets/fish/rare_peacock_gudgeon-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_peacock_gudgeon.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_boeseamani_rainbowfish.png",
@@ -1031,11 +1031,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_boeseamani_rainbowfish-swim.png",
+      "file": "/assets/fish/rare_boeseamani_rainbowfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_boeseamani_rainbowfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_furcata_rainbowfish.png",
@@ -1045,11 +1045,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_furcata_rainbowfish-swim.png",
+      "file": "/assets/fish/rare_furcata_rainbowfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_furcata_rainbowfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_denison_barb.png",
@@ -1059,11 +1059,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_denison_barb-swim.png",
+      "file": "/assets/fish/rare_denison_barb-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_denison_barb.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_rainbow_shark.png",
@@ -1073,11 +1073,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_rainbow_shark-swim.png",
+      "file": "/assets/fish/rare_rainbow_shark-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_rainbow_shark.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_twig_catfish.png",
@@ -1087,11 +1087,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_twig_catfish-swim.png",
+      "file": "/assets/fish/rare_twig_catfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_twig_catfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_farlowella.png",
@@ -1101,11 +1101,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_farlowella-swim.png",
+      "file": "/assets/fish/rare_farlowella-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_farlowella.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_bichir.png",
@@ -1115,11 +1115,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_bichir-swim.png",
+      "file": "/assets/fish/rare_bichir-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_bichir.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_ropefish.png",
@@ -1129,11 +1129,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_ropefish-swim.png",
+      "file": "/assets/fish/rare_ropefish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_ropefish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_african_butterflyfish.png",
@@ -1143,11 +1143,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_african_butterflyfish-swim.png",
+      "file": "/assets/fish/rare_african_butterflyfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_african_butterflyfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_golden_wonder_killifish.png",
@@ -1157,11 +1157,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_golden_wonder_killifish-swim.png",
+      "file": "/assets/fish/rare_golden_wonder_killifish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_golden_wonder_killifish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_badis.png",
@@ -1171,11 +1171,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_badis-swim.png",
+      "file": "/assets/fish/rare_badis-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_badis.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/rare_leaf_fish.png",
@@ -1185,11 +1185,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/rare_leaf_fish-swim.png",
+      "file": "/assets/fish/rare_leaf_fish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/rare/rare_leaf_fish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_asian_arowana.png",
@@ -1199,11 +1199,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_asian_arowana-swim.png",
+      "file": "/assets/fish/sr_asian_arowana-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_asian_arowana.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_black_ghost_knifefish.png",
@@ -1213,11 +1213,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_black_ghost_knifefish-swim.png",
+      "file": "/assets/fish/sr_black_ghost_knifefish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_black_ghost_knifefish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_zebra_pleco.png",
@@ -1227,11 +1227,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_zebra_pleco-swim.png",
+      "file": "/assets/fish/sr_zebra_pleco-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_zebra_pleco.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_spotted_garden_eel.png",
@@ -1241,11 +1241,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_spotted_garden_eel-swim.png",
+      "file": "/assets/fish/sr_spotted_garden_eel-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_spotted_garden_eel.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_ribbon_eel.png",
@@ -1255,11 +1255,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_ribbon_eel-swim.png",
+      "file": "/assets/fish/sr_ribbon_eel-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_ribbon_eel.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_longhorn_cowfish.png",
@@ -1269,11 +1269,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_longhorn_cowfish-swim.png",
+      "file": "/assets/fish/sr_longhorn_cowfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_longhorn_cowfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_yellow_boxfish.png",
@@ -1283,11 +1283,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_yellow_boxfish-swim.png",
+      "file": "/assets/fish/sr_yellow_boxfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_yellow_boxfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_porcupine_puffer.png",
@@ -1297,11 +1297,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_porcupine_puffer-swim.png",
+      "file": "/assets/fish/sr_porcupine_puffer-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_porcupine_puffer.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_oranda_goldfish.png",
@@ -1311,11 +1311,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_oranda_goldfish-swim.png",
+      "file": "/assets/fish/sr_oranda_goldfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_oranda_goldfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_ranchu_goldfish.png",
@@ -1325,11 +1325,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_ranchu_goldfish-swim.png",
+      "file": "/assets/fish/sr_ranchu_goldfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_ranchu_goldfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_celestial_eye_goldfish.png",
@@ -1339,11 +1339,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_celestial_eye_goldfish-swim.png",
+      "file": "/assets/fish/sr_celestial_eye_goldfish-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_celestial_eye_goldfish.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_flowerhorn_cichlid.png",
@@ -1353,11 +1353,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_flowerhorn_cichlid-swim.png",
+      "file": "/assets/fish/sr_flowerhorn_cichlid-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_flowerhorn_cichlid.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_red_texas_cichlid.png",
@@ -1367,11 +1367,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_red_texas_cichlid-swim.png",
+      "file": "/assets/fish/sr_red_texas_cichlid-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_red_texas_cichlid.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_panther_grouper_juvenile.png",
@@ -1381,11 +1381,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_panther_grouper_juvenile-swim.png",
+      "file": "/assets/fish/sr_panther_grouper_juvenile-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_panther_grouper_juvenile.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     },
     {
       "file": "/assets/fish/sr_dragon_wrasse_juvenile.png",
@@ -1395,11 +1395,11 @@
       "processing": "fish-90 real-reference final, cropped, padded, resized"
     },
     {
-      "file": "/assets/fish/sr_dragon_wrasse_juvenile-swim.png",
+      "file": "/assets/fish/sr_dragon_wrasse_juvenile-swim.webp",
       "width": 3072,
       "height": 160,
       "source": "assets/generated/fish-90-real-ref/final/super_rare/sr_dragon_wrasse_juvenile.png",
-      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      "processing": "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final; WebP q82 runtime asset"
     }
   ]
 }

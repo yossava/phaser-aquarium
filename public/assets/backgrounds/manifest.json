@@ -64,7 +64,7 @@
         "original_generated_image": "/Users/yossava/.codex/generated_images/019df086-dd0e-77f2-a492-55ce7c176e60/ig_091ef35b8707319c0169f7f16fb810819181f1983e581636cb.png",
         "postprocess": "Resized from generated 887x1774 RGB PNG to exact requested 1024x2048 output."
       },
-      "runtime_filename": "tank-background.png",
+      "runtime_filename": "tank-background.webp",
       "runtime_notes": "Promoted to current runtime tank background for the fantasy UI revamp."
     },
     {
@@ -81,9 +81,9 @@
       "source_generation": {
         "method": "imagegen with magenta chroma-key background plus local alpha postprocess",
         "original_generated_image": "/Users/yossava/.codex/generated_images/019e0516-3a15-7e93-8738-c68afcadaf01/ig_02ce368ff85aa6f50169fdd30e0e74819185b45a52c3bab2a3.png",
-        "postprocess": "Removed #ff00ff chroma key to alpha, neutralized magenta edge spill, resized to 1024x2048, and saved as public/assets/backgrounds/dirty-tank-overlay.png."
+        "postprocess": "Removed #ff00ff chroma key to alpha, neutralized magenta edge spill, resized to 1024x2048, and saved as public/assets/backgrounds/dirty-tank-overlay.webp."
       },
-      "runtime_filename": "dirty-tank-overlay.png"
+      "runtime_filename": "dirty-tank-overlay.webp"
     }
   ]
 }

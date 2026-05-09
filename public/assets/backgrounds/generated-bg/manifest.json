@@ -5,7 +5,7 @@
   "assets": [
     {
       "id": "tank-bg-01-lagoon_depth",
-      "filename": "tank-bg-01-lagoon_depth.png",
+      "filename": "tank-bg-01-lagoon_depth.webp",
       "theme": "lagoon_depth",
       "dimensions": {
         "width": 948,
@@ -16,7 +16,7 @@
     },
     {
       "id": "tank-bg-02-coral_garden",
-      "filename": "tank-bg-02-coral_garden.png",
+      "filename": "tank-bg-02-coral_garden.webp",
       "theme": "coral_garden",
       "dimensions": {
         "width": 948,
@@ -27,7 +27,7 @@
     },
     {
       "id": "tank-bg-03-kelp_forest",
-      "filename": "tank-bg-03-kelp_forest.png",
+      "filename": "tank-bg-03-kelp_forest.webp",
       "theme": "kelp_forest",
       "dimensions": {
         "width": 948,
@@ -38,7 +38,7 @@
     },
     {
       "id": "tank-bg-04-crystal_cavern",
-      "filename": "tank-bg-04-crystal_cavern.png",
+      "filename": "tank-bg-04-crystal_cavern.webp",
       "theme": "crystal_cavern",
       "dimensions": {
         "width": 948,
@@ -49,7 +49,7 @@
     },
     {
       "id": "tank-bg-05-abyss_blue",
-      "filename": "tank-bg-05-abyss_blue.png",
+      "filename": "tank-bg-05-abyss_blue.webp",
       "theme": "abyss_blue",
       "dimensions": {
         "width": 948,
@@ -60,7 +60,7 @@
     },
     {
       "id": "tank-bg-06-sunset_shallows",
-      "filename": "tank-bg-06-sunset_shallows.png",
+      "filename": "tank-bg-06-sunset_shallows.webp",
       "theme": "sunset_shallows",
       "dimensions": {
         "width": 948,
@@ -71,7 +71,7 @@
     },
     {
       "id": "tank-bg-07-freshwater_plants",
-      "filename": "tank-bg-07-freshwater_plants.png",
+      "filename": "tank-bg-07-freshwater_plants.webp",
       "theme": "freshwater_plants",
       "dimensions": {
         "width": 948,
@@ -82,7 +82,7 @@
     },
     {
       "id": "tank-bg-08-misty_ruins",
-      "filename": "tank-bg-08-misty_ruins.png",
+      "filename": "tank-bg-08-misty_ruins.webp",
       "theme": "misty_ruins",
       "dimensions": {
         "width": 948,
@@ -93,7 +93,7 @@
     },
     {
       "id": "tank-bg-09-mangrove_roots",
-      "filename": "tank-bg-09-mangrove_roots.png",
+      "filename": "tank-bg-09-mangrove_roots.webp",
       "theme": "mangrove_roots",
       "dimensions": {
         "width": 948,
@@ -104,7 +104,7 @@
     },
     {
       "id": "tank-bg-10-volcanic_reef",
-      "filename": "tank-bg-10-volcanic_reef.png",
+      "filename": "tank-bg-10-volcanic_reef.webp",
       "theme": "volcanic_reef",
       "dimensions": {
         "width": 948,
@@ -115,7 +115,7 @@
     },
     {
       "id": "tank-bg-11-glowing_plankton",
-      "filename": "tank-bg-11-glowing_plankton.png",
+      "filename": "tank-bg-11-glowing_plankton.webp",
       "theme": "glowing_plankton",
       "dimensions": {
         "width": 948,
@@ -126,7 +126,7 @@
     },
     {
       "id": "tank-bg-12-arctic_glass",
-      "filename": "tank-bg-12-arctic_glass.png",
+      "filename": "tank-bg-12-arctic_glass.webp",
       "theme": "arctic_glass",
       "dimensions": {
         "width": 948,
@@ -137,7 +137,7 @@
     },
     {
       "id": "tank-bg-13-jade_grotto",
-      "filename": "tank-bg-13-jade_grotto.png",
+      "filename": "tank-bg-13-jade_grotto.webp",
       "theme": "jade_grotto",
       "dimensions": {
         "width": 948,
@@ -148,7 +148,7 @@
     },
     {
       "id": "tank-bg-14-pearl_cave",
-      "filename": "tank-bg-14-pearl_cave.png",
+      "filename": "tank-bg-14-pearl_cave.webp",
       "theme": "pearl_cave",
       "dimensions": {
         "width": 948,
@@ -159,7 +159,7 @@
     },
     {
       "id": "tank-bg-15-distant_shipwreck",
-      "filename": "tank-bg-15-distant_shipwreck.png",
+      "filename": "tank-bg-15-distant_shipwreck.webp",
       "theme": "distant_shipwreck",
       "dimensions": {
         "width": 948,
@@ -170,7 +170,7 @@
     },
     {
       "id": "tank-bg-16-lily_freshwater",
-      "filename": "tank-bg-16-lily_freshwater.png",
+      "filename": "tank-bg-16-lily_freshwater.webp",
       "theme": "lily_freshwater",
       "dimensions": {
         "width": 948,
@@ -181,7 +181,7 @@
     },
     {
       "id": "tank-bg-17-moonlit_reef",
-      "filename": "tank-bg-17-moonlit_reef.png",
+      "filename": "tank-bg-17-moonlit_reef.webp",
       "theme": "moonlit_reef",
       "dimensions": {
         "width": 948,
@@ -192,7 +192,7 @@
     },
     {
       "id": "tank-bg-18-opal_cavern",
-      "filename": "tank-bg-18-opal_cavern.png",
+      "filename": "tank-bg-18-opal_cavern.webp",
       "theme": "opal_cavern",
       "dimensions": {
         "width": 948,
@@ -203,7 +203,7 @@
     },
     {
       "id": "tank-bg-19-golden_shallows",
-      "filename": "tank-bg-19-golden_shallows.png",
+      "filename": "tank-bg-19-golden_shallows.webp",
       "theme": "golden_shallows",
       "dimensions": {
         "width": 948,
@@ -214,7 +214,7 @@
     },
     {
       "id": "tank-bg-20-deep_temple",
-      "filename": "tank-bg-20-deep_temple.png",
+      "filename": "tank-bg-20-deep_temple.webp",
       "theme": "deep_temple",
       "dimensions": {
         "width": 948,

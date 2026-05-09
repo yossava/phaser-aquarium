@@ -1,6 +1,8 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { cropToAlpha, decodePng, encodePng, fitImage } from "./apply-generated-assets.mjs";
 
 const root = process.cwd();
@@ -12,6 +14,8 @@ const fishDataPath = path.join(root, "src", "data", "fish-types.json");
 const runtimeWidth = 256;
 const runtimeHeight = 160;
 const swimFrameCount = 12;
+const execFileAsync = promisify(execFile);
+const cwebpBinary = process.env.CWEBP_BIN ?? "cwebp";
 
 const rarityConfig = {
   common: {
@@ -93,9 +97,12 @@ async function main() {
     const sourcePath = path.join(root, asset.final);
     const runtimeImage = fitImage(cropToAlpha(decodePng(await readFile(sourcePath))), runtimeWidth, runtimeHeight, 0.08);
     const fishPngPath = path.join(publicFishDir, `${asset.id}.png`);
-    const swimPngPath = path.join(publicFishDir, `${asset.id}-swim.png`);
+    const tempSwimPngPath = path.join(publicFishDir, `${asset.id}-swim.png`);
+    const swimWebpPath = path.join(publicFishDir, `${asset.id}-swim.webp`);
     await writeFile(fishPngPath, encodePng(runtimeImage.width, runtimeImage.height, runtimeImage.data));
-    await writeFile(swimPngPath, encodePng(runtimeWidth * swimFrameCount, runtimeHeight, createSwimSheet(runtimeImage).data));
+    await writeFile(tempSwimPngPath, encodePng(runtimeWidth * swimFrameCount, runtimeHeight, createSwimSheet(runtimeImage).data));
+    await encodeWebp(tempSwimPngPath, swimWebpPath);
+    await unlink(tempSwimPngPath);
 
     manifestAssets.set(`/assets/fish/${asset.id}.png`, {
       file: `/assets/fish/${asset.id}.png`,
@@ -104,12 +111,12 @@ async function main() {
       source: asset.final,
       processing: "fish-90 real-reference final, cropped, padded, resized"
     });
-    manifestAssets.set(`/assets/fish/${asset.id}-swim.png`, {
-      file: `/assets/fish/${asset.id}-swim.png`,
+    manifestAssets.set(`/assets/fish/${asset.id}-swim.webp`, {
+      file: `/assets/fish/${asset.id}-swim.webp`,
       width: runtimeWidth * swimFrameCount,
       height: runtimeHeight,
       source: asset.final,
-      processing: "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final"
+      processing: "12-frame subtle horizontal swim wave sheet generated from fish-90 real-reference final, WebP q82"
     });
   }
 
@@ -142,6 +149,10 @@ async function readOptionalJson(filePath, fallback) {
   } catch {
     return fallback;
   }
+}
+
+async function encodeWebp(sourcePngPath, targetWebpPath) {
+  await execFileAsync(cwebpBinary, ["-quiet", "-q", "82", "-m", "6", sourcePngPath, "-o", targetWebpPath]);
 }
 
 function buildFishType(asset, index) {
