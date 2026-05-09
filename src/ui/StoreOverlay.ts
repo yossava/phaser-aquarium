@@ -4,6 +4,9 @@ import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, S
 
 const supplyFoodIds = new Set(["medicine", "evolve"]);
 const hiddenFoodIds = new Set(["creature"]);
+type StoreDecorationSize = "s" | "m" | "l" | "xl";
+type TankStoreCategory = "tank" | "background" | "seabed" | "tools" | "decorations";
+type StoreBrowseLevel = "categories" | "tankCategories" | "products";
 
 export type StoreTankCard = {
   level: number;
@@ -15,6 +18,46 @@ export type StoreTankCard = {
   fishCapacity: number;
   helperCount: number;
   worth: number;
+  price: Price;
+  includedWallet: Wallet;
+};
+
+export type StoreTankCosmeticCard = {
+  kind: "tankCosmetic";
+  id: string;
+  category: "background" | "seabed";
+  name: string;
+  owned: boolean;
+  active: boolean;
+  price: Price;
+  previewUrl?: string;
+  tint: string;
+};
+
+export type StoreTankDecorationCard = {
+  kind: "tankDecoration";
+  id: string;
+  name: string;
+  rarity: Rarity;
+  texture: string;
+  happinessBonus: number;
+  price: Price;
+  owned: boolean;
+  variants: Array<{
+    size: StoreDecorationSize;
+    label: string;
+    owned: number;
+    price: Price;
+  }>;
+};
+
+export type StoreTankUtilityCard = {
+  kind: "tankUtility";
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  owned: boolean;
   price: Price;
 };
 
@@ -29,6 +72,9 @@ export type StoreOverlayState = {
   foodOwned: Record<string, number>;
   helperOwned: Record<string, number>;
   tankCards: StoreTankCard[];
+  tankCosmeticCards: StoreTankCosmeticCard[];
+  tankDecorationCards: StoreTankDecorationCard[];
+  tankUtilityCards: StoreTankUtilityCard[];
 };
 
 type StoreOverlayActions = {
@@ -38,11 +84,18 @@ type StoreOverlayActions = {
   buyHelper: (creatureType: HelperCreatureType) => void;
   buyTank: (level: number) => void;
   switchTank: (level: number) => void;
+  buyTankCosmetic: (category: StoreTankCosmeticCard["category"], id: string) => void;
+  switchTankCosmetic: (category: StoreTankCosmeticCard["category"], id: string) => void;
+  buyTankDecoration: (decorationId: string, size: StoreDecorationSize) => void;
+  selectTankDecoration: (decorationId: string, size: StoreDecorationSize) => void;
+  buyTankUtility: (utilityId: string) => void;
 };
 
 export class StoreOverlay {
   private readonly root: HTMLDivElement;
   private activeTab: StoreTab = "fish";
+  private tankCategory: TankStoreCategory = "tank";
+  private browseLevel: StoreBrowseLevel = "categories";
   private coinFilter: CoinType = "common";
   private page = 1;
   private quantities = new Map<string, number>();
@@ -59,6 +112,8 @@ export class StoreOverlay {
 
   show(): void {
     this.visible = true;
+    this.browseLevel = "categories";
+    this.page = 1;
     this.root.classList.remove("hidden");
     this.render();
   }
@@ -86,12 +141,14 @@ export class StoreOverlay {
 
   private createStore(state: StoreOverlayState): HTMLElement {
     const shell = el("section", "aq-store");
-    shell.append(
-      this.header(state),
-      this.tabs(),
-      this.rarityFilters(),
-      this.catalog(state)
-    );
+    shell.append(this.header(state));
+    if (this.browseLevel === "categories") {
+      shell.append(this.categoryMenu());
+    } else if (this.browseLevel === "tankCategories") {
+      shell.append(this.drillHeader("Choose Tank Category", "All tank items are grouped here."), this.tankCategoryMenu());
+    } else {
+      shell.append(this.drillHeader(this.productTitle(), "Choose rarity, then pick an item."), this.rarityFilters(), this.catalog(state));
+    }
     return shell;
   }
 
@@ -142,7 +199,7 @@ export class StoreOverlay {
     return chip;
   }
 
-  private tabs(): HTMLElement {
+  private categoryMenu(): HTMLElement {
     const tabs: Array<{ tab: StoreTab; label: string; icon: string }> = [
       { tab: "fish", label: "Fish", icon: "/assets/ui/shop/icon_category_fish.png" },
       { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png" },
@@ -150,24 +207,21 @@ export class StoreOverlay {
       { tab: "tank", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
       { tab: "creature", label: "Helpers", icon: "/assets/helpers/feeder-snail.png" }
     ];
-    const row = el("nav", "mb-1.5 flex shrink-0 gap-1.5");
+    const panel = el("main", "aq-panel grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-hidden p-2");
     tabs.forEach((item) => {
-      const tabButton = button("", `aq-tab ${this.activeTab === item.tab ? "aq-tab-active" : ""}`, () => {
+      const tabButton = button("", "aq-tab min-h-20 flex-col text-sm", () => {
         this.activeTab = item.tab;
+        this.browseLevel = item.tab === "tank" ? "tankCategories" : "products";
         this.page = 1;
         this.render();
       });
-      tabButton.append(image(item.icon, "", "h-5 w-5 object-contain"), document.createTextNode(item.label));
-      row.append(tabButton);
+      tabButton.append(image(item.icon, "", "h-9 w-9 object-contain"), document.createTextNode(item.label));
+      panel.append(tabButton);
     });
-    return row;
+    return panel;
   }
 
   private rarityFilters(): HTMLElement {
-    if (this.activeTab === "tank") {
-      return div("mb-1 min-h-1 shrink-0");
-    }
-
     const filters: Array<{ coin: CoinType; label: string; icon: string; className: string }> = [
       { coin: "common", label: "Common", icon: "/assets/ui/shop/common_star_badge.png", className: "border-amber-300/70 text-amber-200" },
       { coin: "rare", label: "Rare", icon: "/assets/ui/shop/rare_star_badge.png", className: "border-cyan-300/70 text-cyan-200" },
@@ -184,6 +238,67 @@ export class StoreOverlay {
       row.append(filterButton);
     });
     return row;
+  }
+
+  private tankCategoryMenu(): HTMLElement {
+    const categories: Array<{ category: TankStoreCategory; label: string; icon: string }> = [
+      { category: "tank", label: "Tank", icon: "/assets/ui/shop/icon_category_tanks.png" },
+      { category: "background", label: "Background", icon: "/assets/ui/shop/rare_star_badge.png" },
+      { category: "seabed", label: "Seabed", icon: "/assets/ui/shop/common_star_badge.png" },
+      { category: "tools", label: "Tools", icon: "/assets/ui/helper-food-dispenser.png" },
+      { category: "decorations", label: "Decor", icon: "/assets/decorations/rock.png" }
+    ];
+    const panel = el("main", "aq-panel grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-hidden p-2");
+    categories.forEach((item) => {
+      const tabButton = button("", "aq-tab min-h-20 flex-col text-sm", () => {
+        this.tankCategory = item.category;
+        this.browseLevel = "products";
+        this.page = 1;
+        this.render();
+      });
+      tabButton.append(image(item.icon, "", "h-9 w-9 object-contain"), document.createTextNode(item.label));
+      panel.append(tabButton);
+    });
+    return panel;
+  }
+
+  private drillHeader(title: string, subtitle: string): HTMLElement {
+    const row = el("div", "mb-1.5 flex shrink-0 items-center gap-2");
+    const backTarget: StoreBrowseLevel = this.browseLevel === "products" && this.activeTab === "tank" ? "tankCategories" : "categories";
+    row.append(
+      button("< BACK", "min-h-9 rounded-xl border border-cyan-200/30 bg-sky-900/80 px-3 text-xs font-black text-cyan-50", () => {
+        this.browseLevel = backTarget;
+        this.page = 1;
+        this.render();
+      }),
+      div("min-w-0 flex-1", [
+        div("truncate text-sm font-black leading-tight text-white", [title]),
+        div("truncate text-[10px] font-bold text-cyan-100/70", [subtitle])
+      ])
+    );
+    return row;
+  }
+
+  private productTitle(): string {
+    if (this.activeTab !== "tank") {
+      const labels: Record<StoreTab, string> = {
+        fish: "Fish",
+        food: "Food",
+        supply: "Supply",
+        tank: "Tanks",
+        decor: "Decor",
+        creature: "Helpers"
+      };
+      return labels[this.activeTab];
+    }
+    const labels: Record<TankStoreCategory, string> = {
+      tank: "Tank",
+      background: "Background",
+      seabed: "Seabed",
+      tools: "Tools",
+      decorations: "Decorations"
+    };
+    return labels[this.tankCategory];
   }
 
   private catalog(state: StoreOverlayState): HTMLElement {
@@ -219,7 +334,7 @@ export class StoreOverlay {
     return panel;
   }
 
-  private currentItems(state: StoreOverlayState): Array<FishType | FoodType | HelperCreatureType | StoreTankCard> {
+  private currentItems(state: StoreOverlayState): Array<FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard> {
     if (this.activeTab === "fish") {
       return fishTypes.filter((fish) => fish.price.coinType === this.coinFilter);
     }
@@ -232,12 +347,28 @@ export class StoreOverlay {
     if (this.activeTab === "creature") {
       return helperCreatureTypes.filter((creature) => creature.price.coinType === this.coinFilter);
     }
-    return state.tankCards;
+    const tankItemsByCategory: Record<TankStoreCategory, Array<StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard>> = {
+      tank: state.tankCards,
+      background: state.tankCosmeticCards.filter((item) => item.category === "background"),
+      seabed: state.tankCosmeticCards.filter((item) => item.category === "seabed"),
+      tools: state.tankUtilityCards,
+      decorations: state.tankDecorationCards
+    };
+    return tankItemsByCategory[this.tankCategory].filter((item) => item.owned || item.price.coinType === this.coinFilter);
   }
 
-  private cardForItem(item: FishType | FoodType | HelperCreatureType | StoreTankCard, state: StoreOverlayState): HTMLElement {
+  private cardForItem(item: FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard, state: StoreOverlayState): HTMLElement {
     if ("displayLevel" in item) {
       return this.tankCard(item, state);
+    }
+    if ("kind" in item && item.kind === "tankCosmetic") {
+      return this.tankCosmeticCard(item, state);
+    }
+    if ("kind" in item && item.kind === "tankDecoration") {
+      return this.tankDecorationCard(item, state);
+    }
+    if ("kind" in item && item.kind === "tankUtility") {
+      return this.tankUtilityCard(item, state);
     }
     if ("calories" in item) {
       return this.foodCard(item, state);
@@ -250,6 +381,7 @@ export class StoreOverlay {
 
   private fishCard(fish: FishType, state: StoreOverlayState): HTMLElement {
     const owned = state.fishOwned[fish.id] ?? 0;
+    const affordable = canAfford(state.wallet, fish.price);
     const card = this.baseCard(fish.rarity);
     card.append(
       this.preview(`/assets/fish/${fish.id}.png`, fish.name),
@@ -260,7 +392,7 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)}`]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [this.productionHint(fish)]),
-        button(canAfford(state.wallet, fish.price) ? "Buy Fish" : `Need ${formatPrice(fish.price)}`, "aq-buy mt-auto w-full disabled:opacity-45", () => this.actions.buyFish(fish))
+        button(affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyFish(fish), !affordable)
       ])
     );
     return card;
@@ -269,6 +401,7 @@ export class StoreOverlay {
   private foodCard(food: FoodType, state: StoreOverlayState): HTMLElement {
     const quantity = this.quantities.get(food.id) ?? 1;
     const totalPrice = { coinType: food.price.coinType, amount: food.price.amount * quantity };
+    const affordable = canAfford(state.wallet, totalPrice);
     const owned = state.foodOwned[food.id] ?? 0;
     const buyLabel = this.activeTab === "supply" ? "Buy Supply" : "Buy Food";
     const card = this.baseCard(food.rarity);
@@ -295,7 +428,7 @@ export class StoreOverlay {
           })
         ]),
         controls,
-        button(canAfford(state.wallet, totalPrice) ? buyLabel : `Need ${formatPrice(totalPrice)}`, "aq-buy mt-auto w-full", () => this.actions.buyFood(food, quantity))
+        button(affordable ? buyLabel : `Need ${formatPrice(totalPrice)}`, "aq-buy mt-auto w-full", () => this.actions.buyFood(food, quantity), !affordable)
       ])
     );
     return card;
@@ -303,6 +436,7 @@ export class StoreOverlay {
 
   private helperCard(creature: HelperCreatureType, state: StoreOverlayState): HTMLElement {
     const owned = state.helperOwned[creature.id] ?? 0;
+    const affordable = canAfford(state.wallet, creature.price);
     const texture = creature.id === "feeder-snail" ? "/assets/helpers/feeder-snail.png" : `/assets/helpers/${creature.id}.png`;
     const card = this.baseCard(creature.rarity);
     card.append(
@@ -314,7 +448,7 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${this.helperRole(creature)}`]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [creature.description]),
-        button(canAfford(state.wallet, creature.price) ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyHelper(creature))
+        button(affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyHelper(creature), !affordable)
       ])
     );
     return card;
@@ -322,19 +456,103 @@ export class StoreOverlay {
 
   private tankCard(tank: StoreTankCard, state: StoreOverlayState): HTMLElement {
     const owned = tank.owned;
+    const affordable = canAfford(state.wallet, tank.price);
     const card = this.baseCard(owned ? "rare" : "common");
     card.append(
-      div("mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-200/30 bg-cyan-400/15 text-2xl font-black", [`L${formatNumber(tank.displayLevel)}`]),
+      div("mx-auto flex h-14 w-20 items-center justify-center rounded-2xl border border-cyan-200/30 bg-cyan-400/15 px-2 text-center text-sm font-black leading-tight", [tank.name]),
       div("flex min-w-0 flex-1 flex-col overflow-hidden", [
         div("flex items-start justify-between gap-1.5", [
           div("min-w-0 truncate text-sm font-black leading-tight", [tank.name]),
           owned ? div("aq-chip text-xs", [tank.active ? "Active" : "Owned"]) : this.priceBadge(tank.price)
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-amber-200", [`Worth ${formatNumber(tank.worth)}`]),
+        !owned ? div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Includes C${formatNumber(tank.includedWallet.common)} R${formatNumber(tank.includedWallet.rare)} SR${formatNumber(tank.includedWallet.superRare)}`]) : "",
         div("mt-0.5 text-[10px] leading-tight text-cyan-50/90", [`${formatNumber(tank.fishCount)}/${formatNumber(tank.fishCapacity)} fish · ${formatNumber(tank.helperCount)} helpers`]),
-        button(tank.active ? "Current Tank" : owned ? "Switch Tank" : canAfford(state.wallet, tank.price) ? "Buy Tank" : `Need ${formatPrice(tank.price)}`, "aq-buy mt-auto w-full", () => {
+        button(tank.active ? "Current Tank" : owned ? "Switch Tank" : affordable ? `Buy ${tank.name}` : `Need ${formatPrice(tank.price)}`, "aq-buy mt-auto w-full", () => {
           owned ? this.actions.switchTank(tank.level) : this.actions.buyTank(tank.level);
-        })
+        }, !owned && !affordable)
+      ])
+    );
+    return card;
+  }
+
+  private tankCosmeticCard(cosmetic: StoreTankCosmeticCard, state: StoreOverlayState): HTMLElement {
+    const affordable = canAfford(state.wallet, cosmetic.price);
+    const card = this.baseCard(cosmetic.price.coinType);
+    const preview = cosmetic.previewUrl
+      ? this.preview(cosmetic.previewUrl, cosmetic.name)
+      : div("mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center", [
+        div("h-14 w-20 rounded-2xl border border-cyan-100/35 shadow-inner")
+      ]);
+    const swatch = preview.querySelector("div");
+    if (!cosmetic.previewUrl && swatch instanceof HTMLElement) {
+      swatch.style.background = cosmetic.tint;
+    }
+    card.append(
+      preview,
+      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+        div("flex items-start justify-between gap-1.5", [
+          div("min-w-0 truncate text-sm font-black leading-tight", [cosmetic.name]),
+          cosmetic.owned ? div("aq-chip text-xs", [cosmetic.active ? "Active" : "Owned"]) : this.priceBadge(cosmetic.price)
+        ]),
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [cosmetic.category === "background" ? "Tank Background" : "Tank Seabed"]),
+        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [cosmetic.owned ? "Install this look on the active tank." : "Buy and install on the active tank."]),
+        button(cosmetic.active ? "Current Look" : cosmetic.owned ? "Use Look" : affordable ? "Buy Look" : `Need ${formatPrice(cosmetic.price)}`, "aq-buy mt-auto w-full", () => {
+          cosmetic.owned ? this.actions.switchTankCosmetic(cosmetic.category, cosmetic.id) : this.actions.buyTankCosmetic(cosmetic.category, cosmetic.id);
+        }, !cosmetic.owned && !affordable)
+      ])
+    );
+    return card;
+  }
+
+  private tankDecorationCard(decoration: StoreTankDecorationCard, state: StoreOverlayState): HTMLElement {
+    const card = this.baseCard(decoration.rarity);
+    const controls = el("div", "mt-1.5 grid grid-cols-2 gap-1");
+    decoration.variants.forEach((variant) => {
+      const label = variant.owned > 0
+        ? `${variant.label} x${formatNumber(variant.owned)}`
+        : `${variant.label} ${formatPrice(variant.price)}`;
+      controls.append(
+        button(label, "aq-qty", () => {
+          variant.owned > 0
+            ? this.actions.selectTankDecoration(decoration.id, variant.size)
+            : this.actions.buyTankDecoration(decoration.id, variant.size);
+        }, variant.owned <= 0 && !canAfford(state.wallet, variant.price))
+      );
+    });
+    const mediumAffordable = canAfford(state.wallet, decoration.price);
+    card.append(
+      this.preview(`/assets/decorations/${decoration.id}.png`, decoration.name),
+      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+        div("flex items-start justify-between gap-1.5", [
+          div("min-w-0 truncate text-sm font-black leading-tight", [decoration.name]),
+          this.priceBadge(decoration.price)
+        ]),
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`+${formatNumber(decoration.happinessBonus)} happy decor`]),
+        controls,
+        button(mediumAffordable ? "Buy Medium" : `Need ${formatPrice(decoration.price)}`, "aq-buy mt-auto w-full", () => this.actions.buyTankDecoration(decoration.id, "m"), !mediumAffordable)
+      ])
+    );
+    return card;
+  }
+
+  private tankUtilityCard(utility: StoreTankUtilityCard, state: StoreOverlayState): HTMLElement {
+    const affordable = canAfford(state.wallet, utility.price);
+    const card = this.baseCard(utility.price.coinType);
+    card.append(
+      this.preview(utility.icon, utility.name),
+      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
+        div("flex items-start justify-between gap-1.5", [
+          div("min-w-0 truncate text-sm font-black leading-tight", [utility.name]),
+          utility.owned ? div("aq-chip text-xs", ["Owned"]) : this.priceBadge(utility.price)
+        ]),
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", ["Tank Utility"]),
+        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [utility.description]),
+        button(utility.owned ? "Installed" : affordable ? "Buy Utility" : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
+          if (!utility.owned) {
+            this.actions.buyTankUtility(utility.id);
+          }
+        }, !utility.owned && !affordable)
       ])
     );
     return card;
@@ -408,16 +626,19 @@ function image(src: string, alt: string, className: string): HTMLImageElement {
   return node;
 }
 
-function button(label: string, className: string, onClick: () => void): HTMLButtonElement {
+function button(label: string, className: string, onClick: () => void, disabled = false): HTMLButtonElement {
   const node = el("button", className);
   node.type = "button";
+  node.disabled = disabled;
   if (label) {
     node.textContent = label;
   }
   node.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    onClick();
+    if (!node.disabled) {
+      onClick();
+    }
   });
   return node;
 }

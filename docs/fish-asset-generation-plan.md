@@ -6,18 +6,34 @@ This prompt pack covers the 50 current fish types in `src/data/fish-types.json`.
 
 Use this style block at the start of every prompt. This block is mandatory; do not shorten it when generating production assets:
 
-> Mobile portrait aquarium game fish sprite, 2D stylized collectible game art, not a realistic fish photo, not stock art, not a 3D render, not a natural-history illustration. Use a unified cute toy-like aquarium art DNA: simplified rounded body, clean graphic silhouette, soft candy-color shading, controlled glossy highlights, friendly oversized eye, readable fins, and only simplified scale or pattern marks. Side-view fish facing right in a neutral straight swim pose. Body centerline must stay mostly horizontal. Tail root and tail-tip centerline must be straight and horizontal, aligned with the body axis; the tail may be a fan, fork, veil, or ribbon shape, but it must not curl, bend, droop, arc upward, arc downward, or form an S-shape. Center the full body with tail visible. Transparent background or perfectly flat chroma-key background for alpha removal. No tank background, no bubbles, no text, no UI badge, no hard black outline, no photorealistic scales, no real-species photo texture, no lens/stock-image lighting, no muddy colors. Readable at 64 px wide, source asset 1024x768 PNG with alpha.
+> Mobile portrait aquarium game fish sprite, 2D stylized collectible game art, not a realistic fish photo, not stock art, not a 3D render, not a natural-history illustration. Start from the real-world anatomy and silhouette of the named fish species: believable body proportion, mouth placement, eye placement, dorsal fin, pectoral fin, pelvic fin, anal fin, caudal peduncle, and tail type. Then stylize that real fish into a unified cute toy-like aquarium art DNA: simplified rounded body, clean graphic silhouette, soft candy-color shading, controlled glossy highlights, friendly eye, readable fins, and simplified scale or pattern marks. Use vivid colorful fantasy aquarium palettes; the fish does not need to follow real fish colors or real species patterns, but it must still be immediately recognizable as a fish with plausible natural anatomy. Do not make the fish white, mostly white, pale ivory, plain silver, washed-out gray, or low-contrast. Side-view fish facing right in a neutral straight swim pose. Body centerline must stay mostly horizontal. Tail root and tail-tip centerline must be straight and horizontal, aligned with the body axis; the tail may be a fan, fork, veil, or ribbon shape, but it must not curl, bend, droop, arc upward, arc downward, or form an S-shape. Center the full body with tail visible. Transparent background or perfectly flat chroma-key background for alpha removal. No tank background, no bubbles, no text, no UI badge, no hard black outline, no photorealistic scales, no real-species photo texture, no lens/stock-image lighting, no muddy colors. Readable at 64 px wide, source asset 1024x768 PNG with alpha.
 
 ## Stylization Guardrails
 
 Use these guardrails for every generated fish:
 
 - The fish should look like a premium mobile-game sprite or collectible sticker, not like an image-search result.
-- Favor deliberate shape language over biological realism: rounded toy body, clean fins, simplified scales, readable color blocking.
+- Anchor every fish in the named real species before stylizing it. The output should feel like a cute game version of a real aquarium fish, not a fantasy object with fins attached.
+- Preserve species-specific anatomy and silhouette first: body depth, head shape, mouth position, tail type, fin placement, and swimming posture should be believable for the referenced fish.
+- Favor deliberate shape language over photographic realism: rounded toy body, clean fins, simplified scales, readable color blocking.
 - Avoid photographic detail: no natural lens blur, no studio product lighting, no hyperreal eye, no thousands of tiny realistic scales.
 - Avoid generic AI/stock polish: do not make it look like a random glossy fish cutout from the web.
 - Keep the pose neutral and animation-ready: straight horizontal body, straight horizontal tail axis, no dramatic swimming curve.
-- Keep rarity visible through controlled game-art details, not through realism.
+- Keep rarity visible through controlled game-art features layered onto the real fish anatomy, not through unrealistic creature redesigns or excessive decoration.
+- Use colorful fantasy colorways freely, but do not make Rare and Super Rare fish automatically full-color or rainbow. The species silhouette should remain natural; palette, pattern, fin edge treatment, material feel, or subtle glow can make it collectible.
+- Reject white or mostly white fish. Small bright highlights are fine, but the dominant body color must be colorful and high-contrast.
+
+## Real Fish Reference Contract
+
+Each prompt should name a real fish species, family, or close aquarium reference before adding fantasy treatment. Use real fish references for structure, not for photorealistic rendering.
+
+- Good: "koi with real koi body proportions, barbels, dorsal fin placement, and forked tail; fantasy crimson and teal patch pattern."
+- Good: "betta with real betta head/body proportion and veil-tail anatomy; rare fin-edge glow and controlled jewel accents."
+- Good: "discus with real round discus body, tiny mouth, tall dorsal/anal fins; super rare glassy scale material."
+- Bad: "crystal manta fish" unless the catalog fish is actually a ray, because it may stop reading as a normal aquarium fish.
+- Bad: crown-like spikes, armor plates, gemstone jewelry, decorative metal trim, or object-like ornaments that replace believable fin anatomy.
+
+Premium features should feel like natural fish traits pushed slightly into game-art fantasy: longer fins, cleaner fin rays, pearlescent scale sheen, translucent fin edges, unusual but plausible patterning, subtle glow, or refined tail shape. Avoid accessories or hard-surface decoration that make the fish look artificial.
 
 ## Tail Geometry Contract
 
@@ -31,11 +47,27 @@ Every fish tail must be straight enough for consistent in-game movement:
 
 ## Rarity Language
 
-- Common: bright friendly body, one clear pattern feature, matte candy color, small soft highlight, simple fins.
-- Rare: more elegant silhouette, richer fins, pearlescent rim light, metallic or glassy accent marks, more pattern detail than common.
-- Super Rare: magical premium treatment, opal or cosmic shimmer, soft internal glow, elegant translucent fin layers, still readable as the species and still matching the same toy-like art DNA.
+- Common: bright friendly body, one clear pattern feature, matte candy color, small soft highlight, simple fins. Common fish should feel cute, readable, and collectible, but not luxurious.
+- Rare: real species silhouette with one or two premium naturalized upgrades, such as more elegant fin edges, refined tail shape, richer but controlled contrast, pearlescent rim light, subtle metallic/glassy scale sheen, polished scale clusters, or a memorable but plausible pattern feature. Rare fish should feel premium and valuable without looking artificial.
+- Super Rare: real species silhouette with a stronger but still naturalized fantasy treatment, such as unusually beautiful fin flow, translucent fin membranes, opal or cosmic scale shimmer, soft internal color glow, luminous scale accents, or one iconic species-compatible head/tail/body feature. Super rare fish can use jewel tones, but does not need to be fully multicolor or object-like; it should feel special at a glance while still reading as a living fish.
 
-Rarity should be part of the fish body, fins, scale pattern, or glow. Do not add separate star badges because tank UI no longer shows rarity stars.
+Rarity should be part of the fish body, fins, natural silhouette, scale pattern, material feel, species-compatible anatomy, or glow. Do not add separate star badges because tank UI no longer shows rarity stars.
+
+### Rarity Prompt Add-ons
+
+Append one of these blocks after the per-fish prompt when generating production fish:
+
+**Common add-on**
+
+> Common quality: make this fish colorful, cute, and readable. Use a bold fantasy palette, a simple body pattern, clean fins, and one clear identity feature. Do not make the fish white, mostly white, plain gray, plain silver, or low-contrast.
+
+**Rare add-on**
+
+> Rare quality: make this fish feel more collectible than common fish through one or two deliberate premium upgrades that still look like natural fish traits. Good rare cues include elegant fin edges, refined tail shape, pearlescent rim light, subtle metallic or glassy scale sheen, polished scale clusters, or one memorable species-compatible pattern feature. Use color with control; the fish does not need to be full-color or rainbow. Keep it premium and readable, not overly busy or artificial. Do not make the fish white, mostly white, plain gray, plain silver, or low-contrast.
+
+**Super rare add-on**
+
+> Super rare quality: make this fish feel premium, magical, and highly collectible through a clear special feature that still belongs on a living fish. Good super rare cues include unusually beautiful fin flow, translucent fin membranes, opal or cosmic scale shimmer, luminous scale accents, soft internal color glow, or one iconic species-compatible head/tail/body feature that reads as special at small size. Jewel tones are allowed, but the fish does not need to be fully multicolor, excessive, object-like, armored, or decorated with jewelry. Keep the sprite clean, natural, and readable. Do not make the fish white, mostly white, plain gray, plain silver, or low-contrast.
 
 ## Food Tail Color Map
 

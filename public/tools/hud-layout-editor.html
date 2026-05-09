@@ -506,14 +506,19 @@
 
       function normalizeLayout() {
         const round = (value) => Math.round(Number(value) * 10) / 10;
-        layout.levelBadge.x = round(layout.levelBadge.x);
-        layout.levelBadge.y = round(layout.levelBadge.y);
-        layout.levelBadge.size = Math.max(24, round(layout.levelBadge.size));
-        for (const rect of [layout.rightFrame, ...Object.values(layout.chips)]) {
+        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+        layout.levelBadge.x = clamp(round(layout.levelBadge.x), 24, gameWidth - 24);
+        layout.levelBadge.y = clamp(round(layout.levelBadge.y), 24, 130);
+        layout.levelBadge.size = clamp(round(layout.levelBadge.size), 40, 92);
+        layout.rightFrame.x = clamp(round(layout.rightFrame.x), 120, gameWidth - 20);
+        layout.rightFrame.y = clamp(round(layout.rightFrame.y), 40, 130);
+        layout.rightFrame.width = clamp(round(layout.rightFrame.width), 160, 350);
+        layout.rightFrame.height = clamp(round(layout.rightFrame.height), 70, 170);
+        for (const rect of Object.values(layout.chips)) {
           rect.x = round(rect.x);
           rect.y = round(rect.y);
-          rect.width = Math.max(20, round(rect.width));
-          rect.height = Math.max(16, round(rect.height));
+          rect.width = Math.max(20, Math.min(140, round(rect.width)));
+          rect.height = Math.max(16, Math.min(52, round(rect.height)));
         }
       }
 
@@ -561,7 +566,10 @@
 
       function loadLayout() {
         try {
-          return mergeLayout(JSON.parse(localStorage.getItem(storageKey) || "{}"));
+          const loaded = mergeLayout(JSON.parse(localStorage.getItem(storageKey) || "{}"));
+          layout = loaded;
+          normalizeLayout();
+          return layout;
         } catch {
           return clone(defaultLayout);
         }

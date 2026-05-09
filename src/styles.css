@@ -393,6 +393,18 @@ canvas {
     @apply min-h-7 rounded-lg border border-cyan-200/30 bg-sky-900/80 px-2 py-1 text-[10px] font-black text-cyan-50;
   }
 
+  .aq-buy:disabled,
+  .aq-qty:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+    filter: grayscale(0.35);
+  }
+
+  .aq-buy:disabled {
+    background: linear-gradient(#6b8794, #39515e);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18), 0 3px 0 rgba(15, 38, 48, 0.75);
+  }
+
   .aq-tank-menu {
     @apply fixed left-1/2 top-0 z-40 pointer-events-none;
     width: var(--aq-stage-width);
@@ -413,7 +425,6 @@ canvas {
     @apply relative flex aspect-square w-[86%] items-center justify-center rounded-full;
     transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
-      radial-gradient(circle at 38% 26%, rgba(255, 255, 255, 0.7) 0 8%, transparent 9%),
       radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%, rgba(180, 244, 255, 0.35) 76%, rgba(255, 255, 255, 0.2));
     box-shadow:
       inset 0 0 0 2px rgba(210, 250, 255, 0.34),
@@ -457,12 +468,12 @@ canvas {
   }
 
   .aq-game-level-badge {
-    @apply relative isolate flex aspect-square h-[clamp(56px,15vw,74px)] shrink-0 items-center justify-center overflow-visible rounded-full text-[clamp(22px,6vw,34px)] font-black text-cyan-50;
+    @apply relative isolate flex h-[clamp(72px,18vw,88px)] w-[clamp(62px,17vw,84px)] shrink-0 items-start justify-center overflow-hidden text-[clamp(22px,6vw,34px)] font-black text-cyan-50;
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 1 / span 2;
     align-self: start;
     justify-self: center;
-    margin: 5px 0 0 -1px;
+    margin: 1px 0 0 -1px;
     text-shadow:
       0 3px 0 rgba(0, 52, 104, 0.74),
       0 5px 4px rgba(0, 0, 0, 0.42);
@@ -470,14 +481,14 @@ canvas {
   }
 
   .aq-game-level-badge::before {
-    @apply absolute inset-0 -z-10 bg-contain bg-center bg-no-repeat content-[''];
+    @apply absolute left-1/2 top-0 -z-10 aspect-square h-[calc(100%-18px)] -translate-x-1/2 bg-contain bg-center bg-no-repeat content-[''];
     background-image: url("/assets/ui/hud-level-medallion.png");
     filter: hue-rotate(var(--level-badge-hue)) saturate(1.28) brightness(1.08) drop-shadow(0 4px 3px rgba(0, 36, 60, 0.38));
   }
 
   .aq-game-level-badge::after {
-    @apply absolute left-1/2 top-[94%] -z-10 -translate-x-1/2 rounded-[4px] border border-[#d7b879]/80 bg-[#f1d9a4] px-2.5 py-0.5 text-[clamp(10px,2.6vw,13px)] font-black leading-none text-[#5d3b1d] content-['Level'];
-    min-width: clamp(52px, 13vw, 66px);
+    @apply absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 rounded-[4px] border border-[#d7b879]/80 bg-[#f1d9a4] px-2 py-0.5 text-[clamp(10px,2.6vw,13px)] font-black leading-none text-[#5d3b1d] content-['Level'];
+    min-width: clamp(50px, 13vw, 64px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.72),
       0 -1px 0 rgba(112, 78, 37, 0.32),
@@ -488,6 +499,7 @@ canvas {
 
   .aq-game-level-badge span {
     @apply relative z-10;
+    margin-top: clamp(9px, 2.6vw, 14px);
   }
 
   .aq-game-stat-panel {
@@ -666,7 +678,7 @@ canvas {
     }
 
     .aq-game-stat-panel {
-      grid-template-columns: clamp(58px, 15.5vw, 74px) minmax(0, 1fr);
+      grid-template-columns: clamp(56px, 15.5vw, 74px) minmax(0, 1fr);
       grid-template-rows: clamp(44px, 11.8vw, 54px) auto;
       column-gap: 5px;
       row-gap: 2px;
@@ -675,8 +687,9 @@ canvas {
     }
 
     .aq-game-level-badge {
-      height: clamp(52px, 14vw, 66px);
-      margin-top: 2px;
+      height: clamp(64px, 17vw, 78px);
+      width: clamp(56px, 15.5vw, 74px);
+      margin-top: 0;
       font-size: clamp(20px, 5.4vw, 30px);
     }
 
@@ -716,7 +729,7 @@ canvas {
     }
 
     .aq-food-dock {
-      --food-dock-top: 128px;
+      --food-dock-top: 140px;
       gap: 7px;
     }
   }
@@ -738,8 +751,13 @@ canvas {
     }
 
     .aq-game-level-badge {
-      height: 50px;
+      height: 62px;
+      width: 54px;
       font-size: 24px;
+    }
+
+    .aq-game-level-badge span {
+      margin-top: 8px;
     }
 
     .aq-game-wallet-grid {
@@ -753,7 +771,7 @@ canvas {
     }
 
     .aq-food-dock {
-      --food-dock-top: 118px;
+      --food-dock-top: 130px;
       gap: 6px;
     }
   }
@@ -789,7 +807,7 @@ canvas {
 
   .aq-food-dock {
     @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px] overflow-y-auto pb-4;
-    --food-dock-top: 148px;
+    --food-dock-top: 160px;
     width: min(22vw, 92px);
     max-height: calc(100dvh - var(--food-dock-top) - 8px);
     left: calc((100vw - var(--aq-stage-width)) / 2);
@@ -826,7 +844,6 @@ canvas {
     @apply relative flex aspect-square w-[86%] items-center justify-center rounded-full;
     transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
-      radial-gradient(circle at 42% 26%, rgba(255, 255, 255, 0.68) 0 8%, transparent 9%),
       radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%, rgba(180, 244, 255, 0.35) 76%, rgba(255, 255, 255, 0.2));
     box-shadow:
       inset 0 0 0 2px rgba(210, 250, 255, 0.34),
