@@ -4511,6 +4511,12 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const tappedCoin = this.coinAtPointer(pointerPoint.x, pointerPoint.y);
+    if (tappedCoin) {
+      this.collectCoin(tappedCoin, false);
+      return;
+    }
+
     const mode = this.placementMode;
     const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
 
@@ -4537,6 +4543,29 @@ export class AquariumScene extends Phaser.Scene {
 
       this.placeDecorationFromInventory(decoration, mode.size, tankPoint.x, tankPoint.y);
     }
+  }
+
+  private coinAtPointer(designX: number, designY: number): CoinDrop | undefined {
+    if (this.activeScreen !== "tank" || this.coinDrops.length === 0) {
+      return undefined;
+    }
+
+    const tankPoint = this.screenToTankPoint(designX, designY);
+    const scale = this.tankViewScaleForLevel();
+    const minimumTapRadius = 44 / Math.max(0.01, scale);
+    let nearestCoin: CoinDrop | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const coin of this.coinDrops) {
+      const tapRadius = Math.max(minimumTapRadius, coin.hitZone.width * 0.62, coin.sprite.displayWidth * 0.82);
+      const distance = Phaser.Math.Distance.Between(tankPoint.x, tankPoint.y, coin.sprite.x, coin.sprite.y);
+      if (distance <= tapRadius && distance < nearestDistance) {
+        nearestCoin = coin;
+        nearestDistance = distance;
+      }
+    }
+
+    return nearestCoin;
   }
 
   private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number } = {}): Fish {
