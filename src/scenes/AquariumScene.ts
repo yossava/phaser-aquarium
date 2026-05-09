@@ -1573,25 +1573,27 @@ export class AquariumScene extends Phaser.Scene {
     this.tankMenuOverlay ??= this.createTankMenuOverlay();
     this.tankMenuOverlay.classList.remove("hidden");
     this.syncGoalMenuBadge();
+    this.syncCleanMenuProgress();
   }
 
   private createTankMenuOverlay(): HTMLDivElement {
     const overlay = document.createElement("div");
     overlay.className = "aq-tank-menu";
 
-    const screens: { label: string; y: number; icon: string; action: () => void }[] = [
-      { label: "Shop", y: 212, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
-      { label: "Clean", y: 292, icon: "/assets/ui/care.png", action: () => this.cleanTank() },
-      { label: "Book", y: 372, icon: "/assets/ui/book.png", action: () => this.openScreen("album") },
-      { label: "Tanks", y: 452, icon: "/assets/ui/shop/icon_category_tanks.png", action: () => this.openScreen("tanks") },
-      { label: "Quest", y: 532, icon: "/assets/ui/goals.png", action: () => this.openScreen("goals") },
-      { label: "Set", y: 612, icon: "/assets/ui/settings.png", action: () => this.openScreen("settings") }
+    const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
+      { id: "shop", label: "Shop", y: 212, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
+      { id: "clean", label: "Clean", y: 292, icon: "/assets/ui/care.png", action: () => this.cleanTank() },
+      { id: "book", label: "Book", y: 372, icon: "/assets/ui/book.png", action: () => this.openScreen("album") },
+      { id: "tanks", label: "Tanks", y: 452, icon: "/assets/ui/shop/icon_category_tanks.png", action: () => this.openScreen("tanks") },
+      { id: "quest", label: "Quest", y: 532, icon: "/assets/ui/goals.png", action: () => this.openScreen("goals") },
+      { id: "settings", label: "Set", y: 612, icon: "/assets/ui/settings.png", action: () => this.openScreen("settings") }
     ];
 
     for (const item of screens) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "aq-tank-menu-button";
+      button.dataset.menu = item.id;
       button.style.top = `${(item.y / gameHeight) * 100}%`;
       button.setAttribute("aria-label", item.label);
       this.attachTouchFeedback(button, true);
@@ -1608,7 +1610,13 @@ export class AquariumScene extends Phaser.Scene {
       icon.alt = "";
       icon.draggable = false;
       bubble.append(icon);
-      if (item.label === "Quest") {
+      if (item.id === "clean") {
+        const progress = document.createElement("span");
+        progress.className = "aq-clean-progress-ring hidden";
+        progress.setAttribute("aria-hidden", "true");
+        bubble.append(progress);
+      }
+      if (item.id === "quest") {
         const badge = document.createElement("span");
         badge.className = "aq-tank-menu-badge hidden";
         badge.setAttribute("aria-hidden", "true");
@@ -1640,6 +1648,25 @@ export class AquariumScene extends Phaser.Scene {
     const count = this.dailyGoalUnfinishedCount();
     badge.textContent = this.foodBadgeLabel(count);
     badge.classList.toggle("hidden", count <= 0);
+  }
+
+  private syncCleanMenuProgress(): void {
+    if (!this.tankMenuOverlay) {
+      return;
+    }
+
+    const cleanButton = this.tankMenuOverlay.querySelector('[data-menu="clean"]');
+    const progress = cleanButton?.querySelector(".aq-clean-progress-ring");
+    if (!(cleanButton instanceof HTMLElement) || !(progress instanceof HTMLElement)) {
+      return;
+    }
+
+    const active = this.cleaningTank && this.cleanliness < 100;
+    const degrees = Phaser.Math.Clamp(this.cleanliness, 0, 100) * 3.6;
+    cleanButton.classList.toggle("is-cleaning", active);
+    progress.classList.toggle("hidden", !active);
+    progress.style.setProperty("--clean-progress", `${degrees}deg`);
+    progress.setAttribute("aria-label", `Cleaning ${formatNumber(Math.round(this.cleanliness))}%`);
   }
 
   private syncHtmlGameInterface(): void {
