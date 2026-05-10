@@ -135,7 +135,7 @@
     "rarity": "common",
     "price": {
       "coinType": "common",
-      "amount": 180
+      "amount": 1000
     },
     "nutrition": 0,
     "acceptedByDefault": true,

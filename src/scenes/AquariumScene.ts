@@ -108,6 +108,7 @@ type HudLayout = {
 
 const maxCoinDrops = 30;
 const fishPurchaseWindowMs = 60 * 60 * 1000;
+const growthTonicPurchaseWindowMs = 60 * 60 * 1000;
 const coinCollectSoundKey = "sfx-coin-collect";
 const coinCollectSoundPath = "/assets/audio/sfx/coin-pick.ogg";
 const fishEatSoundKey = "sfx-fish-eat";
@@ -612,6 +613,7 @@ export class AquariumScene extends Phaser.Scene {
   private offlineProgress: OfflineProgress = { elapsedSeconds: 0, earned: createEmptyWallet() };
   private autosaveElapsed = 0;
   private hudStatusSyncElapsed = 0;
+  private storeRefreshElapsed = 0;
   private cleanliness = 100;
   private cleanedAt = Date.now();
   private cleaningTank = false;
@@ -792,6 +794,7 @@ export class AquariumScene extends Phaser.Scene {
   public update(_time: number, delta: number): void {
     const deltaSeconds = delta / 1000;
     const now = this.time.now;
+    this.updateStoreOverlayTimer(deltaSeconds);
 
     this.foods.forEach((food) => food.update(deltaSeconds));
     this.removeExpiredFood();
@@ -2652,6 +2655,21 @@ export class AquariumScene extends Phaser.Scene {
     this.storeOverlay.show();
   }
 
+  private updateStoreOverlayTimer(deltaSeconds: number): void {
+    if (this.activeScreen !== "store") {
+      this.storeRefreshElapsed = 0;
+      return;
+    }
+
+    this.storeRefreshElapsed += deltaSeconds;
+    if (this.storeRefreshElapsed < 1) {
+      return;
+    }
+
+    this.storeRefreshElapsed = 0;
+    this.storeOverlay?.refresh();
+  }
+
   private storeOverlayState(): StoreOverlayState {
     const fishOwned: Record<string, number> = {};
     for (const fishType of fishTypes) {
@@ -2680,6 +2698,8 @@ export class AquariumScene extends Phaser.Scene {
       fishPurchasesInWindow: this.recentFishPurchaseCount(),
       fishPurchaseHourlyLimit: this.hourlyFishPurchaseLimit(),
       fishPurchaseRestockLabel: this.fishPurchaseRestockLabel(),
+      ageBoostPurchaseAvailable: this.canBuyGrowthTonicThisHour(),
+      ageBoostRestockLabel: this.growthTonicPurchaseRestockLabel(),
       fishCount: this.activeFish().length,
       fishCapacity: this.maxFishCapacityForLevel(),
       fishOwned,
@@ -4459,13 +4479,22 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyFood(foodType = this.getSelectedFoodType(), quantity = this.getFoodBuyQuantity(foodType.id)): void {
-    const buyQuantity = Phaser.Math.Clamp(Math.floor(quantity), 1, maxFoodBuyQuantity);
+    if (foodType.id === "ageBoost" && !this.canBuyGrowthTonicThisHour()) {
+      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
+      this.storeOverlay?.refresh();
+      return;
+    }
+
+    const buyQuantity = foodType.id === "ageBoost" ? 1 : Phaser.Math.Clamp(Math.floor(quantity), 1, maxFoodBuyQuantity);
     const totalPrice = this.quantityPrice(foodType.price, buyQuantity);
     if (!this.spendPrice(totalPrice)) {
       return;
     }
 
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + buyQuantity);
+    if (foodType.id === "ageBoost") {
+      this.recordGrowthTonicPurchase();
+    }
     this.recordDailyQuestAction(foodType.id === "medicine" ? "buy-medicine" : "buy-food");
     this.recentInventoryDockItemKey = `food:${foodType.id}`;
     if (this.isDroppableFood(foodType.id)) {
@@ -6709,6 +6738,40 @@ export class AquariumScene extends Phaser.Scene {
 
     const remainingSeconds = Math.ceil((oldestRecentPurchase + fishPurchaseWindowMs - now) / 1000);
     return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+  }
+
+  private recentGrowthTonicPurchaseCount(now = Date.now()): number {
+    return this.dailyGoals.claimed.filter((entry) => {
+      if (!entry.startsWith("growth-tonic-buy:")) {
+        return false;
+      }
+      const purchasedAt = Number(entry.split(":")[1]);
+      return Number.isFinite(purchasedAt) && now - purchasedAt < growthTonicPurchaseWindowMs;
+    }).length;
+  }
+
+  private canBuyGrowthTonicThisHour(): boolean {
+    return this.recentGrowthTonicPurchaseCount() === 0;
+  }
+
+  private growthTonicPurchaseRestockLabel(now = Date.now()): string {
+    const oldestRecentPurchase = this.dailyGoals.claimed
+      .filter((entry) => entry.startsWith("growth-tonic-buy:"))
+      .map((entry) => Number(entry.split(":")[1]))
+      .filter((timestamp) => Number.isFinite(timestamp) && now - timestamp < growthTonicPurchaseWindowMs)
+      .sort((a, b) => a - b)[0];
+
+    if (!oldestRecentPurchase) {
+      return "1 per hour";
+    }
+
+    const remainingSeconds = Math.ceil((oldestRecentPurchase + growthTonicPurchaseWindowMs - now) / 1000);
+    return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+  }
+
+  private recordGrowthTonicPurchase(): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
+    this.dailyGoals.claimed.push(`growth-tonic-buy:${Date.now()}:${Phaser.Math.RND.uuid()}`);
   }
 
   private recordFishPurchase(fishType: FishType): void {

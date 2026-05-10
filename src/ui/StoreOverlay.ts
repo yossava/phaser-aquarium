@@ -69,6 +69,8 @@ export type StoreOverlayState = {
   fishPurchasesInWindow: number;
   fishPurchaseHourlyLimit: number;
   fishPurchaseRestockLabel: string;
+  ageBoostPurchaseAvailable: boolean;
+  ageBoostRestockLabel: string;
   fishCount: number;
   fishCapacity: number;
   fishOwned: Record<string, number>;
@@ -412,17 +414,24 @@ export class StoreOverlay {
   }
 
   private foodCard(food: FoodType, state: StoreOverlayState): HTMLElement {
-    const quantity = this.quantities.get(food.id) ?? 1;
+    const isAgeBoost = food.id === "ageBoost";
+    const quantity = isAgeBoost ? 1 : this.quantities.get(food.id) ?? 1;
     const totalPrice = { coinType: food.price.coinType, amount: food.price.amount * quantity };
     const affordable = canAfford(state.wallet, totalPrice);
+    const blockedByCooldown = isAgeBoost && !state.ageBoostPurchaseAvailable;
     const owned = state.foodOwned[food.id] ?? 0;
     const buyLabel = this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
     const card = this.baseCard(food.rarity);
     const controls = div("aq-food-qty-row", [
-      this.quantityHoldButton("-", food.id, -1, quantity <= 1),
+      this.quantityHoldButton("-", food.id, -1, quantity <= 1 || isAgeBoost),
       div("aq-qty aq-qty-value", [formatNumber(quantity)]),
-      this.quantityHoldButton("+", food.id, 1)
+      this.quantityHoldButton("+", food.id, 1, isAgeBoost)
     ]);
+    const buttonLabel = blockedByCooldown
+      ? state.ageBoostRestockLabel
+      : affordable
+        ? buyLabel
+        : `Need ${formatPrice(totalPrice)}`;
     card.append(
       this.preview(`/assets/food/${food.id}.png`, food.name, `aq-food-preview aq-food-tint-${food.id}`),
       div("flex min-w-0 flex-1 flex-col aq-food-card-body", [
@@ -432,7 +441,7 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`]),
         controls,
-        button(affordable ? buyLabel : `Need ${formatPrice(totalPrice)}`, "aq-buy w-full", () => this.actions.buyFood(food, quantity), !affordable)
+        button(buttonLabel, "aq-buy w-full", () => this.actions.buyFood(food, quantity), !affordable || blockedByCooldown)
       ])
     );
     return card;
