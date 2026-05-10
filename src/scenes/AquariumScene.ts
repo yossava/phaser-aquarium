@@ -629,6 +629,7 @@ export class AquariumScene extends Phaser.Scene {
   private autosaveElapsed = 0;
   private hudStatusSyncElapsed = 0;
   private storeRefreshElapsed = 0;
+  private storeCooldownStateKey = "";
   private cleanliness = 100;
   private cleanedAt = Date.now();
   private cleaningTank = false;
@@ -2787,11 +2788,7 @@ export class AquariumScene extends Phaser.Scene {
   private updateStoreOverlayTimer(deltaSeconds: number): void {
     if (this.activeScreen !== "store") {
       this.storeRefreshElapsed = 0;
-      return;
-    }
-
-    if (this.canBuyGrowthTonicThisHour()) {
-      this.storeRefreshElapsed = 0;
+      this.storeCooldownStateKey = "";
       return;
     }
 
@@ -2799,9 +2796,20 @@ export class AquariumScene extends Phaser.Scene {
     if (this.storeRefreshElapsed < 1) {
       return;
     }
-
     this.storeRefreshElapsed = 0;
-    this.storeOverlay?.refresh();
+
+    const ageBoostAvailable = this.canBuyGrowthTonicThisHour();
+    const fishAvailable = this.canBuyAnotherFishThisHour();
+    const cooldownKey = [
+      ageBoostAvailable,
+      fishAvailable,
+      this.recentFishPurchaseCount(),
+      this.hourlyFishPurchaseLimit()
+    ].join(":");
+    if (cooldownKey !== this.storeCooldownStateKey) {
+      this.storeCooldownStateKey = cooldownKey;
+      this.storeOverlay?.refresh();
+    }
   }
 
   private updateTimedUtilities(): void {
@@ -6253,6 +6261,12 @@ export class AquariumScene extends Phaser.Scene {
     this.hudHappyStatusText.setText(happyLabel);
   }
 
+  private syncCleanlinessUi(): void {
+    this.refreshCareStatusTexts();
+    this.syncCleanMenuProgress();
+    this.syncHtmlHud();
+  }
+
   private getHudNeedLabel(): string {
     return this.placementMode.kind === "none" ? this.getCompactTankNeedIndicator() : this.getModeLabel();
   }
@@ -6733,14 +6747,14 @@ export class AquariumScene extends Phaser.Scene {
       const previousCleanliness = this.cleanliness;
       this.cleanliness = Phaser.Math.Clamp(this.cleanliness + tankCleaningRatePerSecond * deltaSeconds, 0, 100);
       if (Math.floor(previousCleanliness) !== Math.floor(this.cleanliness)) {
-        this.refreshUi(false);
+        this.syncCleanlinessUi();
       }
       if (this.cleanliness >= 100) {
         this.cleaningTank = false;
         this.cleanedAt = Date.now();
         this.updateDirtyTankOverlay();
         this.floatText("Tank cleaned", toastX, toastY, "#a8ffb0");
-        this.refreshUi(false);
+        this.syncCleanlinessUi();
         this.saveNow();
       }
       return;

@@ -35,10 +35,12 @@ const veryBigTankWidthRatio = 0.78;
 const maximumFishScreenWidthRatio = 0.7;
 const minimumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const maximumGrowthWidthRatio = maximumFishScreenWidthRatio;
-const happyEmojiDurationMs = 3200;
-const missedFoodEmojiDurationMs = 1000;
-const dragLoveEmojiDurationMs = 2600;
-const dragLoveEmojiCooldownMs = 30_000;
+const statusEmojiDurationMs = 5000;
+const statusEmojiCooldownMs = 30_000;
+const happyEmojiDurationMs = statusEmojiDurationMs;
+const missedFoodEmojiDurationMs = statusEmojiDurationMs;
+const dragLoveEmojiDurationMs = statusEmojiDurationMs;
+const dragLoveEmojiCooldownMs = statusEmojiCooldownMs;
 const onboardingCoinDropCount = 3;
 const maxCoinDropIntervalSeconds = 10;
 const firstOnboardingCoinDelayMs = 5000;
@@ -102,6 +104,9 @@ export class Fish {
   private missedFoodEmojiUntil = 0;
   private dragLoveEmojiUntil = 0;
   private nextDragLoveEmojiAt = 0;
+  private activeStateEmoji = "";
+  private stateEmojiVisibleUntil = 0;
+  private nextStateEmojiAt = 0;
   private visualWorldScale = 1;
   private swimPhase: number;
   private velocity = new Phaser.Math.Vector2();
@@ -1342,20 +1347,49 @@ export class Fish {
       return;
     }
 
-    const showHungry = this.state === "hungry";
-    const showFullSmile = this.state === "happy" && this.currentFullnessRatio() >= 0.995;
-    if (!showHungry && !showFullSmile) {
+    const now = this.scene.time.now;
+    const nextEmoji = this.nextStateEmojiText(now);
+    if (this.activeStateEmoji && now < this.stateEmojiVisibleUntil) {
+      this.positionStateEmoji(this.activeStateEmoji);
+      return;
+    }
+
+    this.activeStateEmoji = "";
+    if (!nextEmoji || now < this.nextStateEmojiAt) {
       this.hideStateEmoji();
       return;
     }
 
+    this.activeStateEmoji = nextEmoji;
+    this.stateEmojiVisibleUntil = now + statusEmojiDurationMs;
+    this.nextStateEmojiAt = this.stateEmojiVisibleUntil + statusEmojiCooldownMs;
+    this.positionStateEmoji(nextEmoji);
+  }
+
+  private nextStateEmojiText(now = this.scene.time.now): string | undefined {
+    if (now < this.dragLoveEmojiUntil) {
+      return "😍";
+    }
+    if (this.state === "ill") {
+      return "🤢";
+    }
+    if (now < this.missedFoodEmojiUntil || this.state === "hungry") {
+      return "😩";
+    }
+    if (now < this.happyEmojiUntil || (this.state === "happy" && this.currentFullnessRatio() >= 0.995)) {
+      return "😊";
+    }
+    return undefined;
+  }
+
+  private positionStateEmoji(emoji: string): void {
     const bodyHeight = this.fishVisibleBodyHeight();
     const bodyWidth = this.fishVisibleBodyWidth();
     const headOffsetX = this.facing * bodyWidth * 0.62;
     const emojiX = Phaser.Math.Clamp(this.sprite.x + headOffsetX, tankBounds.left + 18, tankBounds.right - 18);
     const emojiY = Math.max(tankBounds.top + 18, this.sprite.y - bodyHeight * 0.62);
     this.stateEmoji
-      .setText(showHungry ? "😩" : "😊")
+      .setText(emoji)
       .setOrigin(0.5, 1)
       .setPosition(emojiX, emojiY)
       .setVisible(true);

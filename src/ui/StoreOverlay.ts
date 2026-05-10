@@ -111,6 +111,7 @@ export class StoreOverlay {
   private quantityHoldInterval?: number;
   private visible = false;
   private lastRenderKey = "";
+  private lastStateSignature = "";
   private readonly scrollPositions = new Map<string, number>();
 
   constructor(
@@ -152,7 +153,7 @@ export class StoreOverlay {
     this.root.remove();
   }
 
-  private render(): void {
+  private render(force = false): void {
     const currentScroll = this.root.querySelector(".aq-store-list-scroll");
     const previousKey = this.lastRenderKey;
     if (currentScroll instanceof HTMLElement) {
@@ -162,7 +163,13 @@ export class StoreOverlay {
     const state = this.getState();
     this.page = Math.max(1, this.page);
     const nextKey = this.renderKey();
+    const nextSignature = this.stateSignature(state);
+    if (!force && previousKey === nextKey && this.lastStateSignature === nextSignature) {
+      return;
+    }
+
     this.lastRenderKey = nextKey;
+    this.lastStateSignature = nextSignature;
     this.root.replaceChildren(this.createStore(state));
     const nextScrollTop = previousKey === nextKey ? this.scrollPositions.get(nextKey) ?? 0 : 0;
     const nextScroll = this.root.querySelector(".aq-store-list-scroll");
@@ -184,6 +191,47 @@ export class StoreOverlay {
 
   private renderKey(): string {
     return `${this.browseLevel}:${this.activeTab}:${this.tankCategory}:${this.coinFilter}`;
+  }
+
+  private stateSignature(state: StoreOverlayState): string {
+    const recordEntries = (record: Record<string, number>) => Object.entries(record).sort(([left], [right]) => left.localeCompare(right));
+    return JSON.stringify({
+      wallet: state.wallet,
+      wealth: state.wealth,
+      activeTankName: state.activeTankName,
+      activeTankLevel: state.activeTankLevel,
+      developerGodMode: state.developerGodMode,
+      fishPurchasesInWindow: state.fishPurchasesInWindow,
+      fishPurchaseHourlyLimit: state.fishPurchaseHourlyLimit,
+      ageBoostPurchaseAvailable: state.ageBoostPurchaseAvailable,
+      fishCount: state.fishCount,
+      fishCapacity: state.fishCapacity,
+      fishOwned: recordEntries(state.fishOwned),
+      foodOwned: recordEntries(state.foodOwned),
+      helperOwned: recordEntries(state.helperOwned),
+      tankCards: state.tankCards.map((tank) => [
+        tank.level,
+        tank.owned,
+        tank.active,
+        tank.fishCount,
+        tank.fishCapacity,
+        tank.helperCount,
+        tank.worth
+      ]),
+      tankCosmeticCards: state.tankCosmeticCards.map((cosmetic) => [
+        cosmetic.id,
+        cosmetic.category,
+        cosmetic.owned,
+        cosmetic.active,
+        cosmetic.blueTintIntensity
+      ]),
+      tankDecorationCards: state.tankDecorationCards.map((decoration) => [
+        decoration.id,
+        decoration.owned,
+        decoration.variants.map((variant) => [variant.size, variant.owned])
+      ]),
+      tankUtilityCards: state.tankUtilityCards.map((utility) => [utility.id, utility.owned])
+    });
   }
 
   private createStore(state: StoreOverlayState): HTMLElement {
@@ -565,7 +613,7 @@ export class StoreOverlay {
       return;
     }
     this.quantities.set(foodId, next);
-    this.render();
+    this.render(true);
   }
 
   private stopQuantityHold(): void {
