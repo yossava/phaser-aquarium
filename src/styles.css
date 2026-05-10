@@ -105,6 +105,38 @@ canvas {
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 0 18px rgba(34, 211, 238, 0.35);
   }
 
+  .aq-store-category-card {
+    @apply flex min-h-[74px] w-full items-center gap-3 rounded-2xl border border-cyan-300/35 bg-sky-950/70 px-3 py-2 text-left shadow-lg;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -14px 32px rgba(2, 20, 39, 0.45);
+  }
+
+  .aq-store-category-card:active {
+    transform: translateY(1px) scale(0.992);
+    filter: brightness(1.1);
+  }
+
+  .aq-store-category-icon {
+    @apply h-12 w-12 shrink-0 object-contain drop-shadow-lg;
+  }
+
+  .aq-store-category-copy {
+    @apply min-w-0 flex-1;
+  }
+
+  .aq-store-category-title {
+    @apply truncate text-lg font-black leading-tight text-white;
+  }
+
+  .aq-store-category-description {
+    @apply mt-0.5 truncate text-xs font-bold leading-tight text-cyan-100/75;
+  }
+
+  .aq-store-category-arrow {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-500/20 text-xl font-black text-white;
+  }
+
   .aq-store-back-button {
     @apply flex min-h-9 shrink-0 items-center justify-center rounded-xl border border-orange-100/75 px-3 text-xs font-black uppercase text-white shadow-lg;
     background: #f97316;
@@ -1220,22 +1252,60 @@ canvas {
     @apply relative z-10 whitespace-nowrap;
   }
 
-  .aq-game-quest-hint {
+  .aq-game-fish-strip {
     @apply mt-1 flex min-w-0 items-center gap-1.5 rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-1 text-[clamp(10px,2.7vw,13px)] font-black leading-none text-white;
     grid-column: 1 / -1;
     grid-row: 3;
+    min-height: clamp(34px, 8.5vw, 42px);
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.16),
       0 2px 5px rgba(0, 29, 48, 0.22);
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.62);
   }
 
-  .aq-game-quest-hint img {
-    @apply h-[1.4em] w-[1.4em] shrink-0 object-contain drop-shadow;
+  .aq-game-fish-strip::-webkit-scrollbar {
+    display: none;
   }
 
-  .aq-game-quest-hint span {
-    @apply min-w-0 truncate;
+  .aq-game-fish-avatar {
+    @apply relative flex h-[clamp(28px,7vw,34px)] w-[clamp(28px,7vw,34px)] shrink-0 items-center justify-center rounded-full border-2 border-cyan-100/45 bg-cyan-200/16;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      0 2px 4px rgba(0, 24, 44, 0.3);
+  }
+
+  .aq-game-fish-avatar img {
+    @apply h-[82%] w-[82%] rounded-full object-contain drop-shadow;
+  }
+
+  .aq-game-fish-avatar > span {
+    @apply absolute -bottom-1 left-1/2 flex min-h-4 min-w-4 -translate-x-1/2 items-center justify-center rounded-full border border-white/50 bg-sky-950 px-0.5 text-[9px] font-black leading-none text-white;
+  }
+
+  .aq-game-fish-avatar.is-hungry > span {
+    @apply bg-amber-500 text-white;
+  }
+
+  .aq-game-fish-avatar.is-sick > span {
+    @apply bg-red-600;
+  }
+
+  .aq-game-fish-avatar.is-love > span,
+  .aq-game-fish-avatar.is-smile > span {
+    @apply bg-emerald-500 text-white;
+  }
+
+  .aq-game-fish-avatar.is-mad > span {
+    @apply bg-orange-600;
+  }
+
+  .aq-game-fish-strip-empty {
+    @apply px-1 text-xs font-black text-cyan-50/75;
   }
 
   .aq-game-hud-pill.is-clean-warning {
@@ -1392,7 +1462,7 @@ canvas {
       padding-right: 5px;
     }
 
-    .aq-game-quest-hint {
+    .aq-game-fish-strip {
       margin-top: 3px;
       padding-block: 3px;
     }
@@ -1449,7 +1519,7 @@ canvas {
       gap: 4px;
     }
 
-    .aq-game-quest-hint {
+    .aq-game-fish-strip {
       margin-top: 2px;
       padding-block: 2px;
       font-size: clamp(8px, 2.15vw, 10px);

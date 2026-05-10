@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { gameWidth, tankBounds } from "../game/constants";
+import { gameHeight, gameWidth, tankBounds } from "../game/constants";
 import { gameFontFamily } from "../game/fonts";
 import { fishFoodTintFor } from "../game/visuals";
 import type { AgeStage, CoinProduction, FishGender, FishState, FishType, FoodType } from "../types/mechanics";
@@ -32,7 +32,7 @@ const oneMonthTankWidthRatio = 0.23;
 const sixMonthTankWidthRatio = 0.39;
 const readyToMoveTankWidthRatio = 0.5;
 const veryBigTankWidthRatio = 0.78;
-const maximumFishScreenWidthRatio = 0.5;
+const maximumFishScreenWidthRatio = 0.7;
 const minimumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const maximumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const happyEmojiDurationMs = 3200;
@@ -45,6 +45,7 @@ const firstOnboardingCoinDelayMs = 5000;
 const minOnboardingCoinDelayMs = 8000;
 const maxOnboardingCoinDelayMs = maxCoinDropIntervalSeconds * 1000;
 const hungryBubbleFullnessThreshold = 0.7;
+const statusIndicatorUpdateIntervalSeconds = 0.16;
 const minimumMealCalorieRatio = 0.55;
 const fishLengthDisplayMultiplier = 10;
 const baselineMealCalories = 46;
@@ -110,6 +111,10 @@ export class Fish {
   private manuallyDragging = false;
   private usesCustomTexture: boolean;
   private textureAspectRatio: number;
+  private statusIndicatorElapsed = Phaser.Math.FloatBetween(0, statusIndicatorUpdateIntervalSeconds);
+  private lastAppliedWorldScale = 0;
+  private lastAppliedStretchX = 0;
+  private lastAppliedStretchY = 0;
 
   public constructor(
     private scene: Phaser.Scene,
@@ -147,7 +152,7 @@ export class Fish {
     this.pickWanderTarget();
     this.scheduleNextPlayChase();
     this.updateTailMark();
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public update(deltaSeconds: number, foods: FoodPellet[], tankFish: Fish[] = []): { food: FoodPellet; accepted: boolean; reason?: "tooSmall" } | undefined {
@@ -171,13 +176,14 @@ export class Fish {
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
     this.updateFatalCareTimer(deltaSeconds);
     this.setVisualScale(this.desiredAgeScale());
+    this.statusIndicatorElapsed += deltaSeconds;
 
     if (this.manuallyDragging) {
       this.velocity.set(0, 0);
       this.target.set(this.sprite.x, this.sprite.y);
       this.setStateTint();
       this.animateSwimming(deltaSeconds, 0, false, true);
-      this.updateStatusBars();
+      this.updateStatusBars(true);
       return undefined;
     }
 
@@ -221,11 +227,11 @@ export class Fish {
       if (!this.isInFatalCareState()) {
         this.fatalCareSeconds = 0;
       }
-      this.updateStatusBars();
+      this.updateStatusBars(true);
       return { food: closestFood, accepted, reason: tooSmall ? "tooSmall" : undefined };
     }
 
-    this.updateStatusBars();
+    this.maybeUpdateStatusBars();
     return undefined;
   }
 
@@ -282,7 +288,7 @@ export class Fish {
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
     this.setStateTint();
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public refreshTextureIfAvailable(): void {
@@ -296,17 +302,20 @@ export class Fish {
     this.usesCustomTexture = textureKey !== "fish-base";
     this.textureAspectRatio = this.usesCustomTexture ? this.sprite.height / Math.max(1, this.sprite.width) : baseTextureHeight / baseTextureWidth;
     this.playSwimAnimation();
+    this.lastAppliedWorldScale = 0;
+    this.lastAppliedStretchX = 0;
+    this.lastAppliedStretchY = 0;
     this.setStateTint();
     this.setVisualScale(this.visualWorldScale);
     this.updateTailMark();
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public setAgeSeconds(ageSeconds: number): void {
     this.ageSeconds = Math.max(0, ageSeconds);
     this.updateAgeStage();
     this.setVisualScale(this.desiredAgeScale());
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public applyMedicine(now: number): void {
@@ -314,7 +323,7 @@ export class Fish {
     this.hunger = Phaser.Math.Clamp(Math.min(this.hunger, 35), overfullHungerFloor, 100);
     this.medicatedUntil = now + 45000;
     this.fatalCareSeconds = 0;
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public applyAgeBoost(months = 3): void {
@@ -322,12 +331,12 @@ export class Fish {
     this.health = Phaser.Math.Clamp(this.health + 8, 0, 100);
     this.hunger = Phaser.Math.Clamp(Math.min(this.hunger, 58), overfullHungerFloor, 100);
     this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public showMissedFoodEmoji(now = this.scene.time.now): void {
     this.missedFoodEmojiUntil = now + missedFoodEmojiDurationMs;
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public isInterestedInFood(food: FoodPellet): boolean {
@@ -348,7 +357,7 @@ export class Fish {
   }
 
   public refreshStatusBars(): void {
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public beginManualDrag(): void {
@@ -356,6 +365,7 @@ export class Fish {
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
     this.showDragLoveEmoji();
+    this.updateStatusBars(true);
   }
 
   public moveManuallyTo(x: number, y: number): void {
@@ -365,14 +375,14 @@ export class Fish {
     );
     this.target.set(this.sprite.x, this.sprite.y);
     this.velocity.set(0, 0);
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public endManualDrag(): void {
     this.manuallyDragging = false;
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
-    this.updateStatusBars();
+    this.updateStatusBars(true);
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {
@@ -384,7 +394,7 @@ export class Fish {
     this.tailMark.setVisible(visible);
     this.statusBars.setVisible(visible);
     if (visible) {
-      this.updateStatusBars();
+      this.updateStatusBars(true);
     } else {
       this.hideStateEmoji();
     }
@@ -610,7 +620,9 @@ export class Fish {
 
   public tankGrowthScaleCap(): number {
     const maxVisibleWidth = gameWidth * maximumFishScreenWidthRatio;
-    return Math.max(this.visibleToWorldScale(this.hatchlingScale()), maxVisibleWidth / this.logicalTextureWidth());
+    const maxVisibleHeight = gameHeight * maximumFishScreenWidthRatio;
+    const maxScale = Math.min(maxVisibleWidth / this.logicalTextureWidth(), maxVisibleHeight / this.logicalTextureHeight());
+    return Math.max(this.visibleToWorldScale(this.hatchlingScale()), maxScale);
   }
 
   public isGrowthLimitedByTank(): boolean {
@@ -631,6 +643,36 @@ export class Fish {
 
   public visualScale(): number {
     return this.currentVisualWorldScale();
+  }
+
+  public hudStatusLabel(): string {
+    if (this.scene.time.now < this.dragLoveEmojiUntil) {
+      return "love";
+    }
+    if (this.state === "ill") {
+      return "sick";
+    }
+    if (this.scene.time.now < this.missedFoodEmojiUntil) {
+      return "mad";
+    }
+    if (this.scene.time.now < this.happyEmojiUntil) {
+      return "smile";
+    }
+    if (this.shouldShowHungryBubble()) {
+      return "hungry";
+    }
+    return this.state === "happy" ? "smile" : this.state;
+  }
+
+  public hudStatusIcon(): string {
+    const iconByStatus: Record<string, string> = {
+      love: "♥",
+      sick: "+",
+      mad: "!",
+      smile: "☺",
+      hungry: "..."
+    };
+    return iconByStatus[this.hudStatusLabel()] ?? "☺";
   }
 
   public getStatusBarsSnapshot(): {
@@ -689,17 +731,20 @@ export class Fish {
   }
 
   private productionCareMultiplier(): number {
-    return Math.max(1, Math.pow(this.calorieNeedMultiplier(), 1.08));
+    return Math.max(1, this.calorieNeedMultiplier());
   }
 
   private scaleProductionForCareCost(production: CoinProduction, index: number): CoinProduction {
-    const multiplier = this.productionCareMultiplier();
-    const primaryMultiplier = index === 0 ? multiplier : Math.sqrt(multiplier);
+    const calorieMultiplier = this.productionCareMultiplier();
+    const primaryMultiplier = index === 0
+      ? Phaser.Math.Clamp(Math.pow(calorieMultiplier, 1.15), 1, 6)
+      : Phaser.Math.Clamp(Math.pow(calorieMultiplier, 0.75), 1, 3.25);
+    const intervalBoost = Phaser.Math.Linear(1, 1.12, Phaser.Math.Clamp((calorieMultiplier - 1) / 3, 0, 1));
     return {
       ...production,
       amount: Math.max(1, Math.ceil(production.amount * primaryMultiplier)),
       intervalSeconds: Phaser.Math.Clamp(
-        Math.round(production.intervalSeconds / Phaser.Math.Linear(1, 1.18, Phaser.Math.Clamp(multiplier / 4, 0, 1))),
+        Math.round(production.intervalSeconds / intervalBoost),
         4,
         maxCoinDropIntervalSeconds
       )
@@ -736,6 +781,17 @@ export class Fish {
   }
 
   private applySpriteScale(worldScale: number, stretchX: number, stretchY: number): void {
+    if (
+      Math.abs(worldScale - this.lastAppliedWorldScale) < 0.0008 &&
+      Math.abs(stretchX - this.lastAppliedStretchX) < 0.0008 &&
+      Math.abs(stretchY - this.lastAppliedStretchY) < 0.0008
+    ) {
+      return;
+    }
+
+    this.lastAppliedWorldScale = worldScale;
+    this.lastAppliedStretchX = stretchX;
+    this.lastAppliedStretchY = stretchY;
     if (this.usesCustomTexture) {
       this.sprite.setDisplaySize(baseTextureWidth * worldScale * stretchX, baseTextureWidth * this.textureAspectRatio * worldScale * stretchY);
       return;
@@ -750,6 +806,10 @@ export class Fish {
 
   private logicalTextureWidth(): number {
     return this.usesCustomTexture ? baseTextureWidth : Math.max(1, this.sprite.width);
+  }
+
+  private logicalTextureHeight(): number {
+    return this.usesCustomTexture ? baseTextureWidth * this.textureAspectRatio : Math.max(1, this.sprite.height);
   }
 
   private adultLengthCm(): number {
@@ -975,11 +1035,11 @@ export class Fish {
       return true;
     }
 
-    if (this.state === "ill") {
-      return food.foodType.id === "medicine";
+    if (food.foodType.id === "medicine") {
+      return this.health < 82;
     }
 
-    if (food.foodType.id === "medicine") {
+    if (this.state === "ill") {
       return false;
     }
 
@@ -1168,7 +1228,20 @@ export class Fish {
     this.sprite.setTint(this.bodyTint());
   }
 
-  private updateStatusBars(): void {
+  private maybeUpdateStatusBars(): void {
+    if (this.statusIndicatorElapsed < statusIndicatorUpdateIntervalSeconds) {
+      return;
+    }
+
+    this.updateStatusBars(true);
+  }
+
+  private updateStatusBars(force = false): void {
+    if (!force && this.statusIndicatorElapsed < statusIndicatorUpdateIntervalSeconds) {
+      return;
+    }
+
+    this.statusIndicatorElapsed = 0;
     const barWidth = 34;
     const barHeight = 3;
     const gap = 2;
@@ -1203,23 +1276,8 @@ export class Fish {
     this.updateTailMark();
   }
 
-  private updateStateEmoji(statusY: number): void {
-    const emoji = this.currentStateEmoji();
-    const visible = emoji.length > 0;
-    if (!visible || !this.sprite.visible) {
-      this.hideStateEmoji();
-      return;
-    }
-
-    this.stateEmoji.setText(emoji);
-    this.stateEmoji.setVisible(true);
-    this.stateBubble.setVisible(true);
-    this.stateEmoji.setPosition(
-      Math.round(this.sprite.x),
-      Math.round(Math.max(tankBounds.top + 16, statusY - 18))
-    );
-
-    this.drawStateBubble();
+  private updateStateEmoji(_statusY: number): void {
+    this.hideStateEmoji();
   }
 
   private hideStateEmoji(): void {
@@ -1229,30 +1287,6 @@ export class Fish {
     this.stateBubble.setVisible(false);
   }
 
-  private currentStateEmoji(): string {
-    if (this.scene.time.now < this.dragLoveEmojiUntil) {
-      return "💖";
-    }
-
-    if (this.state === "ill") {
-      return "🤒";
-    }
-
-    if (this.scene.time.now < this.missedFoodEmojiUntil) {
-      return "😡";
-    }
-
-    if (this.scene.time.now < this.happyEmojiUntil) {
-      return "😊";
-    }
-
-    if (this.shouldShowHungryBubble()) {
-      return "hungry..";
-    }
-
-    return "";
-  }
-
   private showDragLoveEmoji(now = this.scene.time.now): void {
     if (now < this.nextDragLoveEmojiAt) {
       return;
@@ -1260,23 +1294,7 @@ export class Fish {
 
     this.dragLoveEmojiUntil = now + dragLoveEmojiDurationMs;
     this.nextDragLoveEmojiAt = now + dragLoveEmojiCooldownMs;
-    this.updateStatusBars();
-  }
-
-  private drawStateBubble(): void {
-    this.stateBubble.clear();
-    if (!this.stateBubble.visible) {
-      return;
-    }
-
-    this.stateBubble.setPosition(this.stateEmoji.x, this.stateEmoji.y);
-    this.stateBubble.fillStyle(0xf7fbff, 0.92);
-    const bubbleWidth = Math.max(44, Math.ceil(this.stateEmoji.displayWidth) + 24);
-    const bubbleHeight = 32;
-    const halfWidth = bubbleWidth / 2;
-    const halfHeight = bubbleHeight / 2;
-    this.stateBubble.fillRoundedRect(-halfWidth, -halfHeight, bubbleWidth, bubbleHeight, 10);
-    this.stateBubble.fillTriangle(-6, halfHeight - 4, 0, halfHeight + 8, 7, halfHeight - 4);
+    this.updateStatusBars(true);
   }
 
   private currentMoodRatio(): number {
@@ -1326,8 +1344,12 @@ export class Fish {
 
   private updateTailMark(): void {
     if (this.usesCustomTexture) {
-      this.tailMark.clear();
+      if (!this.tailMark.visible) {
+        return;
+      }
+
       this.tailMark.setVisible(false);
+      this.tailMark.clear();
       return;
     }
 

@@ -107,6 +107,8 @@ export class StoreOverlay {
   private quantityHoldDelay?: number;
   private quantityHoldInterval?: number;
   private visible = false;
+  private lastRenderKey = "";
+  private lastScrollTop = 0;
 
   constructor(
     private readonly getState: () => StoreOverlayState,
@@ -148,9 +150,29 @@ export class StoreOverlay {
   }
 
   private render(): void {
+    const currentScroll = this.root.querySelector(".aq-store-list-scroll");
+    const previousKey = this.lastRenderKey;
+    if (currentScroll instanceof HTMLElement) {
+      this.lastScrollTop = currentScroll.scrollTop;
+    }
+
     const state = this.getState();
     this.page = Math.max(1, this.page);
+    const nextKey = this.renderKey();
+    this.lastRenderKey = nextKey;
     this.root.replaceChildren(this.createStore(state));
+    if (previousKey === nextKey && this.lastScrollTop > 0) {
+      const nextScroll = this.root.querySelector(".aq-store-list-scroll");
+      if (nextScroll instanceof HTMLElement) {
+        requestAnimationFrame(() => {
+          nextScroll.scrollTop = this.lastScrollTop;
+        });
+      }
+    }
+  }
+
+  private renderKey(): string {
+    return `${this.browseLevel}:${this.activeTab}:${this.tankCategory}:${this.coinFilter}`;
   }
 
   private createStore(state: StoreOverlayState): HTMLElement {
@@ -221,18 +243,29 @@ export class StoreOverlay {
       { tab: "tank", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
       { tab: "creature", label: "Helpers", icon: "/assets/helpers/feeder-snail.png" }
     ];
-    const panel = el("main", "aq-panel grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-hidden p-2");
+    const panel = el("main", "aq-panel aq-store-list-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2");
     tabs.forEach((item) => {
-      const tabButton = button("", "aq-tab min-h-20 flex-col text-sm", () => {
+      const tabButton = this.categoryCard(item.icon, item.label, this.categoryDescription(item.tab), () => {
         this.activeTab = item.tab;
         this.browseLevel = item.tab === "tank" ? "tankCategories" : "products";
         this.page = 1;
         this.render();
       });
-      tabButton.append(image(item.icon, "", "h-9 w-9 object-contain"), document.createTextNode(item.label));
       panel.append(tabButton);
     });
     return panel;
+  }
+
+  private categoryDescription(tab: StoreTab): string {
+    const descriptions: Record<StoreTab, string> = {
+      fish: "Collect fish for this tank",
+      food: "Food for each fish size",
+      supply: "Medicine and growth tonic",
+      tank: "Tanks, themes, tools, and decor",
+      decor: "Tank decorations",
+      creature: "Helper pets and cleaners"
+    };
+    return descriptions[tab];
   }
 
   private rarityFilters(): HTMLElement {
@@ -262,18 +295,41 @@ export class StoreOverlay {
       { category: "tools", label: "Tools", icon: "/assets/ui/helper-food-dispenser.png" },
       { category: "decorations", label: "Decor", icon: "/assets/decorations/rock.png" }
     ];
-    const panel = el("main", "aq-panel grid min-h-0 flex-1 grid-cols-2 content-start gap-2 overflow-hidden p-2");
+    const panel = el("main", "aq-panel aq-store-list-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2");
     categories.forEach((item) => {
-      const tabButton = button("", "aq-tab min-h-20 flex-col text-sm", () => {
+      const tabButton = this.categoryCard(item.icon, item.label, this.tankCategoryDescription(item.category), () => {
         this.tankCategory = item.category;
         this.browseLevel = "products";
         this.page = 1;
         this.render();
       });
-      tabButton.append(image(item.icon, "", "h-9 w-9 object-contain"), document.createTextNode(item.label));
       panel.append(tabButton);
     });
     return panel;
+  }
+
+  private tankCategoryDescription(category: TankStoreCategory): string {
+    const descriptions: Record<TankStoreCategory, string> = {
+      tank: "Buy another tank slot",
+      background: "Change the rear aquarium scene",
+      seabed: "Change the sand and floor",
+      tools: "Functional aquarium utilities",
+      decorations: "Plants, rocks, air stones, and ornaments"
+    };
+    return descriptions[category];
+  }
+
+  private categoryCard(icon: string, title: string, description: string, onClick: () => void): HTMLButtonElement {
+    const tabButton = button("", "aq-store-category-card", onClick);
+    tabButton.append(
+      image(icon, "", "aq-store-category-icon"),
+      div("aq-store-category-copy", [
+        div("aq-store-category-title", [title]),
+        div("aq-store-category-description", [description])
+      ]),
+      div("aq-store-category-arrow", [">"])
+    );
+    return tabButton;
   }
 
   private drillHeader(title: string, subtitle: string): HTMLElement {

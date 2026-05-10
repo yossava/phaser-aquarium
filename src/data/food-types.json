@@ -137,9 +137,9 @@
       "coinType": "common",
       "amount": 1000
     },
-    "nutrition": 0,
+    "nutrition": 1,
     "acceptedByDefault": true,
-    "calories": 0,
+    "calories": 1,
     "densityLevel": 1
   },
   {

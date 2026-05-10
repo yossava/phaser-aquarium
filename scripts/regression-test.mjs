@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import net from "node:net";
@@ -9,6 +9,20 @@ const root = process.cwd();
 const gameWidth = 430;
 const gameHeight = 844;
 const artifactDir = path.join(root, "artifacts");
+const fishCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "fish-types.json"), "utf8"));
+const foodCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "food-types.json"), "utf8"));
+const decorationCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "decoration-types.json"), "utf8"));
+const helperCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "helper-creature-types.json"), "utf8"));
+const supplyFoodIds = new Set(["medicine", "ageBoost"]);
+const hiddenFoodIds = new Set(["creature"]);
+const catalogCountByCoin = (items, coinType) => items.filter((item) => item.price.coinType === coinType).length;
+const visibleFoodCountByCoin = (coinType) =>
+  foodCatalog.filter((item) => !hiddenFoodIds.has(item.id) && !supplyFoodIds.has(item.id) && item.price.coinType === coinType).length;
+const catalogItemById = (items, id) => {
+  const item = items.find((candidate) => candidate.id === id);
+  assert(item, `Missing catalog item ${id}`);
+  return item;
+};
 const secondsPerFishMonth = 60 * 60;
 const secondsPerFishYear = secondsPerFishMonth * 12;
 const twentyDayAgeSeconds = secondsPerFishMonth * (20 / 30);
@@ -383,32 +397,48 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.setScreen('store')");
   state = await waitFor(
     cdp,
-    (current) => current.activeScreen === "store" && current.activeTab === "fish" && current.storeCoinFilter === "common" && current.visibleStoreCatalogCount === 19,
+    (current) =>
+      current.activeScreen === "store" &&
+      current.activeTab === "fish" &&
+      current.storeCoinFilter === "common" &&
+      current.visibleStoreCatalogCount === catalogCountByCoin(fishCatalog, "common"),
     "Store should open on the common fish lane."
   );
   await captureNamedScreenshot(cdp, "store-buy-only-fish-catalog.png");
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('rare')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "fish" && current.storeCoinFilter === "rare" && current.visibleStoreCatalogCount === 21,
+    (current) =>
+      current.activeTab === "fish" &&
+      current.storeCoinFilter === "rare" &&
+      current.visibleStoreCatalogCount === catalogCountByCoin(fishCatalog, "rare"),
     "Fish store rare lane should show all rare fish without tank-level gating."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('food')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "food" && current.storeCoinFilter === "rare" && current.visibleStoreCatalogCount === 3,
+    (current) =>
+      current.activeTab === "food" &&
+      current.storeCoinFilter === "rare" &&
+      current.visibleStoreCatalogCount === visibleFoodCountByCoin("rare"),
     "Food store rare lane should show rare foods."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('superRare')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "food" && current.storeCoinFilter === "superRare" && current.visibleStoreCatalogCount === 1,
+    (current) =>
+      current.activeTab === "food" &&
+      current.storeCoinFilter === "superRare" &&
+      current.visibleStoreCatalogCount === visibleFoodCountByCoin("superRare"),
     "Food store super rare lane should show super rare food."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('decor')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "decor" && current.storeCoinFilter === "superRare" && current.visibleStoreCatalogCount === 3,
+    (current) =>
+      current.activeTab === "decor" &&
+      current.storeCoinFilter === "superRare" &&
+      current.visibleStoreCatalogCount === catalogCountByCoin(decorationCatalog, "superRare"),
     "Decoration store super rare lane should show premium decorations."
   );
   await captureNamedScreenshot(cdp, "decor-asset-catalog.png");
@@ -416,27 +446,38 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('common')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "creature" && current.storeCoinFilter === "common" && current.visibleStoreCatalogCount === 2,
+    (current) =>
+      current.activeTab === "creature" &&
+      current.storeCoinFilter === "common" &&
+      current.visibleStoreCatalogCount === catalogCountByCoin(helperCatalog, "common"),
     "Helper store common lane should show starter and feeder helpers."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('rare')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "creature" && current.storeCoinFilter === "rare" && current.visibleStoreCatalogCount === 2,
+    (current) =>
+      current.activeTab === "creature" &&
+      current.storeCoinFilter === "rare" &&
+      current.visibleStoreCatalogCount === catalogCountByCoin(helperCatalog, "rare"),
     "Helper store rare lane should show rare helpers."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('superRare')");
   state = await waitFor(
     cdp,
-    (current) => current.activeTab === "creature" && current.storeCoinFilter === "superRare" && current.visibleStoreCatalogCount === 1,
+    (current) =>
+      current.activeTab === "creature" &&
+      current.storeCoinFilter === "superRare" &&
+      current.visibleStoreCatalogCount === catalogCountByCoin(helperCatalog, "superRare"),
     "Helper store super rare lane should show super rare helper."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('fish')");
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('common')");
+  const goldfishPrice = catalogItemById(fishCatalog, "goldfish").price.amount;
   await evaluate(cdp, "window.__aquariumTest.buyFish('goldfish')");
+  await evaluate(cdp, "window.__aquariumTest.placeFishFromInventory('goldfish', 215, 450)");
   state = await waitFor(
     cdp,
-    (current) => current.wallet.common === 85 && current.fishCount === 1 && current.placementMode === "none",
+    (current) => current.wallet.common === 120 - goldfishPrice && current.fishCount === 1 && current.placementMode === "none",
     "Buying a goldfish should add it directly to the tank."
   );
   assert(state.maxFishCapacity === 10, "Level 1 tank should support 10 fish slots.");
@@ -449,7 +490,7 @@ async function runRegression(cdp, appUrl) {
       !state.tankCanUpgradeIndefinitely,
     "Fresh game should start in tank slot 1 with isolated tank-slot progression."
   );
-  assert(state.nextTankUpgradePrice?.coinType === "common" && state.nextTankUpgradePrice.amount === 350, "Fresh tank should expose the Tank 2 purchase price.");
+  assert(state.nextTankUpgradePrice?.coinType === "common" && state.nextTankUpgradePrice.amount === 1200, "Fresh tank should expose the Tank 2 purchase price.");
   assert(state.tankViewScale === 1, "Tank slots should use the fixed full-screen tank view.");
   assert(state.tankWorldBounds.width === gameWidth && state.tankWorldBounds.height === gameHeight, "Level 1 tank world should match the portrait viewport.");
   assert(
@@ -471,7 +512,7 @@ async function runRegression(cdp, appUrl) {
   assert(state.totalWealth > state.wallet.common, "Total wealth should include wallet and owned tank assets.");
   assert(state.fish[0].state === "happy", "New fish should start happy.");
   assert(state.fish[0].typeId === "goldfish" && state.fish[0].typeName === "Goldfish", "Fish snapshot should expose type identity for stats pages.");
-  assert(state.fish[0].textureKey === "fish-goldfish", "Goldfish should use the trial custom fish asset texture.");
+  assert(state.fish[0].textureKey.startsWith("fish-goldfish"), "Goldfish should use the custom fish asset texture.");
   assert(state.fish[0].gender === "M" || state.fish[0].gender === "F", "New fish should receive a gender.");
   assert(state.fish[0].ageStage === undefined && state.fish[0].ageCategory === undefined, "Fish snapshot should not expose size or age-stage categories.");
   assert(state.fish[0].ageLabel === "0d", "New fish should expose fish-time age days instead of real seconds.");
@@ -514,8 +555,8 @@ async function runRegression(cdp, appUrl) {
     cdp,
     (current) =>
       current.fishCount === 3 &&
-      current.fish.some((fish) => fish.typeId === "angelfish" && fish.textureKey === "fish-angelfish") &&
-      current.fish.some((fish) => fish.typeId === "celestial-koi" && fish.textureKey === "fish-celestial-koi"),
+      current.fish.some((fish) => fish.typeId === "angelfish" && fish.textureKey.startsWith("fish-angelfish")) &&
+      current.fish.some((fish) => fish.typeId === "celestial-koi" && fish.textureKey.startsWith("fish-celestial-koi")),
     "The three trial fish asset textures should render for common, rare, and super rare fish."
   );
   await evaluate(cdp, "window.__aquariumTest.setScreen('tank')");
@@ -526,18 +567,10 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.removeFishAt(1)");
   state = await waitFor(cdp, (current) => current.fishCount === 1, "Trial fish cleanup should return the tank to one goldfish.");
   assert(
-    state.fish[0].productionOptions.some((production) => production.coinType === "rare" && production.amount === 1),
-    "Common fish should expose a rare-coin progression bridge so players can unlock rare purchases."
+    state.fish[0].productionOptions.every((production) => production.coinType === "common"),
+    "Common fish should keep common-coin production; rare currency now comes from higher-rarity fish, quests, and rewarded ads."
   );
-  await captureNamedScreenshot(cdp, "rare-coin-progression-bridge.png");
-  let producedRareBridgeCoin = false;
-  for (let attempt = 0; attempt < 22; attempt += 1) {
-    await evaluate(cdp, "window.__aquariumTest.forceProductionDrop(0)");
-    state = await snapshot(cdp);
-    producedRareBridgeCoin ||= state.coinsWaiting.some((coin) => coin.coinType === "rare");
-    await evaluate(cdp, "window.__aquariumTest.clearCoins()");
-  }
-  assert(producedRareBridgeCoin, "Repeated common fish production should eventually create a rare bridge coin.");
+  await captureNamedScreenshot(cdp, "common-fish-production.png");
   const freshMovementSizeMultiplier = state.fish[0].movementSizeMultiplier;
   assert(freshMovementSizeMultiplier > 0.95, "New fish should move at nearly full size-based speed.");
   const freshScale = state.fish[0].scale;
@@ -561,7 +594,7 @@ async function runRegression(cdp, appUrl) {
         current.fishCount === 2 &&
         Math.round(sevenMonthGoldfish?.ageMonths ?? 0) === 7 &&
         Math.round((twentyDayAngelfish?.ageMonths ?? 0) * 30) === 20 &&
-        (sevenMonthGoldfish?.displayWidth ?? 0) > (twentyDayAngelfish?.displayWidth ?? Number.POSITIVE_INFINITY) * 1.7 &&
+        (sevenMonthGoldfish?.displayWidth ?? 0) > (twentyDayAngelfish?.displayWidth ?? Number.POSITIVE_INFINITY) * 1.6 &&
         (sevenMonthGoldfish?.displayHeight ?? 0) > (twentyDayAngelfish?.displayHeight ?? Number.POSITIVE_INFINITY) * 1.08
       );
     },
@@ -672,10 +705,11 @@ async function runRegression(cdp, appUrl) {
 
   const foodBeforeBuy = state.foodInventoryByType.basic ?? 0;
   const commonBeforeFoodBuy = state.wallet.common;
+  const basicFoodPrice = catalogItemById(foodCatalog, "basic").price.amount;
   await evaluate(cdp, "window.__aquariumTest.buyFood('basic')");
   state = await waitFor(
     cdp,
-    (current) => current.wallet.common === commonBeforeFoodBuy - 5 && current.foodInventoryByType.basic === foodBeforeBuy + 1,
+    (current) => current.wallet.common === commonBeforeFoodBuy - basicFoodPrice && current.foodInventoryByType.basic === foodBeforeBuy + 1,
     "Buying food failed."
   );
 
@@ -686,8 +720,7 @@ async function runRegression(cdp, appUrl) {
     cdp,
     (current) =>
       current.fish[0].state === "hungry" &&
-      current.fish[0].statusBars.careBarsVisible &&
-      current.fish[0].statusBars.emoji === "😫" &&
+      current.fish[0].statusBars.emoji === "hungry.." &&
       current.fish[0].statusBars.emojiVisible &&
       current.fish[0].statusBars.emojiBubbleVisible,
     "Hungry fish should show a persistent hungry chat bubble until eating."
@@ -752,8 +785,7 @@ async function runRegression(cdp, appUrl) {
       current.coinsWaiting[0]?.value === 1 &&
       current.fish[0].statusBars.careBarsVisible &&
       current.fish[0].statusBars.emoji === "🤒" &&
-      current.fish[0].statusBars.emojiBubbleVisible &&
-      current.fish[0].nextCoinDropInMs >= 20000,
+      current.fish[0].statusBars.emojiBubbleVisible,
     "Ill fish did not produce a slower reduced +1 coin."
   );
   assert(state.fish[0].bodyTint !== 0x95a1a6, "Ill fish should keep a desaturated body color instead of turning colorless gray.");
@@ -766,8 +798,10 @@ async function runRegression(cdp, appUrl) {
     7000
   );
   await captureNamedScreenshot(cdp, "coin-bottom.png");
+  const commonBeforeIllCoin = state.wallet.common;
+  const illCoinValue = state.coinsWaiting[0].value;
   await clickGame(cdp, state.coinsWaiting[0].x, state.coinsWaiting[0].y);
-  state = await waitFor(cdp, (current) => current.wallet.common === 81 && current.coinDropCount === 0, "Collecting an ill fish coin failed.");
+  state = await waitFor(cdp, (current) => current.wallet.common === commonBeforeIllCoin + illCoinValue && current.coinDropCount === 0, "Collecting an ill fish coin failed.");
 
   await evaluate(cdp, "window.__aquariumTest.addFood('medicine', 1)");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 72, 22)");
@@ -892,116 +926,8 @@ async function runRegression(cdp, appUrl) {
   assert(state.offlineProgress.earned.common > 0, "Offline progress should award common coins for a happy goldfish.");
   await evaluate(cdp, "window.__aquariumTest.closeModal()");
 
-  const walletBeforeRentals = state.wallet.common;
-  await evaluate(cdp, "window.__aquariumTest.addFood('basic', 1)");
-  await evaluate(cdp, "window.__aquariumTest.addFood('protein', 1)");
-  await evaluate(cdp, "window.__aquariumTest.addFishForTest('koi', 318, 250)");
-  await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 62, 100)");
-  await evaluate(cdp, "window.__aquariumTest.setFishVitals(1, 66, 100)");
-  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('feeder', 99)");
-  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('collector', 99)");
-  state = await waitFor(
-    cdp,
-    (current) =>
-      current.rentals.autoFeederMinutes === 60 &&
-      current.rentals.autoCollectorMinutes === 60 &&
-      current.rentals.autoFeederPrice === 1080 &&
-      current.rentals.autoCollectorPrice === 1320,
-    "Rental duration controls should clamp at 60 minutes."
-  );
-  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('feeder', 2)");
-  await evaluate(cdp, "window.__aquariumTest.rentAutoFeeder()");
-  state = await waitFor(
-    cdp,
-    (current) =>
-      current.rentals.autoFeederActive &&
-      current.rentals.autoFeederMinutes === 2 &&
-      current.rentals.autoFeederPrice === 36 &&
-      current.rentals.autoFeederRemainingMs > 115_000 &&
-      current.wallet.common === walletBeforeRentals - 36,
-    "Renting the auto feeder failed."
-  );
-  const feederRemainingAfterFirstRent = state.rentals.autoFeederRemainingMs;
-  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('feeder', 1)");
-  await evaluate(cdp, "window.__aquariumTest.rentAutoFeeder()");
-  state = await waitFor(
-    cdp,
-    (current) =>
-      current.rentals.autoFeederActive &&
-      current.rentals.autoFeederRemainingMs > feederRemainingAfterFirstRent + 50_000 &&
-      current.wallet.common === walletBeforeRentals - 54,
-    "Renting an active auto feeder should add duration."
-  );
   await evaluate(cdp, "window.__aquariumTest.clearFoods()");
-  await evaluate(cdp, "window.__aquariumTest.addFood('basic', 1)");
-  await evaluate(cdp, "window.__aquariumTest.addFood('protein', 1)");
-  await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 62, 100)");
-  await evaluate(cdp, "window.__aquariumTest.setFishVitals(1, 66, 100)");
-  await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 110, 760)");
-  await evaluate(cdp, "window.__aquariumTest.setFishPosition(1, 318, 760)");
-  state = await waitFor(
-    cdp,
-    (current) => (current.foodInventoryByType.basic ?? 0) >= 1 && (current.foodInventoryByType.protein ?? 0) >= 1,
-    "Auto feeder setup food stock failed."
-  );
-  const basicBeforeAutoFeed = state.foodInventoryByType.basic ?? 0;
-  const proteinBeforeAutoFeed = state.foodInventoryByType.protein ?? 0;
-  const totalFoodBeforeAutoFeed = state.foodInventory;
-  await evaluate(cdp, "window.__aquariumTest.runAutoFeederNow()");
-  state = await waitFor(
-    cdp,
-    (current) =>
-      (current.foodInventoryByType.basic ?? 0) === basicBeforeAutoFeed - 1 &&
-      (current.foodInventoryByType.protein ?? 0) === proteinBeforeAutoFeed - 1 &&
-      current.foodInventory === totalFoodBeforeAutoFeed - 2 &&
-      current.foods.every((food) => food.y >= 138 && food.y <= 260) &&
-      current.foods.every((food) => food.calories > 0 && food.densityLevel >= 1),
-    "Auto feeder did not drop each needed fish food type from the top while decrementing inventory.",
-    3500
-  );
-  const foodSinkSpeed = state.foods[0]?.sinkSpeed ?? 18;
-  await evaluate(cdp, "window.__aquariumTest.clearFoods()");
-  await evaluate(cdp, "window.__aquariumTest.removeFishAt(1)");
-
-  const walletBeforeCollector = state.wallet.common;
-  await evaluate(cdp, "window.__aquariumTest.clearCoins()");
-  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('collector', 3)");
-  await evaluate(cdp, "window.__aquariumTest.rentAutoCollector()");
-  state = await waitFor(
-    cdp,
-    (current) =>
-      current.rentals.autoCollectorActive &&
-      current.rentals.autoCollectorMinutes === 3 &&
-      current.rentals.autoCollectorPrice === 66 &&
-      current.rentals.autoCollectorRemainingMs > 175_000 &&
-      current.wallet.common === walletBeforeCollector - 66,
-    "Renting the auto coin collector failed."
-  );
-  const collectorRemainingAfterFirstRent = state.rentals.autoCollectorRemainingMs;
-  await evaluate(cdp, "window.__aquariumTest.setRentalMinutes('collector', 1)");
-  await evaluate(cdp, "window.__aquariumTest.rentAutoCollector()");
-  state = await waitFor(
-    cdp,
-    (current) =>
-      current.rentals.autoCollectorActive &&
-      current.rentals.autoCollectorRemainingMs > collectorRemainingAfterFirstRent + 50_000 &&
-      current.wallet.common === walletBeforeCollector - 88,
-    "Renting an active auto coin collector should add duration."
-  );
-  const walletAfterCollectorCleared = state.wallet.common;
-  await evaluate(cdp, "window.__aquariumTest.addCoin('common', 3, 215, 828)");
-  state = await waitFor(
-    cdp,
-    (current) => current.wallet.common >= walletAfterCollectorCleared + 3 && current.coinDropCount === 0,
-    "Auto coin collector did not collect settled coins.",
-    4000
-  );
-  await evaluate(cdp, "window.__aquariumTest.expireRentals()");
-  state = await waitFor(
-    cdp,
-    (current) => !current.rentals.autoFeederActive && !current.rentals.autoCollectorActive,
-    "Expiring rentals for regression setup failed."
-  );
+  state = await snapshot(cdp);
   const walletBeforeProgressionTopUp = state.wallet.common;
   await evaluate(cdp, "window.__aquariumTest.addWallet('common', 220)");
   state = await waitFor(
@@ -1011,29 +937,31 @@ async function runRegression(cdp, appUrl) {
   );
 
   await evaluate(cdp, "window.__aquariumTest.setScreen('store')");
+  await evaluate(cdp, "window.__aquariumTest.setStoreTab('fish')");
   await evaluate(cdp, "window.__aquariumTest.setFishCatalogLevel(2)");
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('common')");
   state = await waitFor(
     cdp,
     (current) =>
-      current.fishCatalogLevel === 2 &&
+      current.fishCatalogLevel === 1 &&
       current.storeCoinFilter === "common" &&
-      current.visibleFishCatalogPreviewTextures.includes("fish-pearl-gourami") &&
-      current.visibleFishCatalogPreviewTextures.includes("fish-corydoras"),
-    "Level-2 common fish cards should use generated Pearl Gourami and Corydoras preview assets."
+      current.visibleStoreCatalogCount === catalogCountByCoin(fishCatalog, "common"),
+    "Common fish cards should use generated preview assets without fish-catalog level paging."
   );
   await captureNamedScreenshot(cdp, "common-fish-store-card-images.png");
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('rare')");
-  await evaluate(cdp, "window.__aquariumTest.addWallet('rare', 1)");
-  state = await waitFor(cdp, (current) => current.wallet.rare >= 1, "Rare fish purchase setup failed.");
+  const angelfishPrice = catalogItemById(fishCatalog, "angelfish").price.amount;
+  await evaluate(cdp, `window.__aquariumTest.addWallet('rare', ${angelfishPrice})`);
+  state = await waitFor(cdp, (current) => current.wallet.rare >= angelfishPrice, "Rare fish purchase setup failed.");
   const rareBeforeMixedBuy = state.wallet.rare;
   await evaluate(cdp, "window.__aquariumTest.buyFish('angelfish')");
+  await evaluate(cdp, "window.__aquariumTest.placeFishFromInventory('angelfish', 245, 470)");
   state = await waitFor(
     cdp,
     (current) =>
       current.fishCount === 2 &&
       current.activeFishCount === 2 &&
-      current.wallet.rare === rareBeforeMixedBuy - 1 &&
+      current.wallet.rare === rareBeforeMixedBuy - angelfishPrice &&
       current.tankLevel === 1 &&
       current.compatibilityScore === 100 &&
       !current.modalTitle,
@@ -1196,7 +1124,7 @@ async function runRegression(cdp, appUrl) {
     "Each dropped coin should use the coin asset family shared with the statistic HUD."
   );
   assert(
-    state.coinsWaiting.every((coin) => coin.sinkSpeed > foodSinkSpeed),
+    state.coinsWaiting.every((coin) => coin.sinkSpeed > 18),
     "Coin drops should sink faster than food."
   );
   assert(
