@@ -83,6 +83,8 @@ export type SavedTankState = {
   creatureInventory?: Record<string, number>;
   backgroundInventory?: Record<string, number>;
   seabedInventory?: Record<string, number>;
+  backgroundBlueTints?: Record<string, number>;
+  seabedBlueTints?: Record<string, number>;
   selectedBackgroundId?: string;
   selectedSeabedId?: string;
   cleanliness?: number;
@@ -331,6 +333,22 @@ function sanitizeCountRecord(source: Record<string, number> | undefined): Record
   return result;
 }
 
+function sanitizePercentRecord(source: Record<string, number> | undefined): Record<string, number> {
+  const result: Record<string, number> = {};
+  if (!source) {
+    return result;
+  }
+
+  for (const [id, value] of Object.entries(source)) {
+    const amount = Math.round(clamp(sanitizeNumber(value, 0), 0, 100));
+    if (id && amount > 0) {
+      result[id] = amount;
+    }
+  }
+
+  return result;
+}
+
 function sanitizeFoodInventory(source: Record<FoodTypeId, number> | undefined): Record<FoodTypeId, number> {
   const sanitized = sanitizeCountRecord(source);
   return sanitized as Record<FoodTypeId, number>;
@@ -391,6 +409,8 @@ function sanitizeTankStates(source: Record<string, SavedTankState> | undefined):
       creatureInventory: sanitizeCountRecord(value.creatureInventory),
       backgroundInventory: sanitizeCountRecord(value.backgroundInventory),
       seabedInventory: sanitizeCountRecord(value.seabedInventory),
+      backgroundBlueTints: sanitizePercentRecord(value.backgroundBlueTints),
+      seabedBlueTints: sanitizePercentRecord(value.seabedBlueTints),
       selectedBackgroundId: typeof value.selectedBackgroundId === "string" ? value.selectedBackgroundId : undefined,
       selectedSeabedId: typeof value.selectedSeabedId === "string" ? value.selectedSeabedId : undefined,
       cleanliness: clamp(sanitizeNumber(value.cleanliness, 100), 0, 100),

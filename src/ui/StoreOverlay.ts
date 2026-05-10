@@ -32,6 +32,7 @@ export type StoreTankCosmeticCard = {
   price: Price;
   previewUrl?: string;
   tint: string;
+  blueTintIntensity: number;
 };
 
 export type StoreTankDecorationCard = {
@@ -92,6 +93,7 @@ type StoreOverlayActions = {
   switchTank: (level: number) => void;
   buyTankCosmetic: (category: StoreTankCosmeticCard["category"], id: string) => void;
   switchTankCosmetic: (category: StoreTankCosmeticCard["category"], id: string) => void;
+  setTankCosmeticBlueTint: (category: StoreTankCosmeticCard["category"], id: string, intensity: number) => void;
   buyTankDecoration: (decorationId: string, size: StoreDecorationSize) => void;
   selectTankDecoration: (decorationId: string, size: StoreDecorationSize) => void;
   buyTankUtility: (utilityId: string) => void;
@@ -624,13 +626,16 @@ export class StoreOverlay {
     const card = this.baseCard(cosmetic.price.coinType);
     const preview = cosmetic.previewUrl
       ? this.preview(cosmetic.previewUrl, cosmetic.name)
-      : div("mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center", [
+      : div("relative mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center overflow-hidden rounded-xl", [
         div("h-14 w-20 rounded-2xl border border-cyan-100/35 shadow-inner")
       ]);
     const swatch = preview.querySelector("div");
     if (!cosmetic.previewUrl && swatch instanceof HTMLElement) {
       swatch.style.background = cosmetic.tint;
     }
+    const tintPreview = this.blueTintPreviewOverlay(cosmetic.blueTintIntensity);
+    preview.append(tintPreview);
+    const tintControls = cosmetic.owned ? this.tankCosmeticTintControls(cosmetic, tintPreview) : undefined;
     card.append(
       preview,
       div("flex min-w-0 flex-1 flex-col overflow-hidden", [
@@ -640,12 +645,47 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [cosmetic.category === "background" ? "Tank Background" : "Tank Seabed"]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [cosmetic.owned ? "Install this look on the active tank." : "Buy and install on the active tank."]),
+        ...(tintControls ? [tintControls] : []),
         button(cosmetic.active ? "Current Look" : cosmetic.owned ? "Use Look" : affordable ? "Buy Look" : `Need ${formatPrice(cosmetic.price)}`, "aq-buy mt-auto w-full", () => {
           cosmetic.owned ? this.actions.switchTankCosmetic(cosmetic.category, cosmetic.id) : this.actions.buyTankCosmetic(cosmetic.category, cosmetic.id);
         }, !cosmetic.owned && !affordable)
       ])
     );
     return card;
+  }
+
+  private tankCosmeticTintControls(cosmetic: StoreTankCosmeticCard, tintPreview: HTMLElement): HTMLElement {
+    const value = Math.max(0, Math.min(100, Math.round(cosmetic.blueTintIntensity)));
+    const label = div("aq-store-tint-label", [
+      div("truncate", ["Blue tint"]),
+      div("shrink-0", [`${formatNumber(value)}%`])
+    ]);
+    const slider = el("input", "aq-settings-range aq-store-tint-range");
+    slider.type = "range";
+    slider.min = "0";
+    slider.max = "100";
+    slider.step = "1";
+    slider.value = String(value);
+    slider.addEventListener("pointerdown", (event) => event.stopPropagation());
+    slider.addEventListener("click", (event) => event.stopPropagation());
+    slider.addEventListener("input", (event) => {
+      event.stopPropagation();
+      const nextValue = Number(slider.value);
+      label.lastElementChild!.textContent = `${formatNumber(nextValue)}%`;
+      this.updateBlueTintPreview(tintPreview, nextValue);
+      this.actions.setTankCosmeticBlueTint(cosmetic.category, cosmetic.id, nextValue);
+    });
+    return div("aq-store-tint-control", [label, slider]);
+  }
+
+  private blueTintPreviewOverlay(intensity: number): HTMLDivElement {
+    const overlay = div("aq-blue-tint-preview");
+    this.updateBlueTintPreview(overlay, intensity);
+    return overlay;
+  }
+
+  private updateBlueTintPreview(overlay: HTMLElement, intensity: number): void {
+    overlay.style.opacity = String(Math.max(0, Math.min(100, Math.round(intensity))) / 100);
   }
 
   private tankDecorationCard(decoration: StoreTankDecorationCard, state: StoreOverlayState): HTMLElement {
@@ -691,7 +731,7 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", ["Tank Utility"]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [utility.description]),
-        button(utility.owned ? "Installed" : affordable ? "Buy Utility" : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
+        button(utility.owned ? utility.id === "coin-magnet" ? "In Dock" : "Installed" : affordable ? "Buy Utility" : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
           if (!utility.owned) {
             this.actions.buyTankUtility(utility.id);
           }

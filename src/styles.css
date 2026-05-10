@@ -171,12 +171,18 @@ canvas {
   }
 
   .aq-card-preview {
-    @apply flex h-full w-[34%] max-w-[132px] shrink-0 items-center justify-center;
+    @apply relative flex h-full w-[34%] max-w-[132px] shrink-0 items-center justify-center overflow-hidden rounded-xl;
     min-height: 88px;
   }
 
   .aq-card-preview img {
     @apply max-h-full max-w-[94%] object-contain drop-shadow-lg;
+  }
+
+  .aq-blue-tint-preview {
+    @apply pointer-events-none absolute inset-0 z-[1];
+    background: #0b4f8f;
+    mix-blend-mode: color;
   }
 
   .aq-card-body {
@@ -392,6 +398,46 @@ canvas {
 
   .aq-settings-range::-moz-range-thumb {
     @apply h-7 w-7 rounded-full border-2 border-white bg-cyan-300 shadow-lg;
+  }
+
+  .aq-store-tint-control {
+    @apply my-2 rounded-xl border border-cyan-100/20 bg-sky-950/35 px-2 py-1.5;
+  }
+
+  .aq-store-tint-label {
+    @apply flex items-center justify-between gap-2 text-[10px] font-black uppercase text-cyan-50/90;
+  }
+
+  .aq-store-tint-range {
+    @apply mt-1 h-7 border-cyan-100/25 bg-sky-950/45 px-1;
+  }
+
+  .aq-store-tint-range::-webkit-slider-runnable-track {
+    @apply h-2;
+  }
+
+  .aq-store-tint-range::-webkit-slider-thumb {
+    @apply mt-[-7px] h-6 w-6 bg-sky-300;
+  }
+
+  .aq-store-tint-range::-moz-range-track {
+    @apply h-2;
+  }
+
+  .aq-store-tint-range::-moz-range-thumb {
+    @apply h-6 w-6 bg-sky-300;
+  }
+
+  .aq-cosmetic-tint-control {
+    @apply mt-1 bg-sky-950/50;
+  }
+
+  .aq-cosmetic-tint-range {
+    @apply h-6;
+  }
+
+  .aq-cosmetic-apply-button {
+    @apply mt-1 min-h-7 py-1 text-[10px];
   }
 
   .aq-settings-volume-actions {
@@ -1605,6 +1651,11 @@ canvas {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.38);
     text-shadow: 0 1px 1px rgba(70, 0, 16, 0.65);
     transition: transform 90ms ease;
+  }
+
+  .aq-food-button-count.is-timer {
+    @apply min-w-7 border-cyan-50/90 bg-sky-500 px-1.5;
+    text-shadow: 0 1px 1px rgba(0, 40, 84, 0.7);
   }
 
   .aq-food-button:active .aq-food-button-count,

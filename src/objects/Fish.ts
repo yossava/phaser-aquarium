@@ -71,6 +71,9 @@ const directionFlipSwapProgress = 0.58;
 const swimPathSwayRatio = 0.035;
 const swimKickPulseStrength = 0.24;
 const overfullHungerFloor = -10000;
+const hungryStateThreshold = 68;
+const severeHungerDamageThreshold = 94;
+const sickAfterContinuousHungerSeconds = 5 * 60;
 export const fatalCareSeconds = 24 * 60 * 60;
 
 export class Fish {
@@ -86,6 +89,7 @@ export class Fish {
   public facing = 1;
   public medicatedUntil = 0;
   public fatalCareSeconds = 0;
+  public continuousHungrySeconds = 0;
   public gender: FishGender;
   public tankLevel: number;
   private statusBars: Phaser.GameObjects.Graphics;
@@ -167,13 +171,15 @@ export class Fish {
       100
     );
 
-    if (this.hunger > 94 && !isMedicated) {
+    this.updateContinuousHungerTimer(deltaSeconds);
+
+    if (this.hunger > severeHungerDamageThreshold && this.canBecomeSickFromHunger() && !isMedicated) {
       this.health = Phaser.Math.Clamp(this.health - 4.5 * deltaSeconds, 0, 100);
     } else {
       this.health = Phaser.Math.Clamp(this.health + (isMedicated ? 4 : 2.5) * deltaSeconds, 0, 100);
     }
 
-    this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
+    this.updateCareState();
     this.updateFatalCareTimer(deltaSeconds);
     this.setVisualScale(this.desiredAgeScale());
     this.statusIndicatorElapsed += deltaSeconds;
@@ -183,6 +189,7 @@ export class Fish {
       this.target.set(this.sprite.x, this.sprite.y);
       this.setStateTint();
       this.animateSwimming(deltaSeconds, 0, false, true);
+      this.updateStateEmoji();
       this.updateStatusBars(true);
       return undefined;
     }
@@ -211,6 +218,7 @@ export class Fish {
     }
     this.setStateTint();
     this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined || chaseTarget !== undefined, resting);
+    this.updateStateEmoji();
 
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
       const tooSmall = this.isFoodTooSmall(closestFood);
@@ -223,7 +231,8 @@ export class Fish {
         this.hunger = Phaser.Math.Clamp(this.hunger + 8, overfullHungerFloor, 100);
         this.health = Phaser.Math.Clamp(this.health - 8, 0, 100);
       }
-      this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
+      this.updateContinuousHungerTimer(0);
+      this.updateCareState();
       if (!this.isInFatalCareState()) {
         this.fatalCareSeconds = 0;
       }
@@ -236,7 +245,7 @@ export class Fish {
   }
 
   public canDropCoin(now: number): boolean {
-    return (this.state === "happy" || this.state === "ill") && now >= this.nextCoinDropAt;
+    return this.state === "happy" && now >= this.nextCoinDropAt;
   }
 
   public markCoinDropped(now: number): void {
@@ -268,18 +277,22 @@ export class Fish {
     this.nextCoinDropAt = now + firstOnboardingCoinDelayMs;
   }
 
-  public restoreProgress(ageSeconds: number, hunger: number, health: number, nextCoinDropAt: number, fatalCareSecondsValue = 0): void {
+  public restoreProgress(ageSeconds: number, hunger: number, health: number, nextCoinDropAt: number, fatalCareSecondsValue = 0, continuousHungrySecondsValue = 0): void {
     this.setAgeSeconds(ageSeconds);
     this.hunger = Phaser.Math.Clamp(hunger, overfullHungerFloor, 100);
     this.health = Phaser.Math.Clamp(health, 0, 100);
+    this.continuousHungrySeconds = this.isHungryEnoughForSickness()
+      ? Phaser.Math.Clamp(continuousHungrySecondsValue, 0, fatalCareSeconds)
+      : 0;
     this.nextCoinDropAt = Math.max(0, nextCoinDropAt);
     this.nextMegaCoinDropAt = this.ageStage === "elder" || this.ageStage === "master" ? this.scene.time.now + 60 * 1000 : 0;
-    this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
+    this.updateCareState();
     this.fatalCareSeconds = this.isInFatalCareState() ? Phaser.Math.Clamp(fatalCareSecondsValue, 0, fatalCareSeconds) : 0;
   }
 
   public resumeAfterOfflineProgress(): void {
-    this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
+    this.updateContinuousHungerTimer(0);
+    this.updateCareState();
     this.restUntil = 0;
     this.hasRestedAtTarget = false;
     this.playChaseTarget = undefined;
@@ -427,19 +440,11 @@ export class Fish {
   }
 
   public activeProduction(): CoinProduction {
-    const production = this.primaryProduction();
-    if (this.state === "ill") {
-      return { ...production, amount: 1, intervalSeconds: Math.min(maxCoinDropIntervalSeconds, production.intervalSeconds * 3) };
-    }
-    return production;
+    return this.primaryProduction();
   }
 
   public rollActiveProduction(): CoinProduction {
-    const production = this.rollProduction();
-    if (this.state === "ill") {
-      return { ...production, amount: 1, intervalSeconds: Math.min(maxCoinDropIntervalSeconds, production.intervalSeconds * 3) };
-    }
-    return production;
+    return this.rollProduction();
   }
 
   public productionSummary(): string {
@@ -533,7 +538,35 @@ export class Fish {
   }
 
   public isInFatalCareState(): boolean {
-    return this.health < 35 || this.hunger > 68;
+    return this.state === "ill" || this.hunger > hungryStateThreshold;
+  }
+
+  public canBecomeSickFromHunger(): boolean {
+    return this.continuousHungrySeconds >= sickAfterContinuousHungerSeconds;
+  }
+
+  public addContinuousHungerSeconds(seconds: number): void {
+    if (!this.isHungryEnoughForSickness()) {
+      this.continuousHungrySeconds = 0;
+      this.updateCareState();
+      return;
+    }
+
+    this.continuousHungrySeconds = Phaser.Math.Clamp(
+      this.continuousHungrySeconds + Math.max(0, seconds),
+      0,
+      fatalCareSeconds
+    );
+    this.updateCareState();
+  }
+
+  public applyDirtyWaterHungerDamage(deltaSeconds: number): void {
+    if (!this.canBecomeSickFromHunger()) {
+      return;
+    }
+
+    this.health = Phaser.Math.Clamp(this.health - 1.8 * deltaSeconds, 0, 100);
+    this.updateCareState();
   }
 
   public fatalCareRemainingSeconds(): number {
@@ -976,6 +1009,31 @@ export class Fish {
     this.ageStage = nextStage;
   }
 
+  private updateContinuousHungerTimer(deltaSeconds: number): void {
+    if (!this.isHungryEnoughForSickness()) {
+      this.continuousHungrySeconds = 0;
+      return;
+    }
+
+    this.continuousHungrySeconds = Phaser.Math.Clamp(
+      this.continuousHungrySeconds + Math.max(0, deltaSeconds),
+      0,
+      fatalCareSeconds
+    );
+  }
+
+  private isHungryEnoughForSickness(): boolean {
+    return this.hunger > hungryStateThreshold;
+  }
+
+  private updateCareState(): void {
+    this.state = this.health < 35 && this.canBecomeSickFromHunger()
+      ? "ill"
+      : this.hunger > hungryStateThreshold
+        ? "hungry"
+        : "happy";
+  }
+
   private ageStageDurationSeconds(stage: AgeStage): number {
     const oldTuningSeconds = this.type.ageCurve[stage].durationSeconds;
     if (oldTuningSeconds === 0) {
@@ -1213,8 +1271,8 @@ export class Fish {
 
   private setStateTint(): void {
     if (this.state === "ill") {
-      this.sprite.setTint(this.desaturatedTint(this.usesCustomTexture ? 0xffffff : this.bodyTint(), 0.46));
-      this.sprite.setAlpha(0.72);
+      this.sprite.setTint(this.usesCustomTexture ? 0x4cff38 : this.sickGreenTint(this.bodyTint()));
+      this.sprite.setAlpha(1);
       return;
     }
 
@@ -1271,12 +1329,44 @@ export class Fish {
       this.statusBars.strokeRoundedRect(-1, barY - 1, barWidth + 2, barHeight * 2 + gap + 2, 2);
     }
 
-    this.updateStateEmoji(y);
+    this.updateStateEmoji();
     this.updateTailMark();
   }
 
-  private updateStateEmoji(_statusY: number): void {
-    this.hideStateEmoji();
+  private updateStateEmoji(): void {
+    this.stateBubble.clear();
+    this.stateBubble.setVisible(false);
+
+    if (!this.sprite.visible) {
+      this.hideStateEmoji();
+      return;
+    }
+
+    const showHungry = this.state === "hungry";
+    const showFullSmile = this.state === "happy" && this.currentFullnessRatio() >= 0.995;
+    if (!showHungry && !showFullSmile) {
+      this.hideStateEmoji();
+      return;
+    }
+
+    const bodyHeight = this.fishVisibleBodyHeight();
+    const bodyWidth = this.fishVisibleBodyWidth();
+    const headOffsetX = this.facing * bodyWidth * 0.62;
+    const emojiX = Phaser.Math.Clamp(this.sprite.x + headOffsetX, tankBounds.left + 18, tankBounds.right - 18);
+    const emojiY = Math.max(tankBounds.top + 18, this.sprite.y - bodyHeight * 0.62);
+    this.stateEmoji
+      .setText(showHungry ? "😩" : "😊")
+      .setOrigin(0.5, 1)
+      .setPosition(emojiX, emojiY)
+      .setVisible(true);
+  }
+
+  private fishVisibleBodyHeight(): number {
+    return this.sprite.displayHeight * (this.usesCustomTexture ? 0.36 : 0.66);
+  }
+
+  private fishVisibleBodyWidth(): number {
+    return this.sprite.displayWidth * (this.usesCustomTexture ? 0.5 : 0.66);
   }
 
   private hideStateEmoji(): void {
@@ -1390,6 +1480,17 @@ export class Fish {
     const gray = red * 0.3 + green * 0.59 + blue * 0.11;
     const mix = (channel: number) => Math.round(channel * (1 - amount) + gray * amount);
     return Phaser.Display.Color.GetColor(mix(red), mix(green), mix(blue));
+  }
+
+  private sickGreenTint(tint: number): number {
+    const red = (tint >> 16) & 0xff;
+    const green = (tint >> 8) & 0xff;
+    const blue = tint & 0xff;
+    return Phaser.Display.Color.GetColor(
+      Math.round(red * 0.28),
+      Math.min(255, Math.round(green * 1.45 + 120)),
+      Math.round(blue * 0.22)
+    );
   }
 
   private mixColor(from: number, to: number, amount: number): number {

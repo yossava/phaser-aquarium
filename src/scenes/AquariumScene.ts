@@ -51,7 +51,8 @@ type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; icon: string }
   | { kind: "fish"; id: string; label: string; count: number; icon: string }
   | { kind: "decoration"; id: string; size: DecorationSize; label: string; count: number; icon: string }
-  | { kind: "helper"; id: string; label: string; count: number; icon: string };
+  | { kind: "helper"; id: string; label: string; count: number; icon: string }
+  | { kind: "utility"; id: string; label: string; count: number; icon: string };
 
 type PlacedDecoration = {
   typeId: string;
@@ -76,6 +77,8 @@ type TankRuntimeState = {
   creatureInventory: Map<string, number>;
   backgroundInventory: Map<string, number>;
   seabedInventory: Map<string, number>;
+  backgroundBlueTints: Map<string, number>;
+  seabedBlueTints: Map<string, number>;
   selectedBackgroundId: string;
   selectedSeabedId: string;
   cleanliness: number;
@@ -137,13 +140,18 @@ const inventoryDockPageSize = 8;
 const overfullHungerFloor = -10000;
 const fishStatsCardHeight = 96;
 const fishStatsCardRowHeight = 104;
-const tankCleaningRatePerSecond = 2;
+const tankCleaningRatePerSecond = 50;
+const maxTankDirtPerSecond = 28 / (60 * 60);
+const baseTankDirtPerSecond = maxTankDirtPerSecond * 0.22;
+const fishTankDirtPerSecond = maxTankDirtPerSecond * 0.075;
+const looseFoodTankDirtPerSecond = maxTankDirtPerSecond * 0.11;
 const automatedCoinCollectFeeRate = 0.5;
 const coinComboWindowMs = 900;
 const coinComboRewardRate = 0.2;
 const hudStatusSyncIntervalSeconds = 0.25;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
+const tankCosmeticBlueTintColor = 0x0b4f8f;
 const helperCreatureDropDisplayWidths: Record<string, number> = {
   "helper-shrimp": 60,
   "helper-shell": 52,
@@ -176,9 +184,14 @@ const tankFallbackBaseColor = 0x0b7097;
 const helperFoodDispenserStorageKey = "phaser-aquarium-helper-food-dispenser-y";
 const helperFoodDispenserInventoryKey = "utility:food-dispenser";
 const helperFoodDispenserPrice: Price = { coinType: "common", amount: 1800 };
-const helperFoodDispenserMinIntervalMs = 3800;
-const helperFoodDispenserMaxIntervalMs = 8600;
 const helperFoodDispenserPelletScale = 0.72;
+const helperFoodDispenserMinIntervalMs = 500;
+const coinMagnetInventoryKey = "utility:coin-magnet";
+const coinMagnetPrice: Price = { coinType: "common", amount: 720 };
+const coinMagnetIconPath = "/assets/ui/coin-magnet.png";
+const coinMagnetCollectRadius = 170;
+const coinMagnetDurationMs = 15 * 60 * 1000;
+const coinMagnetAttractDurationMs = 100;
 const coinWealthValue: Record<CoinType, number> = {
   common: 1,
   rare: 100,
@@ -209,10 +222,6 @@ const aquariumFloorTextureKey = "aquarium-floor";
 const aquariumFloorAssetPath = "/assets/backgrounds/aquarium-floor.webp";
 const aquariumBackgroundTextureKey = "aquarium-background";
 const aquariumBackgroundAssetPath = "/assets/backgrounds/tank-background.webp";
-const distantSilhouetteTextureKey = "aquarium-distant-silhouettes";
-const distantSilhouetteAssetPath = "/assets/backgrounds/distant-silhouettes.webp";
-const dirtyTankOverlayTextureKey = "dirty-tank-overlay";
-const dirtyTankOverlayAssetPath = "/assets/backgrounds/dirty-tank-overlay.webp";
 const tankThumbnailBaseTextureKey = "tank-thumbnail-base";
 const tankThumbnailBaseAssetPath = "/assets/backgrounds/tank-thumbnail-base.webp";
 const tankThemeIds = ["lagoon", "coral", "kelp", "crystal", "abyss", "sunset"] as const;
@@ -375,7 +384,11 @@ const defaultHudLayout: HudLayout = {
   }
 };
 const dirtyTankOverlayThreshold = 72;
-const dirtyTankOverlayMaxAlpha = 0.5;
+const algaeParticleThreshold = 50;
+const dirtyTankOverlayMaxAlpha = 0.38;
+const dirtyTankTintColor = 0x4f8f44;
+const cleanBubbleTintColor = 0xd7f4ff;
+const algaeParticleTintColor = 0x174f22;
 
 type AquariumTestSnapshot = {
   coins: number;
@@ -431,7 +444,6 @@ type AquariumTestSnapshot = {
   dirtyTankOverlay: {
     visible: boolean;
     alpha: number;
-    textureKey?: string;
     displayWidth: number;
     displayHeight: number;
   };
@@ -635,9 +647,9 @@ export class AquariumScene extends Phaser.Scene {
   private selectedFishIndex?: number;
   private tankLayer!: Phaser.GameObjects.Container;
   private tankBackground!: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
-  private tankDistantOverlay?: Phaser.GameObjects.Image;
+  private tankBackgroundBlueTintOverlay?: Phaser.GameObjects.Rectangle;
   private tankSand?: Phaser.GameObjects.Image;
-  private dirtyTankOverlay?: Phaser.GameObjects.Image;
+  private dirtyTankOverlay?: Phaser.GameObjects.Rectangle;
   private decorationTrashTarget!: Phaser.GameObjects.Container;
   private decorationTrashBackground!: Phaser.GameObjects.Rectangle;
   private decorationTrashText!: Phaser.GameObjects.Text;
@@ -665,6 +677,8 @@ export class AquariumScene extends Phaser.Scene {
   private screenButtons: Phaser.GameObjects.Container[] = [];
   private foodButtons: Phaser.GameObjects.Container[] = [];
   private foodDragGhosts = new Set<Phaser.GameObjects.Image>();
+  private ambientWaterParticles: Phaser.GameObjects.Arc[] = [];
+  private ambientWaterParticlesAlgaeMode?: boolean;
   private gameHudOverlay?: HTMLDivElement;
   private gameHudLevelText?: HTMLSpanElement;
   private gameHudCommonText?: HTMLSpanElement;
@@ -681,6 +695,9 @@ export class AquariumScene extends Phaser.Scene {
   private htmlFoodDragGhost?: HTMLDivElement;
   private htmlFoodDragCleanup?: () => void;
   private htmlDockDragging = false;
+  private magnetCollectingCoins = new Set<CoinDrop>();
+  private coinMagnetWasActive = false;
+  private coinMagnetDisplayedMinutes = 0;
   private gameHudLevelBadge?: HTMLDivElement;
   private tankMenuOverlay?: HTMLDivElement;
   private tankMenuCollapsed = false;
@@ -737,8 +754,6 @@ export class AquariumScene extends Phaser.Scene {
     });
     this.load.image(aquariumFloorTextureKey, aquariumFloorAssetPath);
     this.load.image(aquariumBackgroundTextureKey, aquariumBackgroundAssetPath);
-    this.load.image(distantSilhouetteTextureKey, distantSilhouetteAssetPath);
-    this.load.image(dirtyTankOverlayTextureKey, dirtyTankOverlayAssetPath);
     this.load.image(tankThumbnailBaseTextureKey, tankThumbnailBaseAssetPath);
     this.load.image(bubbleButtonFrameTextureKey, bubbleButtonFrameAssetPath);
     this.load.image(bubbleButtonPressedTextureKey, bubbleButtonPressedAssetPath);
@@ -800,6 +815,7 @@ export class AquariumScene extends Phaser.Scene {
     const deltaSeconds = delta / 1000;
     const now = this.time.now;
     this.updateStoreOverlayTimer(deltaSeconds);
+    this.updateTimedUtilities();
 
     this.foods.forEach((food) => food.update(deltaSeconds));
     this.removeExpiredFood();
@@ -933,10 +949,8 @@ export class AquariumScene extends Phaser.Scene {
     this.tankLayer = this.add.container(0, 0).setDepth(2);
     this.tankBackground = this.createTankBackground();
     this.tankLayer.add(this.tankBackground);
-    this.tankDistantOverlay = this.createOptionalTankOverlay(distantSilhouetteTextureKey, 0.5);
-    if (this.tankDistantOverlay) {
-      this.tankLayer.add(this.tankDistantOverlay);
-    }
+    this.tankBackgroundBlueTintOverlay = this.add.rectangle(tankBounds.centerX, tankBounds.centerY, tankBounds.width, tankBounds.height, tankCosmeticBlueTintColor, 1).setDepth(1);
+    this.tankLayer.add(this.tankBackgroundBlueTintOverlay);
     this.applyTankViewScale();
     this.tankSand = this.createTankFloor();
     this.tankLayer.add(this.tankSand);
@@ -945,25 +959,27 @@ export class AquariumScene extends Phaser.Scene {
 
     const ambientBubbleCount = shouldUseLowPowerMode() ? 8 : 18;
     for (let i = 0; i < ambientBubbleCount; i += 1) {
-      const bubble = this.add.circle(
+      const particle = this.add.circle(
         Phaser.Math.Between(tankBounds.left + 20, tankBounds.right - 20),
         Phaser.Math.Between(tankBounds.top + 20, tankBounds.bottom - 40),
         Phaser.Math.Between(2, 6),
-        0xd7f4ff,
+        cleanBubbleTintColor,
         0.28
       );
-      this.tankLayer.add(bubble);
+      this.styleAmbientWaterParticle(particle);
+      this.ambientWaterParticles.push(particle);
+      this.tankLayer.add(particle);
       this.tweens.add({
-        targets: bubble,
+        targets: particle,
         y: tankBounds.top + Phaser.Math.Between(8, 60),
         alpha: 0,
         duration: Phaser.Math.Between(3500, 7600),
         repeat: -1,
         delay: Phaser.Math.Between(0, 3500),
         onRepeat: () => {
-          bubble.x = Phaser.Math.Between(tankBounds.left + 20, tankBounds.right - 20);
-          bubble.y = tankBounds.bottom - Phaser.Math.Between(30, 90);
-          bubble.alpha = 0.28;
+          particle.x = Phaser.Math.Between(tankBounds.left + 20, tankBounds.right - 20);
+          particle.y = tankBounds.bottom - Phaser.Math.Between(30, 90);
+          this.styleAmbientWaterParticle(particle, true);
         }
       });
     }
@@ -1309,6 +1325,8 @@ export class AquariumScene extends Phaser.Scene {
       creatureInventory: new Map<string, number>(),
       backgroundInventory: new Map<string, number>([[this.defaultTankCosmeticId(level), 1]]),
       seabedInventory: new Map<string, number>([[this.defaultTankCosmeticId(level), 1]]),
+      backgroundBlueTints: new Map<string, number>(),
+      seabedBlueTints: new Map<string, number>(),
       selectedBackgroundId: this.defaultTankCosmeticId(level),
       selectedSeabedId: this.defaultTankCosmeticId(level),
       cleanliness: 100,
@@ -1331,6 +1349,8 @@ export class AquariumScene extends Phaser.Scene {
     if (!state.seabedInventory) {
       state.seabedInventory = new Map<string, number>([[fallbackCosmeticId, 1]]);
     }
+    state.backgroundBlueTints ??= new Map<string, number>();
+    state.seabedBlueTints ??= new Map<string, number>();
     state.selectedBackgroundId ??= fallbackCosmeticId;
     state.selectedSeabedId ??= fallbackCosmeticId;
     state.maxDisplayLevel = Math.max(1, Math.floor(state.maxDisplayLevel ?? 1));
@@ -1347,6 +1367,8 @@ export class AquariumScene extends Phaser.Scene {
       creatureInventory: this.creatureInventory,
       backgroundInventory: state.backgroundInventory,
       seabedInventory: state.seabedInventory,
+      backgroundBlueTints: state.backgroundBlueTints,
+      seabedBlueTints: state.seabedBlueTints,
       selectedBackgroundId: state.selectedBackgroundId,
       selectedSeabedId: state.selectedSeabedId,
       cleanliness: this.cleanliness,
@@ -1405,6 +1427,34 @@ export class AquariumScene extends Phaser.Scene {
     return tintPalette[Math.abs(Math.floor(level - 2)) % tintPalette.length];
   }
 
+  private tankCosmeticBlueTintInventory(category: TankCosmeticCategory, level = this.tankLevel): Map<string, number> {
+    const state = this.ensureTankState(level);
+    return category === "background" ? state.backgroundBlueTints : state.seabedBlueTints;
+  }
+
+  private tankCosmeticBlueTintIntensity(category: TankCosmeticCategory, id: string, level = this.tankLevel): number {
+    return Phaser.Math.Clamp(this.tankCosmeticBlueTintInventory(category, level).get(id) ?? 0, 0, 100);
+  }
+
+  private tankCosmeticTint(category: TankCosmeticCategory, id: string, level = this.tankLevel): number {
+    const baseTint = category === "background" ? this.tankThemeTint(level) : 0xffffff;
+    return this.mixRgb(baseTint, tankCosmeticBlueTintColor, this.tankCosmeticBlueTintIntensity(category, id, level) / 100);
+  }
+
+  private mixRgb(from: number, to: number, ratio: number): number {
+    const amount = Phaser.Math.Clamp(ratio, 0, 1);
+    const fromR = (from >> 16) & 0xff;
+    const fromG = (from >> 8) & 0xff;
+    const fromB = from & 0xff;
+    const toR = (to >> 16) & 0xff;
+    const toG = (to >> 8) & 0xff;
+    const toB = to & 0xff;
+    const r = Math.round(Phaser.Math.Linear(fromR, toR, amount));
+    const g = Math.round(Phaser.Math.Linear(fromG, toG, amount));
+    const b = Math.round(Phaser.Math.Linear(fromB, toB, amount));
+    return (r << 16) | (g << 8) | b;
+  }
+
   private createTankBackground(): Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle {
     const textureKeys = this.themedTankTextureKeys();
     if (this.textures.exists(textureKeys.backgroundKey)) {
@@ -1416,14 +1466,6 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     return this.add.rectangle(tankBounds.centerX, tankBounds.centerY, tankBounds.width, tankBounds.height, tankFallbackBaseColor, 1);
-  }
-
-  private createOptionalTankOverlay(textureKey: string, alpha: number): Phaser.GameObjects.Image | undefined {
-    if (!this.textures.exists(textureKey)) {
-      return undefined;
-    }
-
-    return this.add.image(tankBounds.centerX, tankBounds.centerY, textureKey).setAlpha(alpha);
   }
 
   private createTankFloor(): Phaser.GameObjects.Image {
@@ -1522,14 +1564,9 @@ export class AquariumScene extends Phaser.Scene {
     return false;
   }
 
-  private createDirtyTankOverlay(): Phaser.GameObjects.Image | undefined {
-    if (!this.textures.exists(dirtyTankOverlayTextureKey)) {
-      return undefined;
-    }
-
+  private createDirtyTankOverlay(): Phaser.GameObjects.Rectangle {
     const overlay = this.add
-      .image(tankViewportBounds.centerX, tankViewportBounds.centerY, dirtyTankOverlayTextureKey)
-      .setDisplaySize(tankViewportBounds.width, tankViewportBounds.height)
+      .rectangle(tankViewportBounds.centerX, tankViewportBounds.centerY, tankViewportBounds.width, tankViewportBounds.height, dirtyTankTintColor, 1)
       .setBlendMode(Phaser.BlendModes.NORMAL)
       .setDepth(17)
       .setAlpha(0)
@@ -1545,8 +1582,35 @@ export class AquariumScene extends Phaser.Scene {
 
     if (overlay) {
       overlay.setVisible(visible);
-      overlay.setAlpha(visible ? Phaser.Math.Linear(0.12, dirtyTankOverlayMaxAlpha, easedRatio) : 0);
+      overlay.setPosition(tankViewportBounds.centerX, tankViewportBounds.centerY);
+      overlay.setSize(tankViewportBounds.width, tankViewportBounds.height);
+      overlay.setFillStyle(dirtyTankTintColor, 1);
+      overlay.setAlpha(visible ? Phaser.Math.Linear(0.05, dirtyTankOverlayMaxAlpha, easedRatio) : 0);
     }
+    this.updateAmbientWaterParticles();
+  }
+
+  private updateAmbientWaterParticles(): void {
+    const algaeMode = this.cleanliness < algaeParticleThreshold;
+    if (this.ambientWaterParticlesAlgaeMode === algaeMode) {
+      return;
+    }
+
+    this.ambientWaterParticlesAlgaeMode = algaeMode;
+    for (const particle of this.ambientWaterParticles) {
+      this.styleAmbientWaterParticle(particle, true);
+    }
+  }
+
+  private styleAmbientWaterParticle(particle: Phaser.GameObjects.Arc, randomizeSize = false): void {
+    const algaeMode = this.cleanliness < algaeParticleThreshold;
+    if (randomizeSize) {
+      particle.setRadius(algaeMode ? Phaser.Math.FloatBetween(3.5, 6.5) : Phaser.Math.FloatBetween(2, 6));
+      particle.setScale(algaeMode ? Phaser.Math.FloatBetween(0.22, 0.38) : 1, algaeMode ? Phaser.Math.FloatBetween(1.8, 3.2) : 1);
+      particle.setAngle(algaeMode ? Phaser.Math.Between(-28, 28) : 0);
+    }
+    particle.setFillStyle(algaeMode ? algaeParticleTintColor : cleanBubbleTintColor, algaeMode ? 0.62 : 0.28);
+    particle.setAlpha(algaeMode ? 0.62 : 0.28);
   }
 
   private applyTankViewScale(): void {
@@ -1571,6 +1635,7 @@ export class AquariumScene extends Phaser.Scene {
     const scale = Math.max(0.01, this.tankViewScaleForLevel());
     const screenCompensatedWidth = tankBounds.width / scale;
     const screenCompensatedHeight = tankBounds.height / scale;
+    const selectedBackgroundId = this.selectedTankCosmeticId("background");
     this.tankBackground.setPosition(tankBounds.centerX, tankBounds.centerY);
     if (this.tankBackground instanceof Phaser.GameObjects.Image) {
       const textureKeys = this.themedTankTextureKeys();
@@ -1579,15 +1644,20 @@ export class AquariumScene extends Phaser.Scene {
       this.tankBackground.setTexture(textureKey);
       this.tankBackground.setDisplaySize(screenCompensatedWidth, screenCompensatedHeight);
       this.tankBackground.setAlpha(1);
-      this.tankBackground.setTint(this.tankThemeTint(this.tankLevel));
+      this.tankBackground.setTint(this.tankCosmeticTint("background", selectedBackgroundId));
     } else {
       this.tankBackground.setSize(screenCompensatedWidth, screenCompensatedHeight);
     }
 
-    for (const overlay of [this.tankDistantOverlay]) {
-      overlay?.setPosition(tankBounds.centerX, tankBounds.centerY);
-      overlay?.setDisplaySize(screenCompensatedWidth, screenCompensatedHeight);
-    }
+    this.layoutTankBlueTintOverlay(
+      this.tankBackgroundBlueTintOverlay,
+      tankBounds.centerX,
+      tankBounds.centerY,
+      screenCompensatedWidth,
+      screenCompensatedHeight,
+      this.tankCosmeticBlueTintIntensity("background", selectedBackgroundId),
+      0.48
+    );
   }
 
   private layoutTankFloor(): void {
@@ -1603,8 +1673,34 @@ export class AquariumScene extends Phaser.Scene {
     this.tankSand.setOrigin(0.5, 1);
     this.tankSand.setPosition(tankBounds.centerX, this.visibleTankBottomDesignY());
     const displayHeight = tankBounds.height / 6 / scale;
+    const selectedSeabedId = this.selectedTankCosmeticId("seabed");
     this.tankSand.setDisplaySize(tankBounds.width / scale, displayHeight);
-    this.tankSand.clearTint();
+    this.tankSand.setTint(this.tankCosmeticTint("seabed", selectedSeabedId));
+  }
+
+  private layoutTankBlueTintOverlay(
+    overlay: Phaser.GameObjects.Rectangle | undefined,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    intensity: number,
+    maxAlpha: number,
+    originX = 0.5,
+    originY = 0.5
+  ): void {
+    if (!overlay) {
+      return;
+    }
+
+    const alpha = (Phaser.Math.Clamp(intensity, 0, 100) / 100) * maxAlpha;
+    overlay
+      .setOrigin(originX, originY)
+      .setPosition(x, y)
+      .setSize(width, height)
+      .setFillStyle(tankCosmeticBlueTintColor, 1)
+      .setAlpha(alpha)
+      .setVisible(alpha > 0);
   }
 
   private visibleTankBottomDesignY(): number {
@@ -2206,8 +2302,17 @@ export class AquariumScene extends Phaser.Scene {
         count: this.getCreatureInventory(creatureType.id),
         icon: creatureType.id === "feeder-snail" ? "/assets/helpers/feeder-snail.png" : `/assets/helpers/${creatureType.id}.png`
       }));
+    const utilityItems: InventoryDockItem[] = this.hasCoinMagnet()
+      ? [{
+        kind: "utility",
+        id: "coin-magnet",
+        label: "Magnet",
+        count: this.coinMagnetRemainingMinutes(),
+        icon: coinMagnetIconPath
+      }]
+      : [];
 
-    return [...foodItems, ...fishItems, ...decorationItems, ...helperItems];
+    return [...foodItems, ...utilityItems, ...fishItems, ...decorationItems, ...helperItems];
   }
 
   private inventoryDockItemKey(item: InventoryDockItem): string {
@@ -2238,7 +2343,12 @@ export class AquariumScene extends Phaser.Scene {
 
     const count = document.createElement("span");
     count.className = "aq-food-button-count";
-    count.textContent = this.foodBadgeLabel(item.count);
+    if (item.kind === "utility" && item.id === "coin-magnet") {
+      count.classList.add("is-timer");
+      count.textContent = `${formatNumber(item.count)}m`;
+    } else {
+      count.textContent = this.foodBadgeLabel(item.count);
+    }
     bubble.append(count);
 
     const label = document.createElement("span");
@@ -2320,6 +2430,9 @@ export class AquariumScene extends Phaser.Scene {
       lastClientX = moveEvent.clientX;
       lastClientY = moveEvent.clientY;
       this.moveHtmlFoodDragGhost(moveEvent.clientX, moveEvent.clientY);
+      if (item.kind === "utility" && item.id === "coin-magnet") {
+        this.useCoinMagnetAtClientPoint(moveEvent.clientX, moveEvent.clientY, false);
+      }
     };
     const onDrop = (endEvent: PointerEvent) => {
       endEvent.preventDefault();
@@ -2392,6 +2505,13 @@ export class AquariumScene extends Phaser.Scene {
       const decorationType = decorationTypes.find((candidate) => candidate.id === item.id);
       if (decorationType) {
         this.placeDecorationFromInventory(decorationType, item.size, x, y);
+      }
+      return;
+    }
+
+    if (item.kind === "utility") {
+      if (item.id === "coin-magnet") {
+        this.useCoinMagnetAt(x, y);
       }
       return;
     }
@@ -2655,6 +2775,7 @@ export class AquariumScene extends Phaser.Scene {
         switchTank: (level) => this.switchTank(level),
         buyTankCosmetic: (category, id) => this.buyTankCosmeticFromStore(category, id),
         switchTankCosmetic: (category, id) => this.useTankCosmeticFromStore(category, id),
+        setTankCosmeticBlueTint: (category, id, intensity) => this.setTankCosmeticBlueTintFromStore(category, id, intensity),
         buyTankDecoration: (decorationId, size) => this.buyDecorationFromStore(decorationId, size),
         selectTankDecoration: (decorationId, size) => this.selectDecoration(decorationId, size),
         buyTankUtility: (utilityId) => this.buyTankUtility(utilityId)
@@ -2680,6 +2801,26 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.storeRefreshElapsed = 0;
+    this.storeOverlay?.refresh();
+  }
+
+  private updateTimedUtilities(): void {
+    const coinMagnetActive = this.hasCoinMagnet();
+    const remainingMinutes = coinMagnetActive ? this.coinMagnetRemainingMinutes() : 0;
+    if (coinMagnetActive === this.coinMagnetWasActive && remainingMinutes === this.coinMagnetDisplayedMinutes) {
+      return;
+    }
+
+    const wasActive = this.coinMagnetWasActive;
+    this.coinMagnetWasActive = coinMagnetActive;
+    this.coinMagnetDisplayedMinutes = remainingMinutes;
+    if (wasActive && !coinMagnetActive) {
+      this.decorationInventory.delete(coinMagnetInventoryKey);
+      this.magnetCollectingCoins.clear();
+      this.floatText("Coin Magnet expired", toastX, toastY, "#d7f4ff");
+      this.saveNow();
+    }
+    this.createFoodDock();
     this.storeOverlay?.refresh();
   }
 
@@ -2974,27 +3115,63 @@ export class AquariumScene extends Phaser.Scene {
     const inventory = this.tankCosmeticInventory(asset.category);
     const owned = (inventory.get(asset.id) ?? 0) > 0;
     const selected = this.selectedTankCosmeticId(asset.category) === asset.id;
-    const card = this.htmlElement("button", `aq-tank-grid-card aq-tank-grid-button ${selected ? "is-active" : ""}`) as HTMLButtonElement;
-    card.type = "button";
+    const card = this.htmlElement("article", `aq-tank-grid-card ${selected ? "is-active" : ""}`);
     this.attachTouchFeedback(card);
-    card.addEventListener("click", () => {
-      if (owned) {
-        this.useTankCosmetic(asset);
-      }
-    });
     const imageUrl = this.tankCosmeticImageUrl(asset);
     if (imageUrl) {
       card.append(this.htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
     } else {
       card.style.backgroundColor = this.hexColor(asset.tint);
     }
-    card.append(
-      this.htmlElement("div", "aq-tank-grid-overlay", [
-        this.htmlElement("span", "aq-page-mini-title", [asset.name]),
-        this.htmlElement("span", "aq-page-mini-meta", [selected ? "Active" : "Owned"])
-      ])
+    card.append(this.createBlueTintPreviewOverlay(this.tankCosmeticBlueTintIntensity(asset.category, asset.id)));
+    const overlay = this.htmlElement("div", "aq-tank-grid-overlay");
+    overlay.append(
+      this.htmlElement("span", "aq-page-mini-title", [asset.name]),
+      this.htmlElement("span", "aq-page-mini-meta", [selected ? "Active" : "Owned"]),
+      this.createCosmeticTintHtmlControl(asset),
+      this.htmlButton(selected ? "Active" : "Apply", "aq-page-button aq-page-button-good aq-cosmetic-apply-button", () => this.useTankCosmetic(asset), selected)
     );
+    card.append(overlay);
     return card;
+  }
+
+  private createCosmeticTintHtmlControl(asset: TankCosmetic): HTMLElement {
+    const value = Math.round(this.tankCosmeticBlueTintIntensity(asset.category, asset.id));
+    const valueText = this.htmlElement("span", "shrink-0", [`${formatNumber(value)}%`]);
+    const label = this.htmlElement("div", "aq-store-tint-label", [
+      this.htmlElement("span", "truncate", ["Blue tint"]),
+      valueText
+    ]);
+    const input = document.createElement("input");
+    input.className = "aq-settings-range aq-store-tint-range aq-cosmetic-tint-range";
+    input.type = "range";
+    input.min = "0";
+    input.max = "100";
+    input.step = "1";
+    input.value = String(value);
+    input.addEventListener("pointerdown", (event) => event.stopPropagation());
+    input.addEventListener("click", (event) => event.stopPropagation());
+    input.addEventListener("input", (event) => {
+      event.stopPropagation();
+      const nextValue = Number(input.value);
+      valueText.textContent = `${formatNumber(nextValue)}%`;
+      const preview = input.closest(".aq-tank-grid-card")?.querySelector(".aq-blue-tint-preview");
+      if (preview instanceof HTMLElement) {
+        this.updateBlueTintPreviewOverlay(preview, nextValue);
+      }
+      this.setTankCosmeticBlueTintFromStore(asset.category, asset.id, nextValue);
+    });
+    return this.htmlElement("div", "aq-store-tint-control aq-cosmetic-tint-control", [label, input]);
+  }
+
+  private createBlueTintPreviewOverlay(intensity: number): HTMLElement {
+    const overlay = this.htmlElement("div", "aq-blue-tint-preview");
+    this.updateBlueTintPreviewOverlay(overlay, intensity);
+    return overlay;
+  }
+
+  private updateBlueTintPreviewOverlay(overlay: HTMLElement, intensity: number): void {
+    overlay.style.opacity = String(Math.round(Phaser.Math.Clamp(intensity, 0, 100)) / 100);
   }
 
   private appendDecorationHtmlSection(content: HTMLElement): void {
@@ -3681,9 +3858,7 @@ export class AquariumScene extends Phaser.Scene {
     ];
     const backgroundTextureKeys = [
       aquariumFloorTextureKey,
-      aquariumBackgroundTextureKey,
-      distantSilhouetteTextureKey,
-      dirtyTankOverlayTextureKey
+      aquariumBackgroundTextureKey
     ];
 
     return {
@@ -4053,7 +4228,8 @@ export class AquariumScene extends Phaser.Scene {
           active: this.selectedTankCosmeticId(asset.category) === asset.id,
           price: asset.price,
           previewUrl: this.tankCosmeticImageUrl(asset),
-          tint: this.hexColor(asset.tint)
+          tint: this.hexColor(asset.tint),
+          blueTintIntensity: this.tankCosmeticBlueTintIntensity(asset.category, asset.id)
         }))
     );
   }
@@ -4090,6 +4266,15 @@ export class AquariumScene extends Phaser.Scene {
         icon: "/assets/ui/helper-food-dispenser.png",
         owned: this.hasHelperFoodDispenser(),
         price: helperFoodDispenserPrice
+      },
+      {
+        kind: "tankUtility",
+        id: "coin-magnet",
+        name: "Coin Magnet",
+        description: "Drag from the dock and release near coins to pull nearby drops into your wallet.",
+        icon: coinMagnetIconPath,
+        owned: this.hasCoinMagnet(),
+        price: coinMagnetPrice
       }
     ];
   }
@@ -4145,6 +4330,8 @@ export class AquariumScene extends Phaser.Scene {
         creatureInventory: recordToMap(value.creatureInventory),
         backgroundInventory: this.cosmeticInventoryFromRecord("background", value.backgroundInventory, level),
         seabedInventory: this.cosmeticInventoryFromRecord("seabed", value.seabedInventory, level),
+        backgroundBlueTints: recordToMap(value.backgroundBlueTints),
+        seabedBlueTints: recordToMap(value.seabedBlueTints),
         selectedBackgroundId: this.validTankCosmeticId("background", value.selectedBackgroundId, level),
         selectedSeabedId: this.validTankCosmeticId("seabed", value.selectedSeabedId, level),
         cleanliness: Phaser.Math.Clamp(value.cleanliness ?? 100, 0, 100),
@@ -4162,6 +4349,8 @@ export class AquariumScene extends Phaser.Scene {
         creatureInventory: recordToMap(saved.creatureInventory),
         backgroundInventory: this.cosmeticInventoryFromRecord("background", undefined, 1),
         seabedInventory: this.cosmeticInventoryFromRecord("seabed", undefined, 1),
+        backgroundBlueTints: new Map<string, number>(),
+        seabedBlueTints: new Map<string, number>(),
         selectedBackgroundId: this.validTankCosmeticId("background", undefined, 1),
         selectedSeabedId: this.validTankCosmeticId("seabed", undefined, 1),
         cleanliness: saved.tank.cleanliness,
@@ -4185,6 +4374,8 @@ export class AquariumScene extends Phaser.Scene {
         creatureInventory: mapToRecord(state.creatureInventory),
         backgroundInventory: mapToRecord(state.backgroundInventory),
         seabedInventory: mapToRecord(state.seabedInventory),
+        backgroundBlueTints: mapToRecord(state.backgroundBlueTints),
+        seabedBlueTints: mapToRecord(state.seabedBlueTints),
         selectedBackgroundId: state.selectedBackgroundId,
         selectedSeabedId: state.selectedSeabedId,
         cleanliness: state.cleanliness,
@@ -4324,6 +4515,30 @@ export class AquariumScene extends Phaser.Scene {
       this.useTankCosmetic(asset);
       this.storeOverlay?.refresh();
     }
+  }
+
+  private setTankCosmeticBlueTintFromStore(category: TankCosmeticCategory, id: string, intensity: number): void {
+    const asset = this.tankCosmeticById(category, id);
+    if (!asset || !this.ownsTankCosmetic(asset)) {
+      return;
+    }
+
+    const tintInventory = this.tankCosmeticBlueTintInventory(category);
+    const normalizedIntensity = Math.round(Phaser.Math.Clamp(intensity, 0, 100));
+    if (normalizedIntensity > 0) {
+      tintInventory.set(id, normalizedIntensity);
+    } else {
+      tintInventory.delete(id);
+    }
+
+    if (this.selectedTankCosmeticId(category) === id) {
+      if (category === "background") {
+        this.layoutTankBackground();
+      } else {
+        this.layoutTankFloor();
+      }
+    }
+    this.saveNow();
   }
 
   private closeStoreAfterPurchase(): void {
@@ -4677,23 +4892,36 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyTankUtility(utilityId: string): void {
-    if (utilityId !== "food-dispenser") {
+    if (utilityId !== "food-dispenser" && utilityId !== "coin-magnet") {
       return;
     }
 
-    if (this.hasHelperFoodDispenser()) {
+    if (utilityId === "food-dispenser" && this.hasHelperFoodDispenser()) {
       this.floatText("Already installed", toastX, toastY, "#d7f4ff");
       return;
     }
 
-    if (!this.spendPrice(helperFoodDispenserPrice)) {
+    if (utilityId === "coin-magnet" && this.hasCoinMagnet()) {
+      this.floatText("Already owned", toastX, toastY, "#d7f4ff");
       return;
     }
 
-    this.decorationInventory.set(helperFoodDispenserInventoryKey, 1);
-    this.recordDailyQuestAction("buy-dispenser");
-    this.scheduleNextHelperFoodDispense();
-    this.floatText("Food Dispenser installed", toastX, toastY, "#a8ffb0");
+    const utilityPrice = utilityId === "food-dispenser" ? helperFoodDispenserPrice : coinMagnetPrice;
+    if (!this.spendPrice(utilityPrice)) {
+      return;
+    }
+
+    if (utilityId === "food-dispenser") {
+      this.decorationInventory.set(helperFoodDispenserInventoryKey, 1);
+      this.recordDailyQuestAction("buy-dispenser");
+      this.floatText("Food Dispenser installed", toastX, toastY, "#a8ffb0");
+    } else {
+      this.decorationInventory.set(coinMagnetInventoryKey, Date.now() + coinMagnetDurationMs);
+      this.coinMagnetWasActive = true;
+      this.recentInventoryDockItemKey = "utility:coin-magnet";
+      this.floatText("Coin Magnet active 15m", toastX, toastY, "#a8ffb0");
+      this.createFoodDock();
+    }
     this.storeOverlay?.refresh();
     this.refreshUi(false);
     this.saveNow();
@@ -5596,7 +5824,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.cleanliness = Phaser.Math.Clamp(
-      this.cleanliness - Math.min(50, elapsedSeconds * (0.0015 + this.fish.length * 0.0004)),
+      this.cleanliness - Math.min(84, elapsedSeconds * this.tankDirtRatePerSecond(this.fish.length)),
       0,
       100
     );
@@ -5724,6 +5952,64 @@ export class AquariumScene extends Phaser.Scene {
     coin.destroy();
     this.refreshUi();
     this.saveNow();
+  }
+
+  private useCoinMagnetAtClientPoint(clientX: number, clientY: number, showEmptyMessage: boolean): void {
+    const point = this.clientPointToDesignPoint(clientX, clientY);
+    if (!point || !tankViewportBounds.contains(point.x, point.y)) {
+      return;
+    }
+
+    const tankPoint = this.screenToTankPoint(point.x, point.y);
+    this.useCoinMagnetAt(tankPoint.x, tankPoint.y, showEmptyMessage);
+  }
+
+  private useCoinMagnetAt(x: number, y: number, showEmptyMessage = true): void {
+    if (!this.hasCoinMagnet()) {
+      return;
+    }
+
+    if (this.magnetCollectingCoins.size > 0) {
+      return;
+    }
+
+    let nearestCoin: CoinDrop | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const coin of this.coinDrops) {
+      if (this.magnetCollectingCoins.has(coin)) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(x, y, coin.sprite.x, coin.sprite.y);
+      if (distance <= coinMagnetCollectRadius && distance < nearestDistance) {
+        nearestCoin = coin;
+        nearestDistance = distance;
+      }
+    }
+
+    if (!nearestCoin) {
+      if (showEmptyMessage) {
+        this.floatTankText("No coins nearby", x, y - 22, "#d7f4ff");
+      }
+      return;
+    }
+
+    const coinToCollect = nearestCoin;
+    this.floatTankText("Magnet", x, y - 28, "#9eeeff");
+    this.magnetCollectingCoins.add(coinToCollect);
+    coinToCollect.hitZone.disableInteractive();
+    coinToCollect.sprite.disableInteractive();
+    this.tweens.add({
+      targets: [coinToCollect.sprite, coinToCollect.hitZone, coinToCollect.shimmer, coinToCollect.valueText],
+      x,
+      y,
+      scale: 0.72,
+      duration: coinMagnetAttractDurationMs,
+      ease: "Sine.easeInOut",
+      onComplete: () => {
+        this.magnetCollectingCoins.delete(coinToCollect);
+        this.collectCoin(coinToCollect, false);
+      }
+    });
   }
 
   private playSfx(key: string, config: Phaser.Types.Sound.SoundConfig = {}): void {
@@ -6155,6 +6441,18 @@ export class AquariumScene extends Phaser.Scene {
     return (this.decorationInventory.get(helperFoodDispenserInventoryKey) ?? 0) > 0;
   }
 
+  private hasCoinMagnet(): boolean {
+    return this.coinMagnetExpiresAt() > Date.now();
+  }
+
+  private coinMagnetExpiresAt(): number {
+    return Math.max(0, this.decorationInventory.get(coinMagnetInventoryKey) ?? 0);
+  }
+
+  private coinMagnetRemainingMinutes(): number {
+    return Math.max(1, Math.ceil(Math.max(0, this.coinMagnetExpiresAt() - Date.now()) / 60_000));
+  }
+
   private getCreatureInventory(creatureTypeId: string): number {
     return this.creatureInventory.get(creatureTypeId) ?? 0;
   }
@@ -6448,10 +6746,13 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.cleanliness = Phaser.Math.Clamp(
-      this.cleanliness - (0.05 + activeFishCount * 0.018 + this.foods.length * 0.045) * deltaSeconds,
-      0,
-      100
+    this.cleanliness = Phaser.Math.Clamp(this.cleanliness - this.tankDirtRatePerSecond(activeFishCount) * deltaSeconds, 0, 100);
+  }
+
+  private tankDirtRatePerSecond(activeFishCount: number): number {
+    return Math.min(
+      maxTankDirtPerSecond,
+      baseTankDirtPerSecond + activeFishCount * fishTankDirtPerSecond + this.foods.length * looseFoodTankDirtPerSecond
     );
   }
 
@@ -6482,17 +6783,12 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.scheduleNextHelperFoodDispense();
-    let targetFish: Fish | undefined;
-    for (const currentFish of tankFish) {
-      if (currentFish.health < 35 || currentFish.hunger < 50) {
-        continue;
-      }
-      if (!targetFish || currentFish.hunger > targetFish.hunger) {
-        targetFish = currentFish;
-      }
-    }
+    const targetFish = this.findFoodDispenserTarget(tankFish);
     if (!targetFish) {
+      return;
+    }
+
+    if (this.hasPendingDispenserFoodForFish(targetFish, tankFish)) {
       return;
     }
 
@@ -6501,6 +6797,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    this.nextHelperFoodDispenseAt = this.time.now + helperFoodDispenserMinIntervalMs;
     const outlet = this.helperFoodDispenserOutletPosition();
     this.foodInventory.set(foodType.id, Math.max(0, this.getFoodInventory(foodType.id) - 1));
     const targetDirection = Math.sign(targetFish.sprite.x - outlet.x) || 1;
@@ -6519,8 +6816,26 @@ export class AquariumScene extends Phaser.Scene {
     this.saveNow();
   }
 
-  private scheduleNextHelperFoodDispense(): void {
-    this.nextHelperFoodDispenseAt = this.time.now + Phaser.Math.Between(helperFoodDispenserMinIntervalMs, helperFoodDispenserMaxIntervalMs);
+  private findFoodDispenserTarget(tankFish: Fish[]): Fish | undefined {
+    let targetFish: Fish | undefined;
+    for (const currentFish of tankFish) {
+      if (currentFish.health < 35 || currentFish.hunger < 50) {
+        continue;
+      }
+      if (!targetFish || currentFish.hunger > targetFish.hunger) {
+        targetFish = currentFish;
+      }
+    }
+    return targetFish;
+  }
+
+  private hasPendingDispenserFoodForFish(targetFish: Fish, tankFish: Fish[]): boolean {
+    return this.foods.some((food) => {
+      if (food.foodType.id === "medicine" || food.foodType.id === "ageBoost" || food.foodType.id === "creature") {
+        return false;
+      }
+      return this.fishAssignedToFood(food, tankFish) === targetFish;
+    });
   }
 
   private helperFoodDispenserOutletPosition(): Phaser.Math.Vector2 {
@@ -7365,7 +7680,6 @@ export class AquariumScene extends Phaser.Scene {
         dirtyTankOverlay: {
           visible: this.dirtyTankOverlay?.visible ?? false,
           alpha: this.dirtyTankOverlay?.alpha ?? 0,
-          textureKey: this.dirtyTankOverlay?.texture.key,
           displayWidth: this.dirtyTankOverlay?.displayWidth ?? 0,
           displayHeight: this.dirtyTankOverlay?.displayHeight ?? 0
         },
@@ -7569,7 +7883,7 @@ export class AquariumScene extends Phaser.Scene {
       },
       forceProductionDrop: (index: number) => {
         const targetFish = this.fish[index];
-        if (!targetFish || this.coinDrops.length >= maxCoinDrops) {
+        if (!targetFish || targetFish.state === "ill" || this.coinDrops.length >= maxCoinDrops) {
           return;
         }
 
@@ -7964,57 +8278,65 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const plant = this.add.graphics();
-    plant.fillStyle(0x216b3a, 1);
-    plant.fillRect(27, 46, 10, 26);
-    plant.fillStyle(0x3bb35f, 1);
-    plant.fillEllipse(22, 44, 16, 42);
-    plant.fillEllipse(40, 40, 16, 46);
-    plant.fillEllipse(31, 28, 18, 50);
-    plant.fillStyle(0x784d28, 1);
-    plant.fillRect(18, 68, 28, 8);
-    plant.generateTexture("decor-plant", 64, 80);
-    plant.destroy();
+    if (!this.textures.exists("decor-plant")) {
+      const plant = this.add.graphics();
+      plant.fillStyle(0x216b3a, 1);
+      plant.fillRect(27, 46, 10, 26);
+      plant.fillStyle(0x3bb35f, 1);
+      plant.fillEllipse(22, 44, 16, 42);
+      plant.fillEllipse(40, 40, 16, 46);
+      plant.fillEllipse(31, 28, 18, 50);
+      plant.fillStyle(0x784d28, 1);
+      plant.fillRect(18, 68, 28, 8);
+      plant.generateTexture("decor-plant", 64, 80);
+      plant.destroy();
+    }
 
-    const rock = this.add.graphics();
-    rock.fillStyle(0x69747c, 1);
-    rock.fillEllipse(34, 42, 58, 36);
-    rock.fillStyle(0x87929a, 1);
-    rock.fillEllipse(23, 34, 22, 18);
-    rock.fillEllipse(44, 33, 26, 22);
-    rock.generateTexture("decor-rock", 72, 64);
-    rock.destroy();
+    if (!this.textures.exists("decor-rock")) {
+      const rock = this.add.graphics();
+      rock.fillStyle(0x69747c, 1);
+      rock.fillEllipse(34, 42, 58, 36);
+      rock.fillStyle(0x87929a, 1);
+      rock.fillEllipse(23, 34, 22, 18);
+      rock.fillEllipse(44, 33, 26, 22);
+      rock.generateTexture("decor-rock", 72, 64);
+      rock.destroy();
+    }
 
-    const castle = this.add.graphics();
-    castle.fillStyle(0x9a8eca, 1);
-    castle.fillRect(18, 28, 54, 48);
-    castle.fillRect(10, 18, 18, 58);
-    castle.fillRect(62, 18, 18, 58);
-    castle.fillStyle(0x5d5387, 1);
-    castle.fillTriangle(10, 18, 19, 4, 28, 18);
-    castle.fillTriangle(62, 18, 71, 4, 80, 18);
-    castle.fillStyle(0x342d52, 1);
-    castle.fillRoundedRect(38, 48, 14, 28, 7);
-    castle.fillRect(29, 36, 9, 10);
-    castle.fillRect(54, 36, 9, 10);
-    castle.generateTexture("decor-castle", 92, 86);
-    castle.destroy();
+    if (!this.textures.exists("decor-castle")) {
+      const castle = this.add.graphics();
+      castle.fillStyle(0x9a8eca, 1);
+      castle.fillRect(18, 28, 54, 48);
+      castle.fillRect(10, 18, 18, 58);
+      castle.fillRect(62, 18, 18, 58);
+      castle.fillStyle(0x5d5387, 1);
+      castle.fillTriangle(10, 18, 19, 4, 28, 18);
+      castle.fillTriangle(62, 18, 71, 4, 80, 18);
+      castle.fillStyle(0x342d52, 1);
+      castle.fillRoundedRect(38, 48, 14, 28, 7);
+      castle.fillRect(29, 36, 9, 10);
+      castle.fillRect(54, 36, 9, 10);
+      castle.generateTexture("decor-castle", 92, 86);
+      castle.destroy();
+    }
 
-    const crystal = this.add.graphics();
-    crystal.fillStyle(0x9ff8ff, 0.95);
-    crystal.fillTriangle(46, 6, 18, 72, 74, 72);
-    crystal.fillStyle(0xe0fbff, 0.9);
-    crystal.fillTriangle(46, 6, 38, 72, 58, 72);
-    crystal.fillStyle(0xb48cff, 0.95);
-    crystal.fillTriangle(22, 28, 4, 78, 42, 78);
-    crystal.fillStyle(0xff9bed, 0.9);
-    crystal.fillTriangle(70, 28, 50, 78, 88, 78);
-    crystal.lineStyle(2, 0xffffff, 0.7);
-    crystal.lineBetween(46, 6, 46, 72);
-    crystal.lineBetween(22, 28, 28, 78);
-    crystal.lineBetween(70, 28, 64, 78);
-    crystal.generateTexture("decor-crystal", 92, 86);
-    crystal.destroy();
+    if (!this.textures.exists("decor-crystal")) {
+      const crystal = this.add.graphics();
+      crystal.fillStyle(0x9ff8ff, 0.95);
+      crystal.fillTriangle(46, 6, 18, 72, 74, 72);
+      crystal.fillStyle(0xe0fbff, 0.9);
+      crystal.fillTriangle(46, 6, 38, 72, 58, 72);
+      crystal.fillStyle(0xb48cff, 0.95);
+      crystal.fillTriangle(22, 28, 4, 78, 42, 78);
+      crystal.fillStyle(0xff9bed, 0.9);
+      crystal.fillTriangle(70, 28, 50, 78, 88, 78);
+      crystal.lineStyle(2, 0xffffff, 0.7);
+      crystal.lineBetween(46, 6, 46, 72);
+      crystal.lineBetween(22, 28, 28, 78);
+      crystal.lineBetween(70, 28, 64, 78);
+      crystal.generateTexture("decor-crystal", 92, 86);
+      crystal.destroy();
+    }
   }
 
   private createHelperCreatureTextures(): void {
@@ -8037,35 +8359,39 @@ export class AquariumScene extends Phaser.Scene {
       shrimp.destroy();
     }
 
-    const shell = this.add.graphics();
-    shell.fillStyle(0xc7d3d9, 1);
-    shell.fillEllipse(26, 22, 42, 26);
-    shell.fillStyle(0x8fa0a8, 1);
-    shell.fillEllipse(17, 18, 14, 10);
-    shell.lineStyle(2, 0x5b6b73, 0.65);
-    shell.lineBetween(26, 9, 26, 34);
-    shell.lineBetween(15, 14, 36, 30);
-    shell.lineBetween(36, 14, 15, 30);
-    shell.fillStyle(0x31444d, 1);
-    shell.fillCircle(40, 18, 2);
-    shell.generateTexture("helper-shell", 52, 42);
-    shell.destroy();
+    if (!this.textures.exists("helper-shell")) {
+      const shell = this.add.graphics();
+      shell.fillStyle(0xc7d3d9, 1);
+      shell.fillEllipse(26, 22, 42, 26);
+      shell.fillStyle(0x8fa0a8, 1);
+      shell.fillEllipse(17, 18, 14, 10);
+      shell.lineStyle(2, 0x5b6b73, 0.65);
+      shell.lineBetween(26, 9, 26, 34);
+      shell.lineBetween(15, 14, 36, 30);
+      shell.lineBetween(36, 14, 15, 30);
+      shell.fillStyle(0x31444d, 1);
+      shell.fillCircle(40, 18, 2);
+      shell.generateTexture("helper-shell", 52, 42);
+      shell.destroy();
+    }
 
-    const crab = this.add.graphics();
-    crab.fillStyle(0xe2574c, 1);
-    crab.fillEllipse(26, 22, 34, 24);
-    crab.fillCircle(10, 14, 7);
-    crab.fillCircle(42, 14, 7);
-    crab.lineStyle(3, 0xffa08f, 0.9);
-    crab.lineBetween(10, 31, 2, 38);
-    crab.lineBetween(20, 34, 14, 42);
-    crab.lineBetween(32, 34, 38, 42);
-    crab.lineBetween(42, 31, 50, 38);
-    crab.fillStyle(0x1d1f2a, 1);
-    crab.fillCircle(21, 16, 2);
-    crab.fillCircle(31, 16, 2);
-    crab.generateTexture("helper-crab", 54, 46);
-    crab.destroy();
+    if (!this.textures.exists("helper-crab")) {
+      const crab = this.add.graphics();
+      crab.fillStyle(0xe2574c, 1);
+      crab.fillEllipse(26, 22, 34, 24);
+      crab.fillCircle(10, 14, 7);
+      crab.fillCircle(42, 14, 7);
+      crab.lineStyle(3, 0xffa08f, 0.9);
+      crab.lineBetween(10, 31, 2, 38);
+      crab.lineBetween(20, 34, 14, 42);
+      crab.lineBetween(32, 34, 38, 42);
+      crab.lineBetween(42, 31, 50, 38);
+      crab.fillStyle(0x1d1f2a, 1);
+      crab.fillCircle(21, 16, 2);
+      crab.fillCircle(31, 16, 2);
+      crab.generateTexture("helper-crab", 54, 46);
+      crab.destroy();
+    }
 
     if (!this.textures.exists("helper-feeder-snail")) {
       const feederSnail = this.add.graphics();
