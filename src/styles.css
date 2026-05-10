@@ -160,7 +160,8 @@ canvas {
   }
 
   .aq-store-catalog-list {
-    @apply flex min-h-full flex-col gap-2 pb-1;
+    @apply flex min-h-full flex-col gap-2;
+    padding-bottom: max(96px, calc(env(safe-area-inset-bottom) + 72px));
   }
 
   .aq-card {

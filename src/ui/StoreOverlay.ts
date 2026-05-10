@@ -109,7 +109,7 @@ export class StoreOverlay {
   private quantityHoldInterval?: number;
   private visible = false;
   private lastRenderKey = "";
-  private lastScrollTop = 0;
+  private readonly scrollPositions = new Map<string, number>();
 
   constructor(
     private readonly getState: () => StoreOverlayState,
@@ -154,7 +154,7 @@ export class StoreOverlay {
     const currentScroll = this.root.querySelector(".aq-store-list-scroll");
     const previousKey = this.lastRenderKey;
     if (currentScroll instanceof HTMLElement) {
-      this.lastScrollTop = currentScroll.scrollTop;
+      this.scrollPositions.set(previousKey, currentScroll.scrollTop);
     }
 
     const state = this.getState();
@@ -162,14 +162,22 @@ export class StoreOverlay {
     const nextKey = this.renderKey();
     this.lastRenderKey = nextKey;
     this.root.replaceChildren(this.createStore(state));
-    if (previousKey === nextKey && this.lastScrollTop > 0) {
-      const nextScroll = this.root.querySelector(".aq-store-list-scroll");
-      if (nextScroll instanceof HTMLElement) {
-        requestAnimationFrame(() => {
-          nextScroll.scrollTop = this.lastScrollTop;
-        });
-      }
+    const nextScrollTop = previousKey === nextKey ? this.scrollPositions.get(nextKey) ?? 0 : 0;
+    const nextScroll = this.root.querySelector(".aq-store-list-scroll");
+    if (nextScroll instanceof HTMLElement && nextScrollTop > 0) {
+      this.restoreScrollPosition(nextScroll, nextScrollTop);
     }
+  }
+
+  private restoreScrollPosition(element: HTMLElement, scrollTop: number): void {
+    const apply = () => {
+      element.scrollTop = scrollTop;
+    };
+    apply();
+    requestAnimationFrame(() => {
+      apply();
+      requestAnimationFrame(apply);
+    });
   }
 
   private renderKey(): string {
