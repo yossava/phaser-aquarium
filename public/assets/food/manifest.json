@@ -51,6 +51,13 @@
       "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
     },
     {
+      "file": "/assets/food/ageBoost.png",
+      "width": 96,
+      "height": 96,
+      "source": "/assets/food/medicine.png",
+      "processing": "medicine raster asset hue-shifted to purple for Growth Tonic"
+    },
+    {
       "file": "/assets/food/creature.png",
       "width": 96,
       "height": 96,

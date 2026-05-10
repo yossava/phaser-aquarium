@@ -2,7 +2,7 @@ import { fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
 import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
-const supplyFoodIds = new Set(["medicine"]);
+const supplyFoodIds = new Set(["medicine", "ageBoost"]);
 const hiddenFoodIds = new Set(["creature"]);
 type StoreDecorationSize = "s" | "m" | "l" | "xl";
 type TankStoreCategory = "tank" | "background" | "seabed" | "tools" | "decorations";
@@ -66,8 +66,9 @@ export type StoreOverlayState = {
   wealth: number;
   activeTankName: string;
   activeTankLevel: number;
-  fishPurchasesToday: number;
-  fishPurchaseDailyLimit: number;
+  fishPurchasesInWindow: number;
+  fishPurchaseHourlyLimit: number;
+  fishPurchaseRestockLabel: string;
   fishCount: number;
   fishCapacity: number;
   fishOwned: Record<string, number>;
@@ -213,8 +214,8 @@ export class StoreOverlay {
   private categoryMenu(): HTMLElement {
     const tabs: Array<{ tab: StoreTab; label: string; icon: string }> = [
       { tab: "fish", label: "Fish", icon: "/assets/ui/shop/icon_category_fish.png" },
-      { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png" },
-      { tab: "supply", label: "Supply", icon: "/assets/food/creature.png" },
+      { tab: "food", label: "Food", icon: "/assets/food/basic.png" },
+      { tab: "supply", label: "Medicine", icon: "/assets/food/medicine.png" },
       { tab: "tank", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
       { tab: "creature", label: "Helpers", icon: "/assets/helpers/feeder-snail.png" }
     ];
@@ -277,7 +278,7 @@ export class StoreOverlay {
     const row = el("div", "mb-1.5 flex shrink-0 items-center gap-2");
     const backTarget: StoreBrowseLevel = this.browseLevel === "products" && this.activeTab === "tank" ? "tankCategories" : "categories";
     row.append(
-      button("< BACK", "min-h-9 rounded-xl border border-cyan-200/30 bg-sky-900/80 px-3 text-xs font-black text-cyan-50", () => {
+      button("← BACK", "aq-store-back-button", () => {
         this.browseLevel = backTarget;
         this.page = 1;
         this.render();
@@ -295,7 +296,7 @@ export class StoreOverlay {
       const labels: Record<StoreTab, string> = {
         fish: "Fish",
         food: "Food",
-        supply: "Supply",
+        supply: "Medicine",
         tank: "Tanks",
         decor: "Decor",
         creature: "Helpers"
@@ -314,39 +315,19 @@ export class StoreOverlay {
 
   private catalog(state: StoreOverlayState): HTMLElement {
     const panel = el("main", "aq-panel flex min-h-0 flex-1 flex-col overflow-hidden p-2");
-    const content = el("div", "min-h-0 flex-1 overflow-hidden");
+    const content = el("div", "min-h-0 flex-1 overflow-y-auto pr-1 aq-store-list-scroll");
     const items = this.currentItems(state);
-    const pageSize = this.catalogPageSize();
-    const maxPage = Math.max(1, Math.ceil(items.length / pageSize));
-    this.page = Math.min(this.page, maxPage);
-    const pageItems = items.slice((this.page - 1) * pageSize, this.page * pageSize);
 
-    const list = el("div", "aq-store-catalog-grid");
-    if (pageItems.length === 0) {
+    const list = el("div", "aq-store-catalog-list");
+    if (items.length === 0) {
       list.append(div("rounded-2xl border border-cyan-200/20 bg-sky-950/60 p-6 text-center text-sm font-bold text-cyan-100/80", ["No items in this lane."]));
     } else {
-      pageItems.forEach((item) => list.append(this.cardForItem(item, state)));
+      items.forEach((item) => list.append(this.cardForItem(item, state)));
     }
     content.append(list);
 
-    const pager = el("footer", "mt-2 flex shrink-0 items-center justify-between gap-2");
-    pager.append(
-      button("<", "min-h-9 min-w-14 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-base font-black", () => {
-        this.page = Math.max(1, this.page - 1);
-        this.render();
-      }),
-      div("text-xs font-black text-cyan-100", [`Page ${formatNumber(this.page)}/${formatNumber(maxPage)}`]),
-      button(">", "min-h-9 min-w-14 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-base font-black", () => {
-        this.page = Math.min(maxPage, this.page + 1);
-        this.render();
-      })
-    );
-    panel.append(content, pager);
+    panel.append(content);
     return panel;
-  }
-
-  private catalogPageSize(): number {
-    return window.matchMedia("(max-height: 760px), (max-width: 389px)").matches ? 6 : 9;
   }
 
   private currentItems(state: StoreOverlayState): Array<FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard> {
@@ -404,8 +385,8 @@ export class StoreOverlay {
     const owned = state.fishOwned[fish.id] ?? 0;
     const affordable = canAfford(state.wallet, fish.price);
     const levelLocked = fish.tankLevel > Math.max(1, state.activeTankLevel);
-    const dailyLimitReached = state.fishPurchasesToday >= state.fishPurchaseDailyLimit;
-    const disabled = levelLocked || !affordable || dailyLimitReached;
+    const hourlyLimitReached = state.fishPurchasesInWindow >= state.fishPurchaseHourlyLimit;
+    const disabled = levelLocked || !affordable || hourlyLimitReached;
     const card = this.baseCard(fish.rarity);
     if (levelLocked) {
       card.classList.add("opacity-70");
@@ -420,7 +401,7 @@ export class StoreOverlay {
         div("aq-card-meta", [`Owned ${formatNumber(owned)} · ${this.rarityLabel(fish.rarity)} · L${formatNumber(fish.tankLevel)}`]),
         div("aq-card-copy", [this.productionHint(fish)]),
         button(
-          levelLocked ? `Need Tank L${formatNumber(fish.tankLevel)}` : dailyLimitReached ? "Daily Limit" : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
+          levelLocked ? `Need Tank L${formatNumber(fish.tankLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy w-full",
           () => this.actions.buyFish(fish),
           disabled
@@ -435,7 +416,7 @@ export class StoreOverlay {
     const totalPrice = { coinType: food.price.coinType, amount: food.price.amount * quantity };
     const affordable = canAfford(state.wallet, totalPrice);
     const owned = state.foodOwned[food.id] ?? 0;
-    const buyLabel = this.activeTab === "supply" ? "Buy Supply" : "Buy Food";
+    const buyLabel = this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
     const card = this.baseCard(food.rarity);
     const controls = div("aq-food-qty-row", [
       this.quantityHoldButton("-", food.id, -1, quantity <= 1),
@@ -443,15 +424,15 @@ export class StoreOverlay {
       this.quantityHoldButton("+", food.id, 1)
     ]);
     card.append(
-      this.preview(`/assets/food/${food.id}.png`, food.name, "aq-food-preview"),
-      div("flex min-w-0 flex-1 flex-col overflow-hidden aq-food-card-body", [
+      this.preview(`/assets/food/${food.id}.png`, food.name, `aq-food-preview aq-food-tint-${food.id}`),
+      div("flex min-w-0 flex-1 flex-col aq-food-card-body", [
         div("flex items-start justify-between gap-1.5", [
           div("min-w-0 truncate text-sm font-black leading-tight", [food.name]),
           this.priceBadge(totalPrice)
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`]),
         controls,
-        button(affordable ? buyLabel : `Need ${formatPrice(totalPrice)}`, "aq-buy mt-auto w-full", () => this.actions.buyFood(food, quantity), !affordable)
+        button(affordable ? buyLabel : `Need ${formatPrice(totalPrice)}`, "aq-buy w-full", () => this.actions.buyFood(food, quantity), !affordable)
       ])
     );
     return card;

@@ -14,6 +14,13 @@ test-results/
 .codex_asset_jobs/
 assets/generated/
 tmp/
+tools/tmp-music-downloads/
+
+# Local audio audition libraries. Keep only active runtime audio in Git.
+public/assets/audio/kenney/
+public/assets/audio/music/
+!public/assets/audio/music/
+public/assets/audio/music/*
 
 # Logs
 *.log

@@ -130,6 +130,19 @@
     "densityLevel": 1
   },
   {
+    "id": "ageBoost",
+    "name": "Growth Tonic",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 180
+    },
+    "nutrition": 0,
+    "acceptedByDefault": true,
+    "calories": 0,
+    "densityLevel": 1
+  },
+  {
     "id": "creature",
     "name": "Creature Food",
     "rarity": "common",

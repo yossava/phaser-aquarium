@@ -37,6 +37,8 @@ const minimumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const maximumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const happyEmojiDurationMs = 3200;
 const missedFoodEmojiDurationMs = 1000;
+const dragLoveEmojiDurationMs = 2600;
+const dragLoveEmojiCooldownMs = 30_000;
 const onboardingCoinDropCount = 3;
 const maxCoinDropIntervalSeconds = 10;
 const firstOnboardingCoinDelayMs = 5000;
@@ -54,6 +56,11 @@ const fishMovementSpeedMultiplier = 0.62;
 const fishRestChanceAtTarget = 0.42;
 const minFishRestMs = 1800;
 const maxFishRestMs = 5200;
+const minPlayChaseDelayMs = 30000;
+const maxPlayChaseDelayMs = 45000;
+const minPlayChaseDurationMs = 3600;
+const maxPlayChaseDurationMs = 6200;
+const playChaseSpeedMultiplier = 1.9;
 const restDriftSpeedMultiplier = 0.08;
 const restDriftVerticalRatio = 0.35;
 const directionFlipDeadzone = 18;
@@ -74,6 +81,7 @@ export class Fish {
   public health = 100;
   public target = new Phaser.Math.Vector2();
   public nextCoinDropAt = 0;
+  public nextMegaCoinDropAt = 0;
   public facing = 1;
   public medicatedUntil = 0;
   public fatalCareSeconds = 0;
@@ -87,11 +95,16 @@ export class Fish {
   private onboardingCoinDropsRemaining = 0;
   private happyEmojiUntil = 0;
   private missedFoodEmojiUntil = 0;
+  private dragLoveEmojiUntil = 0;
+  private nextDragLoveEmojiAt = 0;
   private visualWorldScale = 1;
   private swimPhase: number;
   private velocity = new Phaser.Math.Vector2();
   private restUntil = 0;
   private hasRestedAtTarget = false;
+  private nextPlayChaseAt = 0;
+  private playChaseUntil = 0;
+  private playChaseTarget?: Fish;
   private pendingFacing?: number;
   private flipTransitionStartedAt = 0;
   private manuallyDragging = false;
@@ -132,11 +145,12 @@ export class Fish {
       .setOrigin(0.5)
       .setDepth(13);
     this.pickWanderTarget();
+    this.scheduleNextPlayChase();
     this.updateTailMark();
     this.updateStatusBars();
   }
 
-  public update(deltaSeconds: number, foods: FoodPellet[]): { food: FoodPellet; accepted: boolean; reason?: "tooSmall" } | undefined {
+  public update(deltaSeconds: number, foods: FoodPellet[], tankFish: Fish[] = []): { food: FoodPellet; accepted: boolean; reason?: "tooSmall" } | undefined {
     this.ageSeconds += deltaSeconds;
     this.updateAgeStage();
 
@@ -168,16 +182,21 @@ export class Fish {
     }
 
     const closestFood = this.findClosestFood(foods);
+    const chaseTarget = closestFood ? undefined : this.updatePlayChase(tankFish);
     let resting = false;
     if (closestFood) {
       this.restUntil = 0;
       this.hasRestedAtTarget = false;
       this.target.set(closestFood.sprite.x, closestFood.sprite.y);
+    } else if (chaseTarget) {
+      this.restUntil = 0;
+      this.hasRestedAtTarget = false;
+      this.target.set(chaseTarget.sprite.x, chaseTarget.sprite.y);
     } else if (Phaser.Math.Distance.BetweenPoints(this.sprite, this.target) < 16) {
       resting = this.updateIdleRest();
     }
 
-    const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier() : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
+    const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier() : chaseTarget ? playChaseSpeedMultiplier : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
     const moveSpeed = this.type.speed * speedMultiplier * this.movementSizeMultiplier() * fishMovementSpeedMultiplier;
     if (resting) {
       this.driftWhileResting(deltaSeconds, moveSpeed);
@@ -185,7 +204,7 @@ export class Fish {
       this.moveTowardTarget(deltaSeconds, moveSpeed);
     }
     this.setStateTint();
-    this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined, resting);
+    this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined || chaseTarget !== undefined, resting);
 
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
       const tooSmall = this.isFoodTooSmall(closestFood);
@@ -230,6 +249,14 @@ export class Fish {
     this.nextCoinDropAt = now + production.intervalSeconds * 1000;
   }
 
+  public canDropMegaCoin(now: number): boolean {
+    return (this.ageStage === "elder" || this.ageStage === "master") && now >= this.nextMegaCoinDropAt;
+  }
+
+  public markMegaCoinDropped(now: number): void {
+    this.nextMegaCoinDropAt = now + 60 * 1000;
+  }
+
   public primeOnboardingCoinDrops(now: number): void {
     this.onboardingCoinDropsRemaining = onboardingCoinDropCount;
     this.nextCoinDropAt = now + firstOnboardingCoinDelayMs;
@@ -240,6 +267,7 @@ export class Fish {
     this.hunger = Phaser.Math.Clamp(hunger, overfullHungerFloor, 100);
     this.health = Phaser.Math.Clamp(health, 0, 100);
     this.nextCoinDropAt = Math.max(0, nextCoinDropAt);
+    this.nextMegaCoinDropAt = this.ageStage === "elder" || this.ageStage === "master" ? this.scene.time.now + 60 * 1000 : 0;
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
     this.fatalCareSeconds = this.isInFatalCareState() ? Phaser.Math.Clamp(fatalCareSecondsValue, 0, fatalCareSeconds) : 0;
   }
@@ -248,6 +276,9 @@ export class Fish {
     this.state = this.health < 35 ? "ill" : this.hunger > 68 ? "hungry" : "happy";
     this.restUntil = 0;
     this.hasRestedAtTarget = false;
+    this.playChaseTarget = undefined;
+    this.playChaseUntil = 0;
+    this.scheduleNextPlayChase();
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
     this.setStateTint();
@@ -286,6 +317,14 @@ export class Fish {
     this.updateStatusBars();
   }
 
+  public applyAgeBoost(months = 3): void {
+    this.setAgeSeconds(this.ageSeconds + Math.max(0, months) * secondsPerFishMonth);
+    this.health = Phaser.Math.Clamp(this.health + 8, 0, 100);
+    this.hunger = Phaser.Math.Clamp(Math.min(this.hunger, 58), overfullHungerFloor, 100);
+    this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
+    this.updateStatusBars();
+  }
+
   public showMissedFoodEmoji(now = this.scene.time.now): void {
     this.missedFoodEmojiUntil = now + missedFoodEmojiDurationMs;
     this.updateStatusBars();
@@ -296,6 +335,10 @@ export class Fish {
   }
 
   public canChaseFood(food: FoodPellet): boolean {
+    if (food.foodType.id === "ageBoost") {
+      return true;
+    }
+
     const willingToEat = this.state === "hungry" || this.state === "ill" || this.hunger > minimumHungerToEatMore;
     return willingToEat && this.willChaseFood(food);
   }
@@ -312,6 +355,7 @@ export class Fish {
     this.manuallyDragging = true;
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
+    this.showDragLoveEmoji();
   }
 
   public moveManuallyTo(x: number, y: number): void {
@@ -465,13 +509,13 @@ export class Fish {
   public hungerReductionFromFood(food: FoodPellet | FoodType): number {
     const foodType = food instanceof FoodPellet ? food.foodType : food;
     const preferredMultiplier = this.type.preferredFoodTypes.includes(foodType.id) ? 1.08 : 1;
-    const medicineMultiplier = foodType.id === "medicine" ? 0.55 : 1;
+    const medicineMultiplier = foodType.id === "medicine" ? 0.55 : foodType.id === "ageBoost" ? 0 : 1;
     return (foodType.calories * preferredMultiplier * medicineMultiplier) / this.calorieNeedMultiplier();
   }
 
   public isFoodTooSmall(food: FoodPellet | FoodType): boolean {
     const foodType = food instanceof FoodPellet ? food.foodType : food;
-    if (foodType.id === "medicine" || foodType.id === "creature") {
+    if (foodType.id === "medicine" || foodType.id === "ageBoost" || foodType.id === "creature") {
       return false;
     }
 
@@ -898,7 +942,8 @@ export class Fish {
 
     const edibleFoods = foods.filter((food) => this.willChaseFood(food));
     const willingToEat = this.state === "hungry" || this.state === "ill" || this.hunger > minimumHungerToEatMore;
-    if (edibleFoods.length === 0 || !willingToEat) {
+    const hasCareBooster = edibleFoods.some((food) => food.foodType.id === "ageBoost");
+    if (edibleFoods.length === 0 || (!willingToEat && !hasCareBooster)) {
       return undefined;
     }
 
@@ -924,6 +969,10 @@ export class Fish {
   private willChaseFood(food: FoodPellet): boolean {
     if (food.foodType.id === "creature") {
       return false;
+    }
+
+    if (food.foodType.id === "ageBoost") {
+      return true;
     }
 
     if (this.state === "ill") {
@@ -994,6 +1043,42 @@ export class Fish {
     this.hasRestedAtTarget = false;
     this.pickWanderTarget();
     return false;
+  }
+
+  private updatePlayChase(tankFish: Fish[]): Fish | undefined {
+    const now = this.scene.time.now;
+    if (this.playChaseTarget && now < this.playChaseUntil && this.isValidPlayChaseTarget(this.playChaseTarget, tankFish)) {
+      return this.playChaseTarget;
+    }
+
+    if (this.playChaseTarget) {
+      this.playChaseTarget = undefined;
+      this.playChaseUntil = 0;
+      this.scheduleNextPlayChase();
+      return undefined;
+    }
+
+    if (now < this.nextPlayChaseAt) {
+      return undefined;
+    }
+
+    const candidates = tankFish.filter((fish) => this.isValidPlayChaseTarget(fish, tankFish));
+    if (candidates.length === 0) {
+      this.scheduleNextPlayChase();
+      return undefined;
+    }
+
+    this.playChaseTarget = Phaser.Utils.Array.GetRandom(candidates);
+    this.playChaseUntil = now + Phaser.Math.Between(minPlayChaseDurationMs, maxPlayChaseDurationMs);
+    return this.playChaseTarget;
+  }
+
+  private isValidPlayChaseTarget(fish: Fish, tankFish: Fish[]): boolean {
+    return fish !== this && tankFish.includes(fish) && fish.sprite.active && fish.sprite.visible;
+  }
+
+  private scheduleNextPlayChase(): void {
+    this.nextPlayChaseAt = this.scene.time.now + Phaser.Math.Between(minPlayChaseDelayMs, maxPlayChaseDelayMs);
   }
 
   private driftWhileResting(deltaSeconds: number, speed: number): void {
@@ -1145,6 +1230,10 @@ export class Fish {
   }
 
   private currentStateEmoji(): string {
+    if (this.scene.time.now < this.dragLoveEmojiUntil) {
+      return "💖";
+    }
+
     if (this.state === "ill") {
       return "🤒";
     }
@@ -1162,6 +1251,16 @@ export class Fish {
     }
 
     return "";
+  }
+
+  private showDragLoveEmoji(now = this.scene.time.now): void {
+    if (now < this.nextDragLoveEmojiAt) {
+      return;
+    }
+
+    this.dragLoveEmojiUntil = now + dragLoveEmojiDurationMs;
+    this.nextDragLoveEmojiAt = now + dragLoveEmojiCooldownMs;
+    this.updateStatusBars();
   }
 
   private drawStateBubble(): void {

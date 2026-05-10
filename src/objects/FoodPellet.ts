@@ -40,7 +40,7 @@ export class FoodPellet {
     }
     const displayScale = options.displayScale ?? 1;
     this.baseDisplaySize =
-      (foodType.id === "medicine"
+      (foodType.id === "medicine" || foodType.id === "ageBoost"
         ? pillPelletDisplaySize
         : foodPelletSizeByDensity[foodType.densityLevel] ?? defaultPelletDisplaySize) * displayScale;
     this.setWorldScaleCompensation(1);
@@ -95,7 +95,7 @@ export class FoodPellet {
       return customTextureKey;
     }
 
-    return this.foodType.id === "medicine" ? "medicine-pill" : "food";
+    return this.foodType.id === "medicine" || this.foodType.id === "ageBoost" ? "medicine-pill" : "food";
   }
 
   private tintForFood(): number {

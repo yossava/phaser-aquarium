@@ -59,6 +59,7 @@ export type SavedGame = {
   settings: {
     sound: boolean;
     music: boolean;
+    musicVolume: number;
     reducedMotion: boolean;
     notifications: boolean;
   };
@@ -178,6 +179,7 @@ export function loadGame(): SavedGame | undefined {
       settings: {
         sound: migrated.settings?.sound ?? true,
         music: migrated.settings?.music ?? true,
+        musicVolume: clamp(sanitizeNumber(migrated.settings?.musicVolume, 16), 0, 100),
         reducedMotion: migrated.settings?.reducedMotion ?? false,
         notifications: migrated.settings?.notifications ?? false
       },
@@ -285,7 +287,7 @@ function migrateSave(
       decorations: Array.isArray(parsed.decorations) ? parsed.decorations : [],
       helperCreatures: [],
       tank: { cleanliness: 100, cleanedAt: Date.now(), level: 1 },
-      settings: { sound: true, music: true, reducedMotion: false, notifications: false },
+      settings: { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false },
       dailyGoals: { date: localDateKey(), claimed: [] },
       rentals: { autoFeederEndsAt: 0, autoCollectorEndsAt: 0, autoFeederMinutes: 1, autoCollectorMinutes: 1 }
     };

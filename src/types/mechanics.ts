@@ -13,6 +13,7 @@ export type FoodTypeId =
   | "protein"
   | "coral"
   | "medicine"
+  | "ageBoost"
   | "creature"
   | "event";
 
