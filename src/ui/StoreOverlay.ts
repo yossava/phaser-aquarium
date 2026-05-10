@@ -66,6 +66,7 @@ export type StoreOverlayState = {
   wealth: number;
   activeTankName: string;
   activeTankLevel: number;
+  developerGodMode: boolean;
   fishPurchasesInWindow: number;
   fishPurchaseHourlyLimit: number;
   fishPurchaseRestockLabel: string;
@@ -441,9 +442,9 @@ export class StoreOverlay {
 
   private fishCard(fish: FishType, state: StoreOverlayState): HTMLElement {
     const owned = state.fishOwned[fish.id] ?? 0;
-    const affordable = canAfford(state.wallet, fish.price);
-    const levelLocked = fish.tankLevel > Math.max(1, state.activeTankLevel);
-    const hourlyLimitReached = state.fishPurchasesInWindow >= state.fishPurchaseHourlyLimit;
+    const affordable = state.developerGodMode || canAfford(state.wallet, fish.price);
+    const levelLocked = !state.developerGodMode && fish.tankLevel > Math.max(1, state.activeTankLevel);
+    const hourlyLimitReached = !state.developerGodMode && state.fishPurchasesInWindow >= state.fishPurchaseHourlyLimit;
     const disabled = levelLocked || !affordable || hourlyLimitReached;
     const card = this.baseCard(fish.rarity);
     if (levelLocked) {
@@ -473,8 +474,8 @@ export class StoreOverlay {
     const isAgeBoost = food.id === "ageBoost";
     const quantity = isAgeBoost ? 1 : this.quantities.get(food.id) ?? 1;
     const totalPrice = { coinType: food.price.coinType, amount: food.price.amount * quantity };
-    const affordable = canAfford(state.wallet, totalPrice);
-    const blockedByCooldown = isAgeBoost && !state.ageBoostPurchaseAvailable;
+    const affordable = state.developerGodMode || canAfford(state.wallet, totalPrice);
+    const blockedByCooldown = !state.developerGodMode && isAgeBoost && !state.ageBoostPurchaseAvailable;
     const owned = state.foodOwned[food.id] ?? 0;
     const buyLabel = this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
     const card = this.baseCard(food.rarity);
@@ -570,7 +571,7 @@ export class StoreOverlay {
 
   private helperCard(creature: HelperCreatureType, state: StoreOverlayState): HTMLElement {
     const owned = state.helperOwned[creature.id] ?? 0;
-    const affordable = canAfford(state.wallet, creature.price);
+    const affordable = state.developerGodMode || canAfford(state.wallet, creature.price);
     const texture = creature.id === "feeder-snail" ? "/assets/helpers/feeder-snail.png" : `/assets/helpers/${creature.id}.png`;
     const card = this.baseCard(creature.rarity);
     card.append(
@@ -590,7 +591,7 @@ export class StoreOverlay {
 
   private tankCard(tank: StoreTankCard, state: StoreOverlayState): HTMLElement {
     const owned = tank.owned;
-    const affordable = canAfford(state.wallet, tank.price);
+    const affordable = state.developerGodMode || canAfford(state.wallet, tank.price);
     const card = this.baseCard(owned ? "rare" : "common");
     card.append(
       div("mx-auto flex h-14 w-20 items-center justify-center rounded-2xl border border-cyan-200/30 bg-cyan-400/15 px-2 text-center text-sm font-black leading-tight", [tank.name]),
@@ -611,7 +612,7 @@ export class StoreOverlay {
   }
 
   private tankCosmeticCard(cosmetic: StoreTankCosmeticCard, state: StoreOverlayState): HTMLElement {
-    const affordable = canAfford(state.wallet, cosmetic.price);
+    const affordable = state.developerGodMode || canAfford(state.wallet, cosmetic.price);
     const card = this.baseCard(cosmetic.price.coinType);
     const preview = cosmetic.previewUrl
       ? this.preview(cosmetic.previewUrl, cosmetic.name)
@@ -652,10 +653,10 @@ export class StoreOverlay {
           variant.owned > 0
             ? this.actions.selectTankDecoration(decoration.id, variant.size)
             : this.actions.buyTankDecoration(decoration.id, variant.size);
-        }, variant.owned <= 0 && !canAfford(state.wallet, variant.price))
+        }, variant.owned <= 0 && !state.developerGodMode && !canAfford(state.wallet, variant.price))
       );
     });
-    const mediumAffordable = canAfford(state.wallet, decoration.price);
+    const mediumAffordable = state.developerGodMode || canAfford(state.wallet, decoration.price);
     card.append(
       this.preview(`/assets/decorations/${decoration.id}.png`, decoration.name, "aq-decor-preview"),
       div("aq-decor-card-body", [
@@ -671,7 +672,7 @@ export class StoreOverlay {
   }
 
   private tankUtilityCard(utility: StoreTankUtilityCard, state: StoreOverlayState): HTMLElement {
-    const affordable = canAfford(state.wallet, utility.price);
+    const affordable = state.developerGodMode || canAfford(state.wallet, utility.price);
     const card = this.baseCard(utility.price.coinType);
     card.append(
       this.preview(utility.icon, utility.name),

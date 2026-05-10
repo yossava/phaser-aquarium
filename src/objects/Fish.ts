@@ -653,7 +653,7 @@ export class Fish {
       return "sick";
     }
     if (this.scene.time.now < this.missedFoodEmojiUntil) {
-      return "mad";
+      return "hungry";
     }
     if (this.scene.time.now < this.happyEmojiUntil) {
       return "smile";
@@ -666,13 +666,12 @@ export class Fish {
 
   public hudStatusIcon(): string {
     const iconByStatus: Record<string, string> = {
-      love: "♥",
-      sick: "+",
-      mad: "!",
-      smile: "☺",
-      hungry: "..."
+      sick: "🤢",
+      hungry: "😩",
+      smile: "😊",
+      love: "😍"
     };
-    return iconByStatus[this.hudStatusLabel()] ?? "☺";
+    return iconByStatus[this.hudStatusLabel()] ?? "😊";
   }
 
   public getStatusBarsSnapshot(): {

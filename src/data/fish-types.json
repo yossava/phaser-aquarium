@@ -1656,14 +1656,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 6
+      "amount": 125
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 3
+      "amount": 68
     },
     "requiredFoodTypes": [
       "micro",
@@ -3306,14 +3306,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 10
+      "amount": 135
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 5
+      "amount": 74
     },
     "requiredFoodTypes": [
       "micro",
@@ -3471,14 +3471,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 12
+      "amount": 145
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 6
+      "amount": 79
     },
     "requiredFoodTypes": [
       "micro",
@@ -3636,14 +3636,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 14
+      "amount": 160
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 8
+      "amount": 88
     },
     "requiredFoodTypes": [
       "micro",
@@ -3801,14 +3801,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 16
+      "amount": 170
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 9
+      "amount": 93
     },
     "requiredFoodTypes": [
       "micro",
@@ -3966,14 +3966,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 18
+      "amount": 180
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 10
+      "amount": 99
     },
     "requiredFoodTypes": [
       "micro",
@@ -4131,14 +4131,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 20
+      "amount": 190
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 11
+      "amount": 104
     },
     "requiredFoodTypes": [
       "micro",
@@ -4296,14 +4296,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 22
+      "amount": 200
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 12
+      "amount": 110
     },
     "requiredFoodTypes": [
       "micro",
@@ -4461,14 +4461,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 24
+      "amount": 210
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 13
+      "amount": 115
     },
     "requiredFoodTypes": [
       "micro",
@@ -4626,14 +4626,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 26
+      "amount": 220
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 15
+      "amount": 121
     },
     "requiredFoodTypes": [
       "micro",
@@ -4791,14 +4791,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 28
+      "amount": 230
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 16
+      "amount": 126
     },
     "requiredFoodTypes": [
       "micro",
@@ -4956,14 +4956,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 48
+      "amount": 395
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 27
+      "amount": 217
     },
     "requiredFoodTypes": [
       "micro",
@@ -5121,14 +5121,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 51
+      "amount": 405
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 29
+      "amount": 222
     },
     "requiredFoodTypes": [
       "micro",
@@ -5286,14 +5286,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 54
+      "amount": 415
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 31
+      "amount": 228
     },
     "requiredFoodTypes": [
       "micro",
@@ -5451,14 +5451,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 57
+      "amount": 425
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 33
+      "amount": 233
     },
     "requiredFoodTypes": [
       "micro",
@@ -5616,14 +5616,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 60
+      "amount": 435
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 34
+      "amount": 239
     },
     "requiredFoodTypes": [
       "micro",
@@ -5781,14 +5781,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 63
+      "amount": 445
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 36
+      "amount": 244
     },
     "requiredFoodTypes": [
       "micro",
@@ -5946,14 +5946,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 66
+      "amount": 455
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 38
+      "amount": 250
     },
     "requiredFoodTypes": [
       "micro",
@@ -6111,14 +6111,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 69
+      "amount": 470
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 40
+      "amount": 258
     },
     "requiredFoodTypes": [
       "micro",
@@ -6276,14 +6276,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 72
+      "amount": 480
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 41
+      "amount": 264
     },
     "requiredFoodTypes": [
       "micro",
@@ -6441,14 +6441,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 75
+      "amount": 490
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 43
+      "amount": 269
     },
     "requiredFoodTypes": [
       "micro",
@@ -6606,14 +6606,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 4
+      "amount": 165
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 2
+      "amount": 90
     },
     "requiredFoodTypes": [
       "micro",
@@ -6771,14 +6771,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 8
+      "amount": 200
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 4
+      "amount": 110
     },
     "requiredFoodTypes": [
       "micro",
@@ -6936,14 +6936,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 12
+      "amount": 235
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 6
+      "amount": 129
     },
     "requiredFoodTypes": [
       "micro",
@@ -7101,14 +7101,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 16
+      "amount": 275
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 8
+      "amount": 151
     },
     "requiredFoodTypes": [
       "micro",
@@ -7266,14 +7266,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 20
+      "amount": 310
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 11
+      "amount": 170
     },
     "requiredFoodTypes": [
       "micro",
@@ -7431,14 +7431,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 24
+      "amount": 345
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 13
+      "amount": 189
     },
     "requiredFoodTypes": [
       "micro",
@@ -7596,14 +7596,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 28
+      "amount": 380
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 15
+      "amount": 209
     },
     "requiredFoodTypes": [
       "micro",
@@ -7761,14 +7761,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 32
+      "amount": 420
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 17
+      "amount": 231
     },
     "requiredFoodTypes": [
       "micro",
@@ -7926,14 +7926,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 36
+      "amount": 455
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 19
+      "amount": 250
     },
     "requiredFoodTypes": [
       "micro",
@@ -8091,14 +8091,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 40
+      "amount": 490
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 22
+      "amount": 269
     },
     "requiredFoodTypes": [
       "micro",
@@ -15426,14 +15426,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 30
+      "amount": 240
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 17
+      "amount": 132
     },
     "requiredFoodTypes": [
       "premium",
@@ -15666,14 +15666,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 78
+      "amount": 500
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 45
+      "amount": 275
     },
     "requiredFoodTypes": [
       "premium",
@@ -15906,14 +15906,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 32
+      "amount": 250
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 18
+      "amount": 137
     },
     "requiredFoodTypes": [
       "premium",
@@ -16146,14 +16146,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 81
+      "amount": 510
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 46
+      "amount": 280
     },
     "requiredFoodTypes": [
       "premium",
@@ -16386,14 +16386,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 34
+      "amount": 260
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 19
+      "amount": 143
     },
     "requiredFoodTypes": [
       "premium",
@@ -16626,14 +16626,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 84
+      "amount": 520
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 48
+      "amount": 286
     },
     "requiredFoodTypes": [
       "premium",
@@ -16866,14 +16866,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 36
+      "amount": 275
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 20
+      "amount": 151
     },
     "requiredFoodTypes": [
       "premium",
@@ -17106,14 +17106,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 87
+      "amount": 530
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 50
+      "amount": 291
     },
     "requiredFoodTypes": [
       "premium",
@@ -17346,14 +17346,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 38
+      "amount": 285
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 22
+      "amount": 156
     },
     "requiredFoodTypes": [
       "premium",
@@ -17586,14 +17586,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 90
+      "amount": 540
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 52
+      "amount": 297
     },
     "requiredFoodTypes": [
       "premium",
@@ -17826,14 +17826,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 40
+      "amount": 295
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 23
+      "amount": 162
     },
     "requiredFoodTypes": [
       "premium",
@@ -18066,14 +18066,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 93
+      "amount": 550
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 53
+      "amount": 302
     },
     "requiredFoodTypes": [
       "premium",
@@ -18306,14 +18306,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 42
+      "amount": 305
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 24
+      "amount": 167
     },
     "requiredFoodTypes": [
       "premium",
@@ -18546,14 +18546,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 96
+      "amount": 565
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 55
+      "amount": 310
     },
     "requiredFoodTypes": [
       "premium",
@@ -18786,14 +18786,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 44
+      "amount": 315
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 25
+      "amount": 173
     },
     "requiredFoodTypes": [
       "premium",
@@ -19026,14 +19026,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 99
+      "amount": 575
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 57
+      "amount": 316
     },
     "requiredFoodTypes": [
       "premium",
@@ -19266,14 +19266,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 46
+      "amount": 325
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 26
+      "amount": 178
     },
     "requiredFoodTypes": [
       "premium",
@@ -19506,14 +19506,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 102
+      "amount": 585
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 59
+      "amount": 321
     },
     "requiredFoodTypes": [
       "premium",
@@ -19746,14 +19746,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 48
+      "amount": 335
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 27
+      "amount": 184
     },
     "requiredFoodTypes": [
       "premium",
@@ -19986,14 +19986,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 105
+      "amount": 595
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 60
+      "amount": 327
     },
     "requiredFoodTypes": [
       "premium",
@@ -20226,14 +20226,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 50
+      "amount": 345
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 28
+      "amount": 189
     },
     "requiredFoodTypes": [
       "premium",
@@ -20466,14 +20466,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 108
+      "amount": 605
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 62
+      "amount": 332
     },
     "requiredFoodTypes": [
       "premium",
@@ -20706,14 +20706,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 52
+      "amount": 355
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 30
+      "amount": 195
     },
     "requiredFoodTypes": [
       "premium",
@@ -20946,14 +20946,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 111
+      "amount": 615
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 64
+      "amount": 338
     },
     "requiredFoodTypes": [
       "premium",
@@ -21186,14 +21186,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 54
+      "amount": 370
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 31
+      "amount": 203
     },
     "requiredFoodTypes": [
       "premium",
@@ -21426,14 +21426,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 114
+      "amount": 625
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 66
+      "amount": 343
     },
     "requiredFoodTypes": [
       "premium",
@@ -21666,14 +21666,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 56
+      "amount": 380
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 32
+      "amount": 209
     },
     "requiredFoodTypes": [
       "premium",
@@ -21906,14 +21906,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 117
+      "amount": 640
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 67
+      "amount": 352
     },
     "requiredFoodTypes": [
       "premium",
@@ -22146,14 +22146,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 58
+      "amount": 390
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 33
+      "amount": 214
     },
     "requiredFoodTypes": [
       "premium",
@@ -22386,14 +22386,14 @@
     "rarity": "rare",
     "price": {
       "coinType": "rare",
-      "amount": 120
+      "amount": 650
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "rare",
-      "amount": 69
+      "amount": 357
     },
     "requiredFoodTypes": [
       "premium",
@@ -22626,14 +22626,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 44
+      "amount": 525
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 24
+      "amount": 288
     },
     "requiredFoodTypes": [
       "herb",
@@ -22867,14 +22867,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 48
+      "amount": 565
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 26
+      "amount": 310
     },
     "requiredFoodTypes": [
       "herb",
@@ -23108,14 +23108,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 52
+      "amount": 625
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 28
+      "amount": 343
     },
     "requiredFoodTypes": [
       "herb",
@@ -23349,14 +23349,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 56
+      "amount": 665
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 30
+      "amount": 365
     },
     "requiredFoodTypes": [
       "herb",
@@ -23590,14 +23590,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 60
+      "amount": 700
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 33
+      "amount": 385
     },
     "requiredFoodTypes": [
       "herb",
@@ -23831,14 +23831,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 64
+      "amount": 735
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 35
+      "amount": 404
     },
     "requiredFoodTypes": [
       "herb",
@@ -24072,14 +24072,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 68
+      "amount": 775
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 37
+      "amount": 426
     },
     "requiredFoodTypes": [
       "herb",
@@ -24313,14 +24313,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 72
+      "amount": 810
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 39
+      "amount": 445
     },
     "requiredFoodTypes": [
       "herb",
@@ -24554,14 +24554,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 76
+      "amount": 850
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 41
+      "amount": 467
     },
     "requiredFoodTypes": [
       "herb",
@@ -24795,14 +24795,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 80
+      "amount": 885
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 44
+      "amount": 486
     },
     "requiredFoodTypes": [
       "herb",
@@ -25036,14 +25036,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 84
+      "amount": 925
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 46
+      "amount": 508
     },
     "requiredFoodTypes": [
       "herb",
@@ -25277,14 +25277,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 88
+      "amount": 960
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 48
+      "amount": 528
     },
     "requiredFoodTypes": [
       "herb",
@@ -25518,14 +25518,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 92
+      "amount": 1000
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 50
+      "amount": 550
     },
     "requiredFoodTypes": [
       "herb",
@@ -25759,14 +25759,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 96
+      "amount": 1035
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 52
+      "amount": 569
     },
     "requiredFoodTypes": [
       "herb",
@@ -26000,14 +26000,14 @@
     "rarity": "superRare",
     "price": {
       "coinType": "superRare",
-      "amount": 100
+      "amount": 1110
     },
     "acquisitionSources": [
       "store"
     ],
     "sellBaseValue": {
       "coinType": "superRare",
-      "amount": 55
+      "amount": 610
     },
     "requiredFoodTypes": [
       "herb",

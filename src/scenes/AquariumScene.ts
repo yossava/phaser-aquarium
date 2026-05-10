@@ -621,6 +621,7 @@ export class AquariumScene extends Phaser.Scene {
   private cleanedAt = Date.now();
   private cleaningTank = false;
   private settings = { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false };
+  private developerGodMode = false;
   private dailyGoals = { date: this.localDateKey(), claimed: [] as string[] };
   private tankLevel = 1;
   private ownedTankLevels = new Set<number>([1]);
@@ -672,7 +673,6 @@ export class AquariumScene extends Phaser.Scene {
   private gameHudWealthText?: HTMLSpanElement;
   private gameHudCleanText?: HTMLSpanElement;
   private gameHudHappyText?: HTMLSpanElement;
-  private gameHudFishStrip?: HTMLDivElement;
   private helperFoodDispenserText?: HTMLSpanElement;
   private helperFoodDispenserElement?: HTMLDivElement;
   private helperFoodDispenserY = tankBounds.bottom - 74;
@@ -1442,13 +1442,29 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.pendingTextureLoads.add(textureKey);
-    this.load.once(`filecomplete-image-${textureKey}`, () => {
+    const completeEvent = `filecomplete-image-${textureKey}`;
+    const cleanupListeners = () => {
+      this.load.off(completeEvent, finish);
+      this.load.off(Phaser.Loader.Events.COMPLETE, finish);
+      this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, fail);
+    };
+    const finish = () => {
+      if (!this.pendingTextureLoads.has(textureKey)) {
+        return;
+      }
+      cleanupListeners();
       this.pendingTextureLoads.delete(textureKey);
-      onLoad();
-    });
-    this.load.once("loaderror", () => {
+      if (this.textures.exists(textureKey)) {
+        onLoad();
+      }
+    };
+    const fail = () => {
+      cleanupListeners();
       this.pendingTextureLoads.delete(textureKey);
-    });
+    };
+    this.load.once(completeEvent, finish);
+    this.load.once(Phaser.Loader.Events.COMPLETE, finish);
+    this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, fail);
     this.load.image(textureKey, assetPath);
 
     const loader = this.load as unknown as { isLoading?: () => boolean };
@@ -1810,7 +1826,6 @@ export class AquariumScene extends Phaser.Scene {
     this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-warning", this.cleanliness > 0 && this.cleanliness < 72);
     this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-danger", this.cleanliness <= 0);
     this.gameHudHappyText!.textContent = `Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
-    this.syncHudFishStrip();
     if (this.helperFoodDispenserText) {
       this.helperFoodDispenserText.textContent = this.foodBadgeLabel(this.getTotalFeedableFoodInventory());
     }
@@ -1868,11 +1883,7 @@ export class AquariumScene extends Phaser.Scene {
       "Fed, healthy fish and decorations improve the tank feeling."
     ]);
 
-    const fishStrip = document.createElement("div");
-    fishStrip.className = "aq-game-fish-strip";
-    this.gameHudFishStrip = fishStrip;
-
-    panel.append(summary, wallet, care, fishStrip);
+    panel.append(summary, wallet, care);
     const helperFood = document.createElement("div");
     helperFood.className = "aq-helper-food-dispenser";
     this.helperFoodDispenserElement = helperFood;
@@ -1889,37 +1900,6 @@ export class AquariumScene extends Phaser.Scene {
     overlay.append(panel, helperFood);
     document.body.appendChild(overlay);
     return overlay;
-  }
-
-  private syncHudFishStrip(): void {
-    if (!this.gameHudFishStrip) {
-      return;
-    }
-
-    const activeFish = this.activeFish();
-    this.gameHudFishStrip.replaceChildren();
-    if (activeFish.length === 0) {
-      const empty = document.createElement("span");
-      empty.className = "aq-game-fish-strip-empty";
-      empty.textContent = "No fish";
-      this.gameHudFishStrip.append(empty);
-      return;
-    }
-
-    activeFish.forEach((fish) => {
-      const item = document.createElement("span");
-      const status = fish.hudStatusLabel();
-      item.className = `aq-game-fish-avatar is-${status}`;
-      const icon = document.createElement("img");
-      icon.src = `/assets/fish/${fish.type.id}.png`;
-      icon.alt = fish.type.name;
-      icon.draggable = false;
-      const label = document.createElement("span");
-      label.textContent = fish.hudStatusIcon();
-      label.title = `${fish.type.name}: ${status}`;
-      item.append(icon, label);
-      this.gameHudFishStrip!.append(item);
-    });
   }
 
   private syncHelperFoodDispenserPosition(): void {
@@ -2728,6 +2708,7 @@ export class AquariumScene extends Phaser.Scene {
       wealth: this.calculateTankNetWorth(),
       activeTankName: this.getTankName(this.tankLevel),
       activeTankLevel: this.tankDisplayLevel(),
+      developerGodMode: this.developerGodMode,
       fishPurchasesInWindow: this.recentFishPurchaseCount(),
       fishPurchaseHourlyLimit: this.hourlyFishPurchaseLimit(),
       fishPurchaseRestockLabel: this.fishPurchaseRestockLabel(),
@@ -2738,7 +2719,7 @@ export class AquariumScene extends Phaser.Scene {
       fishOwned,
       foodOwned,
       helperOwned,
-      tankCards: Array.from({ length: maxPurchasableTankLevel }, (_unused, index) => {
+      tankCards: Array.from({ length: this.developerGodMode ? maxOwnedTanks : maxPurchasableTankLevel }, (_unused, index) => {
         const level = index + 1;
         return {
           level,
@@ -3100,6 +3081,12 @@ export class AquariumScene extends Phaser.Scene {
       this.albumBarStat("Full", fullnessValue, this.albumPositiveTone(fullnessValue)),
       this.albumBarStat("Happy", happyValue, this.albumHappyTone(happyValue))
     ]);
+    const status = fish.hudStatusLabel();
+    const imageWrap = this.htmlElement("div", `aq-album-fish-avatar is-${status}`, [
+      this.htmlImage(`/assets/fish/${fish.type.id}.png`, "", "aq-album-row-image fish"),
+      this.htmlElement("span", "", [fish.hudStatusIcon()])
+    ]);
+    imageWrap.title = `${fish.type.name}: ${status}`;
     const body = this.htmlElement("div", "aq-album-row-body", [
       this.htmlElement("h3", "aq-album-row-title", [fish.type.name]),
       this.htmlElement("p", "aq-album-row-meta", [`${fish.gender} | ${fish.ageLabel()} | ${this.rarityLabel(fish.type.rarity)} | ${fish.state}`]),
@@ -3107,7 +3094,7 @@ export class AquariumScene extends Phaser.Scene {
       stats
     ]);
     row.append(
-      this.htmlImage(`/assets/fish/${fish.type.id}.png`, "", "aq-album-row-image fish"),
+      imageWrap,
       body,
       this.htmlButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showSellConfirmation(index))
     );
@@ -3305,7 +3292,48 @@ export class AquariumScene extends Phaser.Scene {
       this.htmlButton("Offline Summary", "aq-page-button aq-page-button-good", () => this.showOfflineSummary()),
       this.htmlButton("Reset Save", "aq-page-button aq-page-button-danger", () => this.showResetConfirmation())
     );
-    content.append(grid, actions);
+    content.append(grid, actions, this.createDeveloperSettingsCard());
+  }
+
+  private createDeveloperSettingsCard(): HTMLElement {
+    const card = this.htmlElement("article", "aq-page-card aq-dev-settings-card");
+    card.append(
+      this.htmlElement("h3", "aq-page-card-title", ["Developer"]),
+      this.htmlElement("p", "aq-page-card-meta", [this.developerGodMode ? "God mode unlocked" : "Locked"])
+    );
+
+    if (!this.developerGodMode) {
+      const row = this.htmlElement("div", "aq-dev-unlock-row");
+      const input = document.createElement("input");
+      input.type = "password";
+      input.inputMode = "numeric";
+      input.autocomplete = "off";
+      input.placeholder = "Password";
+      input.className = "aq-dev-password";
+      const unlock = (): void => {
+        if (input.value.trim() === "9000") {
+          this.unlockDeveloperGodMode();
+        } else {
+          input.value = "";
+          this.floatText("Wrong password", toastX, toastY, "#ffb0a8");
+        }
+      };
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          unlock();
+        }
+      });
+      row.append(input, this.htmlButton("Unlock", "aq-page-button aq-page-button-muted", unlock));
+      card.append(row);
+      return card;
+    }
+
+    card.append(
+      this.htmlElement("p", "aq-page-card-copy", ["10K of each coin, max tank level, no shop price, level, or hourly purchase gates."]),
+      this.htmlButton("Grant God Mode", "aq-page-button aq-page-button-good", () => this.grantDeveloperGodMode())
+    );
+    return card;
   }
 
   private htmlEmptyCard(title: string, detail: string): HTMLElement {
@@ -3318,6 +3346,39 @@ export class AquariumScene extends Phaser.Scene {
     const stat = this.htmlElement("div", "aq-page-stat");
     stat.append(this.htmlElement("span", "aq-page-stat-label", [label]), this.htmlElement("span", "aq-page-stat-value", [value]));
     return stat;
+  }
+
+  private unlockDeveloperGodMode(): void {
+    this.developerGodMode = true;
+    this.grantDeveloperGodMode();
+  }
+
+  private grantDeveloperGodMode(): void {
+    const maxContentTankLevel = Math.max(1, ...fishTypes.map((fishType) => fishType.tankLevel));
+    const grantWallet = (wallet: Wallet): Wallet => createWallet(
+      Math.max(wallet.common, 10_000),
+      Math.max(wallet.rare, 10_000),
+      Math.max(wallet.superRare, 10_000)
+    );
+
+    this.captureActiveTankState();
+    for (let level = 1; level <= maxOwnedTanks; level += 1) {
+      this.ownedTankLevels.add(level);
+      this.tankNames.set(level, storeTankNames[level] ?? `Tank ${formatNumber(level)}`);
+      const state = this.ensureTankState(level);
+      state.wallet = grantWallet(state.wallet);
+      state.maxDisplayLevel = Math.max(state.maxDisplayLevel ?? 1, maxContentTankLevel);
+    }
+
+    const activeState = this.ensureTankState(this.tankLevel);
+    this.wallet = grantWallet(activeState.wallet);
+    activeState.wallet = this.wallet;
+    activeState.maxDisplayLevel = Math.max(activeState.maxDisplayLevel ?? 1, maxContentTankLevel);
+    this.floatText("God mode unlocked", toastX, toastY, "#a8ffb0");
+    this.storeOverlay?.refresh();
+    this.refreshUi();
+    this.syncHtmlPageOverlay();
+    this.saveNow();
   }
 
   private htmlButton(label: string, className: string, onClick: () => void, disabled = false): HTMLButtonElement {
@@ -4464,17 +4525,17 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyFish(fishType: FishType): void {
-    if (fishType.tankLevel > this.tankDisplayLevel()) {
+    if (!this.developerGodMode && fishType.tankLevel > this.tankDisplayLevel()) {
       this.floatText(`Needs tank L${formatNumber(fishType.tankLevel)}`, toastX, toastY, "#ffb0a8");
       return;
     }
 
-    if (!this.canBuyAnotherFishThisHour()) {
+    if (!this.developerGodMode && !this.canBuyAnotherFishThisHour()) {
       this.floatText(`Fish shop ${this.fishPurchaseRestockLabel().toLowerCase()}`, toastX, toastY, "#ffdd8a");
       return;
     }
 
-    if (!canAfford(this.wallet, fishType.price)) {
+    if (!this.developerGodMode && !canAfford(this.wallet, fishType.price)) {
       this.floatText(`Need ${formatPrice(fishType.price)}`, toastX, toastY, "#ffb0a8");
       return;
     }
@@ -4496,12 +4557,12 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyAndAddFishToTank(fishType: FishType, x: number, y: number): void {
-    if (fishType.tankLevel > this.tankDisplayLevel()) {
+    if (!this.developerGodMode && fishType.tankLevel > this.tankDisplayLevel()) {
       this.floatText(`Needs tank L${formatNumber(fishType.tankLevel)}`, toastX, toastY, "#ffb0a8");
       return;
     }
 
-    if (!this.canBuyAnotherFishThisHour()) {
+    if (!this.developerGodMode && !this.canBuyAnotherFishThisHour()) {
       this.floatText(`Fish shop ${this.fishPurchaseRestockLabel().toLowerCase()}`, toastX, toastY, "#ffdd8a");
       return;
     }
@@ -4527,7 +4588,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyFood(foodType = this.getSelectedFoodType(), quantity = this.getFoodBuyQuantity(foodType.id)): void {
-    if (foodType.id === "ageBoost" && !this.canBuyGrowthTonicThisHour()) {
+    if (!this.developerGodMode && foodType.id === "ageBoost" && !this.canBuyGrowthTonicThisHour()) {
       this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
       this.storeOverlay?.refresh();
       return;
@@ -5615,6 +5676,10 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private spendPrice(price: FishType["price"]): boolean {
+    if (this.developerGodMode) {
+      return true;
+    }
+
     if (!spend(this.wallet, price)) {
       this.floatText(`Need ${formatPrice(price)}`, toastX, toastY, "#ffb0a8");
       return false;
