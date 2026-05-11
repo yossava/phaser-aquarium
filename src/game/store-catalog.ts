@@ -1,5 +1,5 @@
 import { decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
-import type { StoreOverlayState, StoreTankCosmeticCard, StoreTankDecorationCard, StoreTankUtilityCard } from "../ui/StoreOverlay";
+import type { StoreOverlayState, StoreTankCosmeticCard, StoreTankDecorationCard, StoreTankUtilityCard } from "../ui/store/StoreTypes";
 import type { DecorationType, FoodType, Price, Wallet } from "../types/mechanics";
 
 export type StoreDecorationSize = StoreTankDecorationCard["variants"][number]["size"];
