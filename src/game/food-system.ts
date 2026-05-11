@@ -123,3 +123,52 @@ export function recommendedFoodName(foodTypes: FoodType[], targetCalories: numbe
     .find((foodType) => foodType.calories >= targetCalories);
   return recommendedFood?.name ?? `${formatNumber(Math.ceil(targetCalories))} cal food`;
 }
+
+export function foodBuyQuantity(quantities: Map<FoodTypeId, number>, foodTypeId: FoodTypeId): number {
+  return quantities.get(foodTypeId) ?? 1;
+}
+
+export function changedFoodBuyQuantity(
+  quantities: Map<FoodTypeId, number>,
+  foodTypeId: FoodTypeId,
+  delta: number,
+  maxQuantity: number
+): number {
+  return clampFoodQuantity(foodBuyQuantity(quantities, foodTypeId) + delta, maxQuantity);
+}
+
+export function addedFoodBuyQuantity(
+  quantities: Map<FoodTypeId, number>,
+  foodTypeId: FoodTypeId,
+  quantityToAdd: number,
+  maxQuantity: number
+): number {
+  const currentQuantity = foodBuyQuantity(quantities, foodTypeId);
+  const nextQuantity = quantities.has(foodTypeId) ? currentQuantity + quantityToAdd : quantityToAdd;
+  return clampFoodQuantity(nextQuantity, maxQuantity);
+}
+
+export function setFoodBuyQuantityValue(quantity: number, maxQuantity: number): number | undefined {
+  return quantity <= 0 ? undefined : clampFoodQuantity(quantity, maxQuantity);
+}
+
+export function foodBuyQuantityRecord(foodTypes: FoodType[], quantities: Map<FoodTypeId, number>): Record<string, number> {
+  return Object.fromEntries(foodTypes.map((foodType) => [foodType.id, foodBuyQuantity(quantities, foodType.id)]));
+}
+
+export function foodInventoryRecord(inventory: Map<FoodTypeId, number>): Record<FoodTypeId, number> {
+  return Object.fromEntries(
+    [...inventory.entries()].filter(([foodTypeId, count]) => !hiddenFoodTypeIds.has(foodTypeId) && count > 0)
+  ) as Record<FoodTypeId, number>;
+}
+
+export function describeFoodInventory(foodTypes: FoodType[], getInventory: (foodType: FoodType) => number, labelFor: (foodType: FoodType) => string): string {
+  const owned = foodTypes
+    .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && getInventory(foodType) > 0)
+    .map((foodType) => `${foodType.name} x${labelFor(foodType)}`);
+  return owned.length > 0 ? owned.join(", ") : "empty";
+}
+
+function clampFoodQuantity(quantity: number, maxQuantity: number): number {
+  return Math.max(1, Math.min(maxQuantity, Math.floor(quantity)));
+}
