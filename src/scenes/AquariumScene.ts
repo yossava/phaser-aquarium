@@ -55,11 +55,12 @@ import {
   type RewardedAdOption,
   type RewardedAdState
 } from "../game/quest-system";
+import { buildStoreOverlayState } from "../game/store-catalog";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
 import { FoodPellet } from "../objects/FoodPellet";
 import { HelperCreature } from "../objects/HelperCreature";
-import { StoreOverlay, type StoreOverlayState, type StoreTankCosmeticCard, type StoreTankDecorationCard, type StoreTankUtilityCard } from "../ui/StoreOverlay";
+import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, StoreTab, Wallet } from "../types/mechanics";
 
 type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "settings";
@@ -2530,30 +2531,12 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private storeOverlayState(): StoreOverlayState {
-    const fishOwned: Record<string, number> = {};
-    for (const fishType of fishTypes) {
-      fishOwned[fishType.id] =
-        this.fish.filter((currentFish) => currentFish.type.id === fishType.id).length +
-        this.getFishInventory(fishType.id);
-    }
-
-    const foodOwned: Record<string, number> = {};
-    for (const foodType of foodTypes) {
-      foodOwned[foodType.id] = this.foodInventoryDisplayCount(foodType);
-    }
-
-    const helperOwned: Record<string, number> = {};
-    for (const creatureType of helperCreatureTypes) {
-      helperOwned[creatureType.id] =
-        this.helperCreatures.filter((helper) => helper.type.id === creatureType.id).length +
-        this.getCreatureInventory(creatureType.id);
-    }
-
-    return {
+    return buildStoreOverlayState({
       wallet: { ...this.wallet },
       wealth: this.calculateTankNetWorth(),
       activeTankName: this.getTankName(this.tankLevel),
       activeTankLevel: this.tankDisplayLevel(),
+      activeTankSlot: this.tankLevel,
       developerGodMode: this.developerGodMode,
       fishPurchasesInWindow: this.recentFishPurchaseCount(),
       fishPurchaseHourlyLimit: this.hourlyFishPurchaseLimit(),
@@ -2562,29 +2545,56 @@ export class AquariumScene extends Phaser.Scene {
       ageBoostRestockLabel: this.growthTonicPurchaseRestockLabel(),
       fishCount: this.activeFish().length,
       fishCapacity: this.maxFishCapacityForLevel(),
-      fishOwned,
-      foodOwned,
-      helperOwned,
-      tankCards: Array.from({ length: this.developerGodMode ? maxOwnedTanks : maxPurchasableTankLevel }, (_unused, index) => {
-        const level = index + 1;
-        return {
-          level,
-          name: storeTankNames[level] ?? this.getTankName(level),
-          displayLevel: this.tankDisplayLevel(level),
-          owned: this.hasTankLevel(level),
-          active: level === this.tankLevel,
-          fishCount: this.fishInTank(level).length,
-          fishCapacity: this.maxFishCapacityForLevel(level),
-          helperCount: this.helpersInTank(level).length,
-          worth: this.calculateTankNetWorth(level),
-          price: this.tankPriceForLevel(level),
-          includedWallet: storeTankStarterWallets[level] ?? createEmptyWallet()
-        };
-      }),
-      tankCosmeticCards: this.storeTankCosmeticCards(),
-      tankDecorationCards: this.storeTankDecorationCards(),
-      tankUtilityCards: this.storeTankUtilityCards()
-    };
+      maxOwnedTanks,
+      maxPurchasableTankLevel,
+      tankStarterWallets: storeTankStarterWallets,
+      getFishOwned: (fishTypeId) =>
+        this.fish.filter((currentFish) => currentFish.type.id === fishTypeId).length +
+        this.getFishInventory(fishTypeId),
+      getFoodOwned: (foodType) => this.foodInventoryDisplayCount(foodType),
+      getHelperOwned: (helperTypeId) =>
+        this.helperCreatures.filter((helper) => helper.type.id === helperTypeId).length +
+        this.getCreatureInventory(helperTypeId),
+      getTankName: (level) => storeTankNames[level] ?? this.getTankName(level),
+      tankDisplayLevel: (level) => this.tankDisplayLevel(level),
+      hasTankLevel: (level) => this.hasTankLevel(level),
+      fishInTankCount: (level) => this.fishInTank(level).length,
+      helpersInTankCount: (level) => this.helpersInTank(level).length,
+      maxFishCapacityForLevel: (level) => this.maxFishCapacityForLevel(level),
+      calculateTankNetWorth: (level) => this.calculateTankNetWorth(level),
+      tankPriceForLevel: (level) => this.tankPriceForLevel(level),
+      tankCosmetics: {
+        background: this.tankCosmetics("background"),
+        seabed: this.tankCosmetics("seabed")
+      },
+      ownsTankCosmetic: (asset) => this.ownsTankCosmetic(asset),
+      selectedTankCosmeticId: (category) => this.selectedTankCosmeticId(category),
+      tankCosmeticImageUrl: (asset) => this.tankCosmeticImageUrl(asset),
+      colorToHex: (color) => this.hexColor(color),
+      tankCosmeticBlueTintIntensity: (category, id) => this.tankCosmeticBlueTintIntensity(category, id),
+      decorationSizeOrder,
+      decorationSizeLabel: (size) => decorationSizes[size].label,
+      getDecorationInventory: (decorationTypeId, size) => this.getDecorationInventory(decorationTypeId, size),
+      decorationVariantPrice: (decorationType, size) => this.decorationVariantPrice(decorationType, size),
+      utilityDefinitions: [
+        {
+          id: "food-dispenser",
+          name: "Food Dispenser",
+          description: "Mounts on the tank edge and automatically dispenses owned fish food.",
+          icon: "/assets/ui/helper-food-dispenser.png",
+          owned: this.hasHelperFoodDispenser(),
+          price: helperFoodDispenserPrice
+        },
+        {
+          id: "coin-magnet",
+          name: "Coin Magnet",
+          description: "Drag from the dock and release near coins to pull nearby drops into your wallet.",
+          icon: coinMagnetIconPath,
+          owned: this.hasCoinMagnet(),
+          price: coinMagnetPrice
+        }
+      ]
+    });
   }
 
   private renderTabControls(): void {
@@ -3439,71 +3449,6 @@ export class AquariumScene extends Phaser.Scene {
 
   private tankCosmetics(category: TankCosmeticCategory): TankCosmetic[] {
     return category === "background" ? tankBackgroundCosmetics : tankSeabedCosmetics;
-  }
-
-  private storeTankCosmeticCards(): StoreTankCosmeticCard[] {
-    const categories: TankCosmeticCategory[] = ["background", "seabed"];
-    return categories.flatMap((category) =>
-      this.tankCosmetics(category)
-        .filter((asset) => asset.price.amount > 0 || this.ownsTankCosmetic(asset))
-        .map((asset) => ({
-          kind: "tankCosmetic" as const,
-          id: asset.id,
-          category: asset.category,
-          name: asset.name,
-          owned: this.ownsTankCosmetic(asset),
-          active: this.selectedTankCosmeticId(asset.category) === asset.id,
-          price: asset.price,
-          previewUrl: this.tankCosmeticImageUrl(asset),
-          tint: this.hexColor(asset.tint),
-          blueTintIntensity: this.tankCosmeticBlueTintIntensity(asset.category, asset.id)
-        }))
-    );
-  }
-
-  private storeTankDecorationCards(): StoreTankDecorationCard[] {
-    return decorationTypes.map((decorationType) => {
-      const variants = decorationSizeOrder.map((size) => ({
-        size,
-        label: decorationSizes[size].label,
-        owned: this.getDecorationInventory(decorationType.id, size),
-        price: this.decorationVariantPrice(decorationType, size)
-      }));
-      return {
-        kind: "tankDecoration" as const,
-        id: decorationType.id,
-        name: decorationType.name,
-        rarity: decorationType.rarity,
-        texture: decorationType.texture,
-        happinessBonus: decorationType.happinessBonus,
-        price: decorationType.price,
-        owned: variants.some((variant) => variant.owned > 0),
-        variants
-      };
-    });
-  }
-
-  private storeTankUtilityCards(): StoreTankUtilityCard[] {
-    return [
-      {
-        kind: "tankUtility",
-        id: "food-dispenser",
-        name: "Food Dispenser",
-        description: "Mounts on the tank edge and automatically dispenses owned fish food.",
-        icon: "/assets/ui/helper-food-dispenser.png",
-        owned: this.hasHelperFoodDispenser(),
-        price: helperFoodDispenserPrice
-      },
-      {
-        kind: "tankUtility",
-        id: "coin-magnet",
-        name: "Coin Magnet",
-        description: "Drag from the dock and release near coins to pull nearby drops into your wallet.",
-        icon: coinMagnetIconPath,
-        owned: this.hasCoinMagnet(),
-        price: coinMagnetPrice
-      }
-    ];
   }
 
   private tankCosmeticById(category: TankCosmeticCategory, id: string | undefined): TankCosmetic | undefined {
