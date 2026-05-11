@@ -1,7 +1,8 @@
 import { foodTypes } from "../data/content";
+import { createDefaultPrizeMachineState, normalizePrizeMachineState, type PrizeMachineState } from "./prize-machine";
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
 export const MAX_OFFLINE_SECONDS = 60 * 60 * 3;
 
@@ -78,6 +79,7 @@ export type SavedGame = {
     date: string;
     claimed: string[];
   };
+  prizeMachine: PrizeMachineState;
 };
 
 export type SavedTankState = {
@@ -198,7 +200,8 @@ export function loadGame(): SavedGame | undefined {
         claimed: Array.isArray(migrated.dailyGoals?.claimed)
           ? migrated.dailyGoals.claimed.filter((id): id is string => typeof id === "string")
           : []
-      }
+      },
+      prizeMachine: normalizePrizeMachineState(migrated.prizeMachine)
     };
   } catch {
     return undefined;
@@ -213,18 +216,20 @@ function migrateSave(
   }
 
   if (parsed.version && parsed.version >= 2 && parsed.version < SAVE_VERSION) {
-    return migrateFoodCountsToCalories({
+    const migrated: SavedGame = {
       ...(parsed as SavedGame),
       version: SAVE_VERSION,
       creatureInventory: sanitizeCountRecord(parsed.creatureInventory),
       helperCreatures: Array.isArray(parsed.helperCreatures) ? parsed.helperCreatures : [],
+      prizeMachine: normalizePrizeMachineState(parsed.prizeMachine),
       tank: {
         ...(parsed.tank ?? { cleanliness: 100, cleanedAt: Date.now(), level: 1 }),
         cleanliness: sanitizeNumber(parsed.tank?.cleanliness, 100),
         cleanedAt: sanitizeNumber(parsed.tank?.cleanedAt, Date.now()),
         level: Math.max(1, Math.floor(sanitizeNumber(parsed.tank?.level, 1)))
       }
-    });
+    };
+    return parsed.version < 11 ? migrateFoodCountsToCalories(migrated) : migrated;
   }
 
   if (parsed.version === 1) {
@@ -243,7 +248,8 @@ function migrateSave(
       coinDrops: [],
       tank: { cleanliness: 100, cleanedAt: Date.now(), level: 1 },
       settings: { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false },
-      dailyGoals: { date: localDateKey(), claimed: [] }
+      dailyGoals: { date: localDateKey(), claimed: [] },
+      prizeMachine: createDefaultPrizeMachineState()
     });
   }
 

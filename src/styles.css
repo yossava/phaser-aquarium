@@ -874,6 +874,66 @@ canvas {
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.16), 0 3px 0 rgba(15, 38, 48, 0.75);
   }
 
+  .aq-prize-celebration-shell {
+    background:
+      radial-gradient(circle at 50% 34%, rgba(255, 238, 151, 0.42), transparent 24%),
+      radial-gradient(circle at 50% 48%, rgba(125, 225, 255, 0.24), transparent 46%),
+      rgba(1, 13, 24, 0.62);
+  }
+
+  .aq-prize-celebration-modal {
+    @apply relative overflow-hidden border-transparent text-center;
+    background: linear-gradient(180deg, rgba(11, 88, 124, 0.98), rgba(5, 39, 68, 0.98));
+    background-clip: padding-box;
+  }
+
+  .aq-prize-celebration-modal::before {
+    @apply pointer-events-none absolute inset-0 rounded-2xl p-[3px];
+    content: "";
+    background: conic-gradient(from var(--aq-rainbow-angle, 0deg), #ff5b7f, #ffe66d, #65ff9a, #5de8ff, #a47cff, #ff5b7f);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: aq-prize-rainbow-border 1.4s linear infinite;
+  }
+
+  .aq-prize-celebration-title {
+    @apply relative text-2xl text-yellow-100;
+  }
+
+  .aq-prize-celebration-image-wrap {
+    @apply relative mx-auto mt-4 flex h-36 w-36 items-center justify-center rounded-full border border-yellow-100/70 bg-white/15;
+    box-shadow:
+      inset 0 0 22px rgba(255, 255, 255, 0.28),
+      0 0 28px rgba(255, 233, 124, 0.32);
+  }
+
+  .aq-prize-celebration-image {
+    @apply max-h-[88%] max-w-[88%] object-contain drop-shadow-2xl;
+    animation: aq-prize-image-pulse 980ms ease-in-out infinite alternate;
+  }
+
+  .aq-prize-celebration-detail {
+    @apply relative mt-4 text-base text-cyan-50;
+  }
+
+  @keyframes aq-prize-image-pulse {
+    to {
+      transform: scale(1.08);
+    }
+  }
+
+  @property --aq-rainbow-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+  }
+
+  @keyframes aq-prize-rainbow-border {
+    to {
+      --aq-rainbow-angle: 360deg;
+    }
+  }
+
   .aq-ad-modal-shell {
     background:
       radial-gradient(circle at 50% 34%, rgba(74, 222, 255, 0.22), transparent 38%),

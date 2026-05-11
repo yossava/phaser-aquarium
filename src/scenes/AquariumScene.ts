@@ -107,6 +107,21 @@ import {
   type RewardedAdOption,
   type RewardedAdState
 } from "../game/quest-system";
+import {
+  createDefaultPrizeMachineState,
+  normalizePrizeMachineState,
+  prizeMachineConfig,
+  runPrizeMachineSpin,
+  type PrizeMachineState,
+  type PrizeSpinPrize
+} from "../game/prize-machine";
+import {
+  createPrizeMachineSpinner,
+  playPrizeMachineSpin,
+  prizeWheelIconAssetPaths,
+  prizeWheelIconTextureKeys,
+  type PrizeWheelSegment
+} from "../game/prize-machine-wheel";
 import { buildStoreOverlayState } from "../game/store-catalog";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
@@ -134,7 +149,15 @@ import { createHtmlButton, htmlElement, htmlImage } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, StoreTab, Wallet } from "../types/mechanics";
 
-type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "settings";
+type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "prize" | "settings";
+
+type PreparedPrizeMachineReward =
+  | { kind: "rare"; segmentIndex: number }
+  | { kind: "superRare"; segmentIndex: number }
+  | { kind: "rareFish"; fishType: FishType; segmentIndex: number }
+  | { kind: "premiumCommon"; amount: number; segmentIndex: number }
+  | { kind: "food"; foodType: FoodType; segmentIndex: number }
+  | { kind: "common"; amount: number; segmentIndex: number };
 
 type PlacementMode =
   | { kind: "none" }
@@ -183,6 +206,10 @@ const fishEatSoundKey = "sfx-fish-eat";
 const fishEatSoundPath = "/assets/audio/sfx/fish-eat.ogg";
 const fishHungrySoundKey = "sfx-fish-hungry";
 const fishHungrySoundPath = "/assets/audio/sfx/fish-hungry.ogg";
+const prizeHighlightSoundKey = "sfx-prize-highlight";
+const prizeHighlightSoundPath = "/assets/audio/kenney/ui-audio/Audio/switch17.ogg";
+const prizeRewardSoundKey = "sfx-prize-reward";
+const prizeRewardSoundPath = "/assets/audio/kenney/interface-sounds/Audio/toggle_002.ogg";
 const backgroundMusicKey = "music-underwater-ambient";
 const backgroundMusicPath = "/assets/audio/bgm/underwater.mp3";
 const fishCapacityByCatalogTankLevel: Record<number, number> = {
@@ -287,6 +314,7 @@ const dirtyTankTintColor = 0x4f8f44;
 const cleanBubbleTintColor = 0xd7f4ff;
 const algaeParticleTintColor = 0x174f22;
 const decorationMoveHoldMs = 3000;
+const tankMenuVersion = "right-dock-prize-v1";
 
 type AquariumTestSnapshot = {
   coins: number;
@@ -606,6 +634,10 @@ export class AquariumScene extends Phaser.Scene {
   private rewardedAdRefreshTimer?: Phaser.Time.TimerEvent;
   private rewardedAdCountdownText?: HTMLSpanElement;
   private rewardedAdModalButton?: HTMLButtonElement;
+  private prizeMachine: PrizeMachineState = createDefaultPrizeMachineState();
+  private prizeSpinContainer?: Phaser.GameObjects.Container;
+  private prizeSpinInProgress = false;
+  private prizeRareFish = this.nextPrizeRareFish();
 
   public constructor() {
     super("AquariumScene");
@@ -627,6 +659,8 @@ export class AquariumScene extends Phaser.Scene {
     this.load.audio(coinCollectSoundKey, coinCollectSoundPath);
     this.load.audio(fishEatSoundKey, fishEatSoundPath);
     this.load.audio(fishHungrySoundKey, fishHungrySoundPath);
+    this.load.audio(prizeHighlightSoundKey, prizeHighlightSoundPath);
+    this.load.audio(prizeRewardSoundKey, prizeRewardSoundPath);
     this.load.audio(backgroundMusicKey, backgroundMusicPath);
     Object.entries(menuIconAssetPathByKey).forEach(([textureKey, assetPath]) => {
       this.load.image(textureKey, assetPath);
@@ -640,6 +674,9 @@ export class AquariumScene extends Phaser.Scene {
     this.load.image(coinGlowTextureKey, coinGlowAssetPath);
     Object.entries(hudTopAssetPathByKey).forEach(([textureKey, assetPath]) => {
       this.load.image(textureKey, assetPath);
+    });
+    Object.entries(prizeWheelIconTextureKeys).forEach(([iconName, textureKey]) => {
+      this.load.image(textureKey, prizeWheelIconAssetPaths[iconName as keyof typeof prizeWheelIconAssetPaths]);
     });
   }
 
@@ -1363,6 +1400,9 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    if (this.tankMenuOverlay && this.tankMenuOverlay.dataset.version !== tankMenuVersion) {
+      this.destroyTankMenuOverlay();
+    }
     this.tankMenuOverlay ??= this.createTankMenuOverlay();
     this.tankMenuOverlay.classList.remove("hidden");
     this.syncTankMenuCollapsedState();
@@ -1373,13 +1413,16 @@ export class AquariumScene extends Phaser.Scene {
   private createTankMenuOverlay(): HTMLDivElement {
     const overlay = document.createElement("div");
     overlay.className = "aq-tank-menu";
+    overlay.dataset.version = tankMenuVersion;
 
     const menuDockLowerOffset = 40;
     const shopY = 212 + menuDockLowerOffset;
     const menuSpacing = 72;
-    const toggleY = shopY + menuSpacing;
+    const gameY = shopY + menuSpacing;
+    const toggleY = gameY + menuSpacing;
     const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
       { id: "shop", label: "Shop", y: shopY, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
+      { id: "game", label: "Game", y: gameY, icon: "/assets/ui/shop/shell_reward_badge.png", action: () => this.openPrizeMachineArcade() },
       { id: "clean", label: "Clean", y: toggleY + menuSpacing, icon: "/assets/ui/care.png", action: () => this.cleanTank() },
       { id: "book", label: "Book", y: toggleY + menuSpacing * 2, icon: "/assets/ui/book.png", action: () => this.openScreen("album") },
       { id: "tanks", label: "Tanks", y: toggleY + menuSpacing * 3, icon: "/assets/ui/shop/icon_category_tanks.png", action: () => this.openScreen("tanks") },
@@ -1390,7 +1433,8 @@ export class AquariumScene extends Phaser.Scene {
     for (const item of screens) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `aq-tank-menu-button ${item.id === "shop" ? "aq-tank-menu-button-fixed" : "aq-tank-menu-button-collapsible"}`;
+      const fixed = item.id === "shop" || item.id === "game";
+      button.className = `aq-tank-menu-button ${fixed ? "aq-tank-menu-button-fixed" : "aq-tank-menu-button-collapsible"}`;
       button.dataset.menu = item.id;
       button.style.top = `${(item.y / gameHeight) * 100}%`;
       button.setAttribute("aria-label", item.label);
@@ -2200,6 +2244,7 @@ export class AquariumScene extends Phaser.Scene {
     this.htmlPageOverlay = undefined;
     this.coinComboOverlay?.remove();
     this.coinComboOverlay = undefined;
+    this.destroyPrizeSpinContainer();
     this.destroyTankMenuOverlay();
     this.storeOverlay?.destroy();
     this.storeOverlay = undefined;
@@ -2243,6 +2288,8 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private closePage(): void {
+    this.prizeSpinInProgress = false;
+    this.destroyPrizeSpinContainer();
     this.activeScreen = "tank";
     this.storeOverlay?.hide();
     this.hideHtmlPageOverlay();
@@ -2392,6 +2439,10 @@ export class AquariumScene extends Phaser.Scene {
       this.hideHtmlPageOverlay();
       return;
     }
+    if (this.activeScreen === "prize") {
+      this.hideHtmlPageOverlay();
+      return;
+    }
 
     this.syncHtmlPageOverlay();
   }
@@ -2406,7 +2457,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private syncHtmlPageOverlay(): void {
-    if (this.activeScreen === "tank" || this.activeScreen === "store") {
+    if (this.activeScreen === "tank" || this.activeScreen === "store" || this.activeScreen === "prize") {
       this.hideHtmlPageOverlay();
       return;
     }
@@ -2745,6 +2796,307 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
+  private openPrizeMachineArcade(): void {
+    this.activeScreen = "prize";
+    this.placementMode = { kind: "none" };
+    this.closeModal();
+    this.storeOverlay?.hide();
+    this.hideHtmlPageOverlay();
+    this.createFoodDock();
+    this.syncHtmlGameInterface();
+    this.prizeRareFish = this.nextPrizeRareFish();
+    if (!this.ensureFishTexturesLoaded(this.prizeRareFish, () => {
+      if (this.activeScreen === "prize" && !this.prizeSpinInProgress && !this.prizeSpinContainer) {
+        this.showPrizeMachineSpinner();
+      }
+    })) {
+      this.floatText("Loading prize...", toastX, toastY, "#d7f4ff");
+      return;
+    }
+    this.showPrizeMachineSpinner();
+  }
+
+  private showPrizeMachineSpinner(): void {
+    this.destroyPrizeSpinContainer();
+    this.prizeSpinInProgress = false;
+    this.prizeSpinContainer = createPrizeMachineSpinner(
+      this,
+      prizeMachineConfig,
+      this.createPrizeWheelSegments(),
+      { commonCoins: this.wallet.common },
+      {
+        onSpin: () => this.spinPrizeMachine(),
+        onClose: () => this.closePage()
+      }
+    );
+  }
+
+  private spinPrizeMachine(): void {
+    if (this.prizeSpinInProgress) {
+      return;
+    }
+
+    const config = prizeMachineConfig;
+    if (!this.spendPrice(config.spinCost)) {
+      this.floatText(`Need ${formatPrice(config.spinCost)}`, toastX, toastY, "#ffb0a8");
+      if (!this.prizeSpinContainer) {
+        this.closePage();
+      }
+      return;
+    }
+
+    const { state, outcome } = runPrizeMachineSpin(this.prizeMachine, Math.random);
+    this.prizeMachine = state;
+    const segments = this.createPrizeWheelSegments();
+    const preparedReward = this.preparePrizeMachineReward(outcome.prize, segments);
+    this.prizeSpinInProgress = true;
+    this.htmlPageOverlay?.classList.add("hidden");
+    this.destroyPrizeSpinContainer();
+    let rewardApplied = false;
+    const applyPrizeReward = () => {
+      if (rewardApplied) {
+        return;
+      }
+      rewardApplied = true;
+      this.prizeSpinInProgress = false;
+      this.awardPrizeMachinePreparedReward(preparedReward);
+
+      this.recordDailyQuestAction("prize-game");
+      this.createFoodDock();
+      this.saveNow();
+    };
+    this.prizeSpinContainer = playPrizeMachineSpin(this, config, segments, preparedReward.segmentIndex, { commonCoins: this.wallet.common }, {
+      onRewardReady: applyPrizeReward,
+      onSpinAgain: () => {
+        applyPrizeReward();
+        if (!this.developerGodMode && !canAfford(this.wallet, prizeMachineConfig.spinCost)) {
+          this.floatText(`Need ${formatPrice(prizeMachineConfig.spinCost)}`, toastX, toastY, "#ffb0a8");
+          return;
+        }
+        this.destroyPrizeSpinContainer();
+        this.spinPrizeMachine();
+      },
+      onClose: () => {
+        applyPrizeReward();
+        this.closePage();
+      },
+      getCommonCoins: () => this.wallet.common,
+      onHighlight: () => this.playSfx(prizeHighlightSoundKey, { volume: 0.12 }),
+      onStop: () => this.playSfx(prizeRewardSoundKey, { volume: 0.18 })
+    });
+  }
+
+  private createPrizeWheelSegments(): PrizeWheelSegment[] {
+    const foodColors = [0x22c55e, 0x38bdf8, 0xa3e635, 0x06b6d4, 0x84cc16];
+    const commonColors = [0x0ea5e9, 0x14b8a6, 0x7dd3fc, 0x0284c7];
+    const foodOptions = this.prizeWheelFoodOptions();
+    const commonAmounts = this.prizeWheelCommonAmounts();
+    const segments: PrizeWheelSegment[] = [
+      {
+        kind: "rare",
+        label: "Rare 10%",
+        iconTextureKey: prizeWheelIconTextureKeys.rare,
+        color: 0x0ea5e9
+      },
+      {
+        kind: "superRare",
+        label: "SR 5%",
+        iconTextureKey: prizeWheelIconTextureKeys.superRare,
+        color: 0x8b5cf6
+      },
+      {
+        kind: "rareFish",
+        label: "R Fish 5%",
+        iconTextureKey: this.textures.exists(`fish-${this.prizeRareFish.id}`) ? `fish-${this.prizeRareFish.id}` : prizeWheelIconTextureKeys.fish,
+        color: 0x22c55e,
+        resultLabel: this.prizeRareFish.name,
+        fishTypeId: this.prizeRareFish.id
+      },
+      {
+        kind: "premiumCommon",
+        label: "C500 10%",
+        iconTextureKey: prizeWheelIconTextureKeys.common,
+        color: 0xf59e0b,
+        resultLabel: "C500",
+        commonAmount: 500
+      }
+    ];
+
+    for (let index = 0; index < Math.max(foodOptions.length, commonAmounts.length); index += 1) {
+      const foodType = foodOptions[index];
+      if (foodType) {
+        segments.push({
+          kind: "food",
+          label: this.prizeWheelFoodLabel(foodType),
+          iconTextureKey: this.foodTextureKey(foodType.id),
+          color: foodColors[index % foodColors.length],
+          foodTypeId: foodType.id
+        });
+      }
+
+      const commonAmount = commonAmounts[index];
+      if (commonAmount) {
+        segments.push({
+          kind: "common",
+          label: `C${formatNumber(commonAmount)}`,
+          iconTextureKey: prizeWheelIconTextureKeys.common,
+          color: commonColors[index % commonColors.length],
+          commonAmount
+        });
+      }
+    }
+
+    return segments.slice(0, 10);
+  }
+
+  private preparePrizeMachineReward(
+    prize: PrizeSpinPrize,
+    segments: PrizeWheelSegment[]
+  ): PreparedPrizeMachineReward {
+    if (prize === "rare") {
+      return { kind: "rare", segmentIndex: this.segmentIndexForPrize(segments, "rare") };
+    }
+    if (prize === "superRare") {
+      return { kind: "superRare", segmentIndex: this.segmentIndexForPrize(segments, "superRare") };
+    }
+    if (prize === "rareFish") {
+      return {
+        kind: "rareFish",
+        fishType: this.prizeRareFish,
+        segmentIndex: this.segmentIndexForPrize(segments, "rareFish")
+      };
+    }
+    if (prize === "premiumCommon") {
+      return { kind: "premiumCommon", amount: 500, segmentIndex: this.segmentIndexForPrize(segments, "premiumCommon") };
+    }
+
+    if (prize === "food") {
+      const foodSegments = segments.filter((segment) => segment.kind === "food" && segment.foodTypeId);
+      const segment = Phaser.Utils.Array.GetRandom(foodSegments);
+      const segmentIndex = Math.max(0, segments.indexOf(segment));
+      const foodType = foodTypes.find((candidate) => candidate.id === segment?.foodTypeId) ?? basicFood;
+      return { kind: "food", foodType, segmentIndex };
+    }
+
+    const commonSegments = segments.filter((segment) => segment.kind === "common" && segment.commonAmount);
+    const segment = Phaser.Utils.Array.GetRandom(commonSegments);
+    const segmentIndex = Math.max(0, segments.indexOf(segment));
+    return { kind: "common", amount: segment?.commonAmount ?? 10, segmentIndex };
+  }
+
+  private awardPrizeMachinePreparedReward(reward: PreparedPrizeMachineReward): void {
+    if (reward.kind === "rare") {
+      this.awardPrizeMachineRare();
+      return;
+    }
+    if (reward.kind === "superRare") {
+      this.awardPrizeMachineSuperRare();
+      return;
+    }
+    if (reward.kind === "rareFish") {
+      this.awardPrizeMachineRareFish(reward.fishType);
+      return;
+    }
+    if (reward.kind === "premiumCommon") {
+      this.awardPrizeMachineCommon(reward.amount);
+      return;
+    }
+    if (reward.kind === "food") {
+      this.awardPrizeMachineFood(reward.foodType);
+      return;
+    }
+    this.awardPrizeMachineCommon(reward.amount);
+  }
+
+  private destroyPrizeSpinContainer(): void {
+    this.prizeSpinContainer?.destroy(true);
+    this.prizeSpinContainer = undefined;
+  }
+
+  private awardPrizeMachineRare(): void {
+    earn(this.wallet, "rare", 1);
+    this.setPrizeMachineResult("rare", "R1 Prize!", "A rare coin dropped from the spinner.");
+    this.floatText("+R1 prize", toastX, toastY, "#9eefff");
+    this.showPrizeCelebration("Rare Coin!", "/assets/ui/shop/coin_icon_rare.png", "You won a rare coin.");
+  }
+
+  private awardPrizeMachineSuperRare(): void {
+    earn(this.wallet, "superRare", 1);
+    this.setPrizeMachineResult("superRare", "SR1 Prize!", "A super rare diamond dropped from the spinner.");
+    this.floatText("+SR1 prize", toastX, toastY, "#f0b6ff");
+    this.showPrizeCelebration("Super Rare!", "/assets/ui/shop/coin_icon_super_rare.png", "You won a super rare diamond.");
+  }
+
+  private awardPrizeMachineRareFish(fishType: FishType): void {
+    this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
+    this.recentInventoryDockItemKey = `fish:${fishType.id}`;
+    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is waiting in your left dock.");
+    this.floatText(`${fishType.name} prize`, toastX, toastY, "#a8ffb0");
+    this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A rare fish is waiting in your dock.");
+    this.prizeRareFish = this.nextPrizeRareFish();
+  }
+
+  private awardPrizeMachineFood(foodType: FoodType): void {
+    const amount = this.isCalorieTrackedFood(foodType.id) ? foodType.calories : 1;
+    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + amount);
+    this.recentInventoryDockItemKey = `food:${foodType.id}`;
+    this.setPrizeMachineResult("food", `Food Prize: ${foodType.name}`, `+${formatNumber(foodType.calories)} cal consolation food.`);
+    this.floatText(`+${foodType.name}`, toastX, toastY, "#ffe67a");
+  }
+
+  private awardPrizeMachineCommon(amount: number): void {
+    earn(this.wallet, "common", amount);
+    this.setPrizeMachineResult("common", `Common Prize C${formatNumber(amount)}`, `+C${formatNumber(amount)} from the wheel.`);
+    this.floatText(`+C${formatNumber(amount)}`, toastX, toastY, "#ffe67a");
+  }
+
+  private setPrizeMachineResult(kind: PrizeSpinPrize, title: string, detail: string): void {
+    this.prizeMachine = {
+      ...this.prizeMachine,
+      lastResult: { kind, title, detail, at: Date.now() }
+    };
+  }
+
+  private nextPrizeRareFish(): FishType {
+    const ownedFishIds = new Set([
+      ...this.fish.map((fish) => fish.type.id),
+      ...[...this.fishInventory.entries()].filter(([, count]) => count > 0).map(([fishTypeId]) => fishTypeId)
+    ]);
+    const unowned = fishTypes.filter((fishType) => fishType.rarity === "rare" && !ownedFishIds.has(fishType.id));
+    const pool = unowned.length > 0 ? unowned : fishTypes.filter((fishType) => fishType.rarity === "rare");
+    return Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : fishTypes);
+  }
+
+  private segmentIndexForPrize(segments: PrizeWheelSegment[], prize: PrizeSpinPrize): number {
+    return Math.max(0, segments.findIndex((segment) => segment.kind === prize));
+  }
+
+  private prizeWheelFoodOptions(): FoodType[] {
+    const preferredFoodIds: FoodTypeId[] = ["basic", "herb", "premium", "protein"];
+    const preferred = preferredFoodIds
+      .map((foodTypeId) => foodTypes.find((foodType) => foodType.id === foodTypeId))
+      .filter((foodType): foodType is FoodType => Boolean(foodType));
+    if (preferred.length >= 5) {
+      return preferred;
+    }
+
+    const fallback = foodTypes
+      .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id))
+      .sort((first, second) => first.price.amount - second.price.amount);
+    return [...preferred, ...fallback.filter((foodType) => !preferred.includes(foodType))].slice(0, 5);
+  }
+
+  private prizeWheelCommonAmounts(): number[] {
+    return [10, 50, 100, 250];
+  }
+
+  private prizeWheelFoodLabel(foodType: FoodType): string {
+    return foodType.name
+      .replace(/\s+(Food|Flakes|Bites|Dust|Treat)\b/gi, "")
+      .replace(/\s+Small\b/gi, "")
+      .trim();
+  }
+
   private rewardedAdOptions(): RewardedAdOption[] {
     return buildRewardedAdOptions((coinType) => this.rewardedAdCoinReward(coinType));
   }
@@ -2815,7 +3167,9 @@ export class AquariumScene extends Phaser.Scene {
     this.floatText("God mode unlocked", toastX, toastY, "#a8ffb0");
     this.storeOverlay?.refresh();
     this.refreshUi();
-    this.syncHtmlPageOverlay();
+    if (this.activeScreen !== "prize") {
+      this.syncHtmlPageOverlay();
+    }
     this.saveNow();
   }
 
@@ -2824,7 +3178,7 @@ export class AquariumScene extends Phaser.Scene {
       disabled,
       attachTouchFeedback: (button) => this.attachTouchFeedback(button),
       afterClick: () => {
-        if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
+        if (this.activeScreen !== "tank" && this.activeScreen !== "store" && this.activeScreen !== "prize") {
           this.syncHtmlPageOverlay();
         }
       }
@@ -4131,6 +4485,7 @@ export class AquariumScene extends Phaser.Scene {
     this.applyTankViewScale();
     this.settings = { ...saved.settings };
     this.dailyGoals = this.normalizeDailyGoals(saved.dailyGoals);
+    this.prizeMachine = normalizePrizeMachineState(saved.prizeMachine);
     for (const savedDecoration of saved.decorations) {
       const decoration = decorationTypes.find((item) => item.id === savedDecoration.typeId);
       if (decoration) {
@@ -4334,7 +4689,8 @@ export class AquariumScene extends Phaser.Scene {
       dailyGoals: {
         date: this.dailyGoals.date,
         claimed: [...this.dailyGoals.claimed]
-      }
+      },
+      prizeMachine: normalizePrizeMachineState(this.prizeMachine)
     };
 
     saveGame(snapshot);
@@ -4659,7 +5015,9 @@ export class AquariumScene extends Phaser.Scene {
 
   private refreshUi(renderControls = true): void {
     this.storeOverlay?.refresh();
-    if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
+    if (this.activeScreen === "prize") {
+      this.hideHtmlPageOverlay();
+    } else if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
       this.syncHtmlPageOverlay();
     }
     if (renderControls) {
@@ -5713,6 +6071,30 @@ export class AquariumScene extends Phaser.Scene {
         }
       }
     });
+    document.body.appendChild(shell);
+    this.modal = shell;
+  }
+
+  private showPrizeCelebration(title: string, imageUrl: string, detail: string): void {
+    this.closeModal();
+    this.modalTitle = title;
+    const shell = htmlElement("div", "aq-modal-shell aq-prize-celebration-shell");
+    const stopEvent = (event: Event) => {
+      event.stopPropagation();
+    };
+    shell.addEventListener("pointerdown", stopEvent);
+    shell.addEventListener("click", stopEvent);
+
+    const closeButton = this.htmlButton("Awesome", "aq-modal-button good", () => this.closeModal());
+    const panel = htmlElement("section", "aq-modal aq-prize-celebration-modal", [
+      htmlElement("h2", "aq-modal-title aq-prize-celebration-title", [title]),
+      htmlElement("div", "aq-prize-celebration-image-wrap", [
+        htmlImage(imageUrl, "", "aq-prize-celebration-image")
+      ]),
+      htmlElement("p", "aq-modal-line aq-prize-celebration-detail", [detail]),
+      htmlElement("div", "aq-modal-actions single", [closeButton])
+    ]);
+    shell.append(panel);
     document.body.appendChild(shell);
     this.modal = shell;
   }
