@@ -67,7 +67,7 @@ export class CoinDrop {
   public readonly bottomY: number;
   public readonly visual: CoinVisual;
   public readonly sinkSpeed = 82;
-  private readonly landingX: number;
+  public readonly landingX: number;
   private tankViewScale = 1;
   private shimmerTime = Phaser.Math.FloatBetween(0, 1.8);
 
@@ -77,14 +77,15 @@ export class CoinDrop {
     y: number,
     public readonly value: number,
     public readonly coinType: CoinType,
-    public readonly isMega = false
+    public readonly isMega = false,
+    options: { landingX?: number; bottomY?: number } = {}
   ) {
     const horizontalPadding = coinTapTargetSize * 0.5;
-    this.landingX = Phaser.Math.Between(
+    this.landingX = options.landingX ?? Phaser.Math.Between(
       Math.round(tankBounds.left + horizontalPadding),
       Math.round(tankBounds.right - horizontalPadding)
     );
-    this.bottomY = Phaser.Math.Between(
+    this.bottomY = options.bottomY ?? Phaser.Math.Between(
       Math.round(tankBounds.bottom - coinBottomPadding - coinSeabedDepthBand),
       Math.round(tankBounds.bottom - coinBottomPadding)
     );

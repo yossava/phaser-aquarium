@@ -176,12 +176,6 @@ export class Fish {
     this.updateAgeStage();
 
     const isMedicated = this.scene.time.now < this.medicatedUntil;
-    const hungerGrowthMultiplier = isMedicated ? 0.35 : 1;
-    this.hunger = Phaser.Math.Clamp(
-      this.hunger + this.hungerPerSecond() * hungerGrowthMultiplier * deltaSeconds,
-      overfullHungerFloor,
-      100
-    );
 
     this.updateContinuousHungerTimer(deltaSeconds);
 
@@ -248,7 +242,6 @@ export class Fish {
         this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
         this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
       } else {
-        this.hunger = Phaser.Math.Clamp(this.hunger + 8, overfullHungerFloor, 100);
         this.health = Phaser.Math.Clamp(this.health - 8, 0, 100);
       }
       this.updateContinuousHungerTimer(0);
@@ -1410,7 +1403,7 @@ export class Fish {
     const isTextMessage = emoji.length > 3;
     this.stateEmoji
       .setText(emoji)
-      .setFontSize(isTextMessage ? "12px" : "18px")
+      .setFontSize(isTextMessage ? "16px" : "18px")
       .setOrigin(0.5, 1)
       .setPosition(emojiX, emojiY)
       .setVisible(true);

@@ -44,6 +44,7 @@ import {
   SAVE_VERSION,
   saveGame,
   type OfflineProgress,
+  type SavedCoinDrop,
   type SavedGame
 } from "../game/save";
 import {
@@ -206,7 +207,8 @@ const fishTankDirtPerSecond = maxTankDirtPerSecond * 0.075;
 const looseFoodTankDirtPerSecond = maxTankDirtPerSecond * 0.11;
 const automatedCoinCollectFeeRate = 0;
 const coinComboWindowMs = 900;
-const coinComboRewardRate = 0.2;
+const coinComboRewardPercentPerCount = 1;
+const coinComboRewardTextDurationMs = 3000;
 const hudStatusSyncIntervalSeconds = 0.25;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
@@ -284,6 +286,7 @@ const dirtyTankOverlayMaxAlpha = 0.38;
 const dirtyTankTintColor = 0x4f8f44;
 const cleanBubbleTintColor = 0xd7f4ff;
 const algaeParticleTintColor = 0x174f22;
+const decorationMoveHoldMs = 3000;
 
 type AquariumTestSnapshot = {
   coins: number;
@@ -594,6 +597,7 @@ export class AquariumScene extends Phaser.Scene {
   private pendingFishTextureLoads = new Set<string>();
   private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
   private coinComboCount = 0;
+  private coinComboCollectedValue = 0;
   private coinComboTimer?: Phaser.Time.TimerEvent;
   private coinComboLastPosition = new Phaser.Math.Vector2(toastX, toastY);
   private coinComboOverlay?: HTMLDivElement;
@@ -3593,8 +3597,29 @@ export class AquariumScene extends Phaser.Scene {
   private installNativeCanvasInputFallback(): void {
     const canvas = this.game.canvas;
     let activePointerId: number | undefined;
+    let pendingDecorationHold:
+      | {
+          pointerId: number;
+          decoration: PlacedDecoration;
+          timeoutId: number;
+          lastPoint: Phaser.Math.Vector2;
+        }
+      | undefined;
 
     const designPointFromEvent = (event: PointerEvent): Phaser.Math.Vector2 | undefined => this.clientPointToDesignPoint(event.clientX, event.clientY);
+    const clearPendingDecorationHold = () => {
+      if (pendingDecorationHold) {
+        window.clearTimeout(pendingDecorationHold.timeoutId);
+        pendingDecorationHold = undefined;
+      }
+    };
+    const beginNativeDecorationDrag = (decoration: PlacedDecoration) => {
+      this.nativeDraggedDecoration = decoration;
+      this.draggedDecoration = decoration;
+      decoration.image.setAlpha(0.78);
+      decoration.image.setDepth(9);
+      this.showDecorationTrashTarget(true);
+    };
     const endNativeFishDrag = (event?: PointerEvent) => {
       if (!this.nativeDraggedFish) {
         return;
@@ -3615,6 +3640,7 @@ export class AquariumScene extends Phaser.Scene {
       this.saveNow();
     };
     const endNativeDecorationDrag = (event?: PointerEvent) => {
+      clearPendingDecorationHold();
       if (!this.nativeDraggedDecoration) {
         return;
       }
@@ -3659,12 +3685,27 @@ export class AquariumScene extends Phaser.Scene {
         event.stopPropagation();
         activePointerId = event.pointerId;
         this.capturePointerSafely(canvas, event.pointerId);
-        this.nativeDraggedDecoration = decoration;
-        this.draggedDecoration = decoration;
-        decoration.image.setAlpha(0.78);
-        decoration.image.setDepth(9);
-        this.showDecorationTrashTarget(true);
-        this.floatTankText("Drag to move", decoration.image.x, decoration.image.y - 36, "#d7f4ff");
+        clearPendingDecorationHold();
+        pendingDecorationHold = {
+          pointerId: event.pointerId,
+          decoration,
+          lastPoint: point.clone(),
+          timeoutId: window.setTimeout(() => {
+            if (
+              pendingDecorationHold?.pointerId !== event.pointerId ||
+              pendingDecorationHold.decoration !== decoration ||
+              activePointerId !== event.pointerId ||
+              this.activeScreen !== "tank"
+            ) {
+              return;
+            }
+
+            beginNativeDecorationDrag(decoration);
+            const tankPoint = this.screenToTankPoint(pendingDecorationHold.lastPoint.x, pendingDecorationHold.lastPoint.y);
+            this.moveDecoration(decoration, tankPoint.x, tankPoint.y);
+            pendingDecorationHold = undefined;
+          }, decorationMoveHoldMs)
+        };
         return;
       }
 
@@ -3694,6 +3735,9 @@ export class AquariumScene extends Phaser.Scene {
       }
 
       event.preventDefault();
+      if (pendingDecorationHold?.pointerId === event.pointerId) {
+        pendingDecorationHold.lastPoint = point;
+      }
       const tankPoint = this.screenToTankPoint(point.x, point.y);
       if (this.nativeDraggedDecoration) {
         this.moveDecoration(this.nativeDraggedDecoration, tankPoint.x, tankPoint.y);
@@ -3709,8 +3753,10 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       this.releasePointerSafely(canvas, event.pointerId);
+      clearPendingDecorationHold();
       endNativeDecorationDrag(event);
       endNativeFishDrag(event);
+      activePointerId = undefined;
     };
     const onPointerCancel = (event: PointerEvent) => {
       if (activePointerId !== event.pointerId) {
@@ -3719,8 +3765,10 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       this.releasePointerSafely(canvas, event.pointerId);
+      clearPendingDecorationHold();
       endNativeDecorationDrag(event);
       endNativeFishDrag(event);
+      activePointerId = undefined;
     };
 
     canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
@@ -3732,6 +3780,7 @@ export class AquariumScene extends Phaser.Scene {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
+      clearPendingDecorationHold();
       endNativeDecorationDrag();
       endNativeFishDrag();
     };
@@ -3814,13 +3863,12 @@ export class AquariumScene extends Phaser.Scene {
   private addDecorationToTank(decoration: DecorationType, x: number, y: number, size: DecorationSize = "m"): void {
     const image = this.add.image(x, y, decoration.texture).setDepth(y > tankBounds.bottom - 80 ? 5 : 3);
     this.fitDecorationDisplay(image, decoration, size);
-    image.setInteractive({ useHandCursor: true, draggable: true });
+    image.setInteractive({ useHandCursor: true });
     this.tankLayer.add(image);
     const placedDecoration = { typeId: decoration.id, size, image, tankLevel: this.tankLevel };
     image.setVisible(placedDecoration.tankLevel === this.tankLevel);
     this.placedDecorations.push(placedDecoration);
-    this.input.setDraggable(image);
-    this.bindDecorationDrag(placedDecoration);
+    this.bindDecorationPointerGuard(placedDecoration);
   }
 
   private placeDecorationFromInventory(decoration: DecorationType, size: DecorationSize, x: number, y: number): void {
@@ -3928,47 +3976,9 @@ export class AquariumScene extends Phaser.Scene {
     });
   }
 
-  private bindDecorationDrag(decoration: PlacedDecoration): void {
+  private bindDecorationPointerGuard(decoration: PlacedDecoration): void {
     decoration.image.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
-    });
-    decoration.image.on("dragstart", () => {
-      if (this.activeScreen !== "tank") {
-        return;
-      }
-
-      this.draggedDecoration = decoration;
-      decoration.image.setAlpha(0.78);
-      decoration.image.setDepth(9);
-      this.showDecorationTrashTarget(true);
-      this.floatTankText("Drag to move", decoration.image.x, decoration.image.y - 36, "#d7f4ff");
-    });
-    decoration.image.on("drag", (pointer: Phaser.Input.Pointer) => {
-      if (this.draggedDecoration !== decoration || this.activeScreen !== "tank") {
-        return;
-      }
-
-      const pointerPoint = this.pointerDesignPoint(pointer);
-      const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
-      this.moveDecoration(decoration, tankPoint.x, tankPoint.y);
-      this.highlightDecorationTrashTarget(decorationTrashZone.contains(pointerPoint.x, pointerPoint.y));
-    });
-    decoration.image.on("dragend", (pointer: Phaser.Input.Pointer) => {
-      if (this.draggedDecoration !== decoration) {
-        return;
-      }
-
-      decoration.image.setAlpha(1);
-      this.showDecorationTrashTarget(false);
-      this.draggedDecoration = undefined;
-
-      const pointerPoint = this.pointerDesignPoint(pointer);
-      if (this.activeScreen === "tank" && decorationTrashZone.contains(pointerPoint.x, pointerPoint.y)) {
-        this.trashDecoration(decoration);
-        return;
-      }
-
-      this.saveNow();
     });
   }
 
@@ -4157,6 +4167,23 @@ export class AquariumScene extends Phaser.Scene {
         savedFish.continuousHungrySeconds
       );
     }
+
+    for (const savedCoin of saved.coinDrops) {
+      if ((savedCoin.tankLevel ?? this.tankLevel) !== this.tankLevel || this.coinDrops.length >= maxCoinDrops) {
+        continue;
+      }
+      this.createCoinDrop(
+        savedCoin.x,
+        savedCoin.y,
+        savedCoin.value,
+        savedCoin.coinType,
+        savedCoin.isMega,
+        {
+          landingX: savedCoin.landingX,
+          bottomY: savedCoin.bottomY
+        }
+      );
+    }
     this.refreshFishTankVisibility();
     this.refreshHelperTankVisibility();
     this.refreshDecorationTankVisibility();
@@ -4193,11 +4220,6 @@ export class AquariumScene extends Phaser.Scene {
       }
 
       currentFish.setAgeSeconds(currentFish.ageSeconds + elapsedSeconds);
-      currentFish.hunger = Phaser.Math.Clamp(
-        currentFish.hunger + Math.min(52, currentFish.hungerPerSecond() * elapsedSeconds * 0.045),
-        overfullHungerFloor,
-        100
-      );
 
       if (currentFish.hunger > 68) {
         const hungerIncrease = currentFish.hunger - hungerBeforeOffline;
@@ -4248,6 +4270,19 @@ export class AquariumScene extends Phaser.Scene {
     return { elapsedSeconds, earned };
   }
 
+  private savedCoinDrops(): SavedCoinDrop[] {
+    return this.coinDrops.map((coin) => ({
+      tankLevel: this.tankLevel,
+      x: coin.sprite.x,
+      y: coin.sprite.y,
+      value: coin.value,
+      coinType: coin.coinType,
+      isMega: coin.isMega,
+      landingX: coin.landingX,
+      bottomY: coin.bottomY
+    }));
+  }
+
   private saveNow(savedAt = Date.now()): void {
     this.captureActiveTankState();
     const snapshot: SavedGame = {
@@ -4285,6 +4320,7 @@ export class AquariumScene extends Phaser.Scene {
         y: helper.sprite.y,
         targetX: helper.getTargetX()
       })),
+      coinDrops: this.savedCoinDrops(),
       tank: {
         cleanliness: this.cleanliness,
         cleanedAt: this.cleanedAt,
@@ -4344,8 +4380,15 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
-  private createCoinDrop(x: number, y: number, value: number, coinType: CoinType, isMega = false): CoinDrop {
-    const coin = new CoinDrop(this, x, y, value, coinType, isMega);
+  private createCoinDrop(
+    x: number,
+    y: number,
+    value: number,
+    coinType: CoinType,
+    isMega = false,
+    options: { landingX?: number; bottomY?: number } = {}
+  ): CoinDrop {
+    const coin = new CoinDrop(this, x, y, value, coinType, isMega, options);
     coin.setWorldScaleCompensation(this.tankViewScaleForLevel());
     coin.addToContainer(this.tankLayer);
     const collect = (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
@@ -4370,7 +4413,7 @@ export class AquariumScene extends Phaser.Scene {
     this.floatCoinClaimText(claimedValue, coin.coinType, coin.sprite.x, coin.sprite.y - 20, coin.visual.textColor, automated, fee);
     if (!automated) {
       this.playSfx(coinCollectSoundKey, { volume: 0.24, detune: this.coinCollectDetune(coin.coinType) });
-      this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42);
+      this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42, claimedValue * coinWealthValue[coin.coinType]);
     }
     this.coinDrops = this.coinDrops.filter((drop) => drop !== coin);
     coin.destroy();
@@ -4484,8 +4527,9 @@ export class AquariumScene extends Phaser.Scene {
     return 120;
   }
 
-  private registerCoinCombo(x: number, y: number): void {
+  private registerCoinCombo(x: number, y: number, collectedCommonValue: number): void {
     this.coinComboCount += 1;
+    this.coinComboCollectedValue += Math.max(0, collectedCommonValue);
     this.coinComboLastPosition.set(x, y);
 
     if (this.coinComboCount >= 2) {
@@ -4498,26 +4542,30 @@ export class AquariumScene extends Phaser.Scene {
 
   private resolveCoinCombo(): void {
     const comboCount = this.coinComboCount;
+    const collectedValue = this.coinComboCollectedValue;
     const position = this.coinComboLastPosition.clone();
     this.coinComboCount = 0;
+    this.coinComboCollectedValue = 0;
     this.coinComboTimer = undefined;
 
-    const bonus = Math.floor(comboCount * coinComboRewardRate);
+    const bonusPercent = comboCount * coinComboRewardPercentPerCount;
+    const bonus = Math.floor(collectedValue * (bonusPercent / 100));
     if (bonus <= 0) {
       return;
     }
 
     earn(this.wallet, "common", bonus);
-    this.showCoinComboOverlay(`COMBO REWARD C${formatNumber(bonus)}!`, true);
-    this.floatTankText(`Combo Reward C${formatNumber(bonus)}!`, position.x, position.y - 24, coinVisualsByType.common.textColor);
+    this.showCoinComboOverlay(`BONUS C${formatNumber(bonus)}!`, true, coinComboRewardTextDurationMs);
+    this.floatTankText(`BONUS C${formatNumber(bonus)}!`, position.x, position.y - 24, coinVisualsByType.common.textColor);
     this.refreshUi(false);
     this.saveNow();
   }
 
-  private showCoinComboOverlay(message: string, bonus = false): void {
+  private showCoinComboOverlay(message: string, bonus = false, durationMs?: number): void {
     this.coinComboOverlay ??= this.createCoinComboOverlay();
     this.coinComboOverlay.textContent = message;
     this.coinComboOverlay.classList.toggle("is-bonus", bonus);
+    this.coinComboOverlay.style.animationDuration = durationMs ? `${durationMs}ms` : "";
     this.coinComboOverlay.classList.remove("is-showing");
     this.coinComboOverlay.getBoundingClientRect();
     this.coinComboOverlay.classList.add("is-showing");

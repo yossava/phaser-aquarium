@@ -1,7 +1,7 @@
 import { foodTypes } from "../data/content";
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
 export const MAX_OFFLINE_SECONDS = 60 * 60 * 3;
 
@@ -35,6 +35,17 @@ export type SavedHelperCreature = {
   targetX: number;
 };
 
+export type SavedCoinDrop = {
+  tankLevel?: number;
+  x: number;
+  y: number;
+  value: number;
+  coinType: CoinType;
+  isMega?: boolean;
+  landingX?: number;
+  bottomY?: number;
+};
+
 export type SavedGame = {
   version: typeof SAVE_VERSION;
   savedAt: number;
@@ -46,6 +57,7 @@ export type SavedGame = {
   fish: SavedFish[];
   decorations: SavedDecoration[];
   helperCreatures: SavedHelperCreature[];
+  coinDrops: SavedCoinDrop[];
   tank: {
     cleanliness: number;
     cleanedAt: number;
@@ -162,6 +174,9 @@ export function loadGame(): SavedGame | undefined {
       helperCreatures: Array.isArray(migrated.helperCreatures)
         ? migrated.helperCreatures.map(sanitizeHelperCreature).filter((creature): creature is SavedHelperCreature => Boolean(creature))
         : [],
+      coinDrops: Array.isArray(migrated.coinDrops)
+        ? migrated.coinDrops.map(sanitizeCoinDrop).filter((coin): coin is SavedCoinDrop => Boolean(coin))
+        : [],
       tank: {
         cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
         cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
@@ -225,6 +240,7 @@ function migrateSave(
       fish: Array.isArray(parsed.fish) ? parsed.fish : [],
       decorations: Array.isArray(parsed.decorations) ? parsed.decorations : [],
       helperCreatures: [],
+      coinDrops: [],
       tank: { cleanliness: 100, cleanedAt: Date.now(), level: 1 },
       settings: { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false },
       dailyGoals: { date: localDateKey(), claimed: [] }
@@ -440,6 +456,28 @@ function sanitizeHelperCreature(creature: Partial<SavedHelperCreature>): SavedHe
     x: sanitizeNumber(creature.x, 0),
     y: sanitizeNumber(creature.y, 0),
     targetX: sanitizeNumber(creature.targetX, creature.x ?? 0)
+  };
+}
+
+function sanitizeCoinDrop(coin: Partial<SavedCoinDrop>): SavedCoinDrop | undefined {
+  if (coin.coinType !== "common" && coin.coinType !== "rare" && coin.coinType !== "superRare") {
+    return undefined;
+  }
+
+  const value = Math.floor(sanitizeNumber(coin.value, 0));
+  if (value <= 0) {
+    return undefined;
+  }
+
+  return {
+    tankLevel: Math.max(1, Math.floor(sanitizeNumber(coin.tankLevel, 1))),
+    x: sanitizeNumber(coin.x, 0),
+    y: sanitizeNumber(coin.y, 0),
+    value,
+    coinType: coin.coinType,
+    isMega: coin.isMega === true,
+    landingX: sanitizeNumber(coin.landingX, coin.x ?? 0),
+    bottomY: sanitizeNumber(coin.bottomY, coin.y ?? 0)
   };
 }
 
