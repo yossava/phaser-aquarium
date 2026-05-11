@@ -113,6 +113,8 @@ import { Fish } from "../objects/Fish";
 import { FoodPellet } from "../objects/FoodPellet";
 import { HelperCreature } from "../objects/HelperCreature";
 import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
+import { createHtmlButton, htmlElement, htmlImage } from "../ui/dom";
+import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, StoreTab, Wallet } from "../types/mechanics";
 
 type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "settings";
@@ -2549,18 +2551,18 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createHtmlPage(): HTMLElement {
-    const page = this.htmlElement("section", "aq-page");
-    const header = this.htmlElement("header", "aq-page-header");
+    const page = htmlElement("section", "aq-page");
+    const header = htmlElement("header", "aq-page-header");
     const meta = this.pageScreenMeta();
-    const icon = this.htmlImage(meta.icon, "", "aq-page-header-icon");
-    const titleWrap = this.htmlElement("div", "min-w-0 flex-1");
+    const icon = htmlImage(meta.icon, "", "aq-page-header-icon");
+    const titleWrap = htmlElement("div", "min-w-0 flex-1");
     titleWrap.append(
-      this.htmlElement("h1", "aq-page-title", [meta.title]),
-      this.htmlElement("p", "aq-page-subtitle", [meta.subtitle])
+      htmlElement("h1", "aq-page-title", [meta.title]),
+      htmlElement("p", "aq-page-subtitle", [meta.subtitle])
     );
     header.append(icon, titleWrap, this.htmlButton("X CLOSE", "aq-page-close", () => this.closePage()));
 
-    const content = this.htmlElement("div", "aq-page-content");
+    const content = htmlElement("div", "aq-page-content");
     if (this.activeScreen === "tanks") {
       this.appendTanksPage(content);
     } else if (this.activeScreen === "album") {
@@ -2603,7 +2605,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private appendTanksPage(content: HTMLElement): void {
-    const shell = this.htmlElement("div", "flex h-full min-h-0 flex-col");
+    const shell = htmlElement("div", "flex h-full min-h-0 flex-col");
     shell.append(this.createTankMenuTabs());
 
     const items = this.tankMenuItems();
@@ -2612,17 +2614,17 @@ export class AquariumScene extends Phaser.Scene {
     this.tankMenuPage = Phaser.Math.Clamp(this.tankMenuPage, 1, maxPage);
     const pageItems = items.slice((this.tankMenuPage - 1) * pageSize, this.tankMenuPage * pageSize);
 
-    const grid = this.htmlElement("div", "grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 overflow-hidden");
+    const grid = htmlElement("div", "grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-2 overflow-hidden");
     if (pageItems.length === 0) {
       grid.append(this.tankMenuEmptyCard());
     } else {
       pageItems.forEach((item) => grid.append(item));
     }
 
-    const pager = this.htmlElement("footer", "mt-2 flex shrink-0 items-center justify-between gap-2");
+    const pager = htmlElement("footer", "mt-2 flex shrink-0 items-center justify-between gap-2");
     pager.append(
       this.htmlButton("<", "min-h-9 min-w-14 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-base font-black", () => this.changeTankMenuPage(-1)),
-      this.htmlElement("div", "text-xs font-black text-cyan-100", [`Page ${formatNumber(this.tankMenuPage)}/${formatNumber(maxPage)}`]),
+      htmlElement("div", "text-xs font-black text-cyan-100", [`Page ${formatNumber(this.tankMenuPage)}/${formatNumber(maxPage)}`]),
       this.htmlButton(">", "min-h-9 min-w-14 rounded-xl border border-cyan-200/30 bg-sky-900/80 text-base font-black", () => this.changeTankMenuPage(1))
     );
 
@@ -2638,14 +2640,14 @@ export class AquariumScene extends Phaser.Scene {
       { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png" },
       { tab: "utility", label: "Util", icon: foodDispenserAssetPath }
     ];
-    const row = this.htmlElement("nav", "mb-2 flex shrink-0 gap-1.5");
+    const row = htmlElement("nav", "mb-2 flex shrink-0 gap-1.5");
     tabs.forEach((item) => {
       const tabButton = this.htmlButton("", `aq-tab ${this.tankMenuTab === item.tab ? "aq-tab-active" : ""}`, () => {
         this.tankMenuTab = item.tab;
         this.tankMenuPage = 1;
         this.syncHtmlPageOverlay();
       });
-      tabButton.append(this.htmlImage(item.icon, "", "h-5 w-5 object-contain"), document.createTextNode(item.label));
+      tabButton.append(htmlImage(item.icon, "", "h-5 w-5 object-contain"), document.createTextNode(item.label));
       row.append(tabButton);
     });
     return row;
@@ -2687,38 +2689,38 @@ export class AquariumScene extends Phaser.Scene {
 
   private createTankHtmlCard(level: number): HTMLElement {
     const owned = this.hasTankLevel(level);
-    const card = this.htmlElement("article", `aq-tank-grid-card ${level === this.tankLevel ? "is-active" : ""}`);
+    const card = htmlElement("article", `aq-tank-grid-card ${level === this.tankLevel ? "is-active" : ""}`);
     const imageUrl = this.tankCardBackgroundUrl(level);
     if (imageUrl) {
-      card.append(this.htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
+      card.append(htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
     } else {
       card.style.setProperty("--tank-accent", this.hexColor(this.tankAccentColor(level)));
     }
-    const overlay = this.htmlElement("div", "aq-tank-grid-overlay");
+    const overlay = htmlElement("div", "aq-tank-grid-overlay");
     overlay.append(
-      this.htmlElement("span", "aq-page-tank-level", [`Lv${formatNumber(this.tankDisplayLevel(level))}`]),
-      this.htmlElement("h3", "aq-page-card-title", [this.getTankName(level)]),
-      this.htmlElement("p", "aq-page-card-meta", [`${owned ? "Owned" : "Locked"} | ${formatNumber(this.fishInTank(level).length)}/${formatNumber(this.maxFishCapacityForLevel(level))} fish`]),
-      this.htmlElement("p", "aq-page-card-copy", [`Worth ${formatNumber(this.calculateTankNetWorth(level))} | ${this.tankSummary(level)}`])
+      htmlElement("span", "aq-page-tank-level", [`Lv${formatNumber(this.tankDisplayLevel(level))}`]),
+      htmlElement("h3", "aq-page-card-title", [this.getTankName(level)]),
+      htmlElement("p", "aq-page-card-meta", [`${owned ? "Owned" : "Locked"} | ${formatNumber(this.fishInTank(level).length)}/${formatNumber(this.maxFishCapacityForLevel(level))} fish`]),
+      htmlElement("p", "aq-page-card-copy", [`Worth ${formatNumber(this.calculateTankNetWorth(level))} | ${this.tankSummary(level)}`])
     );
 
     if (owned) {
-      const actions = this.htmlElement("div", "aq-page-actions compact");
+      const actions = htmlElement("div", "aq-page-actions compact");
       actions.append(
         this.htmlButton("Name", "aq-page-button aq-page-button-muted", () => this.renameTank(level)),
         this.htmlButton(level === this.tankLevel ? "Active" : "Switch", "aq-page-button aq-page-button-good", () => this.switchTank(level))
       );
       overlay.append(actions);
     } else {
-      overlay.append(this.htmlElement("p", "aq-page-card-meta", ["Available in Shop"]));
+      overlay.append(htmlElement("p", "aq-page-card-meta", ["Available in Shop"]));
     }
     card.append(overlay);
     return card;
   }
 
   private appendCosmeticHtmlSection(content: HTMLElement, category: TankCosmeticCategory, title: string): void {
-    content.append(this.htmlElement("h2", "aq-page-section-title", [title]));
-    const grid = this.htmlElement("div", "aq-page-mini-grid");
+    content.append(htmlElement("h2", "aq-page-section-title", [title]));
+    const grid = htmlElement("div", "aq-page-mini-grid");
     this.tankCosmetics(category)
       .filter((asset) => this.ownsTankCosmetic(asset))
       .forEach((asset) => grid.append(this.createCosmeticHtmlCard(asset)));
@@ -2729,19 +2731,19 @@ export class AquariumScene extends Phaser.Scene {
     const inventory = this.tankCosmeticInventory(asset.category);
     const owned = (inventory.get(asset.id) ?? 0) > 0;
     const selected = this.selectedTankCosmeticId(asset.category) === asset.id;
-    const card = this.htmlElement("article", `aq-tank-grid-card ${selected ? "is-active" : ""}`);
+    const card = htmlElement("article", `aq-tank-grid-card ${selected ? "is-active" : ""}`);
     this.attachTouchFeedback(card);
     const imageUrl = this.tankCosmeticImageUrl(asset);
     if (imageUrl) {
-      card.append(this.htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
+      card.append(htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
     } else {
       card.style.backgroundColor = this.hexColor(asset.tint);
     }
     card.append(this.createBlueTintPreviewOverlay(this.tankCosmeticBlueTintIntensity(asset.category, asset.id)));
-    const overlay = this.htmlElement("div", "aq-tank-grid-overlay");
+    const overlay = htmlElement("div", "aq-tank-grid-overlay");
     overlay.append(
-      this.htmlElement("span", "aq-page-mini-title", [asset.name]),
-      this.htmlElement("span", "aq-page-mini-meta", [selected ? "Active" : "Owned"]),
+      htmlElement("span", "aq-page-mini-title", [asset.name]),
+      htmlElement("span", "aq-page-mini-meta", [selected ? "Active" : "Owned"]),
       this.createCosmeticTintHtmlControl(asset),
       this.htmlButton(selected ? "Active" : "Apply", "aq-page-button aq-page-button-good aq-cosmetic-apply-button", () => this.useTankCosmetic(asset), selected)
     );
@@ -2751,9 +2753,9 @@ export class AquariumScene extends Phaser.Scene {
 
   private createCosmeticTintHtmlControl(asset: TankCosmetic): HTMLElement {
     const value = Math.round(this.tankCosmeticBlueTintIntensity(asset.category, asset.id));
-    const valueText = this.htmlElement("span", "shrink-0", [`${formatNumber(value)}%`]);
-    const label = this.htmlElement("div", "aq-store-tint-label", [
-      this.htmlElement("span", "truncate", ["Blue tint"]),
+    const valueText = htmlElement("span", "shrink-0", [`${formatNumber(value)}%`]);
+    const label = htmlElement("div", "aq-store-tint-label", [
+      htmlElement("span", "truncate", ["Blue tint"]),
       valueText
     ]);
     const input = document.createElement("input");
@@ -2775,11 +2777,11 @@ export class AquariumScene extends Phaser.Scene {
       }
       this.setTankCosmeticBlueTintFromStore(asset.category, asset.id, nextValue);
     });
-    return this.htmlElement("div", "aq-store-tint-control aq-cosmetic-tint-control", [label, input]);
+    return htmlElement("div", "aq-store-tint-control aq-cosmetic-tint-control", [label, input]);
   }
 
   private createBlueTintPreviewOverlay(intensity: number): HTMLElement {
-    const overlay = this.htmlElement("div", "aq-blue-tint-preview");
+    const overlay = htmlElement("div", "aq-blue-tint-preview");
     this.updateBlueTintPreviewOverlay(overlay, intensity);
     return overlay;
   }
@@ -2789,8 +2791,8 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private appendDecorationHtmlSection(content: HTMLElement): void {
-    content.append(this.htmlElement("h2", "aq-page-section-title", ["Decorations"]));
-    const grid = this.htmlElement("div", "aq-page-card-grid");
+    content.append(htmlElement("h2", "aq-page-section-title", ["Decorations"]));
+    const grid = htmlElement("div", "aq-page-card-grid");
     decorationTypes
       .filter((decorationType) => decorationSizeOrder.some((size) => this.getDecorationInventory(decorationType.id, size) > 0))
       .forEach((decorationType) => grid.append(this.createDecorationHtmlCard(decorationType)));
@@ -2801,14 +2803,14 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createDecorationHtmlCard(decorationType: DecorationType): HTMLElement {
-    const card = this.htmlElement("article", "aq-tank-grid-card");
-    card.append(this.htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-tank-grid-image contain"));
-    const overlay = this.htmlElement("div", "aq-tank-grid-overlay");
+    const card = htmlElement("article", "aq-tank-grid-card");
+    card.append(htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-tank-grid-image contain"));
+    const overlay = htmlElement("div", "aq-tank-grid-overlay");
     overlay.append(
-      this.htmlElement("h3", "aq-page-card-title", [decorationType.name]),
-      this.htmlElement("p", "aq-page-card-meta", [`${this.rarityStarsLabel(decorationType.rarity)} | +${formatNumber(decorationType.happinessBonus)} happy`])
+      htmlElement("h3", "aq-page-card-title", [decorationType.name]),
+      htmlElement("p", "aq-page-card-meta", [`${this.rarityStarsLabel(decorationType.rarity)} | +${formatNumber(decorationType.happinessBonus)} happy`])
     );
-    const sizeGrid = this.htmlElement("div", "aq-page-size-grid");
+    const sizeGrid = htmlElement("div", "aq-page-size-grid");
     decorationSizeOrder.forEach((size) => {
       const owned = this.getDecorationInventory(decorationType.id, size);
       if (owned <= 0) {
@@ -2829,13 +2831,13 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createFoodDispenserHtmlCard(): HTMLElement {
-    const card = this.htmlElement("article", "aq-tank-grid-card");
+    const card = htmlElement("article", "aq-tank-grid-card");
     card.append(
-      this.htmlImage(foodDispenserAssetPath, "", "aq-tank-grid-image contain"),
-      this.htmlElement("div", "aq-tank-grid-overlay", [
-        this.htmlElement("h3", "aq-page-card-title", ["Food Dispenser"]),
-        this.htmlElement("p", "aq-page-card-meta", [`Food ${this.foodBadgeLabel(this.getTotalDispenserInventory())}`]),
-        this.htmlElement("p", "aq-page-card-copy", ["Drag on the tank edge to reposition. Dispenses owned fish food automatically."])
+      htmlImage(foodDispenserAssetPath, "", "aq-tank-grid-image contain"),
+      htmlElement("div", "aq-tank-grid-overlay", [
+        htmlElement("h3", "aq-page-card-title", ["Food Dispenser"]),
+        htmlElement("p", "aq-page-card-meta", [`Food ${this.foodBadgeLabel(this.getTotalDispenserInventory())}`]),
+        htmlElement("p", "aq-page-card-copy", ["Drag on the tank edge to reposition. Dispenses owned fish food automatically."])
       ])
     );
     return card;
@@ -2843,17 +2845,17 @@ export class AquariumScene extends Phaser.Scene {
 
   private appendAlbumPage(content: HTMLElement): void {
     content.classList.add("aq-page-content-scroll");
-    content.append(this.htmlElement("h2", "aq-page-section-title", ["Fish"]));
-    const fishList = this.htmlElement("div", "aq-album-list");
+    content.append(htmlElement("h2", "aq-page-section-title", ["Fish"]));
+    const fishList = htmlElement("div", "aq-album-list");
     const activeFish = this.activeFish();
     if (activeFish.length === 0) {
       fishList.append(this.htmlEmptyCard("No fish in this tank", "Buy fish from Shop, then drag them from the dock."));
     } else {
       activeFish.forEach((fish) => fishList.append(this.createFishAlbumRow(fish, this.fish.indexOf(fish))));
     }
-    content.append(fishList, this.htmlElement("h2", "aq-page-section-title", ["Helpers"]));
+    content.append(fishList, htmlElement("h2", "aq-page-section-title", ["Helpers"]));
 
-    const helperList = this.htmlElement("div", "aq-album-list");
+    const helperList = htmlElement("div", "aq-album-list");
     const helpers = this.activeHelperCreatures();
     if (helpers.length === 0) {
       helperList.append(this.htmlEmptyCard("No helpers in this tank", "Buy helpers from Shop, then drag them from the dock."));
@@ -2865,23 +2867,23 @@ export class AquariumScene extends Phaser.Scene {
 
   private createFishAlbumRow(fish: Fish, index: number): HTMLElement {
     const growthStatus = fish.isGrowthLimitedByTank() ? "Max screen size" : "Growing";
-    const row = this.htmlElement("article", "aq-album-row fish");
+    const row = htmlElement("article", "aq-album-row fish");
     const fullnessValue = Math.round(Phaser.Math.Clamp(fish.fullnessRatio(), 0, 1) * 100);
     const happyValue = this.fishHappinessPercent(fish);
-    const stats = this.htmlElement("div", "aq-album-stat-grid", [
+    const stats = htmlElement("div", "aq-album-stat-grid", [
       this.albumBarStat("Full", fullnessValue, this.albumPositiveTone(fullnessValue)),
       this.albumBarStat("Happy", happyValue, this.albumHappyTone(happyValue))
     ]);
     const status = fish.hudStatusLabel();
-    const imageWrap = this.htmlElement("div", `aq-album-fish-avatar is-${status}`, [
-      this.htmlImage(`/assets/fish/${fish.type.id}.png`, "", "aq-album-row-image fish"),
-      this.htmlElement("span", "", [fish.hudStatusIcon()])
+    const imageWrap = htmlElement("div", `aq-album-fish-avatar is-${status}`, [
+      htmlImage(`/assets/fish/${fish.type.id}.png`, "", "aq-album-row-image fish"),
+      htmlElement("span", "", [fish.hudStatusIcon()])
     ]);
     imageWrap.title = `${fish.type.name}: ${status}`;
-    const body = this.htmlElement("div", "aq-album-row-body", [
-      this.htmlElement("h3", "aq-album-row-title", [fish.type.name]),
-      this.htmlElement("p", "aq-album-row-meta", [`${fish.gender} | ${fish.ageLabel()} | ${this.rarityLabel(fish.type.rarity)} | ${fish.state}`]),
-      this.htmlElement("p", "aq-album-row-copy", [`${growthStatus} | ${fish.lengthLabel()} | ${fish.weightLabel()} | ${fish.productionSummary()}`]),
+    const body = htmlElement("div", "aq-album-row-body", [
+      htmlElement("h3", "aq-album-row-title", [fish.type.name]),
+      htmlElement("p", "aq-album-row-meta", [`${fish.gender} | ${fish.ageLabel()} | ${this.rarityLabel(fish.type.rarity)} | ${fish.state}`]),
+      htmlElement("p", "aq-album-row-copy", [`${growthStatus} | ${fish.lengthLabel()} | ${fish.weightLabel()} | ${fish.productionSummary()}`]),
       stats
     ]);
     row.append(
@@ -2894,14 +2896,14 @@ export class AquariumScene extends Phaser.Scene {
 
   private createHelperAlbumRow(helper: HelperCreature, index: number): HTMLElement {
     const role = helper.type.id === "feeder-snail" ? "Pet" : helper.type.tankCleanSeconds ? "Auto Cleaner" : helper.type.habitatTags.includes("collector") ? "Collector" : "Cleaner";
-    const row = this.htmlElement("article", "aq-album-row helper");
-    const body = this.htmlElement("div", "aq-album-row-body", [
-      this.htmlElement("h3", "aq-album-row-title", [helper.type.name]),
-      this.htmlElement("p", "aq-album-row-meta", [`${this.rarityLabel(helper.type.rarity)} | ${role}`]),
-      this.htmlElement("p", "aq-album-row-copy", [`Speed ${formatNumber(helper.type.speed)} | Sell ${formatPrice(this.helperSellPrice(helper.type))}`])
+    const row = htmlElement("article", "aq-album-row helper");
+    const body = htmlElement("div", "aq-album-row-body", [
+      htmlElement("h3", "aq-album-row-title", [helper.type.name]),
+      htmlElement("p", "aq-album-row-meta", [`${this.rarityLabel(helper.type.rarity)} | ${role}`]),
+      htmlElement("p", "aq-album-row-copy", [`Speed ${formatNumber(helper.type.speed)} | Sell ${formatPrice(this.helperSellPrice(helper.type))}`])
     ]);
     row.append(
-      this.htmlImage(`/assets/helpers/${helper.type.id}.png`, "", "aq-album-row-image helper"),
+      htmlImage(`/assets/helpers/${helper.type.id}.png`, "", "aq-album-row-image helper"),
       body,
       this.htmlButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showHelperSellConfirmation(index))
     );
@@ -2909,19 +2911,19 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private albumStat(label: string, value: string): HTMLElement {
-    return this.htmlElement("span", "aq-album-stat", [
-      this.htmlElement("small", "", [label]),
-      this.htmlElement("strong", "", [value])
+    return htmlElement("span", "aq-album-stat", [
+      htmlElement("small", "", [label]),
+      htmlElement("strong", "", [value])
     ]);
   }
 
   private albumBarStat(label: string, value: number, tone: string): HTMLElement {
-    const stat = this.htmlElement("span", `aq-album-stat aq-album-bar-stat ${tone}`);
-    const bar = this.htmlElement("span", "aq-album-bar");
-    const fill = this.htmlElement("span", "aq-album-bar-fill");
+    const stat = htmlElement("span", `aq-album-stat aq-album-bar-stat ${tone}`);
+    const bar = htmlElement("span", "aq-album-bar");
+    const fill = htmlElement("span", "aq-album-bar-fill");
     fill.style.width = `${Phaser.Math.Clamp(value, 0, 100)}%`;
     bar.append(fill);
-    stat.append(this.htmlElement("small", "", [label]), bar);
+    stat.append(htmlElement("small", "", [label]), bar);
     return stat;
   }
 
@@ -2976,26 +2978,26 @@ export class AquariumScene extends Phaser.Scene {
   private appendGoalsPage(content: HTMLElement): void {
     content.classList.add("aq-page-content-scroll");
     const goals = this.visibleDailyQuestItems();
-    const list = this.htmlElement("div", "aq-quest-list");
+    const list = htmlElement("div", "aq-quest-list");
     if (goals.length === 0) {
       list.append(this.htmlEmptyCard("All quests complete", "Come back tomorrow for a fresh route through the tank."));
     }
     goals.forEach((goal) => {
       const claimed = this.dailyGoals.claimed.includes(goal.id);
-      const row = this.htmlElement("article", `aq-quest-row ${claimed ? "is-muted" : ""} ${goal.complete && !claimed ? "is-ready" : ""}`);
-      const status = this.htmlElement("span", "aq-quest-status", [claimed ? "Done" : goal.complete ? "Ready" : "Todo"]);
-      const body = this.htmlElement("div", "aq-quest-body", [
-        this.htmlElement("h3", "aq-quest-title", [goal.label]),
-        this.htmlElement("p", "aq-quest-reward", [`Reward ${formatPrice(goal.reward)}`])
+      const row = htmlElement("article", `aq-quest-row ${claimed ? "is-muted" : ""} ${goal.complete && !claimed ? "is-ready" : ""}`);
+      const status = htmlElement("span", "aq-quest-status", [claimed ? "Done" : goal.complete ? "Ready" : "Todo"]);
+      const body = htmlElement("div", "aq-quest-body", [
+        htmlElement("h3", "aq-quest-title", [goal.label]),
+        htmlElement("p", "aq-quest-reward", [`Reward ${formatPrice(goal.reward)}`])
       ]);
       row.append(
         status,
         body,
         claimed
-          ? this.htmlElement("span", "aq-quest-claimed", ["Claimed"])
+          ? htmlElement("span", "aq-quest-claimed", ["Claimed"])
           : goal.complete
             ? this.htmlButton("Claim", "aq-page-button aq-page-button-good aq-quest-button", () => this.claimDailyGoal(goal.id, goal.complete))
-            : this.htmlElement("span", "aq-quest-pending", [""])
+            : htmlElement("span", "aq-quest-pending", [""])
       );
       list.append(row);
     });
@@ -3004,12 +3006,12 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private appendRewardedAdsPage(content: HTMLElement): void {
-    const section = this.htmlElement("section", "aq-rewarded-ad-section");
+    const section = htmlElement("section", "aq-rewarded-ad-section");
     section.append(
-      this.htmlElement("h2", "aq-page-section-title", ["Rewarded Ads"]),
-      this.htmlElement("p", "aq-rewarded-ad-copy", ["Watch a 30s simulated ad, then claim one selected reward."])
+      htmlElement("h2", "aq-page-section-title", ["Rewarded Ads"]),
+      htmlElement("p", "aq-rewarded-ad-copy", ["Watch a 30s simulated ad, then claim one selected reward."])
     );
-    const grid = this.htmlElement("div", "aq-rewarded-ad-list");
+    const grid = htmlElement("div", "aq-rewarded-ad-list");
     this.rewardedAdOptions().forEach((option) => grid.append(this.rewardedAdCard(option)));
     section.append(grid);
     content.append(section);
@@ -3024,12 +3026,12 @@ export class AquariumScene extends Phaser.Scene {
     const blocked = this.rewardedAd !== undefined && !active;
     const remainingSeconds = active && this.rewardedAd ? rewardedAdRemainingSeconds(this.rewardedAd) : 0;
     const ready = active && remainingSeconds <= 0;
-    const card = this.htmlElement("article", `aq-rewarded-ad-card ${ready ? "is-ready" : ""}`);
+    const card = htmlElement("article", `aq-rewarded-ad-card ${ready ? "is-ready" : ""}`);
     card.append(
-      this.htmlImage(option.icon, "", "aq-rewarded-ad-icon"),
-      this.htmlElement("div", "aq-rewarded-ad-body", [
-        this.htmlElement("h3", "aq-rewarded-ad-title", [option.title]),
-        this.htmlElement("p", "aq-rewarded-ad-reward", [option.detail])
+      htmlImage(option.icon, "", "aq-rewarded-ad-icon"),
+      htmlElement("div", "aq-rewarded-ad-body", [
+        htmlElement("h3", "aq-rewarded-ad-title", [option.title]),
+        htmlElement("p", "aq-rewarded-ad-reward", [option.detail])
       ]),
       ready
         ? this.htmlButton("Claim", "aq-page-button aq-page-button-good aq-rewarded-ad-button", () => this.claimRewardedAd(option.kind))
@@ -3039,22 +3041,22 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private appendSettingsPage(content: HTMLElement): void {
-    const grid = this.htmlElement("div", "aq-page-card-grid");
+    const grid = htmlElement("div", "aq-page-card-grid");
     [
       ["Sound", this.settings.sound, () => this.toggleSetting("sound")],
       ["Motion", !this.settings.reducedMotion, () => this.toggleSetting("reducedMotion")],
       ["Notify", this.settings.notifications, () => this.toggleSetting("notifications")]
     ].forEach(([label, enabled, action]) => {
-      const card = this.htmlElement("article", "aq-page-card");
+      const card = htmlElement("article", "aq-page-card");
       card.append(
-        this.htmlElement("h3", "aq-page-card-title", [String(label)]),
-        this.htmlElement("p", "aq-page-card-meta", [enabled ? "On" : "Off"]),
+        htmlElement("h3", "aq-page-card-title", [String(label)]),
+        htmlElement("p", "aq-page-card-meta", [enabled ? "On" : "Off"]),
         this.htmlButton(enabled ? "Turn Off" : "Turn On", "aq-page-button", action as () => void)
       );
       grid.append(card);
     });
 
-    const musicCard = this.htmlElement("article", "aq-page-card aq-settings-music-card");
+    const musicCard = htmlElement("article", "aq-page-card aq-settings-music-card");
     const volumeInput = document.createElement("input");
     volumeInput.className = "aq-settings-range";
     volumeInput.type = "range";
@@ -3065,10 +3067,10 @@ export class AquariumScene extends Phaser.Scene {
     volumeInput.addEventListener("input", () => this.setMusicVolume(Number(volumeInput.value), false));
     volumeInput.addEventListener("change", () => this.setMusicVolume(Number(volumeInput.value), true));
     musicCard.append(
-      this.htmlElement("h3", "aq-page-card-title", ["Music"]),
-      this.htmlElement("p", "aq-page-card-meta", [`${this.settings.music ? "On" : "Off"} | Volume ${formatNumber(this.settings.musicVolume)}%`]),
+      htmlElement("h3", "aq-page-card-title", ["Music"]),
+      htmlElement("p", "aq-page-card-meta", [`${this.settings.music ? "On" : "Off"} | Volume ${formatNumber(this.settings.musicVolume)}%`]),
       volumeInput,
-      this.htmlElement("div", "aq-settings-volume-actions", [
+      htmlElement("div", "aq-settings-volume-actions", [
         this.htmlButton("-", "aq-page-button aq-page-button-muted aq-settings-volume-button", () => this.setMusicVolume(this.settings.musicVolume - 5, true)),
         this.htmlButton(this.settings.music ? "Turn Off" : "Turn On", "aq-page-button aq-settings-volume-toggle", () => this.toggleSetting("music")),
         this.htmlButton("+", "aq-page-button aq-page-button-muted aq-settings-volume-button", () => this.setMusicVolume(this.settings.musicVolume + 5, true))
@@ -3076,7 +3078,7 @@ export class AquariumScene extends Phaser.Scene {
     );
     grid.prepend(musicCard);
 
-    const actions = this.htmlElement("div", "aq-page-actions");
+    const actions = htmlElement("div", "aq-page-actions");
     actions.append(
       this.htmlButton("Offline Summary", "aq-page-button aq-page-button-good", () => this.showOfflineSummary()),
       this.htmlButton("Reset Save", "aq-page-button aq-page-button-danger", () => this.showResetConfirmation())
@@ -3085,14 +3087,14 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createDeveloperSettingsCard(): HTMLElement {
-    const card = this.htmlElement("article", "aq-page-card aq-dev-settings-card");
+    const card = htmlElement("article", "aq-page-card aq-dev-settings-card");
     card.append(
-      this.htmlElement("h3", "aq-page-card-title", ["Developer"]),
-      this.htmlElement("p", "aq-page-card-meta", [this.developerGodMode ? "God mode unlocked" : "Locked"])
+      htmlElement("h3", "aq-page-card-title", ["Developer"]),
+      htmlElement("p", "aq-page-card-meta", [this.developerGodMode ? "God mode unlocked" : "Locked"])
     );
 
     if (!this.developerGodMode) {
-      const row = this.htmlElement("div", "aq-dev-unlock-row");
+      const row = htmlElement("div", "aq-dev-unlock-row");
       const input = document.createElement("input");
       input.type = "password";
       input.inputMode = "numeric";
@@ -3119,21 +3121,21 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     card.append(
-      this.htmlElement("p", "aq-page-card-copy", ["10K of each coin, max tank level, no shop price, level, or hourly purchase gates."]),
+      htmlElement("p", "aq-page-card-copy", ["10K of each coin, max tank level, no shop price, level, or hourly purchase gates."]),
       this.htmlButton("Grant God Mode", "aq-page-button aq-page-button-good", () => this.grantDeveloperGodMode())
     );
     return card;
   }
 
   private htmlEmptyCard(title: string, detail: string): HTMLElement {
-    const card = this.htmlElement("article", "aq-page-card aq-page-empty");
-    card.append(this.htmlElement("h3", "aq-page-card-title", [title]), this.htmlElement("p", "aq-page-card-copy", [detail]));
+    const card = htmlElement("article", "aq-page-card aq-page-empty");
+    card.append(htmlElement("h3", "aq-page-card-title", [title]), htmlElement("p", "aq-page-card-copy", [detail]));
     return card;
   }
 
   private htmlStat(label: string, value: string): HTMLElement {
-    const stat = this.htmlElement("div", "aq-page-stat");
-    stat.append(this.htmlElement("span", "aq-page-stat-label", [label]), this.htmlElement("span", "aq-page-stat-value", [value]));
+    const stat = htmlElement("div", "aq-page-stat");
+    stat.append(htmlElement("span", "aq-page-stat-label", [label]), htmlElement("span", "aq-page-stat-value", [value]));
     return stat;
   }
 
@@ -3171,46 +3173,15 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private htmlButton(label: string, className: string, onClick: () => void, disabled = false): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = className;
-    button.textContent = label;
-    button.disabled = disabled;
-    this.attachTouchFeedback(button);
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (button.disabled) {
-        return;
-      }
-      onClick();
-      if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
-        this.syncHtmlPageOverlay();
+    return createHtmlButton(label, className, onClick, {
+      disabled,
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
+      afterClick: () => {
+        if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
+          this.syncHtmlPageOverlay();
+        }
       }
     });
-    return button;
-  }
-
-  private htmlImage(src: string, alt: string, className: string): HTMLImageElement {
-    const image = document.createElement("img");
-    image.src = src;
-    image.alt = alt;
-    image.className = className;
-    image.draggable = false;
-    return image;
-  }
-
-  private htmlElement<K extends keyof HTMLElementTagNameMap>(
-    tagName: K,
-    className = "",
-    children: Array<Node | string> = []
-  ): HTMLElementTagNameMap[K] {
-    const element = document.createElement(tagName);
-    if (className) {
-      element.className = className;
-    }
-    children.forEach((child) => element.append(child));
-    return element;
   }
 
   private tankCosmeticImageUrl(asset: TankCosmetic): string | undefined {
@@ -5855,51 +5826,16 @@ export class AquariumScene extends Phaser.Scene {
     this.closeModal();
     this.modalTitle = "Rewarded Ad";
 
-    const shell = this.htmlElement("div", "aq-modal-shell aq-ad-modal-shell");
-    shell.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
+    const modal = createRewardedAdModalShell({
+      icon: option?.icon ?? "/assets/ui/shop/coin_icon_common.png",
+      rewardDetail: option?.detail ?? "bonus",
+      onClaim: () => this.claimRewardedAd(kind),
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button)
     });
-    shell.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-    });
-
-    const panel = this.htmlElement("section", "aq-modal aq-ad-modal");
-    this.rewardedAdCountdownText = this.htmlElement("span", "aq-ad-countdown", ["30"]) as HTMLSpanElement;
-    this.rewardedAdModalButton = document.createElement("button");
-    this.rewardedAdModalButton.type = "button";
-    this.rewardedAdModalButton.className = "aq-modal-button good aq-ad-claim-button";
-    this.rewardedAdModalButton.disabled = true;
-    this.rewardedAdModalButton.textContent = "Watching 30s";
-    this.rewardedAdModalButton.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.claimRewardedAd(kind);
-    });
-
-    panel.append(
-      this.htmlElement("h2", "aq-modal-title", ["Rewarded Ad"]),
-      this.htmlElement("div", "aq-ad-video", [
-        this.htmlElement("div", "aq-ad-video-screen", [
-          this.htmlImage(option?.icon ?? "/assets/ui/shop/coin_icon_common.png", "", "aq-ad-video-icon"),
-          this.htmlElement("span", "aq-ad-video-label", ["Sponsored Break"])
-        ])
-      ]),
-      this.htmlElement("div", "aq-modal-body aq-ad-modal-body", [
-        this.htmlElement("p", "aq-modal-line", [`Reward: ${option?.detail ?? "bonus"}`]),
-        this.htmlElement("p", "aq-modal-line", ["Please wait until the ad finishes."])
-      ]),
-      this.htmlElement("div", "aq-ad-countdown-wrap", [
-        this.rewardedAdCountdownText,
-        this.htmlElement("span", "aq-ad-countdown-unit", ["s"])
-      ]),
-      this.htmlElement("div", "aq-modal-actions single", [this.rewardedAdModalButton])
-    );
-
-    shell.append(panel);
-    document.body.appendChild(shell);
-    this.modal = shell;
+    this.rewardedAdCountdownText = modal.countdownText;
+    this.rewardedAdModalButton = modal.claimButton;
+    document.body.appendChild(modal.shell);
+    this.modal = modal.shell;
     this.updateRewardedAdModal();
   }
 
@@ -6251,70 +6187,23 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
-  private showModal(
-    title: string,
-    lines: string[],
-    actions: Array<{ label: string; fill: number; action: () => void }>
-  ): void {
+  private showModal(title: string, lines: string[], actions: ModalAction[]): void {
     this.closeModal();
     this.modalTitle = title;
 
-    const shell = this.htmlElement("div", "aq-modal-shell");
-    shell.addEventListener("pointerdown", (event) => {
-      event.stopPropagation();
-    });
-    shell.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-
-    const panel = this.htmlElement("section", "aq-modal");
-    panel.append(
-      this.htmlElement("h2", "aq-modal-title", [title]),
-      this.htmlElement("div", "aq-modal-body", lines.map((line) => this.htmlElement("p", "aq-modal-line", [line])))
-    );
-
-    const actionRow = this.htmlElement("div", `aq-modal-actions ${actions.length === 1 ? "single" : ""}`);
-    actions.forEach((action) => {
-      actionRow.append(this.createModalButton(action.label, action.fill, action.action));
-    });
-    panel.append(actionRow);
-
-    shell.append(panel);
-    document.body.appendChild(shell);
-    this.modal = shell;
-  }
-
-  private createModalButton(
-    label: string,
-    fill: number,
-    action: () => void
-  ): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `aq-modal-button ${this.modalButtonTone(fill)}`;
-    button.textContent = label;
-    this.attachTouchFeedback(button);
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      action();
-      if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
-        this.syncHtmlPageOverlay();
+    const shell = createModalShell({
+      title,
+      lines,
+      actions,
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
+      afterAction: () => {
+        if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
+          this.syncHtmlPageOverlay();
+        }
       }
     });
-    return button;
-  }
-
-  private modalButtonTone(fill: number): string {
-    if (fill === 0x76512d) {
-      return "danger";
-    }
-
-    if (fill === 0x356a35) {
-      return "good";
-    }
-
-    return "muted";
+    document.body.appendChild(shell);
+    this.modal = shell;
   }
 
   private closeModal(): void {

@@ -4,6 +4,7 @@ import { canAfford, formatNumber, formatPrice, priceComponents } from "../game/e
 import { hiddenFoodTypeIds, supplyFoodTypeIds } from "../game/food-system";
 import { foodCssFilterFor } from "../game/visuals";
 import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
+import { createHtmlButton, htmlElement, htmlImage } from "./dom";
 
 type StoreDecorationSize = "s" | "m" | "l" | "xl";
 type TankStoreCategory = "tank" | "background" | "seabed" | "tools" | "decorations";
@@ -871,40 +872,17 @@ export class StoreOverlay {
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ""): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  if (className) {
-    node.className = className;
-  }
-  return node;
+  return htmlElement(tag, className);
 }
 
 function div(className: string, children: Array<Node | string> = []): HTMLDivElement {
-  const node = el("div", className);
-  node.append(...children);
-  return node;
+  return htmlElement("div", className, children);
 }
 
 function image(src: string, alt: string, className: string): HTMLImageElement {
-  const node = el("img", className);
-  node.src = src;
-  node.alt = alt;
-  node.draggable = false;
-  return node;
+  return htmlImage(src, alt, className);
 }
 
 function button(label: string, className: string, onClick: () => void, disabled = false): HTMLButtonElement {
-  const node = el("button", className);
-  node.type = "button";
-  node.disabled = disabled;
-  if (label) {
-    node.textContent = label;
-  }
-  node.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!node.disabled) {
-      onClick();
-    }
-  });
-  return node;
+  return createHtmlButton(label, className, onClick, { disabled });
 }
