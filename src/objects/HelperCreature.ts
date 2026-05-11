@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { tankBounds } from "../game/constants";
+import { creatureFoodTypeId } from "../game/food-system";
 import type { CoinDrop } from "./CoinDrop";
 import type { Fish } from "./Fish";
 import type { FoodPellet } from "./FoodPellet";
@@ -11,7 +12,6 @@ export type HelperCreatureAction =
   | { kind: "tankClean" };
 
 const helperBottomY = () => tankBounds.bottom - 36;
-const creatureFoodTypeId = "creature";
 const helperDisplayWidths: Record<string, number> = {
   "helper-shrimp": 60,
   "helper-shell": 52,
