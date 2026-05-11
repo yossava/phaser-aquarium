@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { basicFood, decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
+import { basicFood, decorationTypes, fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../data/content";
 import { gameHeight, gameWidth, maxRenderScale, setTankWorldScale, shouldUseLowPowerMode, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, priceComponents, spend } from "../game/economy";
 import { gameFontFamily } from "../game/fonts";
@@ -25,7 +25,25 @@ import {
   type TankRuntimeState,
   type TankStateConfig
 } from "../game/tank-state";
-import { foodTintFor, rarityStarCount } from "../game/visuals";
+import {
+  aquariumBackgroundAssetPath,
+  aquariumBackgroundTextureKey,
+  aquariumFloorAssetPath,
+  aquariumFloorTextureKey,
+  decorationSizeOrder,
+  decorationSizes,
+  decorationVariantPrice as tankCatalogDecorationVariantPrice,
+  tankCosmeticImageUrl as tankCatalogCosmeticImageUrl,
+  tankCosmetics as tankCatalogCosmetics,
+  tankTextureAssetPathByKey,
+  tankThemeTexturePairs,
+  tankThumbnailBaseAssetPath,
+  tankThumbnailBaseTextureKey,
+  type DecorationSize,
+  type TankCosmetic,
+  type TankThemeTexturePair
+} from "../game/tank-catalog";
+import { foodCssFilterFor, foodTintFor, rarityStarCount } from "../game/visuals";
 import {
   buildDailyQuestItems,
   commonQuestReward as questCommonReward,
@@ -71,7 +89,6 @@ type PlacementMode =
   | { kind: "food"; foodTypeId: FoodTypeId }
   | { kind: "decoration"; decorationTypeId: string; size: DecorationSize };
 
-type DecorationSize = "s" | "m" | "l" | "xl";
 type TankMenuTab = "tanks" | "background" | "seabed" | "decor" | "utility";
 type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; badgeLabel?: string; icon: string }
@@ -212,149 +229,6 @@ const hudIconAssetPathByKey: Record<string, string> = {
   "ui-icon-clean-status": "/assets/ui/icon-clean-status.png",
   "ui-icon-happy-status": "/assets/ui/icon-happy-status.png"
 };
-const aquariumFloorTextureKey = "aquarium-floor";
-const aquariumFloorAssetPath = "/assets/backgrounds/aquarium-floor.webp";
-const aquariumBackgroundTextureKey = "aquarium-background";
-const aquariumBackgroundAssetPath = "/assets/backgrounds/tank-background.webp";
-const tankThumbnailBaseTextureKey = "tank-thumbnail-base";
-const tankThumbnailBaseAssetPath = "/assets/backgrounds/tank-thumbnail-base.webp";
-const tankThemeIds = ["lagoon", "coral", "kelp", "crystal", "abyss", "sunset"] as const;
-const tankThemeTexturePairs = tankThemeIds.map((themeId) => ({
-  id: themeId,
-  backgroundKey: `tank-theme-${themeId}-bg`,
-  backgroundPath: `/assets/backgrounds/theme-${themeId}-bg.webp`,
-  floorKey: `tank-theme-${themeId}-floor`,
-  floorPath: `/assets/backgrounds/theme-${themeId}-floor.webp`
-}));
-type TankThemeTexturePair = (typeof tankThemeTexturePairs)[number];
-const generatedTankBackgrounds = [
-  ["lagoon_depth", "Lagoon Depth"],
-  ["coral_garden", "Coral Garden"],
-  ["kelp_forest", "Kelp Forest"],
-  ["crystal_cavern", "Crystal Cavern"],
-  ["abyss_blue", "Abyss Blue"],
-  ["sunset_shallows", "Sunset Shallows"],
-  ["freshwater_plants", "Freshwater Plants"],
-  ["misty_ruins", "Misty Ruins"],
-  ["mangrove_roots", "Mangrove Roots"],
-  ["volcanic_reef", "Volcanic Reef"],
-  ["glowing_plankton", "Glowing Plankton"],
-  ["arctic_glass", "Arctic Glass"],
-  ["jade_grotto", "Jade Grotto"],
-  ["pearl_cave", "Pearl Cave"],
-  ["distant_shipwreck", "Distant Shipwreck"],
-  ["lily_freshwater", "Lily Freshwater"],
-  ["moonlit_reef", "Moonlit Reef"],
-  ["opal_cavern", "Opal Cavern"],
-  ["golden_shallows", "Golden Shallows"],
-  ["deep_temple", "Deep Temple"]
-] as const;
-const generatedTankSeabeds = [
-  ["lagoon_sand", "Lagoon Sand"],
-  ["coral_rubble", "Coral Rubble"],
-  ["kelp_mud", "Kelp Mud"],
-  ["crystal_gravel", "Crystal Gravel"],
-  ["abyss_black_sand", "Abyss Black Sand"],
-  ["sunset_sand", "Sunset Sand"],
-  ["freshwater_pebbles", "Freshwater Pebbles"],
-  ["ruin_tiles", "Ruin Tiles"],
-  ["mangrove_silt", "Mangrove Silt"],
-  ["volcanic_basalt", "Volcanic Basalt"],
-  ["glowing_plankton_sand", "Glowing Plankton Sand"],
-  ["arctic_pale_gravel", "Arctic Pale Gravel"],
-  ["jade_moss_stone", "Jade Moss Stone"],
-  ["pearl_shell_sand", "Pearl Shell Sand"],
-  ["shipwreck_planks", "Shipwreck Planks"],
-  ["lily_pond_mud", "Lily Pond Mud"],
-  ["moonlit_silver_sand", "Moonlit Silver Sand"],
-  ["opal_crystal_gravel", "Opal Crystal Gravel"],
-  ["golden_rippled_sand", "Golden Rippled Sand"],
-  ["deep_temple_stone", "Deep Temple Stone"]
-] as const;
-const generatedTankBackgroundTexturePairs = generatedTankBackgrounds.map(([themeId, name], index) => ({
-  id: `generated-bg-${String(index + 1).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
-  name,
-  textureKey: `tank-generated-bg-${String(index + 1).padStart(2, "0")}`,
-  path: `/assets/backgrounds/generated-bg/tank-bg-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
-}));
-const generatedTankSeabedTexturePairs = generatedTankSeabeds.map(([themeId, name], index) => ({
-  id: `generated-seabed-${String(index + 1).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
-  name,
-  textureKey: `tank-generated-seabed-${String(index + 1).padStart(2, "0")}`,
-  path: `/assets/backgrounds/generated-seabed/tank-seabed-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
-}));
-const tankTextureAssetPathByKey = new Map<string, string>([
-  [aquariumBackgroundTextureKey, aquariumBackgroundAssetPath],
-  [aquariumFloorTextureKey, aquariumFloorAssetPath],
-  ...tankThemeTexturePairs.flatMap((theme) => [
-    [theme.backgroundKey, theme.backgroundPath] as const,
-    [theme.floorKey, theme.floorPath] as const
-  ]),
-  ...generatedTankBackgroundTexturePairs.map((theme) => [theme.textureKey, theme.path] as const),
-  ...generatedTankSeabedTexturePairs.map((theme) => [theme.textureKey, theme.path] as const)
-]);
-type TankCosmetic = {
-  id: string;
-  name: string;
-  category: TankCosmeticCategory;
-  textureKey: string;
-  price: Price;
-  tint: number;
-};
-function tankCosmeticPrice(index: number, baseCommon: number): Price {
-  if (index >= 16) {
-    return { coinType: "common", amount: Math.round(baseCommon * 6), superRareAmount: 1 + Math.floor((index - 16) / 4) };
-  }
-  if (index >= 8) {
-    return { coinType: "common", amount: Math.round(baseCommon * 3), rareAmount: 1 + Math.floor((index - 8) / 4) };
-  }
-  return { coinType: "common", amount: Math.round(baseCommon) };
-}
-const tankBackgroundCosmetics: TankCosmetic[] = [
-  { id: "home", name: "Home Reef", category: "background", textureKey: aquariumBackgroundTextureKey, price: { coinType: "common", amount: 0 }, tint: 0xffffff },
-  ...generatedTankBackgroundTexturePairs.map((theme, index): TankCosmetic => ({
-    id: theme.id,
-    name: theme.name,
-    category: "background" as const,
-    textureKey: theme.textureKey,
-    price: tankCosmeticPrice(index, 900 + index * 420),
-    tint: 0xffffff
-  })),
-  ...tankThemeTexturePairs.map((theme, index): TankCosmetic => ({
-    id: theme.id,
-    name: `${theme.id[0].toUpperCase()}${theme.id.slice(1)} Water`,
-    category: "background" as const,
-    textureKey: theme.backgroundKey,
-    price: tankCosmeticPrice(index, [1600, 3200, 5200, 8400, 18000, 30000][index] ?? 1600),
-    tint: 0xffffff
-  }))
-];
-const tankSeabedCosmetics: TankCosmetic[] = [
-  { id: "home", name: "Home Sand", category: "seabed", textureKey: aquariumFloorTextureKey, price: { coinType: "common", amount: 0 }, tint: 0xffffff },
-  ...generatedTankSeabedTexturePairs.map((theme, index): TankCosmetic => ({
-    id: theme.id,
-    name: theme.name,
-    category: "seabed" as const,
-    textureKey: theme.textureKey,
-    price: tankCosmeticPrice(index, 750 + index * 320),
-    tint: 0xffffff
-  })),
-  ...tankThemeTexturePairs.map((theme, index): TankCosmetic => ({
-    id: theme.id,
-    name: `${theme.id[0].toUpperCase()}${theme.id.slice(1)} Bed`,
-    category: "seabed" as const,
-    textureKey: theme.floorKey,
-    price: tankCosmeticPrice(index, [1200, 2600, 4600, 7600, 16000, 26000][index] ?? 1200),
-    tint: 0xffffff
-  }))
-];
-const decorationSizes: Record<DecorationSize, { label: string; scale: number; priceMultiplier: number }> = {
-  s: { label: "S", scale: 0.78, priceMultiplier: 0.7 },
-  m: { label: "M", scale: 1, priceMultiplier: 1 },
-  l: { label: "L", scale: 1.28, priceMultiplier: 1.65 },
-  xl: { label: "XL", scale: 1.62, priceMultiplier: 2.6 }
-};
-const decorationSizeOrder: DecorationSize[] = ["s", "m", "l", "xl"];
 const bubbleButtonFrameTextureKey = "ui-reusable-glass-bubble-button";
 const bubbleButtonFrameAssetPath = "/assets/ui/reusable-glass-bubble-button.png";
 const coinGlowTextureKey = "coin-glow";
@@ -703,7 +577,7 @@ export class AquariumScene extends Phaser.Scene {
 
   public preload(): void {
     foodTypes.forEach((foodType) => {
-      this.load.image(this.foodTextureKey(foodType.id), `/assets/food/${foodType.id}.png`);
+      this.load.image(this.foodTextureKey(foodType.id), foodAssetPath(foodType.id));
     });
     decorationTypes.forEach((decorationType) => {
       this.load.image(decorationType.texture, `/assets/decorations/${decorationType.id}.png`);
@@ -838,7 +712,7 @@ export class AquariumScene extends Phaser.Scene {
           this.floatTankText("+3 months", currentFish.sprite.x, currentFish.sprite.y - 26, "#d9c2ff");
         } else {
           if (eatenFood.reason === "tooSmall") {
-            currentFish.showFoodNeedMessage(eatenFood.neededMealCalories);
+            currentFish.showFoodNeedMessage(this.foodNeedMessage(eatenFood.neededMealCalories));
           } else {
             this.floatTankText(eatenFood.accepted ? "Yum" : "Nope", currentFish.sprite.x, currentFish.sprite.y - 26, eatenFood.accepted ? "#f7ff9a" : "#ffb0a8");
           }
@@ -1972,7 +1846,7 @@ export class AquariumScene extends Phaser.Scene {
         label: this.foodDockLabel(foodType),
         count: this.foodInventoryDisplayCount(foodType),
         badgeLabel: this.foodInventoryBadgeLabel(foodType),
-        icon: `/assets/food/${foodType.id}.png`
+        icon: foodAssetPath(foodType.id)
       }));
     const fishItems: InventoryDockItem[] = fishTypes
       .filter((fishType) => this.getFishInventory(fishType.id) > 0)
@@ -2045,6 +1919,7 @@ export class AquariumScene extends Phaser.Scene {
     icon.draggable = false;
     if (item.kind === "food") {
       icon.classList.add("aq-food-icon", `aq-food-icon-${item.id}`);
+      icon.style.filter = foodCssFilterFor(item.id);
     }
     bubble.append(icon);
 
@@ -2091,6 +1966,7 @@ export class AquariumScene extends Phaser.Scene {
     icon.draggable = false;
     if (item.kind === "food") {
       icon.classList.add("aq-food-icon", `aq-food-icon-${item.id}`);
+      icon.style.filter = foodCssFilterFor(item.id);
     }
     ghost.append(icon);
     document.body.appendChild(ghost);
@@ -3310,22 +3186,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private tankCosmeticImageUrl(asset: TankCosmetic): string | undefined {
-    if (asset.textureKey === aquariumBackgroundTextureKey) {
-      return aquariumBackgroundAssetPath;
-    }
-    if (asset.textureKey === aquariumFloorTextureKey) {
-      return aquariumFloorAssetPath;
-    }
-    const generatedBackground = generatedTankBackgroundTexturePairs.find((theme) => theme.textureKey === asset.textureKey);
-    if (generatedBackground) {
-      return generatedBackground.path;
-    }
-    const generatedSeabed = generatedTankSeabedTexturePairs.find((theme) => theme.textureKey === asset.textureKey);
-    if (generatedSeabed) {
-      return generatedSeabed.path;
-    }
-    const theme = tankThemeTexturePairs.find((item) => item.backgroundKey === asset.textureKey || item.floorKey === asset.textureKey);
-    return theme ? asset.category === "background" ? theme.backgroundPath : theme.floorPath : undefined;
+    return tankCatalogCosmeticImageUrl(asset);
   }
 
   private tankCardBackgroundUrl(level: number): string | undefined {
@@ -3341,7 +3202,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private visibleFoodCatalog(): FoodType[] {
-    return foodTypes.filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id) && this.matchesStoreCoinFilter(foodType.price, foodType.rarity));
+    return foodTypes.filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id));
   }
 
   private visibleSupplyCatalog(): FoodType[] {
@@ -3448,7 +3309,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private tankCosmetics(category: TankCosmeticCategory): TankCosmetic[] {
-    return category === "background" ? tankBackgroundCosmetics : tankSeabedCosmetics;
+    return tankCatalogCosmetics(category);
   }
 
   private tankCosmeticById(category: TankCosmeticCategory, id: string | undefined): TankCosmetic | undefined {
@@ -5254,22 +5115,26 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private foodDockLabel(foodType: FoodType): string {
-    const labels: Record<FoodTypeId, string> = {
-      micro: "Micro",
-      basic: "S Food",
-      basicMedium: "M Food",
-      basicLarge: "L Food",
-      basicXL: "XL Food",
-      premium: "Prem",
-      herb: "Herb",
-      protein: "Prot",
-      coral: "Coral",
-      medicine: "Med",
-      ageBoost: "Boost",
-      creature: "Creature",
-      event: "Event"
-    };
-    return labels[foodType.id];
+    if (foodType.id === "medicine") {
+      return "Med";
+    }
+    if (foodType.id === "ageBoost") {
+      return "Boost";
+    }
+    if (foodType.id === "creature") {
+      return "Creature";
+    }
+
+    return foodType.name
+      .replace(" Food", "")
+      .replace(" Flakes", "")
+      .replace(" Bites", "")
+      .replace(" Dust", "")
+      .replace(" Treat", "")
+      .replace(" Small", " S")
+      .replace(" Medium", " M")
+      .replace(" Large", " L")
+      .replace(" XL", " XL");
   }
 
   private foodBadgeLabel(count: number): string {
@@ -5434,17 +5299,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private decorationVariantPrice(decorationType: DecorationType, size: DecorationSize): Price {
-    const multiplier = decorationSizes[size].priceMultiplier;
-    return {
-      coinType: decorationType.price.coinType,
-      amount: Math.max(1, Math.round(decorationType.price.amount * multiplier)),
-      rareAmount: decorationType.price.rareAmount
-        ? Math.max(1, Math.round(decorationType.price.rareAmount * multiplier))
-        : undefined,
-      superRareAmount: decorationType.price.superRareAmount
-        ? Math.max(1, Math.round(decorationType.price.superRareAmount * multiplier))
-        : undefined
-    };
+    return tankCatalogDecorationVariantPrice(decorationType, size);
   }
 
   private getDecorationInventory(decorationTypeId: string, size: DecorationSize = "m"): number {
@@ -5943,6 +5798,14 @@ export class AquariumScene extends Phaser.Scene {
       const secondMiss = secondServing >= targetCalories ? secondServing - targetCalories : targetCalories - secondServing + targetCalories;
       return firstMiss - secondMiss || secondServing - firstServing;
     })[0];
+  }
+
+  private foodNeedMessage(targetCalories: number): string {
+    const recommendedFood = foodTypes
+      .filter((foodType) => this.isCalorieTrackedFood(foodType.id))
+      .sort((first, second) => first.calories - second.calories)
+      .find((foodType) => foodType.calories >= targetCalories);
+    return recommendedFood?.name ?? `${formatNumber(Math.ceil(targetCalories))} cal food`;
   }
 
   private normalizeDailyGoals(savedGoals: DailyGoalsState | undefined): DailyGoalsState {

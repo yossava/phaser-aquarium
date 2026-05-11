@@ -5,6 +5,8 @@ export const commonPerCalorie = 0.03;
 export const fishRoiSeconds = 3 * 60 * 60;
 export const mealsToFull = 4;
 export const minimumFullCaloriesNeed = 60;
+export const maximumMealCaloriesNeed = 1_000_000_000_000;
+export const maximumFullCaloriesNeed = maximumMealCaloriesNeed * mealsToFull;
 export const fishCoinProductionMinDelayMs = 5000;
 export const fishCoinProductionMaxDelayMs = 30000;
 export const fishCoinProductionAverageDelaySeconds = 17.5;
@@ -36,7 +38,7 @@ export function fishValueMultiplier(fishType: FishType): number {
 
 export function fishFullCaloriesNeed(fishType: FishType, ageSeconds: number): number {
   const ageMinutes = Math.max(1, ageSeconds / 60);
-  return Math.max(minimumFullCaloriesNeed, ageMinutes * 10 * fishValueMultiplier(fishType));
+  return clamp(Math.max(minimumFullCaloriesNeed, ageMinutes * 10 * fishValueMultiplier(fishType)), minimumFullCaloriesNeed, maximumFullCaloriesNeed);
 }
 
 export function fishTargetMealCalories(fishType: FishType, ageSeconds: number): number {

@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { gameHeight, gameWidth, tankBounds } from "../game/constants";
-import { formatNumber } from "../game/economy";
 import {
   fishCoinDropPlan,
   fishCoinProductionMaxDelayMs,
@@ -350,8 +349,8 @@ export class Fish {
     this.updateStatusBars(true);
   }
 
-  public showFoodNeedMessage(calories: number, now = this.scene.time.now): void {
-    this.activeStateEmoji = `need ${formatNumber(Math.ceil(Math.max(1, calories)))} cal..`;
+  public showFoodNeedMessage(foodName: string, now = this.scene.time.now): void {
+    this.activeStateEmoji = `need ${foodName}..`;
     this.stateEmojiVisibleUntil = now + statusEmojiDurationMs;
     this.nextStateEmojiAt = now + statusEmojiCooldownMs;
     this.positionStateEmoji(this.activeStateEmoji);

@@ -2,6 +2,7 @@ import fishTypeData from "./fish-types.json";
 import foodTypeData from "./food-types.json";
 import decorationTypeData from "./decoration-types.json";
 import helperCreatureTypeData from "./helper-creature-types.json";
+import { commonPerCalorie, maximumMealCaloriesNeed } from "../game/economy-model";
 import type { CoinType, DecorationType, FishType, FoodType, HelperCreatureType, Price, Rarity } from "../types/mechanics";
 
 const baselineCommonFishPrice = 60;
@@ -12,21 +13,45 @@ const fishCommonPriceByRarity: Record<Rarity, (index: number, original: number) 
   superRare: (index, original) => Math.max(12000, Math.round(original * 900 + index * 18000))
 };
 
+const fishFoodFamilies = [
+  { id: "micro", name: "Micro Food", assetId: "micro" },
+  { id: "basic", name: "Basic Food", assetId: "basic" },
+  { id: "herb", name: "Herb Flakes", assetId: "herb" },
+  { id: "premium", name: "Premium Food", assetId: "premium" },
+  { id: "protein", name: "Protein Bites", assetId: "protein" },
+  { id: "coral", name: "Coral Dust", assetId: "coral" },
+  { id: "event", name: "Event Treat", assetId: "event" }
+] as const;
+const fishFoodSizeVariants = [
+  { suffix: "", label: "Small", densityLevel: 1 },
+  { suffix: "Medium", label: "Medium", densityLevel: 2 },
+  { suffix: "Large", label: "Large", densityLevel: 3 },
+  { suffix: "XL", label: "XL", densityLevel: 4 }
+] as const;
 const foodEconomy: Partial<Record<FoodType["id"], { calories: number; price: Price; densityLevel: number; rarity?: Rarity }>> = {
-  micro: { calories: 34, price: { coinType: "common", amount: 1 }, densityLevel: 1 },
-  basic: { calories: 100, price: { coinType: "common", amount: 3 }, densityLevel: 1 },
-  basicMedium: { calories: 500, price: { coinType: "common", amount: 15 }, densityLevel: 2 },
-  basicLarge: { calories: 2500, price: { coinType: "common", amount: 75 }, densityLevel: 3 },
-  basicXL: { calories: 10000, price: { coinType: "common", amount: 300 }, densityLevel: 4 },
-  herb: { calories: 250, price: { coinType: "common", amount: 8 }, densityLevel: 2 },
-  premium: { calories: 100000, price: { coinType: "common", amount: 3000 }, densityLevel: 5, rarity: "rare" },
-  protein: { calories: 500000, price: { coinType: "common", amount: 15000 }, densityLevel: 5, rarity: "rare" },
-  coral: { calories: 6500000, price: { coinType: "common", amount: 195000 }, densityLevel: 5, rarity: "rare" },
-  event: { calories: 25000000, price: { coinType: "common", amount: 750000 }, densityLevel: 5, rarity: "superRare" },
   medicine: { calories: 10, price: { coinType: "common", amount: 10 }, densityLevel: 1 },
   ageBoost: { calories: 1, price: { coinType: "common", amount: 1000 }, densityLevel: 1 },
   creature: { calories: 58, price: { coinType: "common", amount: 12 }, densityLevel: 1 }
 };
+const supplyFoodIds = new Set<string>(Object.keys(foodEconomy));
+const foodAssetIdById = new Map<string, string>();
+
+function foodVariantId(baseId: string, suffix: string): string {
+  return `${baseId}${suffix}`;
+}
+
+function roundFoodCalories(value: number): number {
+  if (value < 100) {
+    return Math.round(value);
+  }
+  const magnitude = 10 ** Math.floor(Math.log10(value));
+  const step = magnitude / 10;
+  return Math.max(1, Math.round(value / step) * step);
+}
+
+function foodPriceForCalories(calories: number): Price {
+  return { coinType: "common", amount: Math.max(1, Math.round(calories * commonPerCalorie)) };
+}
 
 function tokenPriceForRarity(rarity: Rarity, index: number): Pick<Price, "rareAmount" | "superRareAmount"> {
   if (rarity === "rare") {
@@ -69,8 +94,8 @@ function normalizeFishTypes(source: FishType[]): FishType[] {
   });
 }
 
-function normalizeFoodTypes(source: FoodType[]): FoodType[] {
-  return source.map((foodType) => {
+function normalizeSupplyFoodTypes(source: FoodType[]): FoodType[] {
+  return source.filter((foodType) => supplyFoodIds.has(foodType.id)).map((foodType) => {
     const economy = foodEconomy[foodType.id];
     if (!economy) {
       return foodType;
@@ -84,6 +109,34 @@ function normalizeFoodTypes(source: FoodType[]): FoodType[] {
       acceptedByDefault: true
     };
   });
+}
+
+function normalizeFishFoodTypes(): FoodType[] {
+  const variantCount = fishFoodFamilies.length * fishFoodSizeVariants.length;
+  const calorieGrowth = (maximumMealCaloriesNeed / 34) ** (1 / Math.max(1, variantCount - 1));
+  let index = 0;
+  return fishFoodFamilies.flatMap((family) =>
+    fishFoodSizeVariants.map((size): FoodType => {
+      const id = foodVariantId(family.id, size.suffix);
+      const calories = index === 0
+        ? 34
+        : index === variantCount - 1
+          ? maximumMealCaloriesNeed
+          : roundFoodCalories(34 * calorieGrowth ** index);
+      index += 1;
+      foodAssetIdById.set(id, family.assetId);
+      return {
+        id,
+        name: `${family.name} ${size.label}`,
+        rarity: "common",
+        price: foodPriceForCalories(calories),
+        nutrition: calories,
+        calories,
+        densityLevel: size.densityLevel,
+        acceptedByDefault: true
+      };
+    })
+  );
 }
 
 function normalizeCompositePrice(price: Price, rarity: Rarity, index: number, commonMultiplier: number): Price {
@@ -120,8 +173,16 @@ function normalizeHelperCreatureTypes(source: HelperCreatureType[]): HelperCreat
 }
 
 export const fishTypes = normalizeFishTypes(fishTypeData as FishType[]);
-export const foodTypes = normalizeFoodTypes(foodTypeData as FoodType[]);
+export const foodTypes = [...normalizeFishFoodTypes(), ...normalizeSupplyFoodTypes(foodTypeData as FoodType[])];
 export const decorationTypes = normalizeDecorationTypes(decorationTypeData as DecorationType[]);
 export const helperCreatureTypes = normalizeHelperCreatureTypes(helperCreatureTypeData as HelperCreatureType[]);
 
 export const basicFood = foodTypes.find((foodType) => foodType.id === "basic") ?? foodTypes[0];
+
+export function foodAssetId(foodTypeId: FoodType["id"]): string {
+  return foodAssetIdById.get(foodTypeId) ?? foodTypeId;
+}
+
+export function foodAssetPath(foodTypeId: FoodType["id"]): string {
+  return `/assets/food/${foodAssetId(foodTypeId)}.png`;
+}

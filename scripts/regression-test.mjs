@@ -16,8 +16,7 @@ const helperCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "he
 const supplyFoodIds = new Set(["medicine", "ageBoost"]);
 const hiddenFoodIds = new Set(["creature"]);
 const catalogCountByCoin = (items, coinType) => items.filter((item) => item.price.coinType === coinType).length;
-const visibleFoodCountByCoin = (coinType) =>
-  foodCatalog.filter((item) => !hiddenFoodIds.has(item.id) && !supplyFoodIds.has(item.id) && item.price.coinType === coinType).length;
+const visibleFishFoodCatalogCount = 7 * 4;
 const catalogItemById = (items, id) => {
   const item = items.find((candidate) => candidate.id === id);
   assert(item, `Missing catalog item ${id}`);
@@ -30,8 +29,8 @@ const fourMonthAgeSeconds = secondsPerFishMonth * 4;
 const sevenMonthAgeSeconds = secondsPerFishMonth * 7;
 const goldfishAdultAgeSeconds = secondsPerFishYear;
 const fullyGrownAgeSeconds = secondsPerFishYear * 50;
-const runtimeBasicFoodPrice = 3;
-const runtimeBasicFoodCalories = 100;
+const runtimeBasicFoodPrice = 36;
+const runtimeBasicFoodCalories = 1200;
 
 function assert(condition, message) {
   if (!condition) {
@@ -422,8 +421,8 @@ async function runRegression(cdp, appUrl) {
     (current) =>
       current.activeTab === "food" &&
       current.storeCoinFilter === "rare" &&
-      current.visibleStoreCatalogCount === visibleFoodCountByCoin("rare"),
-    "Food store rare lane should show rare foods."
+      current.visibleStoreCatalogCount === visibleFishFoodCatalogCount,
+    "Food store should show every fish food without rarity filtering."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreCoinFilter('superRare')");
   state = await waitFor(
@@ -431,8 +430,8 @@ async function runRegression(cdp, appUrl) {
     (current) =>
       current.activeTab === "food" &&
       current.storeCoinFilter === "superRare" &&
-      current.visibleStoreCatalogCount === visibleFoodCountByCoin("superRare"),
-    "Food store super rare lane should show super rare food."
+      current.visibleStoreCatalogCount === visibleFishFoodCatalogCount,
+    "Food store super rare filter should not hide common-priced food."
   );
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('decor')");
   state = await waitFor(

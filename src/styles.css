@@ -212,26 +212,6 @@ canvas {
     min-height: 80px;
   }
 
-  .aq-food-tint-basic img,
-  .aq-food-icon-basic {
-    filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.28)) saturate(1.04) brightness(1.02);
-  }
-
-  .aq-food-tint-basicMedium img,
-  .aq-food-icon-basicMedium {
-    filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.28)) hue-rotate(34deg) saturate(1.22) brightness(1.08);
-  }
-
-  .aq-food-tint-basicLarge img,
-  .aq-food-icon-basicLarge {
-    filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.28)) hue-rotate(-18deg) saturate(1.42) brightness(1.05);
-  }
-
-  .aq-food-tint-basicXL img,
-  .aq-food-icon-basicXL {
-    filter: drop-shadow(0 10px 8px rgba(0, 0, 0, 0.28)) hue-rotate(238deg) saturate(1.5) brightness(1.08);
-  }
-
   .aq-food-card-body {
     display: grid;
     min-height: 0;
@@ -1672,23 +1652,4 @@ canvas {
     @apply h-8 w-8 object-contain drop-shadow-lg;
   }
 
-  .aq-food-button-bubble .aq-food-icon-basic,
-  .aq-food-drag-ghost .aq-food-icon-basic {
-    filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.35)) saturate(1.04) brightness(1.02);
-  }
-
-  .aq-food-button-bubble .aq-food-icon-basicMedium,
-  .aq-food-drag-ghost .aq-food-icon-basicMedium {
-    filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.35)) hue-rotate(34deg) saturate(1.22) brightness(1.08);
-  }
-
-  .aq-food-button-bubble .aq-food-icon-basicLarge,
-  .aq-food-drag-ghost .aq-food-icon-basicLarge {
-    filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.35)) hue-rotate(-18deg) saturate(1.42) brightness(1.05);
-  }
-
-  .aq-food-button-bubble .aq-food-icon-basicXL,
-  .aq-food-drag-ghost .aq-food-icon-basicXL {
-    filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.35)) hue-rotate(238deg) saturate(1.5) brightness(1.08);
-  }
 }

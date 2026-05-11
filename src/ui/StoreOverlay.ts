@@ -1,5 +1,6 @@
-import { fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
+import { fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../data/content";
 import { canAfford, formatNumber, formatPrice, priceComponents } from "../game/economy";
+import { foodCssFilterFor } from "../game/visuals";
 import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
 const supplyFoodIds = new Set(["medicine", "ageBoost"]);
@@ -242,7 +243,10 @@ export class StoreOverlay {
     } else if (this.browseLevel === "tankCategories") {
       shell.append(this.drillHeader("Choose Tank Category", "All tank items are grouped here."), this.tankCategoryMenu());
     } else {
-      shell.append(this.drillHeader(this.productTitle(), "Choose rarity, then pick an item."), this.rarityFilters(), this.catalog(state));
+      const productSections = this.activeTab === "food"
+        ? [this.drillHeader(this.productTitle(), "Choose food size, then pick an item."), this.catalog(state)]
+        : [this.drillHeader(this.productTitle(), "Choose rarity, then pick an item."), this.rarityFilters(), this.catalog(state)];
+      shell.append(...productSections);
     }
     return shell;
   }
@@ -552,6 +556,9 @@ export class StoreOverlay {
     const affordable = state.developerGodMode || canAfford(state.wallet, totalPrice);
     const blockedByCooldown = !state.developerGodMode && isAgeBoost && !state.ageBoostPurchaseAvailable;
     const owned = state.foodOwned[food.id] ?? 0;
+    const metaText = owned > 0
+      ? `Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`
+      : `${formatNumber(food.calories)} cal each`;
     const buyLabel = this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
     const card = this.baseCard(food.rarity);
     const controls = div("aq-food-qty-row", [
@@ -564,14 +571,20 @@ export class StoreOverlay {
       : affordable
         ? buyLabel
         : `Need ${formatPrice(totalPrice)}`;
+    const preview = this.preview(foodAssetPath(food.id), food.name, "aq-food-preview");
+    const previewImage = preview.querySelector("img");
+    if (previewImage instanceof HTMLImageElement) {
+      previewImage.style.filter = foodCssFilterFor(food.id);
+    }
+
     card.append(
-      this.preview(`/assets/food/${food.id}.png`, food.name, `aq-food-preview aq-food-tint-${food.id}`),
+      preview,
       div("flex min-w-0 flex-1 flex-col aq-food-card-body", [
         div("flex items-start justify-between gap-1.5", [
           div("min-w-0 truncate text-sm font-black leading-tight", [food.name]),
           this.priceBadge(totalPrice)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`]),
+        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [metaText]),
         controls,
         button(buttonLabel, "aq-buy w-full", () => this.actions.buyFood(food, quantity), !affordable || blockedByCooldown)
       ])

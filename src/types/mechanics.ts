@@ -2,20 +2,7 @@ export type Rarity = "common" | "rare" | "superRare";
 export type CoinType = "common" | "rare" | "superRare";
 export type AgeStage = "baby" | "juvenile" | "adult" | "elder" | "master";
 export type FishState = "hungry" | "ill" | "happy";
-export type FoodTypeId =
-  | "micro"
-  | "basic"
-  | "basicMedium"
-  | "basicLarge"
-  | "basicXL"
-  | "premium"
-  | "herb"
-  | "protein"
-  | "coral"
-  | "medicine"
-  | "ageBoost"
-  | "creature"
-  | "event";
+export type FoodTypeId = string;
 
 export type FishGender = "M" | "F";
 
