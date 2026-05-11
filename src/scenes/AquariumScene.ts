@@ -26,6 +26,35 @@ import {
   type TankStateConfig
 } from "../game/tank-state";
 import { foodTintFor, rarityStarCount } from "../game/visuals";
+import {
+  buildDailyQuestItems,
+  commonQuestReward as questCommonReward,
+  dailyQuestActionCount as questActionCount,
+  fishPurchaseWindowMs,
+  growthTonicPurchaseWindowMs,
+  isRewardedAdReady,
+  normalizeDailyGoals as normalizeDailyGoalsModel,
+  oldestRecentFishPurchase,
+  oldestRecentGrowthTonicPurchase,
+  rareQuestReward as questRareReward,
+  recentFishPurchaseCount as questRecentFishPurchaseCount,
+  recentGrowthTonicPurchaseCount as questRecentGrowthTonicPurchaseCount,
+  recordDailyQuestAction as recordDailyQuestActionModel,
+  recordFishPurchase as recordFishPurchaseModel,
+  recordGrowthTonicPurchase as recordGrowthTonicPurchaseModel,
+  rewardedAdCoinReward as questRewardedAdCoinReward,
+  rewardedAdDurationMs,
+  rewardedAdOptions as buildRewardedAdOptions,
+  rewardedAdRemainingSeconds,
+  superRareQuestReward as questSuperRareReward,
+  todayFishPurchaseCount as questTodayFishPurchaseCount,
+  visibleDailyQuestItems as visibleDailyQuestItemsModel,
+  type DailyGoalsState,
+  type DailyQuestItem,
+  type RewardedAdKind,
+  type RewardedAdOption,
+  type RewardedAdState
+} from "../game/quest-system";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
 import { FoodPellet } from "../objects/FoodPellet";
@@ -34,19 +63,6 @@ import { StoreOverlay, type StoreOverlayState, type StoreTankCosmeticCard, type 
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, StoreTab, Wallet } from "../types/mechanics";
 
 type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "settings";
-
-type DailyQuestItem = {
-  id: string;
-  label: string;
-  complete: boolean;
-  reward: Price;
-};
-
-type RewardedAdKind = "common" | "rare" | "superRare" | "ageBoost";
-type RewardedAdState = {
-  kind: RewardedAdKind;
-  readyAt: number;
-};
 
 type PlacementMode =
   | { kind: "none" }
@@ -90,8 +106,6 @@ type AdjustableSound = Phaser.Sound.BaseSound & {
 };
 
 const maxCoinDrops = 50;
-const fishPurchaseWindowMs = 60 * 60 * 1000;
-const growthTonicPurchaseWindowMs = 60 * 60 * 1000;
 const coinCollectSoundKey = "sfx-coin-collect";
 const coinCollectSoundPath = "/assets/audio/sfx/coin-pick.ogg";
 const fishEatSoundKey = "sfx-fish-eat";
@@ -614,7 +628,7 @@ export class AquariumScene extends Phaser.Scene {
   private cleaningTank = false;
   private settings = { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false };
   private developerGodMode = false;
-  private dailyGoals = { date: this.localDateKey(), claimed: [] as string[] };
+  private dailyGoals: DailyGoalsState = { date: this.localDateKey(), claimed: [] };
   private tankLevel = 1;
   private ownedTankLevels = new Set<number>([1]);
   private tankNames = new Map<number, string>([[1, "Home Reef"]]);
@@ -3087,19 +3101,14 @@ export class AquariumScene extends Phaser.Scene {
     content.append(section);
   }
 
-  private rewardedAdOptions(): Array<{ kind: RewardedAdKind; title: string; detail: string; icon: string }> {
-    return [
-      { kind: "common", title: "Common Coins", detail: formatPrice(this.rewardedAdCoinReward("common")), icon: "/assets/ui/shop/coin_icon_common.png" },
-      { kind: "rare", title: "Rare Coins", detail: formatPrice(this.rewardedAdCoinReward("rare")), icon: "/assets/ui/shop/coin_icon_rare.png" },
-      { kind: "superRare", title: "Ultra Rare Coins", detail: formatPrice(this.rewardedAdCoinReward("superRare")), icon: "/assets/ui/shop/coin_icon_super_rare.png" },
-      { kind: "ageBoost", title: "Growth Tonic", detail: "1 age booster pill", icon: "/assets/food/ageBoost.png" }
-    ];
+  private rewardedAdOptions(): RewardedAdOption[] {
+    return buildRewardedAdOptions((coinType) => this.rewardedAdCoinReward(coinType));
   }
 
-  private rewardedAdCard(option: { kind: RewardedAdKind; title: string; detail: string; icon: string }): HTMLElement {
+  private rewardedAdCard(option: RewardedAdOption): HTMLElement {
     const active = this.rewardedAd?.kind === option.kind;
     const blocked = this.rewardedAd !== undefined && !active;
-    const remainingSeconds = active ? Math.max(0, Math.ceil((this.rewardedAd!.readyAt - Date.now()) / 1000)) : 0;
+    const remainingSeconds = active && this.rewardedAd ? rewardedAdRemainingSeconds(this.rewardedAd) : 0;
     const ready = active && remainingSeconds <= 0;
     const card = this.htmlElement("article", `aq-rewarded-ad-card ${ready ? "is-ready" : ""}`);
     card.append(
@@ -5991,46 +6000,29 @@ export class AquariumScene extends Phaser.Scene {
     })[0];
   }
 
-  private normalizeDailyGoals(savedGoals: { date: string; claimed: string[] }): { date: string; claimed: string[] } {
-    const today = this.localDateKey();
-    if (savedGoals.date !== today) {
-      return { date: today, claimed: [] };
-    }
-
-    return { date: today, claimed: [...new Set(savedGoals.claimed.filter((entry) => typeof entry === "string"))] };
+  private normalizeDailyGoals(savedGoals: DailyGoalsState | undefined): DailyGoalsState {
+    return normalizeDailyGoalsModel(savedGoals, this.localDateKey());
   }
 
   private dailyQuestItems(): DailyQuestItem[] {
     const nextTankLevel = this.nextUnownedTankLevel();
     const nextTankPrice = nextTankLevel <= maxOwnedTanks ? this.tankPriceForLevel(nextTankLevel) : undefined;
-    const affordableCommonFish = fishTypes.some((fishType) => fishType.rarity === "common" && canAfford(this.wallet, fishType.price));
-    const quests: DailyQuestItem[] = [
-      { id: "buy-fish", label: affordableCommonFish ? "Buy a fish" : "Save coins for a fish", complete: this.todayFishPurchaseCount() > 0, reward: this.commonQuestReward(1) },
-      { id: "place-fish", label: "Drag a fish into the tank", complete: this.dailyQuestActionCount("place-fish") > 0 || this.activeFish().length > 0, reward: this.commonQuestReward(0.75) },
-      { id: "buy-food", label: "Buy another food", complete: this.dailyQuestActionCount("buy-food") > 0, reward: this.commonQuestReward(0.7) },
-      { id: "feed", label: "Feed a fish", complete: this.dailyQuestActionCount("feed") > 0, reward: this.commonQuestReward(0.7) },
-      { id: "coin", label: `Collect ${formatNumber(1)} coin`, complete: this.dailyQuestActionCount("coin") > 0, reward: this.commonQuestReward(0.65) },
-      { id: "clean", label: "Clean the tank", complete: this.dailyQuestActionCount("clean") > 0, reward: this.commonQuestReward(0.85) },
-      { id: "buy-medicine", label: "Buy medicine", complete: this.dailyQuestActionCount("buy-medicine") > 0, reward: this.commonQuestReward(0.55) },
-      { id: "medicine", label: "Heal a sick fish with medicine", complete: this.dailyQuestActionCount("medicine") > 0, reward: this.commonQuestReward(1.25) },
-      { id: "buy-decoration", label: "Buy a decoration", complete: this.dailyQuestActionCount("buy-decoration") > 0, reward: this.commonQuestReward(1) },
-      { id: "place-decoration", label: "Place a decoration", complete: this.dailyQuestActionCount("place-decoration") > 0 || this.activeDecorations().length > 0, reward: this.commonQuestReward(0.8) },
-      { id: "buy-helper", label: "Buy a helper", complete: this.dailyQuestActionCount("buy-helper") > 0, reward: this.commonQuestReward(1.2) },
-      { id: "place-helper", label: "Drop a helper into the tank", complete: this.dailyQuestActionCount("place-helper") > 0 || this.activeHelperCreatures().length > 0, reward: this.commonQuestReward(0.9) },
-      { id: "buy-dispenser", label: `Buy Food Dispenser (${formatPrice(helperFoodDispenserPrice)})`, complete: this.dailyQuestActionCount("buy-dispenser") > 0 || this.hasHelperFoodDispenser(), reward: this.commonQuestReward(1.35) },
-      { id: "buy-background", label: "Buy a tank background", complete: this.dailyQuestActionCount("buy-background") > 0, reward: this.commonQuestReward(1) },
-      { id: "buy-seabed", label: "Buy a seabed", complete: this.dailyQuestActionCount("buy-seabed") > 0, reward: this.commonQuestReward(1) },
-      {
-        id: "buy-tank",
-        label: nextTankPrice ? `Buy ${storeTankNames[nextTankLevel] ?? "new tank"} (${formatPrice(nextTankPrice)})` : "Own every tank",
-        complete: this.dailyQuestActionCount("buy-tank") > 0 || this.ownedTankLevels.size >= maxOwnedTanks,
-        reward: this.commonQuestReward(1.8)
-      },
-      { id: "buy-rare-fish", label: "Buy a rare fish", complete: this.todayFishPurchaseCount("rare") > 0, reward: this.rareQuestReward() },
-      { id: "buy-super-fish", label: "Buy a super rare fish", complete: this.todayFishPurchaseCount("superRare") > 0, reward: this.superRareQuestReward() }
-    ];
-
-    return quests;
+    return buildDailyQuestItems({
+      affordableCommonFish: fishTypes.some((fishType) => fishType.rarity === "common" && canAfford(this.wallet, fishType.price)),
+      nextTankName: storeTankNames[nextTankLevel] ?? "new tank",
+      nextTankPrice,
+      maxOwnedTanksReached: this.ownedTankLevels.size >= maxOwnedTanks,
+      activeFishCount: this.activeFish().length,
+      activeDecorationCount: this.activeDecorations().length,
+      activeHelperCount: this.activeHelperCreatures().length,
+      hasFoodDispenser: this.hasHelperFoodDispenser(),
+      foodDispenserPrice: helperFoodDispenserPrice,
+      actionCount: (action) => this.dailyQuestActionCount(action),
+      fishPurchaseCount: (coinType) => this.todayFishPurchaseCount(coinType),
+      commonReward: (weight) => this.commonQuestReward(weight),
+      rareReward: () => this.rareQuestReward(),
+      superRareReward: () => this.superRareQuestReward()
+    });
   }
 
   private dailyGoalUnfinishedCount(): number {
@@ -6038,60 +6030,23 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private visibleDailyQuestItems(): DailyQuestItem[] {
-    const unclaimed = this.dailyQuestItems().filter((goal) => !this.dailyGoals.claimed.includes(goal.id));
-    const ready = unclaimed.filter((goal) => goal.complete);
-    const todo = unclaimed.filter((goal) => !goal.complete);
-    return [...ready, ...todo].slice(0, 3);
-  }
-
-  private currentHudQuestText(): string {
-    const quests = this.dailyQuestItems();
-    const quest = quests.find((item) => !item.complete && !this.dailyGoals.claimed.includes(item.id) && this.isQuestActionable(item)) ??
-      quests.find((item) => !item.complete && !this.dailyGoals.claimed.includes(item.id));
-    if (!quest) {
-      return "Quest complete for today";
-    }
-
-    return `Quest: ${quest.label} (${formatPrice(quest.reward)})`;
-  }
-
-  private dailyCommonQuestReward(): number {
-    const level = this.tankDisplayLevel();
-    if (level <= 2) {
-      return 45;
-    }
-    if (level <= 5) {
-      return 30;
-    }
-    return 15;
+    return visibleDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
   }
 
   private commonQuestReward(weight = 1): Price {
-    const level = this.tankDisplayLevel();
-    const walletFactor = this.wallet.common * 0.08;
-    const wealthFactor = this.calculateTotalWealth() * 0.006;
-    const levelFactor = level * 12;
-    const base = Math.max(this.dailyCommonQuestReward(), walletFactor, wealthFactor, levelFactor);
-    const amount = Phaser.Math.Clamp(Math.round(base * weight), 10, 2500);
-    return { coinType: "common", amount };
+    return questCommonReward(this.tankDisplayLevel(), this.wallet, this.calculateTotalWealth(), weight);
   }
 
   private rareQuestReward(): Price {
-    return { coinType: "rare", amount: Phaser.Math.Clamp(Math.round(Math.max(2, this.wallet.rare * 0.08)), 1, 25) };
+    return questRareReward(this.wallet);
   }
 
   private superRareQuestReward(): Price {
-    return { coinType: "superRare", amount: Phaser.Math.Clamp(Math.round(Math.max(1, this.wallet.superRare * 0.08)), 1, 12) };
+    return questSuperRareReward(this.wallet);
   }
 
   private rewardedAdCoinReward(coinType: CoinType): Price {
-    if (coinType === "rare") {
-      return this.rareQuestReward();
-    }
-    if (coinType === "superRare") {
-      return this.superRareQuestReward();
-    }
-    return this.commonQuestReward(0.9);
+    return questRewardedAdCoinReward(coinType, this.tankDisplayLevel(), this.wallet, this.calculateTotalWealth());
   }
 
   private startRewardedAd(kind: RewardedAdKind): void {
@@ -6099,7 +6054,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.rewardedAd = { kind, readyAt: Date.now() + 30_000 };
+    this.rewardedAd = { kind, readyAt: Date.now() + rewardedAdDurationMs };
     this.ensureRewardedAdRefreshTimer();
     this.showRewardedAdModal(kind);
   }
@@ -6122,7 +6077,7 @@ export class AquariumScene extends Phaser.Scene {
         if (this.activeScreen === "goals") {
           this.syncHtmlPageOverlay();
         }
-        if (Date.now() >= this.rewardedAd.readyAt) {
+        if (isRewardedAdReady(this.rewardedAd)) {
           this.rewardedAdRefreshTimer?.remove(false);
           this.rewardedAdRefreshTimer = undefined;
         }
@@ -6188,7 +6143,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const remainingSeconds = Math.max(0, Math.ceil((this.rewardedAd.readyAt - Date.now()) / 1000));
+    const remainingSeconds = rewardedAdRemainingSeconds(this.rewardedAd);
     this.rewardedAdCountdownText.textContent = formatNumber(remainingSeconds);
     if (remainingSeconds <= 0) {
       this.rewardedAdCountdownText.textContent = "Ready";
@@ -6202,7 +6157,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private claimRewardedAd(kind: RewardedAdKind): void {
-    if (!this.rewardedAd || this.rewardedAd.kind !== kind || Date.now() < this.rewardedAd.readyAt) {
+    if (!this.rewardedAd || this.rewardedAd.kind !== kind || !isRewardedAdReady(this.rewardedAd)) {
       return;
     }
 
@@ -6254,23 +6209,15 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private dailyQuestActionCount(action: string): number {
-    return this.dailyGoals.claimed.filter((entry) => entry.startsWith(`action:${action}:`)).length;
+    return questActionCount(this.dailyGoals, action);
   }
 
   private todayFishPurchaseCount(coinType?: CoinType): number {
-    const prefix = coinType ? `fish-buy:${coinType}:` : "fish-buy:";
-    return this.dailyGoals.claimed.filter((entry) => entry.startsWith(prefix)).length;
+    return questTodayFishPurchaseCount(this.dailyGoals, coinType);
   }
 
   private recentFishPurchaseCount(coinType?: CoinType, now = Date.now()): number {
-    const prefix = coinType ? `fish-buy:${coinType}:` : "fish-buy:";
-    return this.dailyGoals.claimed.filter((entry) => {
-      if (!entry.startsWith(prefix)) {
-        return false;
-      }
-      const purchasedAt = Number(entry.split(":")[2]);
-      return Number.isFinite(purchasedAt) && now - purchasedAt < fishPurchaseWindowMs;
-    }).length;
+    return questRecentFishPurchaseCount(this.dailyGoals, coinType, now);
   }
 
   private hourlyFishPurchaseLimit(): number {
@@ -6292,11 +6239,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private fishPurchaseRestockLabel(now = Date.now()): string {
-    const oldestRecentPurchase = this.dailyGoals.claimed
-      .filter((entry) => entry.startsWith("fish-buy:"))
-      .map((entry) => Number(entry.split(":")[2]))
-      .filter((timestamp) => Number.isFinite(timestamp) && now - timestamp < fishPurchaseWindowMs)
-      .sort((a, b) => a - b)[0];
+    const oldestRecentPurchase = oldestRecentFishPurchase(this.dailyGoals, now);
 
     if (!oldestRecentPurchase) {
       return "Hourly Limit";
@@ -6307,13 +6250,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private recentGrowthTonicPurchaseCount(now = Date.now()): number {
-    return this.dailyGoals.claimed.filter((entry) => {
-      if (!entry.startsWith("growth-tonic-buy:")) {
-        return false;
-      }
-      const purchasedAt = Number(entry.split(":")[1]);
-      return Number.isFinite(purchasedAt) && now - purchasedAt < growthTonicPurchaseWindowMs;
-    }).length;
+    return questRecentGrowthTonicPurchaseCount(this.dailyGoals, now);
   }
 
   private canBuyGrowthTonicThisHour(): boolean {
@@ -6321,11 +6258,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private growthTonicPurchaseRestockLabel(now = Date.now()): string {
-    const oldestRecentPurchase = this.dailyGoals.claimed
-      .filter((entry) => entry.startsWith("growth-tonic-buy:"))
-      .map((entry) => Number(entry.split(":")[1]))
-      .filter((timestamp) => Number.isFinite(timestamp) && now - timestamp < growthTonicPurchaseWindowMs)
-      .sort((a, b) => a - b)[0];
+    const oldestRecentPurchase = oldestRecentGrowthTonicPurchase(this.dailyGoals, now);
 
     if (!oldestRecentPurchase) {
       return "1 per hour";
@@ -6337,17 +6270,17 @@ export class AquariumScene extends Phaser.Scene {
 
   private recordGrowthTonicPurchase(): void {
     this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals.claimed.push(`growth-tonic-buy:${Date.now()}:${Phaser.Math.RND.uuid()}`);
+    this.dailyGoals = recordGrowthTonicPurchaseModel(this.dailyGoals);
   }
 
   private recordFishPurchase(fishType: FishType): void {
     this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals.claimed.push(`fish-buy:${fishType.rarity}:${Date.now()}:${Phaser.Math.RND.uuid()}`);
+    this.dailyGoals = recordFishPurchaseModel(this.dailyGoals, fishType.rarity);
   }
 
   private recordDailyQuestAction(action: string): void {
     this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals.claimed.push(`action:${action}:${Date.now()}:${Phaser.Math.RND.uuid()}`);
+    this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, action);
   }
 
   private localDateKey(): string {
