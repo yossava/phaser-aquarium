@@ -1307,9 +1307,9 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.addFood('basic', 1)");
   await evaluate(cdp, "window.__aquariumTest.setFishVitals(0, 62, 100)");
   await evaluate(cdp, "window.__aquariumTest.setFishPosition(0, 300, 720)");
-  state = await waitFor(cdp, (current) => (current.foodInventoryByType.basic ?? 0) >= 1, "Feeder helper food stock setup failed.");
+  state = await waitFor(cdp, (current) => (current.foodInventoryByType.basic ?? 0) >= 1, "Food dispenser stock setup failed.");
   await evaluate(cdp, "window.__aquariumTest.addCoin('common', 5, 32, 828)");
-  state = await waitFor(cdp, (current) => current.coinDropCount >= 1, "Feeder helper nearby coin setup failed.");
+  state = await waitFor(cdp, (current) => current.coinDropCount >= 1, "Helper nearby coin setup failed.");
   const feederFoodBefore = state.foodInventoryByType.basic ?? 0;
   await evaluate(cdp, "window.__aquariumTest.addHelperCreatureForTest('feeder-snail', 10)");
   state = await waitFor(

@@ -1,0 +1,125 @@
+import type { FishState, FoodType, FoodTypeId } from "../types/mechanics";
+import { formatNumber } from "./economy";
+
+export const creatureFoodTypeId: FoodTypeId = "creature";
+export const medicineFoodTypeId: FoodTypeId = "medicine";
+export const ageBoostFoodTypeId: FoodTypeId = "ageBoost";
+export const supplyFoodTypeIds = new Set<FoodTypeId>([medicineFoodTypeId, ageBoostFoodTypeId]);
+export const hiddenFoodTypeIds = new Set<FoodTypeId>([creatureFoodTypeId]);
+
+type DispenserTarget = {
+  state: FishState;
+  health: number;
+  hunger: number;
+};
+
+type PendingFood = {
+  source: "manual" | "dispenser";
+};
+
+export function isDroppableFood(foodTypeId: FoodTypeId): boolean {
+  return !hiddenFoodTypeIds.has(foodTypeId);
+}
+
+export function isCalorieTrackedFood(foodTypeId: FoodTypeId): boolean {
+  return foodTypeId !== medicineFoodTypeId && foodTypeId !== ageBoostFoodTypeId && foodTypeId !== creatureFoodTypeId && !hiddenFoodTypeIds.has(foodTypeId);
+}
+
+export function foodInventoryDisplayCount(foodType: FoodType, storedCount: number): number {
+  if (!isCalorieTrackedFood(foodType.id)) {
+    return storedCount;
+  }
+
+  return Math.ceil(storedCount / Math.max(1, foodType.calories));
+}
+
+export function foodInventoryBadgeLabel(foodType: FoodType, storedCount: number): string {
+  if (!isCalorieTrackedFood(foodType.id)) {
+    return cappedFoodCountLabel(storedCount);
+  }
+
+  if (storedCount <= 0) {
+    return "0";
+  }
+
+  const servingCalories = Math.max(1, foodType.calories);
+  const fullServings = Math.floor(storedCount / servingCalories);
+  const hasPartial = storedCount % servingCalories > 0;
+  if (fullServings <= 0) {
+    return "1+";
+  }
+  if (hasPartial) {
+    return fullServings > 99 ? "99+" : `${formatNumber(fullServings)}+`;
+  }
+  return cappedFoodCountLabel(fullServings);
+}
+
+export function cappedFoodCountLabel(count: number): string {
+  return count > 99 ? "99+" : formatNumber(count);
+}
+
+export function feedableFoodTypes(foodTypes: FoodType[], getInventory: (foodTypeId: FoodTypeId) => number): FoodType[] {
+  return foodTypes.filter(
+    (foodType) =>
+      foodType.id !== medicineFoodTypeId &&
+      !hiddenFoodTypeIds.has(foodType.id) &&
+      isDroppableFood(foodType.id) &&
+      getInventory(foodType.id) > 0
+  );
+}
+
+export function totalFeedableFoodInventory(foodTypes: FoodType[], getInventory: (foodType: FoodType) => number): number {
+  return foodTypes.reduce((total, foodType) => total + getInventory(foodType), 0);
+}
+
+export function hasPendingDispenserFood(foods: PendingFood[]): boolean {
+  return foods.some((food) => food.source === "dispenser");
+}
+
+export function findFoodDispenserTarget<T extends DispenserTarget>(tankFish: T[]): T | undefined {
+  let targetFish: T | undefined;
+  for (const currentFish of tankFish) {
+    if (currentFish.state === "ill" || currentFish.health < 35 || currentFish.hunger < 50) {
+      continue;
+    }
+    if (!targetFish || currentFish.hunger > targetFish.hunger) {
+      targetFish = currentFish;
+    }
+  }
+  return targetFish;
+}
+
+export function findMedicineDispenserTarget<T extends Pick<DispenserTarget, "state">>(tankFish: T[], medicineCount: number): T | undefined {
+  if (medicineCount <= 0) {
+    return undefined;
+  }
+
+  return tankFish.find((currentFish) => currentFish.state === "ill");
+}
+
+export function bestCalorieFoodForTarget(
+  candidates: FoodType[],
+  targetCalories: number,
+  getInventory: (foodTypeId: FoodTypeId) => number
+): FoodType | undefined {
+  const uniqueCandidates = [...new Map(candidates.map((foodType) => [foodType.id, foodType])).values()];
+  if (uniqueCandidates.length === 0) {
+    return undefined;
+  }
+
+  return uniqueCandidates.sort((first, second) => {
+    const firstServing = Math.min(first.calories, getInventory(first.id));
+    const secondServing = Math.min(second.calories, getInventory(second.id));
+    const firstMiss = firstServing >= targetCalories ? firstServing - targetCalories : targetCalories - firstServing + targetCalories;
+    const secondMiss = secondServing >= targetCalories ? secondServing - targetCalories : targetCalories - secondServing + targetCalories;
+    return firstMiss - secondMiss || secondServing - firstServing;
+  })[0];
+}
+
+export function recommendedFoodName(foodTypes: FoodType[], targetCalories: number): string {
+  const recommendedFood = foodTypes
+    .filter((foodType) => isCalorieTrackedFood(foodType.id))
+    .sort((first, second) => first.calories - second.calories)
+    .find((foodType) => foodType.calories >= targetCalories);
+  return recommendedFood?.name ?? `${formatNumber(Math.ceil(targetCalories))} cal food`;
+}

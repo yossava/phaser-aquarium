@@ -1,10 +1,10 @@
 import { fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../data/content";
+import { foodDispenserAssetPath } from "../game/dispenser-system";
 import { canAfford, formatNumber, formatPrice, priceComponents } from "../game/economy";
+import { hiddenFoodTypeIds, supplyFoodTypeIds } from "../game/food-system";
 import { foodCssFilterFor } from "../game/visuals";
 import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
-const supplyFoodIds = new Set(["medicine", "ageBoost"]);
-const hiddenFoodIds = new Set(["creature"]);
 type StoreDecorationSize = "s" | "m" | "l" | "xl";
 type TankStoreCategory = "tank" | "background" | "seabed" | "tools" | "decorations";
 type StoreBrowseLevel = "categories" | "tankCategories" | "products";
@@ -355,7 +355,7 @@ export class StoreOverlay {
       { category: "tank", label: "Tank", icon: "/assets/ui/shop/icon_category_tanks.png" },
       { category: "background", label: "Background", icon: "/assets/ui/shop/rare_star_badge.png" },
       { category: "seabed", label: "Seabed", icon: "/assets/ui/shop/common_star_badge.png" },
-      { category: "tools", label: "Tools", icon: "/assets/ui/helper-food-dispenser.png" },
+      { category: "tools", label: "Tools", icon: foodDispenserAssetPath },
       { category: "decorations", label: "Decor", icon: "/assets/decorations/rock.png" }
     ];
     const panel = el("main", "aq-panel aq-store-list-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2");
@@ -457,11 +457,11 @@ export class StoreOverlay {
     }
     if (this.activeTab === "food") {
       return foodTypes
-        .filter((food) => !hiddenFoodIds.has(food.id) && !supplyFoodIds.has(food.id))
+        .filter((food) => !hiddenFoodTypeIds.has(food.id) && !supplyFoodTypeIds.has(food.id))
         .sort((first, second) => first.calories - second.calories);
     }
     if (this.activeTab === "supply") {
-      return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && supplyFoodIds.has(food.id) && this.itemTier(food.rarity, food.price) === this.coinFilter);
+      return foodTypes.filter((food) => !hiddenFoodTypeIds.has(food.id) && supplyFoodTypeIds.has(food.id) && this.itemTier(food.rarity, food.price) === this.coinFilter);
     }
     if (this.activeTab === "creature") {
       return helperCreatureTypes.filter((creature) => this.itemTier(creature.rarity, creature.price) === this.coinFilter);
