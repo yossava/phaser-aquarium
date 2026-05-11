@@ -1,6 +1,7 @@
+import { foodTypes } from "../data/content";
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 10;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
 export const MAX_OFFLINE_SECONDS = 60 * 60 * 3;
 
@@ -14,6 +15,7 @@ export type SavedFish = {
   health: number;
   nextCoinDropInMs: number;
   fatalCareSeconds?: number;
+  continuousHungrySeconds?: number;
   gender?: FishGender;
 };
 
@@ -210,61 +212,17 @@ function migrateSave(
     return parsed as SavedGame;
   }
 
-    if (parsed.version === 6) {
-      return {
-        ...(parsed as SavedGame),
-        version: SAVE_VERSION
-      };
-    }
-
-    if (parsed.version === 7) {
-      return {
-        ...(parsed as SavedGame),
-        version: SAVE_VERSION
-      };
-    }
-
-    if (parsed.version === 5) {
-      return {
-        ...(parsed as SavedGame),
-        version: SAVE_VERSION
-      };
-    }
-
-    if (parsed.version === 4) {
-      return {
-        ...(parsed as SavedGame),
-        version: SAVE_VERSION,
+  if (parsed.version && parsed.version >= 2 && parsed.version < SAVE_VERSION) {
+    return migrateFoodCountsToCalories({
+      ...(parsed as SavedGame),
+      version: SAVE_VERSION,
       creatureInventory: sanitizeCountRecord(parsed.creatureInventory),
-      helperCreatures: []
-    };
-  }
-
-  if (parsed.version === 3) {
-    return {
-      ...(parsed as SavedGame),
-      version: SAVE_VERSION,
-      creatureInventory: {},
-      helperCreatures: [],
-      rentals: {
-        autoFeederEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoFeederEndsAt, 0)),
-        autoCollectorEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoCollectorEndsAt, 0)),
-        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoFeederMinutes, 1)), 1, 60),
-        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoCollectorMinutes, 1)), 1, 60)
-      }
-    };
-  }
-
-  if (parsed.version === 2) {
-    return {
-      ...(parsed as SavedGame),
-      version: SAVE_VERSION,
-      creatureInventory: {},
-      helperCreatures: [],
+      helperCreatures: Array.isArray(parsed.helperCreatures) ? parsed.helperCreatures : [],
       tank: {
+        ...(parsed.tank ?? { cleanliness: 100, cleanedAt: Date.now(), level: 1 }),
         cleanliness: sanitizeNumber(parsed.tank?.cleanliness, 100),
         cleanedAt: sanitizeNumber(parsed.tank?.cleanedAt, Date.now()),
-        level: 1
+        level: Math.max(1, Math.floor(sanitizeNumber(parsed.tank?.level, 1)))
       },
       rentals: {
         autoFeederEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoFeederEndsAt, 0)),
@@ -272,12 +230,12 @@ function migrateSave(
         autoFeederMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoFeederMinutes, 1)), 1, 60),
         autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoCollectorMinutes, 1)), 1, 60)
       }
-    };
+    });
   }
 
   if (parsed.version === 1) {
     const foodCount = Math.max(0, Math.floor(sanitizeNumber(parsed.foodInventory, 0)));
-    return {
+    return migrateFoodCountsToCalories({
       version: SAVE_VERSION,
       savedAt: sanitizeNumber(parsed.savedAt, Date.now()),
       wallet: sanitizeWallet(parsed.wallet ?? {}),
@@ -292,7 +250,7 @@ function migrateSave(
       settings: { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false },
       dailyGoals: { date: localDateKey(), claimed: [] },
       rentals: { autoFeederEndsAt: 0, autoCollectorEndsAt: 0, autoFeederMinutes: 1, autoCollectorMinutes: 1 }
-    };
+    });
   }
 
   return undefined;
@@ -354,6 +312,44 @@ function sanitizeFoodInventory(source: Record<FoodTypeId, number> | undefined): 
   return sanitized as Record<FoodTypeId, number>;
 }
 
+function migrateFoodCountsToCalories(snapshot: SavedGame): SavedGame {
+  return {
+    ...snapshot,
+    foodInventory: foodCountsToCalories(snapshot.foodInventory),
+    tank: {
+      ...snapshot.tank,
+      states: snapshot.tank?.states ? Object.fromEntries(
+        Object.entries(snapshot.tank.states).map(([level, state]) => [
+          level,
+          {
+            ...state,
+            foodInventory: foodCountsToCalories(state.foodInventory as Record<FoodTypeId, number> | undefined)
+          }
+        ])
+      ) : snapshot.tank?.states
+    }
+  };
+}
+
+function foodCountsToCalories(source: Record<FoodTypeId, number> | undefined): Record<FoodTypeId, number> {
+  const result: Partial<Record<FoodTypeId, number>> = {};
+  if (!source) {
+    return result as Record<FoodTypeId, number>;
+  }
+
+  for (const [id, value] of Object.entries(source) as Array<[FoodTypeId, number]>) {
+    const amount = Math.max(0, Math.floor(sanitizeNumber(value, 0)));
+    if (amount <= 0) {
+      continue;
+    }
+    const foodType = foodTypes.find((item) => item.id === id);
+    const isCalorieTracked = foodType && id !== "medicine" && id !== "ageBoost" && id !== "creature";
+    result[id] = isCalorieTracked ? amount * foodType.calories : amount;
+  }
+
+  return result as Record<FoodTypeId, number>;
+}
+
 function sanitizeFish(fish: Partial<SavedFish>): SavedFish | undefined {
   if (!fish.typeId) {
     return undefined;
@@ -369,6 +365,7 @@ function sanitizeFish(fish: Partial<SavedFish>): SavedFish | undefined {
     health: clamp(sanitizeNumber(fish.health, 100), 0, 100),
     nextCoinDropInMs: Math.max(0, sanitizeNumber(fish.nextCoinDropInMs, 0)),
     fatalCareSeconds: clamp(sanitizeNumber(fish.fatalCareSeconds, 0), 0, 24 * 60 * 60),
+    continuousHungrySeconds: clamp(sanitizeNumber(fish.continuousHungrySeconds, 0), 0, 24 * 60 * 60),
     gender: fish.gender === "F" ? "F" : "M"
   };
 }

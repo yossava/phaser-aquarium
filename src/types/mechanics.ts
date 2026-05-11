@@ -22,6 +22,8 @@ export type FishGender = "M" | "F";
 export type Price = {
   coinType: CoinType;
   amount: number;
+  rareAmount?: number;
+  superRareAmount?: number;
 };
 
 export type Wallet = Record<CoinType, number>;

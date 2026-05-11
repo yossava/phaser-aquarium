@@ -4,6 +4,38 @@ Generated from `tools/simulate-economy.mjs`.
 
 For the rebalanced long-term projection, see `docs/economy-long-term-balancing-report.md`.
 
+## Implemented Calorie ROI Economy
+
+The current implementation has moved away from fixed fish coin timers and rarity-produced currencies.
+
+- All fish now produce **common coins** only.
+- Fish earn from eating: when a fish consumes food calories, it schedules a common coin drop `1-10s` later.
+- Before 3 hours of real fish age, each fully fed fish returns its consumed food cost plus enough ROI bonus to cumulatively repay its common purchase price over 3 hours.
+- After 3 hours, each fish returns `1.1x` the common price of the calories it consumed, so the player nets roughly `10%` over food cost.
+- Sick fish do not produce.
+- All normal fish food can be eaten by all fish. Species food locks and the old common-to-rare-to-super-rare production bridge are no longer active.
+- Fish calorie need is age-based and value-scaled: `max(60, ageMinutes * 10 * fishPrice / 60)` calories for full hunger.
+- A good meal is 25% of full calorie need, so four optimal pellets fill a fish.
+- If a dropped pellet is below the fish's current 25% meal target, the fish still eats it but shows guidance such as `Need 250 cal food`.
+- Food inventory is stored as calories for normal food. The dock badge rounds servings as `5`, `4+`, `4`, `3+`, etc.
+- Medicine, growth tonic, and hidden creature food stay count-based.
+
+### Pricing Shape
+
+- Fish prices are now common coin prices, with optional rare or super rare token requirements on rare tiers.
+- Rare fish example shape: `C1K + R1`.
+- Super rare fish example shape: `C12K + SR1`.
+- Food common pricing uses a consistent calorie value of about `0.03 common/calorie`.
+- Premium food can also require small rare or super rare token amounts, but only its common component is used for fish common production.
+- Decorations, helpers, tank cosmetics, tank upgrades, and tools now use common prices with optional rare/SR token gates instead of being pure rare/SR currency purchases.
+
+### Remaining Economy Gaps
+
+- Rare and super rare token sources still need their final system: events, gacha, rewarded ads, quest streaks, or achievement milestones.
+- The current implementation keeps legacy production fields in content types for compatibility, but runtime production ignores them.
+- Long-term prices should be re-simulated after real playtesting because the new economy is attention-based: income depends on feeding frequency and food choice.
+- Token gates need pacing rules so a player can see rare/SR goals early without being able to brute force them through common income alone.
+
 ## Simulation Assumptions
 
 - Starting wallet: `120 common`.

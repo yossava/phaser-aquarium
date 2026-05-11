@@ -6,7 +6,7 @@ import type { FoodType } from "../types/mechanics";
 const screenSizedPellet = (ratio: number): number => Math.round(gameWidth * ratio);
 const defaultPelletDisplaySize = screenSizedPellet(0.06);
 const pillPelletDisplaySize = screenSizedPellet(0.072);
-const maxFoodPelletAgeSeconds = 15;
+const maxFoodPelletAgeSeconds = 5 * 60;
 const foodPelletSizeByDensity: Record<number, number> = {
   1: screenSizedPellet(0.06),
   2: screenSizedPellet(0.07),
@@ -23,18 +23,21 @@ export class FoodPellet {
   private velocityY: number;
   private ageSeconds = 0;
   private expired = false;
+  private reservedCalories: number;
 
   public constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     public readonly foodType: FoodType,
-    options: { velocityX?: number; velocityY?: number; displayScale?: number } = {}
+    options: { velocityX?: number; velocityY?: number; displayScale?: number; reservedCalories?: number; source?: "manual" | "dispenser" } = {}
   ) {
     const textureKey = this.textureKey(scene);
     this.sprite = scene.add.image(x, y, textureKey);
     this.velocityX = options.velocityX ?? 0;
     this.velocityY = options.velocityY ?? this.sinkSpeed;
+    this.reservedCalories = Phaser.Math.Clamp(options.reservedCalories ?? foodType.calories, 0, foodType.calories);
+    this.source = options.source ?? "manual";
     if (foodType.id !== "medicine") {
       this.sprite.setTint(this.tintForFood());
     }
@@ -47,8 +50,14 @@ export class FoodPellet {
     this.sprite.setDepth(7);
   }
 
+  public readonly source: "manual" | "dispenser";
+
   public get nutrition(): number {
-    return this.foodType.calories;
+    return this.reservedCalories;
+  }
+
+  public get reservedNutrition(): number {
+    return this.reservedCalories;
   }
 
   public get visualTint(): number {

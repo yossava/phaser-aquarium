@@ -1,21 +1,13 @@
 import Phaser from "phaser";
 import { gameHeight, gameWidth, tankBounds } from "../game/constants";
+import { formatNumber } from "../game/economy";
+import { commonPerCalorie, fishFullCaloriesNeed, fishRoiSeconds, fishTargetMealCalories, fishCommonPrice } from "../game/economy-model";
 import { gameFontFamily } from "../game/fonts";
 import { fishFoodTintFor } from "../game/visuals";
 import type { AgeStage, CoinProduction, FishGender, FishState, FishType, FoodType } from "../types/mechanics";
 import { FoodPellet } from "./FoodPellet";
 
 const ageStageOrder: AgeStage[] = ["baby", "juvenile", "adult", "elder", "master"];
-const coinTypeWeight: Record<CoinProduction["coinType"], number> = {
-  common: 1,
-  rare: 3,
-  superRare: 8
-};
-const coinTypeLabel: Record<CoinProduction["coinType"], string> = {
-  common: "Common",
-  rare: "Rare",
-  superRare: "Super Rare"
-};
 const minimumHungerToEatMore = 3;
 const veryBigScaleMultiplier = 1.55;
 const secondsPerFishMonth = 60 * 60;
@@ -41,14 +33,12 @@ const happyEmojiDurationMs = statusEmojiDurationMs;
 const missedFoodEmojiDurationMs = statusEmojiDurationMs;
 const dragLoveEmojiDurationMs = statusEmojiDurationMs;
 const dragLoveEmojiCooldownMs = statusEmojiCooldownMs;
-const onboardingCoinDropCount = 3;
-const maxCoinDropIntervalSeconds = 10;
-const firstOnboardingCoinDelayMs = 5000;
-const minOnboardingCoinDelayMs = 8000;
-const maxOnboardingCoinDelayMs = maxCoinDropIntervalSeconds * 1000;
+const minCoinProductionDelayMs = 5000;
+const maxCoinProductionDelayMs = 30000;
+const averageCoinProductionDelaySeconds = 17.5;
 const hungryBubbleFullnessThreshold = 0.7;
 const statusIndicatorUpdateIntervalSeconds = 0.16;
-const minimumMealCalorieRatio = 0.55;
+const minimumMealCalorieRatio = 1;
 const fishLengthDisplayMultiplier = 10;
 const baselineMealCalories = 46;
 const baseTextureWidth = 64;
@@ -64,6 +54,10 @@ const maxPlayChaseDelayMs = 45000;
 const minPlayChaseDurationMs = 3600;
 const maxPlayChaseDurationMs = 6200;
 const playChaseSpeedMultiplier = 1.9;
+const minimumFoodChaseSpeed = 150;
+const minimumMedicineChaseSpeed = 180;
+const foodPickupRadius = 34;
+const medicinePickupRadius = 38;
 const restDriftSpeedMultiplier = 0.08;
 const restDriftVerticalRatio = 0.35;
 const directionFlipDeadzone = 18;
@@ -87,7 +81,6 @@ export class Fish {
   public health = 100;
   public target = new Phaser.Math.Vector2();
   public nextCoinDropAt = 0;
-  public nextMegaCoinDropAt = 0;
   public facing = 1;
   public medicatedUntil = 0;
   public fatalCareSeconds = 0;
@@ -98,8 +91,7 @@ export class Fish {
   private tailMark: Phaser.GameObjects.Graphics;
   private stateBubble: Phaser.GameObjects.Graphics;
   private stateEmoji: Phaser.GameObjects.Text;
-  private productionProgress = new Map<string, number>();
-  private onboardingCoinDropsRemaining = 0;
+  private pendingProductionCoinValue = 0;
   private happyEmojiUntil = 0;
   private missedFoodEmojiUntil = 0;
   private dragLoveEmojiUntil = 0;
@@ -160,11 +152,16 @@ export class Fish {
       .setDepth(13);
     this.pickWanderTarget();
     this.scheduleNextPlayChase();
+    this.scheduleNextCoinProduction(scene.time.now);
     this.updateTailMark();
     this.updateStatusBars(true);
   }
 
-  public update(deltaSeconds: number, foods: FoodPellet[], tankFish: Fish[] = []): { food: FoodPellet; accepted: boolean; reason?: "tooSmall" } | undefined {
+  public update(
+    deltaSeconds: number,
+    foods: FoodPellet[],
+    tankFish: Fish[] = []
+  ): { food: FoodPellet; accepted: boolean; reason?: "tooSmall"; consumedCalories: number; neededMealCalories: number } | undefined {
     this.ageSeconds += deltaSeconds;
     this.updateAgeStage();
 
@@ -214,8 +211,11 @@ export class Fish {
       resting = this.updateIdleRest();
     }
 
-    const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier() : chaseTarget ? playChaseSpeedMultiplier : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
-    const moveSpeed = this.type.speed * speedMultiplier * this.movementSizeMultiplier() * fishMovementSpeedMultiplier;
+    const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier(closestFood) : chaseTarget ? playChaseSpeedMultiplier : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
+    const rawMoveSpeed = this.type.speed * speedMultiplier * this.movementSizeMultiplier() * fishMovementSpeedMultiplier;
+    const moveSpeed = closestFood
+      ? Math.max(rawMoveSpeed, closestFood.foodType.id === "medicine" ? minimumMedicineChaseSpeed : minimumFoodChaseSpeed)
+      : rawMoveSpeed;
     if (resting) {
       this.driftWhileResting(deltaSeconds, moveSpeed);
     } else {
@@ -225,11 +225,16 @@ export class Fish {
     this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined || chaseTarget !== undefined, resting);
     this.updateStateEmoji();
 
-    if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < 24) {
+    if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < this.foodPickupRadius(closestFood)) {
       const tooSmall = this.isFoodTooSmall(closestFood);
-      const accepted = this.acceptsFood(closestFood) && !tooSmall;
+      const accepted = this.acceptsFood(closestFood);
+      const neededMealCalories = this.mealCaloriesNeeded();
+      const missingCalories = Math.max(0, (this.hunger / 100) * this.fullCaloriesNeed());
+      const consumedCalories = accepted
+        ? Phaser.Math.Clamp(Math.min(closestFood.nutrition, neededMealCalories, Math.max(1, missingCalories)), 0, closestFood.nutrition)
+        : 0;
       if (accepted) {
-        this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromFood(closestFood), overfullHungerFloor, 100);
+        this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromCalories(consumedCalories), overfullHungerFloor, 100);
         this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
         this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
       } else {
@@ -242,55 +247,29 @@ export class Fish {
         this.fatalCareSeconds = 0;
       }
       this.updateStatusBars(true);
-      return { food: closestFood, accepted, reason: tooSmall ? "tooSmall" : undefined };
+      return { food: closestFood, accepted, reason: tooSmall ? "tooSmall" : undefined, consumedCalories, neededMealCalories };
     }
 
     this.maybeUpdateStatusBars();
     return undefined;
   }
 
-  public canDropCoin(now: number): boolean {
-    return this.state === "happy" && now >= this.nextCoinDropAt;
-  }
-
-  public markCoinDropped(now: number): void {
-    this.nextCoinDropAt = now + this.activeProduction().intervalSeconds * 1000;
-  }
-
-  public markCoinDroppedForProduction(now: number, production: CoinProduction): void {
-    if (this.onboardingCoinDropsRemaining > 0) {
-      this.onboardingCoinDropsRemaining -= 1;
-      if (this.onboardingCoinDropsRemaining > 0) {
-        this.nextCoinDropAt = now + Phaser.Math.Between(minOnboardingCoinDelayMs, maxOnboardingCoinDelayMs);
-        return;
-      }
-    }
-
-    this.nextCoinDropAt = now + production.intervalSeconds * 1000;
-  }
-
-  public canDropMegaCoin(now: number): boolean {
-    return (this.ageStage === "elder" || this.ageStage === "master") && now >= this.nextMegaCoinDropAt;
-  }
-
-  public markMegaCoinDropped(now: number): void {
-    this.nextMegaCoinDropAt = now + 60 * 1000;
-  }
-
-  public primeOnboardingCoinDrops(now: number): void {
-    this.onboardingCoinDropsRemaining = onboardingCoinDropCount;
-    this.nextCoinDropAt = now + firstOnboardingCoinDelayMs;
-  }
-
-  public restoreProgress(ageSeconds: number, hunger: number, health: number, nextCoinDropAt: number, fatalCareSecondsValue = 0, continuousHungrySecondsValue = 0): void {
+  public restoreProgress(
+    ageSeconds: number,
+    hunger: number,
+    health: number,
+    nextCoinDropAt: number,
+    fatalCareSecondsValue = 0,
+    continuousHungrySecondsValue = 0
+  ): void {
     this.setAgeSeconds(ageSeconds);
     this.hunger = Phaser.Math.Clamp(hunger, overfullHungerFloor, 100);
     this.health = Phaser.Math.Clamp(health, 0, 100);
     this.continuousHungrySeconds = this.isHungryEnoughForSickness()
       ? Phaser.Math.Clamp(continuousHungrySecondsValue, 0, fatalCareSeconds)
       : 0;
-    this.nextCoinDropAt = Math.max(0, nextCoinDropAt);
-    this.nextMegaCoinDropAt = this.ageStage === "elder" || this.ageStage === "master" ? this.scene.time.now + 60 * 1000 : 0;
+    this.nextCoinDropAt = nextCoinDropAt > 0 ? nextCoinDropAt : 0;
+    this.ensureCoinProductionScheduled(this.scene.time.now);
     this.updateCareState();
     this.fatalCareSeconds = this.isInFatalCareState() ? Phaser.Math.Clamp(fatalCareSecondsValue, 0, fatalCareSeconds) : 0;
   }
@@ -305,6 +284,7 @@ export class Fish {
     this.scheduleNextPlayChase();
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
+    this.ensureCoinProductionScheduled(this.scene.time.now);
     this.setStateTint();
     this.updateStatusBars(true);
   }
@@ -340,7 +320,9 @@ export class Fish {
     this.health = Phaser.Math.Clamp(Math.max(this.health + 55, 82), 0, 100);
     this.hunger = Phaser.Math.Clamp(Math.min(this.hunger, 35), overfullHungerFloor, 100);
     this.medicatedUntil = now + 45000;
+    this.continuousHungrySeconds = 0;
     this.fatalCareSeconds = 0;
+    this.updateCareState();
     this.updateStatusBars(true);
   }
 
@@ -355,6 +337,13 @@ export class Fish {
   public showMissedFoodEmoji(now = this.scene.time.now): void {
     this.missedFoodEmojiUntil = now + missedFoodEmojiDurationMs;
     this.updateStatusBars(true);
+  }
+
+  public showFoodNeedMessage(calories: number, now = this.scene.time.now): void {
+    this.activeStateEmoji = `need ${formatNumber(Math.ceil(Math.max(1, calories)))} cal..`;
+    this.stateEmojiVisibleUntil = now + statusEmojiDurationMs;
+    this.nextStateEmojiAt = now + statusEmojiCooldownMs;
+    this.positionStateEmoji(this.activeStateEmoji);
   }
 
   public isInterestedInFood(food: FoodPellet): boolean {
@@ -419,52 +408,20 @@ export class Fish {
   }
 
   public primaryProduction(): CoinProduction {
-    const production = this.currentAgeCurve().production[0] ?? {
+    return {
       coinType: "common",
-      amount: this.type.coinValue,
-      intervalSeconds: this.type.coinDropSeconds,
+      amount: Math.max(1, Math.ceil(this.fullCaloriesNeed() * this.coinValuePerFullnessCalorie() * (averageCoinProductionDelaySeconds / 3600))),
+      intervalSeconds: Math.round(averageCoinProductionDelaySeconds),
       chance: 1
     };
-    return this.scaleProductionForCareCost(production, 0);
   }
 
   public productionOptions(): CoinProduction[] {
-    const production = this.currentAgeCurve().production;
-    const rawProduction =
-      production.length > 0
-        ? production
-        : [
-            {
-              coinType: "common" as const,
-              amount: this.type.coinValue,
-              intervalSeconds: this.type.coinDropSeconds,
-              chance: 1
-            }
-          ];
-    return this.withProgressionBridge(rawProduction).map((entry, index) => this.scaleProductionForCareCost(entry, index));
-  }
-
-  public activeProduction(): CoinProduction {
-    return this.primaryProduction();
-  }
-
-  public rollActiveProduction(): CoinProduction {
-    return this.rollProduction();
+    return [this.primaryProduction()];
   }
 
   public productionSummary(): string {
-    const options = this.productionOptions();
-    const mainProduction = options[0] ?? this.primaryProduction();
-    const bonus = options
-      .slice(1)
-      .sort((a, b) => coinTypeWeight[b.coinType] - coinTypeWeight[a.coinType])
-      .find((production) => production.coinType !== mainProduction.coinType);
-
-    if (!bonus) {
-      return `${mainProduction.amount} ${coinTypeLabel[mainProduction.coinType]} / ${mainProduction.intervalSeconds}s`;
-    }
-
-    return `${mainProduction.amount} ${coinTypeLabel[mainProduction.coinType]} / ${mainProduction.intervalSeconds}s + ${coinTypeLabel[bonus.coinType]} bonus`;
+    return `Converts fullness to Common | ROI ${this.roiProgressLabel()}`;
   }
 
   public getSellValue(): number {
@@ -480,11 +437,7 @@ export class Fish {
       rare: 1.12,
       superRare: 1.28
     };
-    const productionPerMinute = this.productionOptions().reduce((total, production) => {
-      const coinWeight = coinTypeWeight[production.coinType];
-      return total + (production.amount * coinWeight * production.chance * 60) / production.intervalSeconds;
-    }, 0);
-    const productionMultiplier = 1 + Phaser.Math.Clamp(productionPerMinute / 90, 0, 1) * 0.34;
+    const productionMultiplier = 1 + Phaser.Math.Clamp(this.postRoiHourlyNet() / 9000, 0, 1) * 0.34;
     const sizeMultiplier = 0.92 + Phaser.Math.Clamp(this.currentVisualWorldScale() / this.veryBigScaleCap(), 0, 1) * 0.2;
     const resilienceMultiplier = 0.96 + this.type.illnessResistance * 0.1;
     const conditionMultiplier = Phaser.Math.Clamp(
@@ -500,7 +453,7 @@ export class Fish {
       sizeMultiplier *
       resilienceMultiplier *
       conditionMultiplier;
-    const babyResaleCap = Math.floor(this.type.price.amount * 0.82);
+    const babyResaleCap = Math.floor(fishCommonPrice(this.type) * 0.82);
     const cappedValue = this.ageStage === "baby" ? Math.min(rawValue, babyResaleCap) : rawValue;
     return Math.max(1, Math.floor(cappedValue));
   }
@@ -513,24 +466,22 @@ export class Fish {
   }
 
   public calorieNeedMultiplier(): number {
-    const speciesSizeRatio = Phaser.Math.Clamp((this.adultLengthCm() / fishLengthDisplayMultiplier - 8) / 24, 0, 1);
-    const speciesMultiplier = Phaser.Math.Linear(0.95, 1.18, speciesSizeRatio);
-    return Phaser.Math.Linear(0.72, 3.8, this.biologicalGrowthRatio()) * speciesMultiplier;
+    return Phaser.Math.Clamp(this.fullCaloriesNeed() / baselineMealCalories, 1, 10000);
   }
 
   public hungerPerSecond(): number {
-    return this.type.hungerPerSecond * this.currentAgeCurve().hungerMultiplier * this.calorieNeedMultiplier();
+    return 100 / 3600;
   }
 
   public mealCaloriesNeeded(): number {
-    return baselineMealCalories * this.calorieNeedMultiplier();
+    return fishTargetMealCalories(this.type, this.ageSeconds);
   }
 
   public hungerReductionFromFood(food: FoodPellet | FoodType): number {
     const foodType = food instanceof FoodPellet ? food.foodType : food;
-    const preferredMultiplier = this.type.preferredFoodTypes.includes(foodType.id) ? 1.08 : 1;
     const medicineMultiplier = foodType.id === "medicine" ? 0.55 : foodType.id === "ageBoost" ? 0 : 1;
-    return (foodType.calories * preferredMultiplier * medicineMultiplier) / this.calorieNeedMultiplier();
+    const calories = food instanceof FoodPellet ? food.nutrition : foodType.calories;
+    return this.hungerReductionFromCalories(calories) * medicineMultiplier;
   }
 
   public isFoodTooSmall(food: FoodPellet | FoodType): boolean {
@@ -539,15 +490,83 @@ export class Fish {
       return false;
     }
 
-    return this.acceptsFoodType(foodType) && foodType.calories < this.mealCaloriesNeeded() * minimumMealCalorieRatio;
+    const calories = food instanceof FoodPellet ? food.nutrition : foodType.calories;
+    return this.acceptsFoodType(foodType) && calories < this.mealCaloriesNeeded() * minimumMealCalorieRatio;
+  }
+
+  public fullCaloriesNeed(): number {
+    return fishFullCaloriesNeed(this.type, this.ageSeconds);
+  }
+
+  public currentFullnessCalories(): number {
+    return Math.max(0, ((100 - this.hunger) / 100) * this.fullCaloriesNeed());
+  }
+
+  public roiProgressRatio(): number {
+    return Phaser.Math.Clamp(this.ageSeconds / fishRoiSeconds, 0, 1);
+  }
+
+  public coinProductionValueForCalories(calories: number): number {
+    return Math.max(0, calories) * this.coinValuePerFullnessCalorie();
+  }
+
+  public consumeFullnessCalories(calories: number): void {
+    this.hunger = Phaser.Math.Clamp(this.hunger + this.hungerReductionFromCalories(calories), overfullHungerFloor, 100);
+    this.updateContinuousHungerTimer(0);
+    this.updateCareState();
+    this.updateStatusBars(true);
+  }
+
+  public canDropCoin(now: number): boolean {
+    return this.state !== "ill" && this.currentFullnessCalories() > 0 && this.nextCoinDropAt > 0 && now >= this.nextCoinDropAt;
+  }
+
+  public takeCoinProductionDrop(now: number): number {
+    const fullnessCalories = this.currentFullnessCalories();
+    if (fullnessCalories <= 0) {
+      this.pendingProductionCoinValue = 0;
+      this.scheduleNextCoinProduction(now);
+      return 0;
+    }
+
+    const valuePerCalorie = this.coinValuePerFullnessCalorie();
+    const targetCalories = Math.min(
+      fullnessCalories,
+      this.fullCaloriesNeed() * (Phaser.Math.FloatBetween(5, 30) / 3600) * Phaser.Math.FloatBetween(0.75, 1.45)
+    );
+    const availableValue = targetCalories * valuePerCalorie + this.pendingProductionCoinValue;
+    let coinValue = Math.floor(availableValue);
+
+    if (coinValue <= 0 && fullnessCalories * valuePerCalorie >= 1) {
+      coinValue = 1;
+    }
+
+    if (coinValue <= 0) {
+      this.pendingProductionCoinValue = availableValue;
+      this.scheduleNextCoinProduction(now);
+      return 0;
+    }
+
+    const maximumAffordableValue = Math.max(1, Math.floor(fullnessCalories * valuePerCalorie + this.pendingProductionCoinValue));
+    const randomCap = Math.max(1, Math.ceil(this.primaryProduction().amount * Phaser.Math.FloatBetween(1.1, 2.8)));
+    const producedValue = Phaser.Math.Between(1, Math.min(maximumAffordableValue, Math.max(coinValue, randomCap)));
+    const caloriesSpent = Math.min(fullnessCalories, producedValue / Math.max(0.0001, valuePerCalorie));
+    this.consumeFullnessCalories(caloriesSpent);
+    this.pendingProductionCoinValue = Math.max(0, availableValue - producedValue);
+    this.scheduleNextCoinProduction(now);
+    return producedValue;
+  }
+
+  public postponeCoinProduction(now: number, delayMs = 1000): void {
+    this.nextCoinDropAt = now + Math.max(0, delayMs);
   }
 
   public isInFatalCareState(): boolean {
-    return this.state === "ill" || this.hunger > hungryStateThreshold;
+    return this.state === "ill";
   }
 
   public canBecomeSickFromHunger(): boolean {
-    return this.continuousHungrySeconds >= sickAfterContinuousHungerSeconds;
+    return this.isHungryEnoughForSickness() && this.continuousHungrySeconds >= sickAfterContinuousHungerSeconds;
   }
 
   public addContinuousHungerSeconds(seconds: number): void {
@@ -582,6 +601,13 @@ export class Fish {
     this.fatalCareSeconds = this.isInFatalCareState()
       ? Phaser.Math.Clamp(this.fatalCareSeconds + Math.max(0, seconds), 0, fatalCareSeconds)
       : 0;
+  }
+
+  public setContinuousHungerSeconds(seconds: number): void {
+    this.continuousHungrySeconds = this.isHungryEnoughForSickness()
+      ? Phaser.Math.Clamp(Math.max(0, seconds), 0, fatalCareSeconds)
+      : 0;
+    this.updateCareState();
   }
 
   public isDeadFromNeglect(): boolean {
@@ -759,53 +785,35 @@ export class Fish {
     };
   }
 
-  private currentAgeCurve() {
-    return this.type.ageCurve[this.ageStage];
+  private hungerReductionFromCalories(calories: number): number {
+    return (Math.max(0, calories) / Math.max(1, this.fullCaloriesNeed())) * 100;
   }
 
-  private withProgressionBridge(production: CoinProduction[]): CoinProduction[] {
-    return production;
+  private postRoiHourlyNet(): number {
+    return this.fullCaloriesNeed() * commonPerCalorie * 0.1;
   }
 
-  private productionCareMultiplier(): number {
-    return Math.max(1, this.calorieNeedMultiplier());
-  }
-
-  private scaleProductionForCareCost(production: CoinProduction, index: number): CoinProduction {
-    const calorieMultiplier = this.productionCareMultiplier();
-    const primaryMultiplier = index === 0
-      ? Phaser.Math.Clamp(Math.pow(calorieMultiplier, 1.15), 1, 6)
-      : Phaser.Math.Clamp(Math.pow(calorieMultiplier, 0.75), 1, 3.25);
-    const intervalBoost = Phaser.Math.Linear(1, 1.12, Phaser.Math.Clamp((calorieMultiplier - 1) / 3, 0, 1));
-    return {
-      ...production,
-      amount: Math.max(1, Math.ceil(production.amount * primaryMultiplier)),
-      intervalSeconds: Phaser.Math.Clamp(
-        Math.round(production.intervalSeconds / intervalBoost),
-        4,
-        maxCoinDropIntervalSeconds
-      )
-    };
-  }
-
-  private rollProduction(): CoinProduction {
-    const options = this.productionOptions();
-    const primary = options[0] ?? this.primaryProduction();
-    const bonusOptions = options
-      .slice(1)
-      .sort((a, b) => coinTypeWeight[b.coinType] - coinTypeWeight[a.coinType] || b.chance - a.chance);
-
-    for (const option of bonusOptions) {
-      const key = `${option.coinType}:${option.amount}:${option.intervalSeconds}`;
-      const progress = (this.productionProgress.get(key) ?? 0) + Math.max(0, option.chance);
-      if (progress >= 1) {
-        this.productionProgress.set(key, progress - 1);
-        return option;
-      }
-      this.productionProgress.set(key, progress);
+  private coinValuePerFullnessCalorie(): number {
+    if (this.ageSeconds >= fishRoiSeconds) {
+      return commonPerCalorie * 1.1;
     }
 
-    return primary;
+    return commonPerCalorie + (fishCommonPrice(this.type) * 3600) / Math.max(1, fishRoiSeconds * this.fullCaloriesNeed());
+  }
+
+  private roiProgressLabel(): string {
+    const percent = Math.round(this.roiProgressRatio() * 100);
+    return `${percent}%`;
+  }
+
+  private ensureCoinProductionScheduled(now: number): void {
+    if (this.nextCoinDropAt <= 0) {
+      this.scheduleNextCoinProduction(now);
+    }
+  }
+
+  private scheduleNextCoinProduction(now: number): void {
+    this.nextCoinDropAt = now + Phaser.Math.Between(minCoinProductionDelayMs, maxCoinProductionDelayMs);
   }
 
   private desiredAgeScale(): number {
@@ -1032,7 +1040,7 @@ export class Fish {
   }
 
   private updateCareState(): void {
-    this.state = this.health < 35 && this.canBecomeSickFromHunger()
+    this.state = this.canBecomeSickFromHunger()
       ? "ill"
       : this.hunger > hungryStateThreshold
         ? "hungry"
@@ -1081,11 +1089,7 @@ export class Fish {
   }
 
   private acceptsFoodType(foodType: FoodType): boolean {
-    return (
-      foodType.acceptedByDefault ||
-      this.type.requiredFoodTypes.includes(foodType.id) ||
-      this.type.preferredFoodTypes.includes(foodType.id)
-    );
+    return foodType.id !== "creature";
   }
 
   private willChaseFood(food: FoodPellet): boolean {
@@ -1098,7 +1102,7 @@ export class Fish {
     }
 
     if (food.foodType.id === "medicine") {
-      return this.health < 82;
+      return this.state === "ill" || this.health < 82;
     }
 
     if (this.state === "ill") {
@@ -1112,12 +1116,24 @@ export class Fish {
     return this.state === "hungry";
   }
 
-  private foodChaseSpeedMultiplier(): number {
+  private foodChaseSpeedMultiplier(food: FoodPellet): number {
+    if (food.foodType.id === "medicine") {
+      return 3.1;
+    }
+
+    if (food.foodType.id === "ageBoost") {
+      return 2.65;
+    }
+
     if (this.state === "ill") {
       return 1.05;
     }
 
-    return this.state === "hungry" ? 2.15 : 1.85;
+    return this.state === "hungry" ? 3.05 : 2.45;
+  }
+
+  private foodPickupRadius(food: FoodPellet): number {
+    return food.foodType.id === "medicine" || food.foodType.id === "ageBoost" ? medicinePickupRadius : foodPickupRadius;
   }
 
   private moveTowardTarget(deltaSeconds: number, speed: number): void {
@@ -1388,8 +1404,10 @@ export class Fish {
     const headOffsetX = this.facing * bodyWidth * 0.62;
     const emojiX = Phaser.Math.Clamp(this.sprite.x + headOffsetX, tankBounds.left + 18, tankBounds.right - 18);
     const emojiY = Math.max(tankBounds.top + 18, this.sprite.y - bodyHeight * 0.62);
+    const isTextMessage = emoji.length > 3;
     this.stateEmoji
       .setText(emoji)
+      .setFontSize(isTextMessage ? "12px" : "18px")
       .setOrigin(0.5, 1)
       .setPosition(emojiX, emojiY)
       .setVisible(true);

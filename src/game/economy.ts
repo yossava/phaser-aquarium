@@ -5,7 +5,7 @@ export function createWallet(common = 0, rare = 0, superRare = 0): Wallet {
 }
 
 export function canAfford(wallet: Wallet, price: Price): boolean {
-  return wallet[price.coinType] >= price.amount;
+  return priceComponents(price).every(([coinType, amount]) => wallet[coinType] >= amount);
 }
 
 export function spend(wallet: Wallet, price: Price): boolean {
@@ -13,7 +13,9 @@ export function spend(wallet: Wallet, price: Price): boolean {
     return false;
   }
 
-  wallet[price.coinType] -= price.amount;
+  for (const [coinType, amount] of priceComponents(price)) {
+    wallet[coinType] -= amount;
+  }
   return true;
 }
 
@@ -51,7 +53,9 @@ export function formatPrice(price: Price): string {
     superRare: "SR"
   };
 
-  return `${labelByCoin[price.coinType]}${formatNumber(price.amount)}`;
+  return priceComponents(price)
+    .map(([coinType, amount]) => `${labelByCoin[coinType]}${formatNumber(amount)}`)
+    .join(" + ");
 }
 
 export function formatPriceLong(price: Price): string {
@@ -61,5 +65,15 @@ export function formatPriceLong(price: Price): string {
     superRare: "Super Rare"
   };
 
-  return `${formatNumber(price.amount)} ${labelByCoin[price.coinType]}`;
+  return priceComponents(price)
+    .map(([coinType, amount]) => `${formatNumber(amount)} ${labelByCoin[coinType]}`)
+    .join(" + ");
+}
+
+export function priceComponents(price: Price): Array<[CoinType, number]> {
+  const merged: Wallet = createWallet();
+  merged[price.coinType] += Math.max(0, Math.floor(price.amount));
+  merged.rare += Math.max(0, Math.floor(price.rareAmount ?? 0));
+  merged.superRare += Math.max(0, Math.floor(price.superRareAmount ?? 0));
+  return (Object.entries(merged) as Array<[CoinType, number]>).filter(([, amount]) => amount > 0);
 }

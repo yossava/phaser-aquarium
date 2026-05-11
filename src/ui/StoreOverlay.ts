@@ -1,5 +1,5 @@
 import { fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
-import { canAfford, formatNumber, formatPrice } from "../game/economy";
+import { canAfford, formatNumber, formatPrice, priceComponents } from "../game/economy";
 import type { CoinType, FishType, FoodType, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
 const supplyFoodIds = new Set(["medicine", "ageBoost"]);
@@ -449,16 +449,18 @@ export class StoreOverlay {
 
   private currentItems(state: StoreOverlayState): Array<FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard> {
     if (this.activeTab === "fish") {
-      return fishTypes.filter((fish) => fish.price.coinType === this.coinFilter);
+      return fishTypes.filter((fish) => this.itemTier(fish.rarity, fish.price) === this.coinFilter);
     }
     if (this.activeTab === "food") {
-      return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && !supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
+      return foodTypes
+        .filter((food) => !hiddenFoodIds.has(food.id) && !supplyFoodIds.has(food.id))
+        .sort((first, second) => first.calories - second.calories);
     }
     if (this.activeTab === "supply") {
-      return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && supplyFoodIds.has(food.id) && food.price.coinType === this.coinFilter);
+      return foodTypes.filter((food) => !hiddenFoodIds.has(food.id) && supplyFoodIds.has(food.id) && this.itemTier(food.rarity, food.price) === this.coinFilter);
     }
     if (this.activeTab === "creature") {
-      return helperCreatureTypes.filter((creature) => creature.price.coinType === this.coinFilter);
+      return helperCreatureTypes.filter((creature) => this.itemTier(creature.rarity, creature.price) === this.coinFilter);
     }
     const tankItemsByCategory: Record<TankStoreCategory, Array<StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard>> = {
       tank: state.tankCards,
@@ -471,9 +473,19 @@ export class StoreOverlay {
       return state.tankCards.filter((tank) => !tank.owned);
     }
     if (this.tankCategory === "background" || this.tankCategory === "seabed") {
-      return tankItemsByCategory[this.tankCategory].filter((item) => !item.owned && item.price.coinType === this.coinFilter);
+      return tankItemsByCategory[this.tankCategory].filter((item) => !item.owned && this.itemTier("common", item.price) === this.coinFilter);
     }
-    return tankItemsByCategory[this.tankCategory].filter((item) => item.owned || item.price.coinType === this.coinFilter);
+    return tankItemsByCategory[this.tankCategory].filter((item) => item.owned || this.itemTier("common", item.price) === this.coinFilter);
+  }
+
+  private itemTier(rarity: Rarity, price: Price): CoinType {
+    if (price.superRareAmount && price.superRareAmount > 0) {
+      return "superRare";
+    }
+    if (price.rareAmount && price.rareAmount > 0) {
+      return "rare";
+    }
+    return rarity === "superRare" ? "superRare" : rarity === "rare" ? "rare" : "common";
   }
 
   private cardForItem(item: FishType | FoodType | HelperCreatureType | StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard, state: StoreOverlayState): HTMLElement {
@@ -531,7 +543,12 @@ export class StoreOverlay {
   private foodCard(food: FoodType, state: StoreOverlayState): HTMLElement {
     const isAgeBoost = food.id === "ageBoost";
     const quantity = isAgeBoost ? 1 : this.quantities.get(food.id) ?? 1;
-    const totalPrice = { coinType: food.price.coinType, amount: food.price.amount * quantity };
+    const totalPrice: Price = {
+      coinType: food.price.coinType,
+      amount: food.price.amount * quantity,
+      rareAmount: (food.price.rareAmount ?? 0) * quantity || undefined,
+      superRareAmount: (food.price.superRareAmount ?? 0) * quantity || undefined
+    };
     const affordable = state.developerGodMode || canAfford(state.wallet, totalPrice);
     const blockedByCooldown = !state.developerGodMode && isAgeBoost && !state.ageBoostPurchaseAvailable;
     const owned = state.foodOwned[food.id] ?? 0;
@@ -671,7 +688,7 @@ export class StoreOverlay {
 
   private tankCosmeticCard(cosmetic: StoreTankCosmeticCard, state: StoreOverlayState): HTMLElement {
     const affordable = state.developerGodMode || canAfford(state.wallet, cosmetic.price);
-    const card = this.baseCard(cosmetic.price.coinType);
+    const card = this.baseCard(this.itemTier("common", cosmetic.price));
     const preview = cosmetic.previewUrl
       ? this.preview(cosmetic.previewUrl, cosmetic.name)
       : div("relative mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center overflow-hidden rounded-xl", [
@@ -769,7 +786,7 @@ export class StoreOverlay {
 
   private tankUtilityCard(utility: StoreTankUtilityCard, state: StoreOverlayState): HTMLElement {
     const affordable = state.developerGodMode || canAfford(state.wallet, utility.price);
-    const card = this.baseCard(utility.price.coinType);
+    const card = this.baseCard(this.itemTier("common", utility.price));
     card.append(
       this.preview(utility.icon, utility.name),
       div("flex min-w-0 flex-1 flex-col overflow-hidden", [
@@ -811,7 +828,12 @@ export class StoreOverlay {
       superRare: "/assets/ui/shop/coin_icon_super_rare.png"
     };
     const badge = el("div", "flex shrink-0 items-center gap-0.5 rounded-full border border-cyan-200/25 bg-sky-950/80 px-1.5 py-0.5 text-xs font-black text-amber-200");
-    badge.append(image(iconByCoin[price.coinType], "", "h-4 w-4 object-contain"), document.createTextNode(formatNumber(price.amount)));
+    priceComponents(price).forEach(([coinType, amount], index) => {
+      if (index > 0) {
+        badge.append(document.createTextNode("+"));
+      }
+      badge.append(image(iconByCoin[coinType], "", "h-4 w-4 object-contain"), document.createTextNode(formatNumber(amount)));
+    });
     return badge;
   }
 
