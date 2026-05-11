@@ -1,7 +1,21 @@
 import Phaser from "phaser";
 import { gameHeight, gameWidth, tankBounds } from "../game/constants";
 import { formatNumber } from "../game/economy";
-import { commonPerCalorie, fishFullCaloriesNeed, fishRoiSeconds, fishTargetMealCalories, fishCommonPrice } from "../game/economy-model";
+import {
+  fishCoinDropPlan,
+  fishCoinProductionMaxDelayMs,
+  fishCoinProductionMinDelayMs,
+  fishCoinProductionValueForCalories,
+  fishCoinValuePerFullnessCalorie,
+  fishCommonPrice,
+  fishCurrentFullnessCalories,
+  fishFullCaloriesNeed,
+  fishHungerReductionFromCalories,
+  fishPostRoiHourlyNet,
+  fishPrimaryProduction,
+  fishRoiProgressRatio,
+  fishTargetMealCalories
+} from "../game/economy-model";
 import { gameFontFamily } from "../game/fonts";
 import { fishFoodTintFor } from "../game/visuals";
 import type { AgeStage, CoinProduction, FishGender, FishState, FishType, FoodType } from "../types/mechanics";
@@ -33,9 +47,6 @@ const happyEmojiDurationMs = statusEmojiDurationMs;
 const missedFoodEmojiDurationMs = statusEmojiDurationMs;
 const dragLoveEmojiDurationMs = statusEmojiDurationMs;
 const dragLoveEmojiCooldownMs = statusEmojiCooldownMs;
-const minCoinProductionDelayMs = 5000;
-const maxCoinProductionDelayMs = 30000;
-const averageCoinProductionDelaySeconds = 17.5;
 const hungryBubbleFullnessThreshold = 0.7;
 const statusIndicatorUpdateIntervalSeconds = 0.16;
 const minimumMealCalorieRatio = 1;
@@ -408,12 +419,7 @@ export class Fish {
   }
 
   public primaryProduction(): CoinProduction {
-    return {
-      coinType: "common",
-      amount: Math.max(1, Math.ceil(this.fullCaloriesNeed() * this.coinValuePerFullnessCalorie() * (averageCoinProductionDelaySeconds / 3600))),
-      intervalSeconds: Math.round(averageCoinProductionDelaySeconds),
-      chance: 1
-    };
+    return fishPrimaryProduction(this.type, this.ageSeconds, this.fullCaloriesNeed());
   }
 
   public productionOptions(): CoinProduction[] {
@@ -499,15 +505,15 @@ export class Fish {
   }
 
   public currentFullnessCalories(): number {
-    return Math.max(0, ((100 - this.hunger) / 100) * this.fullCaloriesNeed());
+    return fishCurrentFullnessCalories(this.hunger, this.fullCaloriesNeed());
   }
 
   public roiProgressRatio(): number {
-    return Phaser.Math.Clamp(this.ageSeconds / fishRoiSeconds, 0, 1);
+    return fishRoiProgressRatio(this.ageSeconds);
   }
 
   public coinProductionValueForCalories(calories: number): number {
-    return Math.max(0, calories) * this.coinValuePerFullnessCalorie();
+    return fishCoinProductionValueForCalories(this.type, this.ageSeconds, this.fullCaloriesNeed(), calories);
   }
 
   public consumeFullnessCalories(calories: number): void {
@@ -529,30 +535,32 @@ export class Fish {
       return 0;
     }
 
-    const valuePerCalorie = this.coinValuePerFullnessCalorie();
-    const targetCalories = Math.min(
+    const plan = fishCoinDropPlan({
       fullnessCalories,
-      this.fullCaloriesNeed() * (Phaser.Math.FloatBetween(5, 30) / 3600) * Phaser.Math.FloatBetween(0.75, 1.45)
-    );
-    const availableValue = targetCalories * valuePerCalorie + this.pendingProductionCoinValue;
-    let coinValue = Math.floor(availableValue);
+      fullCaloriesNeed: this.fullCaloriesNeed(),
+      valuePerCalorie: this.coinValuePerFullnessCalorie(),
+      pendingValue: this.pendingProductionCoinValue,
+      windowSeconds: Phaser.Math.FloatBetween(5, 30),
+      calorieVariance: Phaser.Math.FloatBetween(0.75, 1.45),
+      capMultiplier: Phaser.Math.FloatBetween(1.1, 2.8)
+    });
 
-    if (coinValue <= 0 && fullnessCalories * valuePerCalorie >= 1) {
-      coinValue = 1;
-    }
-
-    if (coinValue <= 0) {
-      this.pendingProductionCoinValue = availableValue;
+    if (!plan) {
+      this.pendingProductionCoinValue = 0;
       this.scheduleNextCoinProduction(now);
       return 0;
     }
 
-    const maximumAffordableValue = Math.max(1, Math.floor(fullnessCalories * valuePerCalorie + this.pendingProductionCoinValue));
-    const randomCap = Math.max(1, Math.ceil(this.primaryProduction().amount * Phaser.Math.FloatBetween(1.1, 2.8)));
-    const producedValue = Phaser.Math.Between(1, Math.min(maximumAffordableValue, Math.max(coinValue, randomCap)));
-    const caloriesSpent = Math.min(fullnessCalories, producedValue / Math.max(0.0001, valuePerCalorie));
+    if (plan.producedValueMax <= 0) {
+      this.pendingProductionCoinValue = plan.nextPendingValueIfNoDrop;
+      this.scheduleNextCoinProduction(now);
+      return 0;
+    }
+
+    const producedValue = Phaser.Math.Between(1, plan.producedValueMax);
+    const caloriesSpent = Math.min(fullnessCalories, producedValue * plan.caloriesSpentPerCoin);
     this.consumeFullnessCalories(caloriesSpent);
-    this.pendingProductionCoinValue = Math.max(0, availableValue - producedValue);
+    this.pendingProductionCoinValue = Math.max(0, plan.nextPendingValueAfterDropBase - producedValue);
     this.scheduleNextCoinProduction(now);
     return producedValue;
   }
@@ -786,19 +794,15 @@ export class Fish {
   }
 
   private hungerReductionFromCalories(calories: number): number {
-    return (Math.max(0, calories) / Math.max(1, this.fullCaloriesNeed())) * 100;
+    return fishHungerReductionFromCalories(calories, this.fullCaloriesNeed());
   }
 
   private postRoiHourlyNet(): number {
-    return this.fullCaloriesNeed() * commonPerCalorie * 0.1;
+    return fishPostRoiHourlyNet(this.fullCaloriesNeed());
   }
 
   private coinValuePerFullnessCalorie(): number {
-    if (this.ageSeconds >= fishRoiSeconds) {
-      return commonPerCalorie * 1.1;
-    }
-
-    return commonPerCalorie + (fishCommonPrice(this.type) * 3600) / Math.max(1, fishRoiSeconds * this.fullCaloriesNeed());
+    return fishCoinValuePerFullnessCalorie(this.type, this.ageSeconds, this.fullCaloriesNeed());
   }
 
   private roiProgressLabel(): string {
@@ -813,7 +817,7 @@ export class Fish {
   }
 
   private scheduleNextCoinProduction(now: number): void {
-    this.nextCoinDropAt = now + Phaser.Math.Between(minCoinProductionDelayMs, maxCoinProductionDelayMs);
+    this.nextCoinDropAt = now + Phaser.Math.Between(fishCoinProductionMinDelayMs, fishCoinProductionMaxDelayMs);
   }
 
   private desiredAgeScale(): number {

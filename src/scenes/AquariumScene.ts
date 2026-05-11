@@ -9,12 +9,22 @@ import {
   createEmptyWallet,
   loadGame,
   mapToRecord,
-  recordToMap,
   SAVE_VERSION,
   saveGame,
   type OfflineProgress,
   type SavedGame
 } from "../game/save";
+import {
+  ensureTankState as ensureTankStateModel,
+  tankNamesFromRecord as tankNamesFromRecordModel,
+  tankNamesRecord as tankNamesRecordModel,
+  tankStatesFromSave as tankStatesFromSaveModel,
+  tankStatesRecord as tankStatesRecordModel,
+  sortedTankLevels,
+  type TankCosmeticCategory,
+  type TankRuntimeState,
+  type TankStateConfig
+} from "../game/tank-state";
 import { foodTintFor, rarityStarCount } from "../game/visuals";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
@@ -45,7 +55,6 @@ type PlacementMode =
   | { kind: "decoration"; decorationTypeId: string; size: DecorationSize };
 
 type DecorationSize = "s" | "m" | "l" | "xl";
-type TankCosmeticCategory = "background" | "seabed";
 type TankMenuTab = "tanks" | "background" | "seabed" | "decor" | "utility";
 type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; badgeLabel?: string; icon: string }
@@ -67,23 +76,6 @@ type PendingHelperCreatureDrop = {
   sprite: Phaser.GameObjects.Image;
   tankLevel: number;
   targetX: number;
-};
-
-type TankRuntimeState = {
-  wallet: Wallet;
-  foodInventory: Map<FoodTypeId, number>;
-  fishInventory: Map<string, number>;
-  decorationInventory: Map<string, number>;
-  creatureInventory: Map<string, number>;
-  backgroundInventory: Map<string, number>;
-  seabedInventory: Map<string, number>;
-  backgroundBlueTints: Map<string, number>;
-  seabedBlueTints: Map<string, number>;
-  selectedBackgroundId: string;
-  selectedSeabedId: string;
-  cleanliness: number;
-  cleanedAt: number;
-  maxDisplayLevel: number;
 };
 
 type CompatibilitySummary = {
@@ -1041,45 +1033,18 @@ export class AquariumScene extends Phaser.Scene {
     return this.placedDecorations.filter((decoration) => decoration.tankLevel === level);
   }
 
-  private createDefaultTankState(level: number): TankRuntimeState {
+  private tankStateConfig(): TankStateConfig {
     return {
-      wallet: level === 1 ? createWallet(120, 0, 0) : createEmptyWallet(),
-      foodInventory: new Map<FoodTypeId, number>(level === 1 ? [[basicFood.id, basicFood.calories * 3]] : []),
-      fishInventory: new Map<string, number>(),
-      decorationInventory: new Map<string, number>(),
-      creatureInventory: new Map<string, number>(),
-      backgroundInventory: new Map<string, number>([[this.defaultTankCosmeticId(level), 1]]),
-      seabedInventory: new Map<string, number>([[this.defaultTankCosmeticId(level), 1]]),
-      backgroundBlueTints: new Map<string, number>(),
-      seabedBlueTints: new Map<string, number>(),
-      selectedBackgroundId: this.defaultTankCosmeticId(level),
-      selectedSeabedId: this.defaultTankCosmeticId(level),
-      cleanliness: 100,
-      cleanedAt: Date.now(),
-      maxDisplayLevel: 1
+      maxOwnedTanks,
+      basicFoodId: basicFood.id,
+      basicFoodCalories: basicFood.calories,
+      defaultCosmeticId: (level) => this.defaultTankCosmeticId(level),
+      validCosmeticId: (category, id, level) => this.validTankCosmeticId(category, id, level)
     };
   }
 
   private ensureTankState(level = this.tankLevel): TankRuntimeState {
-    const sanitizedLevel = Math.max(1, Math.floor(level));
-    let state = this.tankStates.get(sanitizedLevel);
-    if (!state) {
-      state = this.createDefaultTankState(sanitizedLevel);
-      this.tankStates.set(sanitizedLevel, state);
-    }
-    const fallbackCosmeticId = this.defaultTankCosmeticId(sanitizedLevel);
-    if (!state.backgroundInventory) {
-      state.backgroundInventory = new Map<string, number>([[fallbackCosmeticId, 1]]);
-    }
-    if (!state.seabedInventory) {
-      state.seabedInventory = new Map<string, number>([[fallbackCosmeticId, 1]]);
-    }
-    state.backgroundBlueTints ??= new Map<string, number>();
-    state.seabedBlueTints ??= new Map<string, number>();
-    state.selectedBackgroundId ??= fallbackCosmeticId;
-    state.selectedSeabedId ??= fallbackCosmeticId;
-    state.maxDisplayLevel = Math.max(1, Math.floor(state.maxDisplayLevel ?? 1));
-    return state;
+    return ensureTankStateModel(this.tankStates, level, this.tankStateConfig());
   }
 
   private captureActiveTankState(): void {
@@ -1114,7 +1079,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private sortedOwnedTankLevels(): number[] {
-    return [...this.ownedTankLevels].sort((a, b) => a - b);
+    return sortedTankLevels(this.ownedTankLevels);
   }
 
   private hasTankLevel(level: number): boolean {
@@ -3456,22 +3421,11 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private tankNamesFromRecord(source: Record<string, string> | undefined): Map<number, string> {
-    const names = new Map<number, string>([[1, "Home Reef"]]);
-    if (!source) {
-      return names;
-    }
-
-    for (const [key, value] of Object.entries(source)) {
-      const level = Math.max(1, Math.floor(Number(key)));
-      if (Number.isFinite(level) && typeof value === "string" && value.trim().length > 0) {
-        names.set(level, value.trim().slice(0, 24));
-      }
-    }
-    return names;
+    return tankNamesFromRecordModel(source);
   }
 
   private tankNamesRecord(): Record<string, string> {
-    return Object.fromEntries([...this.tankNames.entries()].map(([level, name]) => [String(level), name]));
+    return tankNamesRecordModel(this.tankNames);
   }
 
   private tankCosmetics(category: TankCosmeticCategory): TankCosmetic[] {
@@ -3556,18 +3510,6 @@ export class AquariumScene extends Phaser.Scene {
     return this.tankCosmeticById(category, id) ? id as string : fallback;
   }
 
-  private cosmeticInventoryFromRecord(category: TankCosmeticCategory, source: Record<string, number> | undefined, level: number): Map<string, number> {
-    const result = recordToMap(source);
-    const fallback = this.defaultTankCosmeticId(level);
-    result.set(fallback, Math.max(1, result.get(fallback) ?? 0));
-    if (category === "background") {
-      result.set("home", Math.max(1, result.get("home") ?? 0));
-    } else {
-      result.set("home", Math.max(1, result.get("home") ?? 0));
-    }
-    return result;
-  }
-
   private tankCosmeticInventory(category: TankCosmeticCategory, level = this.tankLevel): Map<string, number> {
     const state = this.ensureTankState(level);
     return category === "background" ? state.backgroundInventory : state.seabedInventory;
@@ -3579,75 +3521,15 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private tankStatesFromSave(saved: SavedGame): Map<number, TankRuntimeState> {
-    const states = new Map<number, TankRuntimeState>();
-    const savedStates = saved.tank.states ?? {};
-    for (const [key, value] of Object.entries(savedStates)) {
-      const level = Math.max(1, Math.floor(Number(key)));
-      if (!Number.isFinite(level) || level > maxOwnedTanks) {
-        continue;
-      }
-      states.set(level, {
-        wallet: createWallet(value.wallet?.common ?? 0, value.wallet?.rare ?? 0, value.wallet?.superRare ?? 0),
-        foodInventory: recordToMap(value.foodInventory) as Map<FoodTypeId, number>,
-        fishInventory: recordToMap(value.fishInventory),
-        decorationInventory: recordToMap(value.decorationInventory),
-        creatureInventory: recordToMap(value.creatureInventory),
-        backgroundInventory: this.cosmeticInventoryFromRecord("background", value.backgroundInventory, level),
-        seabedInventory: this.cosmeticInventoryFromRecord("seabed", value.seabedInventory, level),
-        backgroundBlueTints: recordToMap(value.backgroundBlueTints),
-        seabedBlueTints: recordToMap(value.seabedBlueTints),
-        selectedBackgroundId: this.validTankCosmeticId("background", value.selectedBackgroundId, level),
-        selectedSeabedId: this.validTankCosmeticId("seabed", value.selectedSeabedId, level),
-        cleanliness: Phaser.Math.Clamp(value.cleanliness ?? 100, 0, 100),
-        cleanedAt: value.cleanedAt ?? Date.now(),
-        maxDisplayLevel: Math.max(1, Math.floor(value.maxDisplayLevel ?? 1))
-      });
-    }
-
-    if (!states.has(1)) {
-      states.set(1, {
-        wallet: { ...saved.wallet },
-        foodInventory: recordToMap(saved.foodInventory) as Map<FoodTypeId, number>,
-        fishInventory: recordToMap(saved.fishInventory),
-        decorationInventory: recordToMap(saved.decorationInventory),
-        creatureInventory: recordToMap(saved.creatureInventory),
-        backgroundInventory: this.cosmeticInventoryFromRecord("background", undefined, 1),
-        seabedInventory: this.cosmeticInventoryFromRecord("seabed", undefined, 1),
-        backgroundBlueTints: new Map<string, number>(),
-        seabedBlueTints: new Map<string, number>(),
-        selectedBackgroundId: this.validTankCosmeticId("background", undefined, 1),
-        selectedSeabedId: this.validTankCosmeticId("seabed", undefined, 1),
-        cleanliness: saved.tank.cleanliness,
-        cleanedAt: saved.tank.cleanedAt,
-        maxDisplayLevel: 1
-      });
-    }
-
-    return states;
+    return tankStatesFromSaveModel(saved, this.tankStateConfig());
   }
 
   private tankStatesRecord(): SavedGame["tank"]["states"] {
-    const result: NonNullable<SavedGame["tank"]["states"]> = {};
-    for (const level of this.sortedOwnedTankLevels()) {
-      const state = this.ensureTankState(level);
-      result[String(level)] = {
-        wallet: { ...state.wallet },
-        foodInventory: Object.fromEntries([...state.foodInventory.entries()].filter(([, count]) => count > 0)) as Record<FoodTypeId, number>,
-        fishInventory: mapToRecord(state.fishInventory),
-        decorationInventory: mapToRecord(state.decorationInventory),
-        creatureInventory: mapToRecord(state.creatureInventory),
-        backgroundInventory: mapToRecord(state.backgroundInventory),
-        seabedInventory: mapToRecord(state.seabedInventory),
-        backgroundBlueTints: mapToRecord(state.backgroundBlueTints),
-        seabedBlueTints: mapToRecord(state.seabedBlueTints),
-        selectedBackgroundId: state.selectedBackgroundId,
-        selectedSeabedId: state.selectedSeabedId,
-        cleanliness: state.cleanliness,
-        cleanedAt: state.cleanedAt,
-        maxDisplayLevel: Math.max(state.maxDisplayLevel ?? 1, this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(level)))
-      };
-    }
-    return result;
+    return tankStatesRecordModel(
+      this.sortedOwnedTankLevels(),
+      (level) => this.ensureTankState(level),
+      (level, state) => Math.max(state.maxDisplayLevel ?? 1, this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(level)))
+    );
   }
 
   private renameTank(level: number): void {
