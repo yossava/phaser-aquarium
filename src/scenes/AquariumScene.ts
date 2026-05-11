@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
-import { controlPanelTop, gameHeight, gameWidth, maxRenderScale, setTankWorldScale, shouldUseLowPowerMode, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
+import { gameHeight, gameWidth, maxRenderScale, setTankWorldScale, shouldUseLowPowerMode, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, priceComponents, spend } from "../game/economy";
 import { gameFontFamily } from "../game/fonts";
 import {
@@ -15,7 +15,7 @@ import {
   type OfflineProgress,
   type SavedGame
 } from "../game/save";
-import { fishFoodTintFor, foodTintFor, rarityStarCount } from "../game/visuals";
+import { foodTintFor, rarityStarCount } from "../game/visuals";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
 import { FoodPellet } from "../objects/FoodPellet";
@@ -93,20 +93,8 @@ type CompatibilitySummary = {
   incompatibleNames: string[];
 };
 
-type HudChipId = "common" | "rare" | "superRare" | "wealth";
-type HudRect = { x: number; y: number; width: number; height: number };
-type HudBadgeLayout = { x: number; y: number; size: number };
-type LegacyHudObject = Phaser.GameObjects.GameObject & {
-  setVisible: (visible: boolean) => unknown;
-  setAlpha?: (alpha: number) => unknown;
-};
 type AdjustableSound = Phaser.Sound.BaseSound & {
   setVolume: (value: number) => unknown;
-};
-type HudLayout = {
-  levelBadge: HudBadgeLayout;
-  rightFrame: HudRect;
-  chips: Record<HudChipId, HudRect>;
 };
 
 const maxCoinDrops = 50;
@@ -138,8 +126,6 @@ const hiddenFoodTypeIds = new Set<FoodTypeId>([creatureFoodTypeId]);
 const maxFoodBuyQuantity = 99_999;
 const inventoryDockPageSize = 8;
 const overfullHungerFloor = -10000;
-const fishStatsCardHeight = 96;
-const fishStatsCardRowHeight = 104;
 const tankCleaningRatePerSecond = 50;
 const maxTankDirtPerSecond = 28 / (60 * 60);
 const baseTankDirtPerSecond = maxTankDirtPerSecond * 0.22;
@@ -378,20 +364,6 @@ const tankLevelBadgeAssetPaths = tankLevelBadgeTextureKeys.map(
 const hudTopAssetPathByKey: Record<string, string> = {
   "ui-hud-level-medallion": "/assets/ui/hud-level-medallion.png",
   "ui-hud-main-long-frame": "/assets/ui/hud-main-long-frame.png"
-};
-const hudChipIconSize = 24;
-const hudSuperRareChipIconSize = 18;
-const hudChipIconCenterOffsetX = 18;
-const hudChipTextOffsetX = 38;
-const defaultHudLayout: HudLayout = {
-  levelBadge: { x: 64, y: 71.5, size: 92 },
-  rightFrame: { x: 260, y: 67.5, width: 309, height: 160 },
-  chips: {
-    common: { x: 160, y: 39, width: 96, height: 26 },
-    rare: { x: 267, y: 39, width: 96, height: 26 },
-    superRare: { x: 160, y: 71, width: 96, height: 26 },
-    wealth: { x: 267, y: 71, width: 96, height: 26 }
-  }
 };
 const dirtyTankOverlayThreshold = 72;
 const algaeParticleThreshold = 50;
@@ -655,8 +627,6 @@ export class AquariumScene extends Phaser.Scene {
   private ownedTankLevels = new Set<number>([1]);
   private tankNames = new Map<number, string>([[1, "Home Reef"]]);
   private tankStates = new Map<number, TankRuntimeState>();
-  private tankDecorPage = 1;
-  private tankCosmeticPages: Record<TankCosmeticCategory, number> = { background: 1, seabed: 1 };
   private tankMenuTab: TankMenuTab = "tanks";
   private tankMenuPage = 1;
   private fishCatalogLevel = 1;
@@ -670,26 +640,6 @@ export class AquariumScene extends Phaser.Scene {
   private decorationTrashBackground!: Phaser.GameObjects.Rectangle;
   private decorationTrashText!: Phaser.GameObjects.Text;
   private draggedDecoration?: PlacedDecoration;
-  private hudLayout: HudLayout = this.cloneHudLayout(defaultHudLayout);
-  private hudFrameImage!: Phaser.GameObjects.Image;
-  private hudPanel!: Phaser.GameObjects.Graphics;
-  private hudText!: Phaser.GameObjects.Text;
-  private hudIconImages!: Record<HudChipId, Phaser.GameObjects.Image>;
-  private hudCommonText!: Phaser.GameObjects.Text;
-  private hudRareText!: Phaser.GameObjects.Text;
-  private hudSuperRareText!: Phaser.GameObjects.Text;
-  private hudWealthText!: Phaser.GameObjects.Text;
-  private statusText!: Phaser.GameObjects.Text;
-  private modeText!: Phaser.GameObjects.Text;
-  private hudFoodStatusText!: Phaser.GameObjects.Text;
-  private hudCleanStatusText!: Phaser.GameObjects.Text;
-  private hudHappyStatusText!: Phaser.GameObjects.Text;
-  private hudNeedText!: Phaser.GameObjects.Text;
-  private phaserHudObjects: LegacyHudObject[] = [];
-  private tankLevelBadgeHueOverlay!: Phaser.GameObjects.Graphics;
-  private tankLevelBadgeImage!: Phaser.GameObjects.Image;
-  private tankLevelBadgeText!: Phaser.GameObjects.Text;
-  private pagePanel?: Phaser.GameObjects.Container;
   private screenButtons: Phaser.GameObjects.Container[] = [];
   private foodButtons: Phaser.GameObjects.Container[] = [];
   private foodDragGhosts = new Set<Phaser.GameObjects.Image>();
@@ -720,7 +670,6 @@ export class AquariumScene extends Phaser.Scene {
   private htmlPageOverlay?: HTMLDivElement;
   private htmlPageOverlayScrollTop = 0;
   private htmlPageOverlayRenderKey = "";
-  private tabControls: Phaser.GameObjects.GameObject[] = [];
   private storeOverlay?: StoreOverlay;
   private modal?: HTMLDivElement;
   private modalTitle?: string;
@@ -1001,254 +950,15 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createUi(): void {
-    this.hudLayout = this.cloneHudLayout(defaultHudLayout);
-    this.hudFrameImage = this.add.image(0, 0, "ui-hud-main-long-frame").setDepth(19);
-    this.hudPanel = this.add.graphics().setDepth(21);
-    this.drawHudPanel();
-
-    this.hudText = this.add.text(24, 44, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "10px",
-      color: "#fff1a6",
-      fontStyle: "bold",
-      fixedWidth: 292
-    }).setDepth(24).setVisible(false);
-
-    this.hudIconImages = {
-      common: this.add.image(0, 0, "ui-icon-common-coin").setDisplaySize(hudChipIconSize, hudChipIconSize).setDepth(23),
-      rare: this.add.image(0, 0, "ui-icon-rare-coin").setDisplaySize(hudChipIconSize, hudChipIconSize).setDepth(23),
-      superRare: this.add.image(0, 0, "ui-icon-super-rare-coin").setDisplaySize(hudSuperRareChipIconSize, hudSuperRareChipIconSize).setDepth(23),
-      wealth: this.add.image(0, 0, "ui-icon-total-wealth").setDisplaySize(hudChipIconSize, hudChipIconSize).setDepth(23)
-    };
-
-    this.hudCommonText = this.add.text(0, 0, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "15px",
-      color: "#fff1a6",
-      fontStyle: "bold",
-      fixedWidth: 58,
-      stroke: "#3a2400",
-      strokeThickness: 3
-    }).setOrigin(0, 0.5).setDepth(24);
-
-    this.hudRareText = this.add.text(0, 0, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "15px",
-      color: "#d7f8ff",
-      fontStyle: "bold",
-      fixedWidth: 58,
-      stroke: "#04273d",
-      strokeThickness: 3
-    }).setOrigin(0, 0.5).setDepth(24);
-
-    this.hudSuperRareText = this.add.text(0, 0, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "15px",
-      color: "#ffd9ff",
-      fontStyle: "bold",
-      fixedWidth: 58,
-      stroke: "#2d073d",
-      strokeThickness: 3
-    }).setOrigin(0, 0.5).setDepth(24);
-
-    this.hudWealthText = this.add.text(0, 0, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "15px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      fixedWidth: 58,
-      stroke: "#062235",
-      strokeThickness: 3
-    }).setOrigin(0, 0.5).setDepth(24);
-
-    this.statusText = this.add.text(34, 65, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "13px",
-      color: "#eaf9ff",
-      fontStyle: "bold",
-      fixedWidth: 356,
-      stroke: "#061826",
-      strokeThickness: 2
-    }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
-
-    this.modeText = this.add.text(36, 84, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "11px",
-      color: "#bfeeff",
-      fontStyle: "bold",
-      fixedWidth: 356
-    }).setDepth(24).setVisible(false);
-
-    const legacyStatusIcons = [
-      this.add.image(48, 88, "ui-icon-food-status").setDisplaySize(20, 20).setDepth(23),
-      this.add.image(178, 88, "ui-icon-clean-status").setDisplaySize(20, 20).setDepth(23),
-      this.add.image(307, 88, "ui-icon-happy-status").setDisplaySize(20, 20).setDepth(23)
-    ];
-
-    this.hudFoodStatusText = this.add.text(64, 89, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "11px",
-      color: "#fff4dc",
-      fontStyle: "bold",
-      fixedWidth: 94,
-      stroke: "#061826",
-      strokeThickness: 2
-    }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
-
-    this.hudCleanStatusText = this.add.text(194, 89, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "11px",
-      color: "#dff8ff",
-      fontStyle: "bold",
-      fixedWidth: 94,
-      stroke: "#061826",
-      strokeThickness: 2
-    }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
-
-    this.hudHappyStatusText = this.add.text(323, 89, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "11px",
-      color: "#e8ffd5",
-      fontStyle: "bold",
-      fixedWidth: 70,
-      stroke: "#061826",
-      strokeThickness: 2
-    }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
-
-    this.hudNeedText = this.add.text(34, 111, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "10px",
-      color: "#ffe39a",
-      fontStyle: "bold",
-      fixedWidth: 356
-    }).setOrigin(0, 0.5).setDepth(24).setVisible(false);
-
-    this.tankLevelBadgeImage = this.add
-      .image(0, 0, "ui-hud-level-medallion")
-      .setDepth(22);
-    this.tankLevelBadgeHueOverlay = this.add.graphics().setDepth(23);
-
-    this.tankLevelBadgeText = this.add.text(0, 0, "", {
-      fontFamily: gameFontFamily,
-      fontSize: "30px",
-      color: "#fff8d2",
-      fontStyle: "bold",
-      stroke: "#315467",
-      strokeThickness: 5
-    }).setOrigin(0.5).setDepth(24);
-
     this.createScreenNav();
     this.createFoodDock();
     this.createDecorationTrashTarget();
     this.renderTabControls();
-    this.phaserHudObjects = [
-      this.hudFrameImage,
-      this.hudPanel,
-      this.hudText,
-      ...Object.values(this.hudIconImages),
-      this.hudCommonText,
-      this.hudRareText,
-      this.hudSuperRareText,
-      this.hudWealthText,
-      this.statusText,
-      this.modeText,
-      ...legacyStatusIcons,
-      this.hudFoodStatusText,
-      this.hudCleanStatusText,
-      this.hudHappyStatusText,
-      this.hudNeedText,
-      this.tankLevelBadgeImage,
-      this.tankLevelBadgeHueOverlay,
-      this.tankLevelBadgeText
-    ];
-    this.applyHudLayout();
-    this.hidePhaserHud();
     this.syncHtmlGameInterface();
-  }
-
-  private hidePhaserHud(): void {
-    for (const object of this.phaserHudObjects) {
-      object.setVisible(false);
-      if ("setAlpha" in object && typeof object.setAlpha === "function") {
-        object.setAlpha(0);
-      }
-    }
-    this.tankLevelBadgeImage?.setPosition(-9999, -9999).setDisplaySize(1, 1);
-    this.tankLevelBadgeText?.setPosition(-9999, -9999);
-    this.tankLevelBadgeHueOverlay?.clear();
-    this.hudFrameImage?.setPosition(-9999, -9999).setDisplaySize(1, 1);
-  }
-
-  private drawHudPanel(): void {
-    this.hudPanel.clear();
-    const { chips, rightFrame } = this.hudLayout;
-    this.hudPanel.fillStyle(0x76e7ff, 0.12);
-    this.hudPanel.fillRoundedRect(rightFrame.x - rightFrame.width / 2 + 16, rightFrame.y - rightFrame.height / 2 + 20, rightFrame.width - 32, rightFrame.height - 48, 14);
-    this.hudPanel.fillStyle(0xffffff, 0.1);
-    this.hudPanel.fillRoundedRect(rightFrame.x - rightFrame.width / 2 + 24, rightFrame.y - rightFrame.height / 2 + 25, rightFrame.width - 48, 12, 8);
-
-    const chipRects = [
-      { ...chips.common, fill: 0xd3a331, line: 0xffef9a },
-      { ...chips.rare, fill: 0x0f8fca, line: 0x90eaff },
-      { ...chips.superRare, fill: 0x8b2cc1, line: 0xf4b9ff },
-      { ...chips.wealth, fill: 0x107fa4, line: 0x9df2ff }
-    ];
-
-    for (const chip of chipRects) {
-      this.hudPanel.fillStyle(chip.fill, 0.58);
-      this.hudPanel.fillRoundedRect(chip.x, chip.y, chip.width, chip.height, 12);
-      this.hudPanel.fillStyle(0xffffff, 0.16);
-      this.hudPanel.fillRoundedRect(chip.x + 5, chip.y + 3, chip.width - 10, 6, 4);
-      this.hudPanel.lineStyle(2, chip.line, 0.72);
-      this.hudPanel.strokeRoundedRect(chip.x, chip.y, chip.width, chip.height, 12);
-    }
-  }
-
-  private applyHudLayout(): void {
-    const { levelBadge, rightFrame, chips } = this.hudLayout;
-    this.hudFrameImage.setPosition(rightFrame.x, rightFrame.y).setDisplaySize(rightFrame.width, rightFrame.height);
-    this.tankLevelBadgeImage.setPosition(levelBadge.x, levelBadge.y).setDisplaySize(levelBadge.size, levelBadge.size);
-    this.tankLevelBadgeText.setPosition(levelBadge.x, levelBadge.y);
-    this.drawTankLevelBadgeHue(this.tankDisplayLevel());
-
-    this.positionHudChip("common", chips.common, this.hudCommonText);
-    this.positionHudChip("rare", chips.rare, this.hudRareText);
-    this.positionHudChip("superRare", chips.superRare, this.hudSuperRareText);
-    this.positionHudChip("wealth", chips.wealth, this.hudWealthText);
-
-    this.drawHudPanel();
-  }
-
-  private positionHudChip(chipId: HudChipId, rect: HudRect, text: Phaser.GameObjects.Text): void {
-    const centerY = rect.y + rect.height / 2;
-    this.hudIconImages[chipId].setPosition(rect.x + hudChipIconCenterOffsetX, centerY);
-    text.setPosition(rect.x + hudChipTextOffsetX, centerY).setFixedSize(Math.max(20, rect.width - hudChipTextOffsetX - 5), 0);
-  }
-
-  private drawTankLevelBadgeHue(displayLevel: number): void {
-    const { levelBadge } = this.hudLayout;
-    const hue = (0.52 + this.tankLevelHueDegrees(displayLevel) / 360) % 1;
-    const color = Phaser.Display.Color.HSLToColor(hue, 0.78, 0.5).color;
-    this.tankLevelBadgeHueOverlay.clear();
-    this.tankLevelBadgeHueOverlay.fillStyle(color, 0.34);
-    this.tankLevelBadgeHueOverlay.fillCircle(levelBadge.x, levelBadge.y + levelBadge.size * 0.02, levelBadge.size * 0.34);
   }
 
   private tankLevelHueDegrees(displayLevel: number): number {
     return ((Math.max(1, Math.floor(displayLevel)) - 1) * 37) % 360;
-  }
-
-  private cloneHudLayout(layout: HudLayout): HudLayout {
-    return {
-      levelBadge: { ...layout.levelBadge },
-      rightFrame: { ...layout.rightFrame },
-      chips: {
-        common: { ...layout.chips.common },
-        rare: { ...layout.chips.rare },
-        superRare: { ...layout.chips.superRare },
-        wealth: { ...layout.chips.wealth }
-      }
-    };
   }
 
   private createDecorationTrashTarget(): void {
@@ -2766,10 +2476,6 @@ export class AquariumScene extends Phaser.Scene {
     this.activeScreen = "tank";
     this.storeOverlay?.hide();
     this.hideHtmlPageOverlay();
-    this.pagePanel?.destroy(true);
-    this.pagePanel = undefined;
-    this.tabControls.forEach((control) => control.destroy(true));
-    this.tabControls = [];
     this.createScreenNav();
     this.createFoodDock();
     this.refreshUi(false);
@@ -2777,10 +2483,6 @@ export class AquariumScene extends Phaser.Scene {
 
   private openStoreOverlay(): void {
     this.hideHtmlPageOverlay();
-    this.pagePanel?.destroy(true);
-    this.pagePanel = undefined;
-    this.tabControls.forEach((control) => control.destroy(true));
-    this.tabControls = [];
     this.storeOverlay ??= new StoreOverlay(
       () => this.storeOverlayState(),
       {
@@ -2907,11 +2609,6 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private renderTabControls(): void {
-    this.tabControls.forEach((control) => control.destroy(true));
-    this.tabControls = [];
-    this.pagePanel?.destroy(true);
-    this.pagePanel = undefined;
-
     if (this.activeScreen === "tank" || this.activeScreen === "store") {
       this.hideHtmlPageOverlay();
       return;
@@ -3722,161 +3419,6 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi(false);
   }
 
-  private storeCoinLabel(coinType: CoinType): string {
-    const labelByCoin: Record<CoinType, string> = {
-      common: "Common",
-      rare: "Rare",
-      superRare: "Super Rare"
-    };
-
-    return labelByCoin[coinType];
-  }
-
-  private rarityCatalogAccent(rarity: DecorationType["rarity"]): number {
-    const accentByRarity: Record<DecorationType["rarity"], number> = {
-      common: 0x4ca37a,
-      rare: 0x5fa6d6,
-      superRare: 0xd379d7
-    };
-
-    return accentByRarity[rarity];
-  }
-
-  private addShopCard(options: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    title: string;
-    meta: string;
-    detail: string;
-    buyLabel: string;
-    onBuy: () => void;
-    accent: number;
-    price?: Price;
-    rarity?: FishType["rarity"];
-    compact?: boolean;
-    fishPreview?: FishType;
-    assetPreview?: {
-      textureKey: string;
-      maxWidth: number;
-      maxHeight: number;
-      tint?: number;
-    };
-    quantity?: {
-      label: string;
-      onReset: () => void;
-      presets?: number[];
-      onAdd?: (quantity: number) => void;
-    };
-  }): void {
-    const background = this.add
-      .rectangle(options.width / 2, options.height / 2, options.width, options.height, 0x17364a, 0.98)
-      .setStrokeStyle(1, options.accent, 0.9);
-    const stripe = this.add.rectangle(4, options.height / 2, 4, options.height - 8, options.accent, 1);
-    const hasPreview = options.fishPreview !== undefined || options.assetPreview !== undefined;
-    const textWidth = hasPreview ? options.width - 78 : options.width - 24;
-    const title = this.add.text(12, 5, options.title, {
-      fontFamily: gameFontFamily,
-      fontSize: options.compact ? "11px" : "12px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      fixedWidth: options.compact ? 76 : textWidth
-    });
-    const meta = this.add.text(12, options.compact ? 18 : 22, options.meta, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#ffe67a",
-      fixedWidth: options.compact ? 76 : textWidth
-    });
-    const detail = this.add.text(12, options.compact ? 29 : 36, options.detail, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#cfeeff",
-      fixedWidth: options.compact ? 56 : textWidth
-    });
-    const cardObjects: Phaser.GameObjects.GameObject[] = [background, stripe, title, meta, detail];
-
-    if (options.fishPreview) {
-      cardObjects.push(...this.createFishCatalogPreview(options.fishPreview, options.width - 32, 32));
-    }
-    if (options.assetPreview && this.textures.exists(options.assetPreview.textureKey)) {
-      const preview = this.add.image(options.width - 32, options.compact ? 30 : Math.min(42, options.height / 2), options.assetPreview.textureKey);
-      const sourceWidth = Math.max(1, preview.width);
-      const sourceHeight = Math.max(1, preview.height);
-      const scale = Math.min(options.assetPreview.maxWidth / sourceWidth, options.assetPreview.maxHeight / sourceHeight);
-      preview.setDisplaySize(sourceWidth * scale, sourceHeight * scale);
-      if (options.assetPreview.tint !== undefined) {
-        preview.setTint(options.assetPreview.tint);
-      }
-      preview.setDepth(73);
-      cardObjects.push(preview);
-    }
-
-    const card = this.add.container(options.x, options.y, cardObjects).setDepth(this.activeScreen === "tank" ? 21 : 71);
-    this.tabControls.push(card);
-
-    if (options.quantity) {
-      const quantityY = options.y + options.height - 76;
-      this.tabControls.push(
-        this.createButton(options.x + 12, quantityY, 108, 20, `Qty ${options.quantity.label}`, () => undefined, 0x17364a, 10),
-        this.createButton(options.x + 124, quantityY, 52, 20, "Reset", options.quantity.onReset, 0x76512d, 8)
-      );
-
-      if (options.quantity.presets && options.quantity.onAdd) {
-        const presetY = options.y + options.height - 50;
-        options.quantity.presets.forEach((quantity, index) => {
-          this.tabControls.push(
-            this.createButton(
-              options.x + 12 + index * 33,
-              presetY,
-              29,
-              20,
-              `x${formatNumber(quantity)}`,
-              () => options.quantity?.onAdd?.(quantity),
-              0x254d68,
-              8
-            )
-          );
-        });
-      }
-    }
-
-    const buttonY = options.y + options.height - (options.compact ? 12 : 24);
-    const buttonHeight = options.compact ? 17 : 20;
-    const buttonWidth = options.compact ? 76 : options.width - 24;
-    this.tabControls.push(
-      this.createButton(options.x + 12, buttonY, buttonWidth, buttonHeight, options.buyLabel, options.onBuy, 0x256f95, options.compact ? 8 : 9)
-    );
-  }
-
-  private createFishCatalogPreview(fishType: FishType, x: number, y: number, maxWidth = 54, maxHeight = 38): Phaser.GameObjects.GameObject[] {
-    const textureKey = this.fishCatalogPreviewTextureKey(fishType);
-    const preview = this.add.image(x, y, textureKey);
-    const sourceWidth = Math.max(1, preview.width);
-    const sourceHeight = Math.max(1, preview.height);
-    const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
-    preview.setDisplaySize(sourceWidth * scale, sourceHeight * scale);
-    preview.setDepth(73);
-
-    if (textureKey === "fish-base") {
-      preview.setTint(fishType.tint);
-      const tailSide = -1;
-      const tailX = x + tailSide * (preview.displayWidth / 2 - 2);
-      const tailJoinX = x + tailSide * (preview.displayWidth / 2 - 12);
-      const tailHalfHeight = Math.min(12, preview.displayHeight * 0.32);
-      const tail = this.add.graphics();
-      tail.fillStyle(fishFoodTintFor(fishType), 1);
-      tail.fillTriangle(tailJoinX, y, tailX, y - tailHalfHeight, tailX, y + tailHalfHeight);
-      tail.lineStyle(1, 0x061725, 0.22);
-      tail.strokeTriangle(tailJoinX, y, tailX, y - tailHalfHeight, tailX, y + tailHalfHeight);
-      tail.setDepth(74);
-      return [preview, tail];
-    }
-
-    return [preview];
-  }
-
   private fishCatalogPreviewTextureKey(fishType: FishType): string {
     const textureKey = `fish-${fishType.id}`;
     return this.textures.exists(textureKey) ? textureKey : "fish-base";
@@ -3906,320 +3448,6 @@ export class AquariumScene extends Phaser.Scene {
       helpers: helperCreatureTypes.filter((creatureType) => this.textures.exists(creatureType.texture)).length,
       backgrounds: backgroundTextureKeys.filter((textureKey) => this.textures.exists(textureKey)).length
     };
-  }
-
-  private renderFishStatsPage(): void {
-    this.tabControls.push(
-      this.createInfoLine(
-        20,
-        controlPanelTop + 52,
-        `Fish ${formatNumber(this.activeFish().length)} in ${this.getTankName(this.tankLevel)} | Tank Lv${formatNumber(this.tankDisplayLevel())}`
-      )
-    );
-
-    if (this.activeFish().length === 0) {
-      this.tabControls.push(this.createInfoLine(20, controlPanelTop + 84, "No fish in the tank. Buy one from Shop."));
-    } else {
-      this.activeFish().forEach((targetFish, localIndex) => {
-        this.addFishStatsCard(targetFish, this.fish.indexOf(targetFish), localIndex);
-      });
-    }
-
-    this.renderHelperStatsSection();
-  }
-
-  private addFishStatsCard(targetFish: Fish, index: number, displayIndex = index): void {
-    const x = 20 + (displayIndex % 2) * 202;
-    const y = controlPanelTop + 84 + Math.floor(displayIndex / 2) * fishStatsCardRowHeight;
-    const width = 188;
-    const height = fishStatsCardHeight;
-    const accent = fishFoodTintFor(targetFish.type);
-    const background = this.add.rectangle(width / 2, height / 2, width, height, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
-    const stripe = this.add.rectangle(4, height / 2, 4, height - 8, accent, 1);
-    const title = this.add.text(12, 5, `${formatNumber(index + 1)}. ${targetFish.type.name}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "12px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      fixedWidth: width - 24
-    });
-    const meta = this.add.text(12, 22, `${targetFish.gender} | Age ${targetFish.ageLabel()}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#ffe67a",
-      fixedWidth: width - 24
-    });
-    const growthStatus = targetFish.isGrowthLimitedByTank() ? "Max screen size" : "Growing";
-    const detail = this.add.text(12, 36, `${this.rarityLabel(targetFish.type.rarity)} | ${this.getTankName(targetFish.tankLevel)} | ${growthStatus}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#cfeeff",
-      fixedWidth: width - 24
-    });
-    const size = this.add.text(12, 49, `Len ${targetFish.lengthLabel()} | Wt ${targetFish.weightLabel()}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#cfeeff",
-      fixedWidth: width - 24
-    });
-    const worth = this.add.text(12, 62, `Worth ${formatPrice({ coinType: targetFish.type.sellBaseValue.coinType, amount: targetFish.getSellValue() })}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#cfeeff",
-      fixedWidth: width - 24
-    });
-    const card = this.add.container(x, y, [background, stripe, title, meta, detail, size, worth]).setDepth(71);
-    this.tabControls.push(card);
-
-    this.tabControls.push(
-      this.createButton(x + 12, y + height - 24, 96, 18, "Sell", () => this.showSellConfirmation(index), 0x76512d, 8)
-    );
-  }
-
-  private renderHelperStatsSection(): void {
-    const fishRows = Math.max(1, Math.ceil(this.activeFish().length / 2));
-    const startY = controlPanelTop + 84 + fishRows * fishStatsCardRowHeight + 14;
-    const activeHelpers = this.activeHelperCreatures();
-    this.tabControls.push(
-      this.createInfoLine(
-        20,
-        startY,
-        `${this.getTankName(this.tankLevel)} helpers | Sell helpers here to clean up tank utility slots`
-      )
-    );
-
-    if (activeHelpers.length === 0) {
-      this.tabControls.push(this.createInfoLine(20, startY + 28, "No helpers in this tank. Buy helpers from Shop, then drag them from the dock."));
-      return;
-    }
-
-    activeHelpers.forEach((helper) => {
-      const index = this.helperCreatures.indexOf(helper);
-      this.addHelperStatsCard(helper, index, startY + 32);
-    });
-  }
-
-  private renderTankManagementPage(): void {
-    const ownedLevels = this.sortedOwnedTankLevels();
-    this.tabControls.push(
-      this.createInfoLine(20, controlPanelTop + 52, `Owned ${formatNumber(ownedLevels.length)}/${formatNumber(maxOwnedTanks)} tanks | Active ${this.getTankName(this.tankLevel)} Lv${formatNumber(this.tankDisplayLevel())}`),
-      this.createInfoLine(20, controlPanelTop + 76, "Switching closes this menu. Customize each tank separately.")
-    );
-
-    const pageLevels = ownedLevels;
-    pageLevels.forEach((level, index) => {
-      const x = 20 + (index % 2) * 202;
-      const y = controlPanelTop + 104 + Math.floor(index / 2) * 92;
-      const owned = this.hasTankLevel(level);
-      const count = this.fishInTank(level).length;
-      const accent = this.tankAccentColor(level);
-      const background = this.add.rectangle(94, 40, 188, 80, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
-      const title = this.add.text(12, 8, `${this.getTankName(level)} Lv${formatNumber(this.tankDisplayLevel(level))}`, {
-        fontFamily: gameFontFamily,
-        fontSize: "11px",
-        color: "#ffffff",
-        fontStyle: "bold",
-        fixedWidth: 110
-      });
-      const summary = this.add.text(12, 25, `Worth ${formatNumber(this.calculateTankNetWorth(level))}\n${formatNumber(count)}/${formatNumber(this.maxFishCapacityForLevel(level))} fish | ${this.tankSummary(level)}`, {
-        fontFamily: gameFontFamily,
-        fontSize: "8px",
-        color: "#cfeeff",
-        fixedWidth: 112,
-        lineSpacing: 2
-      });
-      const card = this.add.container(x, y, [
-        background,
-        ...this.createTankThumbnailObjects(148, 34, level, 56, 38, owned),
-        title,
-        summary
-      ]).setDepth(71);
-      this.tabControls.push(
-        card
-      );
-
-      if (owned) {
-        this.tabControls.push(
-          this.createButton(x + 12, y + 62, 68, 18, "Name", () => this.renameTank(level), 0x254d68, 8),
-          this.createButton(x + 86, y + 62, 90, 18, level === this.tankLevel ? "Active" : "Switch", () => this.switchTank(level), level === this.tankLevel ? 0x356a35 : 0x256f95, 8)
-        );
-      } else {
-        this.tabControls.push(
-          this.createButton(x + 12, y + 62, 164, 18, "Available in Shop", () => undefined, 0x254d68, 8)
-        );
-      }
-    });
-
-    const catalogTop = controlPanelTop + 104 + Math.ceil(pageLevels.length / 2) * 92 + 10;
-    this.renderTankCosmeticCatalog("background", catalogTop);
-    this.renderTankCosmeticCatalog("seabed", catalogTop + 116);
-    this.renderTankDecorationCatalog(catalogTop + 232);
-  }
-
-  private renderTankCosmeticCatalog(category: TankCosmeticCategory, y: number): void {
-    const title = category === "background" ? "Backgrounds" : "Seabeds";
-    const pageSize = 6;
-    const assets = this.tankCosmetics(category).filter((asset) => this.ownsTankCosmetic(asset));
-    const maxPage = Math.max(1, Math.ceil(assets.length / pageSize));
-    this.tankCosmeticPages[category] = Phaser.Math.Clamp(this.tankCosmeticPages[category], 1, maxPage);
-    const page = this.tankCosmeticPages[category];
-    const pageAssets = assets.slice((page - 1) * pageSize, page * pageSize);
-    this.tabControls.push(
-      this.createInfoLine(20, y, `${title} ${formatNumber(page)}/${formatNumber(maxPage)} | active tank only`),
-      this.createButton(316, y - 4, 38, 20, "<", () => this.changeTankCosmeticPage(category, -1), 0x254d68, 10),
-      this.createButton(362, y - 4, 38, 20, ">", () => this.changeTankCosmeticPage(category, 1), 0x254d68, 10)
-    );
-    pageAssets.forEach((asset, index) => {
-      const x = 20 + (index % 3) * 134;
-      const cardY = y + 24 + Math.floor(index / 3) * 44;
-      this.addTankCosmeticCard(asset, x, cardY);
-    });
-  }
-
-  private changeTankCosmeticPage(category: TankCosmeticCategory, direction: number): void {
-    const maxPage = Math.max(1, Math.ceil(this.tankCosmetics(category).filter((asset) => this.ownsTankCosmetic(asset)).length / 6));
-    this.tankCosmeticPages[category] = Phaser.Math.Clamp(this.tankCosmeticPages[category] + direction, 1, maxPage);
-    this.renderTabControls();
-    this.refreshUi(false);
-  }
-
-  private addTankCosmeticCard(asset: TankCosmetic, x: number, y: number): void {
-    const inventory = this.tankCosmeticInventory(asset.category);
-    const owned = (inventory.get(asset.id) ?? 0) > 0;
-    const selected = this.selectedTankCosmeticId(asset.category) === asset.id;
-    const background = this.add.rectangle(62, 18, 124, 36, 0x17364a, 0.98).setStrokeStyle(1, selected ? 0xffe67a : this.tankAccentColor(this.tankLevel), selected ? 1 : 0.55);
-    const preview = this.textures.exists(asset.textureKey) ? this.add.image(16, 18, asset.textureKey).setDisplaySize(28, 22) : this.add.rectangle(16, 18, 28, 22, asset.tint, 1);
-    const title = this.add.text(34, 5, asset.name, {
-      fontFamily: gameFontFamily,
-      fontSize: "8px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      fixedWidth: 84
-    });
-    const meta = this.add.text(34, 18, selected ? "Active" : "Owned", {
-      fontFamily: gameFontFamily,
-      fontSize: "8px",
-      color: owned ? "#a8ffb0" : "#ffe67a",
-      fixedWidth: 84
-    });
-    const card = this.add.container(x, y, [background, preview, title, meta]).setDepth(71);
-    card.setSize(124, 36).setInteractive({ useHandCursor: true });
-    card.on("pointerdown", () => {
-      if (owned) {
-        this.useTankCosmetic(asset);
-      }
-    });
-    this.tabControls.push(card);
-  }
-
-  private renderTankDecorationCatalog(y: number): void {
-    const pageSize = 4;
-    const ownedDecorations = decorationTypes.filter((decorationType) => decorationSizeOrder.some((size) => this.getDecorationInventory(decorationType.id, size) > 0));
-    const maxPage = Math.max(1, Math.ceil(ownedDecorations.length / pageSize));
-    this.tankDecorPage = Phaser.Math.Clamp(this.tankDecorPage, 1, maxPage);
-    const pageStart = (this.tankDecorPage - 1) * pageSize;
-    const pageDecorations = ownedDecorations.slice(pageStart, pageStart + pageSize);
-    this.tabControls.push(
-      this.createInfoLine(20, y, `Decorations ${formatNumber(this.tankDecorPage)}/${formatNumber(maxPage)} | placed into ${this.getTankName(this.tankLevel)}`),
-      this.createButton(316, y - 4, 38, 20, "<", () => this.changeTankDecorPage(-1), 0x254d68, 10),
-      this.createButton(362, y - 4, 38, 20, ">", () => this.changeTankDecorPage(1), 0x254d68, 10)
-    );
-    pageDecorations.forEach((decorationType, index) => {
-      this.addTankDecorationCard(decorationType, 20 + (index % 2) * 202, y + 24 + Math.floor(index / 2) * 88);
-    });
-  }
-
-  private changeTankDecorPage(direction: number): void {
-    const maxPage = Math.max(1, Math.ceil(decorationTypes.filter((decorationType) => decorationSizeOrder.some((size) => this.getDecorationInventory(decorationType.id, size) > 0)).length / 4));
-    this.tankDecorPage = Phaser.Math.Clamp(this.tankDecorPage + direction, 1, maxPage);
-    this.renderTabControls();
-    this.refreshUi(false);
-  }
-
-  private addTankDecorationCard(decorationType: DecorationType, x: number, y: number): void {
-    const width = 188;
-    const height = 78;
-    const accent = this.rarityCatalogAccent(decorationType.rarity);
-    const background = this.add.rectangle(width / 2, height / 2, width, height, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.75);
-    const preview = this.add.image(24, 28, decorationType.texture);
-    preview.setDisplaySize(44, 36);
-    const title = this.add.text(52, 6, decorationType.name, {
-      fontFamily: gameFontFamily,
-      fontSize: "10px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      fixedWidth: 124
-    });
-    const meta = this.add.text(52, 22, `+${formatNumber(decorationType.happinessBonus)} happy`, {
-      fontFamily: gameFontFamily,
-      fontSize: "8px",
-      color: "#ffe67a",
-      fixedWidth: 124
-    });
-    const card = this.add.container(x, y, [background, preview, title, meta]).setDepth(71);
-    this.tabControls.push(card);
-    decorationSizeOrder.forEach((size, index) => {
-      const owned = this.getDecorationInventory(decorationType.id, size);
-      if (owned <= 0) {
-        return;
-      }
-      const label = `${decorationSizes[size].label} x${formatNumber(owned)}`;
-      this.tabControls.push(
-        this.createButton(
-          x + 52 + (index % 2) * 64,
-          y + 40 + Math.floor(index / 2) * 18,
-          58,
-          16,
-          label,
-          () => this.selectDecoration(decorationType.id, size),
-          0x256f95,
-          7
-        )
-      );
-    });
-  }
-
-  private createTankThumbnailObjects(
-    x: number,
-    y: number,
-    level: number,
-    width: number,
-    height: number,
-    owned = true
-  ): Phaser.GameObjects.GameObject[] {
-    const objects: Phaser.GameObjects.GameObject[] = [];
-    if (this.textures.exists(tankThumbnailBaseTextureKey)) {
-      const image = this.add.image(x, y, tankThumbnailBaseTextureKey);
-      image.setDisplaySize(width, height);
-      image.setAlpha(owned ? 1 : 0.52);
-      objects.push(image);
-    } else {
-      objects.push(this.add.rectangle(x, y, width, height, 0x1599c8, owned ? 1 : 0.52));
-    }
-
-    const accent = this.tankAccentColor(level);
-    const hueOverlay = this.add.rectangle(x, y, width - 4, height - 4, accent, owned ? 0.14 : 0.2);
-    const ring = this.add.rectangle(x, y, width, height, 0x000000, 0).setStrokeStyle(2, accent, owned ? 0.9 : 0.42);
-    const tierCount = 1 + (level % 5);
-    objects.push(hueOverlay, ring);
-    for (let index = 0; index < tierCount; index += 1) {
-      const dotX = x - width / 2 + 8 + index * 7;
-      const dotY = y + height / 2 - 7;
-      objects.push(this.add.circle(dotX, dotY, 2, accent, owned ? 0.95 : 0.45));
-    }
-    objects.push(
-      this.add
-        .text(x, y - height / 2 + 6, `Lv${formatNumber(this.tankDisplayLevel(level))}`, {
-          fontFamily: gameFontFamily,
-          fontSize: "9px",
-          color: "#ffffff",
-          fontStyle: "bold",
-          stroke: "#05283b",
-          strokeThickness: 3
-        })
-        .setOrigin(0.5, 0)
-    );
-    return objects;
   }
 
   private getTankName(level: number): string {
@@ -4600,179 +3828,6 @@ export class AquariumScene extends Phaser.Scene {
     this.renderTabControls();
     this.refreshUi(false);
     this.saveNow();
-  }
-
-  private addHelperStatsCard(helper: HelperCreature, index: number, baseY: number): void {
-    const x = 20 + (index % 2) * 202;
-    const y = baseY + Math.floor(index / 2) * 74;
-    const width = 188;
-    const height = 66;
-    const accent = this.rarityCatalogAccent(helper.type.rarity);
-    const background = this.add.rectangle(width / 2, height / 2, width, height, 0x17364a, 0.98).setStrokeStyle(1, accent, 0.9);
-    const stripe = this.add.rectangle(4, height / 2, 4, height - 8, accent, 1);
-    const title = this.add.text(12, 5, `${formatNumber(index + 1)}. ${helper.type.name}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "12px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      fixedWidth: width - 24
-    });
-    const role = helper.type.id === "feeder-snail" ? "Pet" : helper.type.tankCleanSeconds ? "Auto Cleaner" : helper.type.habitatTags.includes("collector") ? "Collector" : "Cleaner";
-    const meta = this.add.text(12, 22, `${this.rarityLabel(helper.type.rarity)} | ${role} | Speed ${formatNumber(helper.type.speed)}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#ffe67a",
-      fixedWidth: width - 24
-    });
-    const detail = this.add.text(12, 36, `Sell ${formatPrice(this.helperSellPrice(helper.type))}`, {
-      fontFamily: gameFontFamily,
-      fontSize: "9px",
-      color: "#cfeeff",
-      fixedWidth: width - 24
-    });
-    const card = this.add.container(x, y, [background, stripe, title, meta, detail]).setDepth(71);
-    this.tabControls.push(card);
-    this.tabControls.push(
-      this.createButton(x + width - 64, y + height - 18, 52, 18, "Sell", () => this.showHelperSellConfirmation(index), 0x76512d, 8)
-    );
-  }
-
-  private renderScreenControls(): void {
-    if (this.activeScreen === "tanks") {
-      this.renderTankManagementPage();
-      return;
-    }
-
-    if (this.activeScreen === "album") {
-      this.renderFishStatsPage();
-      return;
-    }
-
-    if (this.activeScreen === "goals") {
-      this.tabControls.push(
-        this.createInfoLine(20, controlPanelTop + 54, `Daily Quest | ${this.dailyGoals.date}`),
-        ...this.dailyQuestItems().map((goal, index) => this.createGoalRow(controlPanelTop + 82 + index * 32, goal))
-      );
-      return;
-    }
-
-    this.tabControls.push(
-      this.createButton(20, controlPanelTop + 58, 188, 32, `Sound ${this.settings.sound ? "On" : "Off"}`, () => this.toggleSetting("sound"), 0x254d68, 13),
-      this.createButton(222, controlPanelTop + 58, 188, 32, `Music ${this.settings.music ? "On" : "Off"}`, () => this.toggleSetting("music"), 0x254d68, 13),
-      this.createButton(20, controlPanelTop + 98, 188, 32, `Motion ${this.settings.reducedMotion ? "Low" : "Full"}`, () => this.toggleSetting("reducedMotion"), 0x254d68, 13),
-      this.createButton(222, controlPanelTop + 98, 188, 32, `Notify ${this.settings.notifications ? "On" : "Off"}`, () => this.toggleSetting("notifications"), 0x254d68, 13),
-      this.createButton(20, controlPanelTop + 140, 188, 32, "Offline Summary", () => this.showOfflineSummary(), 0x356a35, 13),
-      this.createButton(222, controlPanelTop + 140, 188, 32, "Reset Save", () => this.showResetConfirmation(), 0x76512d, 13)
-    );
-  }
-
-  private addControlRow(
-    y: number,
-    buyLabel: string,
-    placeLabel: string,
-    onBuy: () => void,
-    onPlace: () => void,
-    placeFill: number
-  ): void {
-    this.tabControls.push(
-      this.createButton(20, y, 250, 28, buyLabel, onBuy, 0x256f95, 12),
-      this.createButton(284, y, 126, 28, placeLabel, onPlace, placeFill, 11)
-    );
-  }
-
-  private createInfoLine(x: number, y: number, label: string): Phaser.GameObjects.Container {
-    const text = this.add.text(0, 0, label, {
-      fontFamily: gameFontFamily,
-      fontSize: "11px",
-      color: "#eaf9ff",
-      fixedWidth: 390,
-      wordWrap: { width: 390 }
-    });
-    const container = this.add.container(x, y, [text]);
-    container.setDepth(this.activeScreen === "tank" ? 22 : 72);
-    return container;
-  }
-
-  private createGoalRow(y: number, goal: DailyQuestItem): Phaser.GameObjects.Container {
-    const claimed = this.dailyGoals.claimed.includes(goal.id);
-    return this.createButton(
-      20,
-      y,
-      390,
-      28,
-      `${claimed ? "Done" : goal.complete ? "Claim" : "Open"} | ${goal.label} | ${formatPrice(goal.reward)}`,
-      () => this.claimDailyGoal(goal.id, goal.complete),
-      claimed ? 0x254d68 : goal.complete ? 0x356a35 : 0x256f95,
-      12
-    );
-  }
-
-  private createPagePanel(title: string): void {
-    const background = this.add
-      .rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x071b2a, 1)
-      .setStrokeStyle(2, 0x75c9e8, 0.65);
-    background.setInteractive();
-    background.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-    });
-    const header = this.add.rectangle(gameWidth / 2, 36, gameWidth, 72, 0x10283a, 1);
-    const titleText = this.add.text(20, 20, title, {
-      fontFamily: gameFontFamily,
-      fontSize: "20px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    });
-    const closeButton = this.createButton(330, 18, 80, 34, "Tank", () => this.closePage(), 0x76512d, 13);
-    this.pagePanel = this.add.container(0, 0, [background, header, titleText, closeButton]).setDepth(60);
-  }
-
-  private pageTitle(): string {
-    const titles: Record<AppScreen, string> = {
-      tank: "Tank",
-      store: "Store",
-      album: "Album",
-      tanks: "Tanks",
-      goals: "Quest",
-      settings: "Settings"
-    };
-    return titles[this.activeScreen];
-  }
-
-  private createButton(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    label: string,
-    onClick: () => void,
-    fill = 0x256f95,
-    fontSize = 13
-  ): Phaser.GameObjects.Container {
-    const background = this.add
-      .rectangle(0, 0, width, height, fill, 1)
-      .setStrokeStyle(1, 0xbcefff, 0.5);
-    const text = this.add
-      .text(0, 0, label, {
-        fontFamily: gameFontFamily,
-        fontSize: `${fontSize}px`,
-        color: "#ffffff",
-        align: "center",
-        fixedWidth: width - 10
-      })
-      .setOrigin(0.5);
-    const button = this.add.container(x + width / 2, y + height / 2, [background, text]);
-    const hitWidth = Math.max(44, width);
-    const hitHeight = Math.max(44, height);
-    button.setSize(hitWidth, hitHeight);
-    button.setDepth(this.activeScreen === "tank" ? 22 : 72);
-    button.setInteractive(new Phaser.Geom.Rectangle(-hitWidth / 2, -hitHeight / 2, hitWidth, hitHeight), Phaser.Geom.Rectangle.Contains);
-    button.on("pointerover", () => background.setFillStyle(0x3c93bd));
-    button.on("pointerout", () => background.setFillStyle(fill));
-    button.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      onClick();
-    });
-    return button;
   }
 
   private buyFish(fishType: FishType): void {
@@ -5805,8 +4860,7 @@ export class AquariumScene extends Phaser.Scene {
     for (const savedCreature of saved.helperCreatures) {
       const creatureType = helperCreatureTypes.find((item) => item.id === savedCreature.typeId);
       if (creatureType) {
-        const helper = this.addHelperCreatureToTank(creatureType, savedCreature.x, savedCreature.y, savedCreature.targetX, savedCreature.tankLevel ?? 1);
-        helper.restoreVitals(savedCreature.hunger ?? 16, savedCreature.health ?? 100, savedCreature.fatalCareSeconds ?? 0);
+        this.addHelperCreatureToTank(creatureType, savedCreature.x, savedCreature.y, savedCreature.targetX, savedCreature.tankLevel ?? 1);
       }
     }
 
@@ -5970,12 +5024,6 @@ export class AquariumScene extends Phaser.Scene {
       dailyGoals: {
         date: this.dailyGoals.date,
         claimed: [...this.dailyGoals.claimed]
-      },
-      rentals: {
-        autoFeederEndsAt: 0,
-        autoCollectorEndsAt: 0,
-        autoFeederMinutes: 1,
-        autoCollectorMinutes: 1
       }
     };
 
@@ -6288,18 +5336,6 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private refreshUi(renderControls = true): void {
-    const displayLevel = this.tankDisplayLevel();
-    this.hudText.setText(
-      `C:${formatNumber(this.wallet.common)}   R:${formatNumber(this.wallet.rare)}   SR:${formatNumber(this.wallet.superRare)}   W:${formatNumber(this.calculateTankNetWorth())}`
-    );
-    this.hudCommonText.setText(formatNumber(this.wallet.common));
-    this.hudRareText.setText(formatNumber(this.wallet.rare));
-    this.hudSuperRareText.setText(formatNumber(this.wallet.superRare));
-    this.hudWealthText.setText(formatNumber(this.calculateTankNetWorth()));
-    this.tankLevelBadgeText.setText(formatNumber(displayLevel));
-    this.drawTankLevelBadgeHue(displayLevel);
-    this.refreshCareStatusTexts();
-    this.hudNeedText.setText(this.getHudNeedLabel());
     this.storeOverlay?.refresh();
     if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
       this.syncHtmlPageOverlay();
@@ -6313,32 +5349,11 @@ export class AquariumScene extends Phaser.Scene {
       }
     }
     this.refreshStatus();
-    this.hidePhaserHud();
     this.syncHtmlGameInterface();
   }
 
   private refreshStatus(): void {
     this.hudStatusSyncElapsed = 0;
-    const activeFish = this.activeFish();
-    if (activeFish.length === 0) {
-      this.statusText.setText(`${this.getTankName(this.tankLevel)} Lv${formatNumber(this.tankDisplayLevel())}`);
-      this.refreshCareStatusTexts();
-      this.hudNeedText.setText(this.getHudNeedLabel());
-      this.syncHtmlHud();
-      return;
-    }
-
-    const counts = activeFish.reduce(
-      (summary, currentFish) => {
-        summary[currentFish.state] += 1;
-        return summary;
-      },
-      { happy: 0, hungry: 0, ill: 0 } as Record<FishState, number>
-    );
-
-    this.statusText.setText(`${this.getTankName(this.tankLevel)} Lv${formatNumber(this.tankDisplayLevel())}`);
-    this.refreshCareStatusTexts();
-    this.hudNeedText.setText(`${this.getHudNeedLabel()}   H${formatNumber(counts.happy)} Hu${formatNumber(counts.hungry)} I${formatNumber(counts.ill)}`);
     this.syncHtmlHud();
   }
 
@@ -6346,18 +5361,29 @@ export class AquariumScene extends Phaser.Scene {
     return `Food ${formatNumber(this.getTotalFoodInventory())}   Clean ${formatNumber(Math.round(this.cleanliness))}%   Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
   }
 
-  private refreshCareStatusTexts(): void {
-    const foodLabel = `Food ${formatNumber(this.getTotalFoodInventory())}`;
-    const cleanLabel = `Clean ${formatNumber(Math.round(this.cleanliness))}%`;
-    const happyLabel = `Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
-    this.modeText.setText(`${foodLabel}   ${cleanLabel}   ${happyLabel}`);
-    this.hudFoodStatusText.setText(foodLabel);
-    this.hudCleanStatusText.setText(cleanLabel);
-    this.hudHappyStatusText.setText(happyLabel);
+  private tankHudSnapshotText(): string {
+    return `C:${formatNumber(this.wallet.common)}   R:${formatNumber(this.wallet.rare)}   SR:${formatNumber(this.wallet.superRare)}   W:${formatNumber(this.calculateTankNetWorth())}`;
+  }
+
+  private tankStatusSnapshotText(): string {
+    return `${this.getTankName(this.tankLevel)} Lv${formatNumber(this.tankDisplayLevel())}`;
+  }
+
+  private tankCareSnapshotText(): string {
+    const counts = this.activeFish().reduce(
+      (summary, currentFish) => {
+        summary[currentFish.state] += 1;
+        return summary;
+      },
+      { happy: 0, hungry: 0, ill: 0 } as Record<FishState, number>
+    );
+    const needLabel = this.activeFish().length > 0
+      ? `${this.getHudNeedLabel()}   H${formatNumber(counts.happy)} Hu${formatNumber(counts.hungry)} I${formatNumber(counts.ill)}`
+      : this.getHudNeedLabel();
+    return `${this.getCareStatusLabel()} | ${needLabel}`;
   }
 
   private syncCleanlinessUi(): void {
-    this.refreshCareStatusTexts();
     this.syncCleanMenuProgress();
     this.syncHtmlHud();
   }
@@ -7838,9 +6864,9 @@ export class AquariumScene extends Phaser.Scene {
         tankWorth: this.calculateTankNetWorth(),
         nextTankUpgradePrice: this.getNextTankUpgradePrice(),
         tankNeedIndicator: this.getTankNeedIndicator(),
-        tankHudText: this.hudText.text,
-        tankStatusText: this.statusText.text,
-        tankCareText: `${this.modeText.text} | ${this.hudNeedText.text}`,
+        tankHudText: this.tankHudSnapshotText(),
+        tankStatusText: this.tankStatusSnapshotText(),
+        tankCareText: this.tankCareSnapshotText(),
         fishTypeCount: fishTypes.length,
         helperCreatureTypeCount: helperCreatureTypes.length,
         visibleFishCatalogCount: this.visibleFishCatalog().length,

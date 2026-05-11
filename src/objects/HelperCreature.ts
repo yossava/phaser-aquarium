@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { tankBounds } from "../game/constants";
-import { gameFontFamily } from "../game/fonts";
 import type { CoinDrop } from "./CoinDrop";
 import type { Fish } from "./Fish";
 import type { FoodPellet } from "./FoodPellet";
@@ -25,12 +24,7 @@ const reversedFacingHelperTextures = new Set(["helper-auto-cleaner"]);
 export class HelperCreature {
   public readonly sprite: Phaser.GameObjects.Image;
   public tankLevel: number;
-  public hunger = 0;
-  public health = 100;
-  public fatalCareSeconds = 0;
   private targetX: number;
-  private stateBubble: Phaser.GameObjects.Graphics;
-  private stateEmoji: Phaser.GameObjects.Text;
   private coinCooldown = 0;
   private cleanupCooldown = 0;
   private tankCleanCooldown = 0;
@@ -50,28 +44,15 @@ export class HelperCreature {
     this.fitSpriteToGameplayScale();
     this.sprite.setDepth(8);
     this.sprite.setInteractive({ useHandCursor: true });
-    this.stateBubble = scene.add.graphics().setDepth(12);
-    this.stateEmoji = scene.add
-      .text(startX, startY, "", {
-        fontFamily: gameFontFamily,
-        fontSize: "16px",
-        stroke: "#061725",
-        strokeThickness: 3
-      })
-      .setOrigin(0.5)
-      .setDepth(13);
     this.targetX = startX;
-    this.updateStatusIndicator();
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {
-    container.add([this.sprite, this.stateBubble, this.stateEmoji]);
+    container.add(this.sprite);
   }
 
   public setTankVisible(visible: boolean): void {
     this.sprite.setVisible(visible);
-    this.stateBubble.setVisible(visible);
-    this.stateEmoji.setVisible(visible);
   }
 
   public update(deltaSeconds: number, coins: CoinDrop[], foods: FoodPellet[], fish: Fish[] = []): HelperCreatureAction | undefined {
@@ -92,7 +73,6 @@ export class HelperCreature {
     }
 
     this.crawl(deltaSeconds);
-    this.updateStatusIndicator();
 
     if (this.canWork() && this.type.tankCleanSeconds && this.tankCleanCooldown <= 0) {
       this.tankCleanCooldown = this.type.tankCleanSeconds;
@@ -120,34 +100,8 @@ export class HelperCreature {
     return this.targetX;
   }
 
-  public restoreVitals(hunger: number, health: number, fatalCareSecondsValue = 0): void {
-    this.hunger = 0;
-    this.health = 100;
-    this.fatalCareSeconds = 0;
-    this.updateStatusIndicator();
-  }
-
-  public isInFatalCareState(): boolean {
-    return false;
-  }
-
-  public isDeadFromNeglect(): boolean {
-    return false;
-  }
-
-  public fatalCareRemainingSeconds(): number {
-    return 0;
-  }
-
-  public addFatalCareSeconds(seconds: number): void {
-    this.fatalCareSeconds = 0;
-    this.updateStatusIndicator();
-  }
-
   public destroy(): void {
     this.sprite.destroy();
-    this.stateBubble.destroy();
-    this.stateEmoji.destroy();
   }
 
   private canWork(): boolean {
@@ -191,11 +145,4 @@ export class HelperCreature {
     const aspectRatio = this.sprite.height / Math.max(1, this.sprite.width);
     this.sprite.setDisplaySize(displayWidth, displayWidth * aspectRatio);
   }
-
-  private updateStatusIndicator(): void {
-    this.stateBubble.clear();
-    this.stateEmoji.setText("");
-    this.stateEmoji.setPosition(this.sprite.x, this.sprite.y - this.sprite.displayHeight / 2 - 20);
-  }
-
 }

@@ -852,8 +852,8 @@ export class StoreOverlay {
   }
 
   private productionHint(fish: FishType): string {
-    const production = fish.ageCurve.baby.production[0];
-    return `Drops ${formatNumber(production.amount)} ${this.rarityLabel(production.coinType)} coins every ${formatNumber(Math.min(10, production.intervalSeconds))}s`;
+    const tokenHint = fish.rarity === "common" ? "" : " Rare tokens gate the purchase; production is still Common.";
+    return `Converts fullness into Common coins every 5-30s.${tokenHint}`;
   }
 }
 

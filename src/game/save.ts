@@ -33,9 +33,6 @@ export type SavedHelperCreature = {
   x: number;
   y: number;
   targetX: number;
-  hunger?: number;
-  health?: number;
-  fatalCareSeconds?: number;
 };
 
 export type SavedGame = {
@@ -68,12 +65,6 @@ export type SavedGame = {
   dailyGoals: {
     date: string;
     claimed: string[];
-  };
-  rentals?: {
-    autoFeederEndsAt: number;
-    autoCollectorEndsAt: number;
-    autoFeederMinutes?: number;
-    autoCollectorMinutes?: number;
   };
 };
 
@@ -192,12 +183,6 @@ export function loadGame(): SavedGame | undefined {
         claimed: Array.isArray(migrated.dailyGoals?.claimed)
           ? migrated.dailyGoals.claimed.filter((id): id is string => typeof id === "string")
           : []
-      },
-      rentals: {
-        autoFeederEndsAt: Math.max(0, sanitizeNumber(migrated.rentals?.autoFeederEndsAt, 0)),
-        autoCollectorEndsAt: Math.max(0, sanitizeNumber(migrated.rentals?.autoCollectorEndsAt, 0)),
-        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(migrated.rentals?.autoFeederMinutes, 1)), 1, 60),
-        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(migrated.rentals?.autoCollectorMinutes, 1)), 1, 60)
       }
     };
   } catch {
@@ -223,12 +208,6 @@ function migrateSave(
         cleanliness: sanitizeNumber(parsed.tank?.cleanliness, 100),
         cleanedAt: sanitizeNumber(parsed.tank?.cleanedAt, Date.now()),
         level: Math.max(1, Math.floor(sanitizeNumber(parsed.tank?.level, 1)))
-      },
-      rentals: {
-        autoFeederEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoFeederEndsAt, 0)),
-        autoCollectorEndsAt: Math.max(0, sanitizeNumber(parsed.rentals?.autoCollectorEndsAt, 0)),
-        autoFeederMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoFeederMinutes, 1)), 1, 60),
-        autoCollectorMinutes: clamp(Math.floor(sanitizeNumber(parsed.rentals?.autoCollectorMinutes, 1)), 1, 60)
       }
     });
   }
@@ -248,8 +227,7 @@ function migrateSave(
       helperCreatures: [],
       tank: { cleanliness: 100, cleanedAt: Date.now(), level: 1 },
       settings: { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false },
-      dailyGoals: { date: localDateKey(), claimed: [] },
-      rentals: { autoFeederEndsAt: 0, autoCollectorEndsAt: 0, autoFeederMinutes: 1, autoCollectorMinutes: 1 }
+      dailyGoals: { date: localDateKey(), claimed: [] }
     });
   }
 
@@ -461,10 +439,7 @@ function sanitizeHelperCreature(creature: Partial<SavedHelperCreature>): SavedHe
     tankLevel: Math.max(1, Math.floor(sanitizeNumber(creature.tankLevel, 1))),
     x: sanitizeNumber(creature.x, 0),
     y: sanitizeNumber(creature.y, 0),
-    targetX: sanitizeNumber(creature.targetX, creature.x ?? 0),
-    hunger: clamp(sanitizeNumber(creature.hunger, 16), 0, 100),
-    health: clamp(sanitizeNumber(creature.health, 100), 0, 100),
-    fatalCareSeconds: clamp(sanitizeNumber(creature.fatalCareSeconds, 0), 0, 3600)
+    targetX: sanitizeNumber(creature.targetX, creature.x ?? 0)
   };
 }
 
