@@ -3590,14 +3590,7 @@ export class AquariumScene extends Phaser.Scene {
     this.createFoodDock();
     this.syncHtmlGameInterface();
     this.prizeRareFish = this.nextPrizeRareFish();
-    if (!this.ensureFishTexturesLoaded(this.prizeRareFish, () => {
-      if (this.activeScreen === "prize" && !this.prizeSpinInProgress && !this.prizeSpinContainer) {
-        this.showPrizeMachineSpinner();
-      }
-    })) {
-      this.floatText("Loading prize...", toastX, toastY, "#d7f4ff");
-      return;
-    }
+    this.ensureFishTexturesLoaded(this.prizeRareFish);
     this.showPrizeMachineSpinner();
   }
 
@@ -3629,6 +3622,52 @@ export class AquariumScene extends Phaser.Scene {
     this.prizeMachine = setPrizeMachineBet(this.prizeMachine, betAmount);
     this.showPrizeMachineSpinner();
     this.saveNow();
+  }
+
+  private handleNativePrizePointer(designX: number, designY: number): boolean {
+    if (this.activeScreen !== "prize" || this.modal || !this.prizeSpinContainer) {
+      return false;
+    }
+
+    const closeBounds = new Phaser.Geom.Rectangle(gameWidth / 2 - 85, gameHeight - 95, 170, 46);
+    if (!this.prizeSpinInProgress && closeBounds.contains(designX, designY)) {
+      this.closePage();
+      return true;
+    }
+
+    const spinBounds = new Phaser.Geom.Rectangle(gameWidth / 2 - 115, gameHeight - 158, 230, 52);
+    if (!this.prizeSpinInProgress && spinBounds.contains(designX, designY)) {
+      this.spinPrizeMachine();
+      return true;
+    }
+
+    const selectedBet = this.nativePrizeBetAtPoint(designX, designY);
+    if (selectedBet !== undefined) {
+      this.selectPrizeMachineBet(selectedBet);
+      return true;
+    }
+
+    return false;
+  }
+
+  private nativePrizeBetAtPoint(designX: number, designY: number): PrizeMachineBetAmount | undefined {
+    if (this.prizeSpinInProgress) {
+      return undefined;
+    }
+
+    const betY = gameHeight - 198;
+    if (Math.abs(designY - betY) > 24) {
+      return undefined;
+    }
+
+    const betAmounts = prizeMachineBetAmounts;
+    const spacing = betAmounts.length > 4 ? 50 : 74;
+    const buttonWidth = betAmounts.length > 4 ? 46 : 64;
+    const startX = gameWidth / 2 - ((betAmounts.length - 1) * spacing) / 2;
+    return betAmounts.find((betAmount, index) => {
+      const centerX = startX + index * spacing;
+      return Math.abs(designX - centerX) <= buttonWidth / 2;
+    });
   }
 
   private currentPrizeMachineConfig(): PrizeMachineConfig {
@@ -5122,6 +5161,15 @@ export class AquariumScene extends Phaser.Scene {
       activePointerId = undefined;
     };
     const onPointerDown = (event: PointerEvent) => {
+      if (this.activeScreen === "prize") {
+        const point = designPointFromEvent(event);
+        if (point && this.handleNativePrizePointer(point.x, point.y)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+
       if (event.button !== 0 || this.htmlDockDragging || this.activeScreen !== "tank") {
         return;
       }

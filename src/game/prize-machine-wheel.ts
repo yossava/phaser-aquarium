@@ -341,7 +341,7 @@ function createPrizePopText(scene: Phaser.Scene, x: number, y: number, label: st
 }
 
 function prizeUiRenderScale(scene: Phaser.Scene): number {
-  return Phaser.Math.Clamp(scene.scale.gameSize.width / gameWidth, 1, 2);
+  return Phaser.Math.Clamp(scene.scale.gameSize.width / gameWidth, 1, 1.35);
 }
 
 function parseFontSize(fontSize: string): number {
