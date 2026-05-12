@@ -114,7 +114,6 @@ import {
   normalizePrizeMachineState,
   prizeMachineBetAmounts,
   prizeMachineConfigForBet,
-  prizeMachineOwedResaleValue,
   recordPrizeMachineSpin,
   recordPrizeMachineWin,
   setPrizeMachineBet,
@@ -160,12 +159,18 @@ import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodTyp
 type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "prize" | "makeup" | "settings";
 
 type PreparedPrizeMachineReward =
-  | { kind: "rare"; segmentIndex: number }
-  | { kind: "superRare"; segmentIndex: number }
+  | { kind: "rare"; amount: number; segmentIndex: number }
+  | { kind: "superRare"; amount: number; segmentIndex: number }
   | { kind: "rareFish"; fishType: FishType; segmentIndex: number }
   | { kind: "premiumCommon"; amount: number; segmentIndex: number }
-  | { kind: "food"; foodType: FoodType; segmentIndex: number }
+  | { kind: "food"; foodType: FoodType; quantity: number; segmentIndex: number }
   | { kind: "common"; amount: number; segmentIndex: number };
+
+type PrizeSegmentCandidate = {
+  key: string;
+  segment: PrizeWheelSegment;
+  value: number;
+};
 
 type PlacementMode =
   | { kind: "none" }
@@ -3706,8 +3711,7 @@ export class AquariumScene extends Phaser.Scene {
       this.prizeMachine = recordPrizeMachineWin(
         this.prizeMachine,
         preparedRewardValue,
-        this.prizeMachineRewardKey(preparedReward),
-        this.isPremiumPrizeReward(preparedReward)
+        this.prizeMachineRewardKey(preparedReward)
       );
 
       this.recordDailyQuestAction("prize-game");
@@ -3737,113 +3741,185 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createPrizeWheelSegments(): PrizeWheelSegment[] {
-    const foodColors = [0x22c55e, 0x38bdf8, 0xa3e635, 0x06b6d4, 0x84cc16];
-    const commonColors = [0x0ea5e9, 0x14b8a6, 0x7dd3fc, 0x0284c7];
     const betAmount = this.prizeMachine.selectedBetAmount;
-    const foodOptions = this.prizeWheelFoodOptions(betAmount);
-    const commonAmounts = this.prizeWheelCommonAmounts(betAmount);
-    const premiumCommonAmount = this.prizeWheelPremiumCommonAmount(betAmount);
-    const candidateSegments: PrizeWheelSegment[] = [
-      {
+    const targetMultipliers = [0.5, 0.58, 0.66, 0.74, 0.82, 0.9, 1.1, 1.18, 1.26, 1.34, 1.42, 1.5];
+    const usedKeys = new Set<string>();
+
+    return targetMultipliers.map((multiplier, index) => {
+      const lane: "loss" | "win" = multiplier < 1 ? "loss" : "win";
+      const rawTargetValue = betAmount * multiplier;
+      const targetValue = lane === "loss"
+        ? Math.max(1, Math.min(betAmount - 1, Math.floor(rawTargetValue)))
+        : Math.max(betAmount + 1, Math.round(rawTargetValue));
+      const candidates = this.prizeWheelCandidatesForTarget(targetValue, lane, index);
+      const candidate = this.choosePrizeWheelSegmentCandidate(candidates, targetValue, index, usedKeys);
+      usedKeys.add(candidate.key);
+      return candidate.segment;
+    });
+  }
+
+  private prizeWheelCandidatesForTarget(targetValue: number, lane: "loss" | "win", slotIndex: number): PrizeSegmentCandidate[] {
+    const betAmount = this.prizeMachine.selectedBetAmount;
+    const candidates = [
+      this.prizeWheelCommonCandidate(targetValue, slotIndex),
+      ...this.prizeWheelFoodCandidates(targetValue, lane, slotIndex),
+      ...this.prizeWheelRareCoinCandidates(targetValue, lane),
+      ...this.prizeWheelSuperRareCoinCandidates(targetValue, lane),
+      ...this.prizeWheelRareFishCandidates(lane)
+    ].filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane, betAmount));
+
+    return candidates.length > 0 ? candidates : [this.prizeWheelCommonCandidate(targetValue, slotIndex)];
+  }
+
+  private prizeWheelCommonCandidate(targetValue: number, slotIndex: number): PrizeSegmentCandidate {
+    const commonColors = [0x0ea5e9, 0x14b8a6, 0x7dd3fc, 0x0284c7, 0x38bdf8, 0x0f766e];
+    const amount = Math.max(1, Math.round(targetValue));
+    return {
+      key: `common:${amount}`,
+      value: amount,
+      segment: {
+        kind: "common",
+        label: `C${formatNumber(amount)}`,
+        iconTextureKey: prizeWheelIconTextureKeys.common,
+        color: commonColors[slotIndex % commonColors.length],
+        commonAmount: amount
+      }
+    };
+  }
+
+  private prizeWheelFoodCandidates(targetValue: number, lane: "loss" | "win", slotIndex: number): PrizeSegmentCandidate[] {
+    const foodColors = [0x22c55e, 0x38bdf8, 0xa3e635, 0x06b6d4, 0x84cc16, 0x10b981];
+    return foodTypes
+      .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id) && this.isDroppableFood(foodType.id))
+      .map((foodType, index) => {
+        const unitStoredAmount = this.isCalorieTrackedFood(foodType.id) ? foodType.calories : 1;
+        const unitValue = this.foodSellValue(foodType, unitStoredAmount);
+        const quantity = this.prizeWheelQuantityForTarget(unitValue, targetValue, lane);
+        const storedAmount = unitStoredAmount * quantity;
+        const value = this.foodSellValue(foodType, storedAmount);
+        const marketValue = this.priceWealth(foodType.price) * quantity;
+        const label = `${this.prizeWheelFoodLabel(foodType)}${quantity > 1 ? ` x${formatNumber(quantity)}` : ""}`;
+        return {
+          key: `food:${foodType.id}:${quantity}`,
+          value,
+          segment: {
+            kind: "food" as const,
+            label,
+            resultLabel: label,
+            resultMarketLabel: `(Worth C${formatNumber(marketValue)})`,
+            iconTextureKey: this.foodTextureKey(foodType.id),
+            color: foodColors[(slotIndex + index) % foodColors.length],
+            foodTypeId: foodType.id,
+            foodQuantity: quantity
+          }
+        };
+      });
+  }
+
+  private prizeWheelRareCoinCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
+    if (this.prizeMachine.selectedBetAmount < coinWealthValue.rare) {
+      return [];
+    }
+
+    const unitValue = this.coinSellValue("rare");
+    const amount = this.prizeWheelQuantityForTarget(unitValue, targetValue, lane);
+    const value = this.coinSellValue("rare", amount);
+    return [{
+      key: `rare:${amount}`,
+      value,
+      segment: {
         kind: "rare",
-        label: "R1",
+        label: `R${formatNumber(amount)}`,
+        resultLabel: `R${formatNumber(amount)}`,
+        resultMarketLabel: `(Worth C${formatNumber(coinWealthValue.rare * amount)})`,
         iconTextureKey: prizeWheelIconTextureKeys.rare,
-        color: 0x0ea5e9
-      },
-      {
+        color: 0x0ea5e9,
+        rareAmount: amount
+      }
+    }];
+  }
+
+  private prizeWheelSuperRareCoinCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
+    if (this.prizeMachine.selectedBetAmount < coinWealthValue.superRare) {
+      return [];
+    }
+
+    const unitValue = this.coinSellValue("superRare");
+    const amount = this.prizeWheelQuantityForTarget(unitValue, targetValue, lane);
+    const value = this.coinSellValue("superRare", amount);
+    return [{
+      key: `superRare:${amount}`,
+      value,
+      segment: {
         kind: "superRare",
-        label: "SR1",
+        label: `SR${formatNumber(amount)}`,
+        resultLabel: `SR${formatNumber(amount)}`,
+        resultMarketLabel: `(Worth C${formatNumber(coinWealthValue.superRare * amount)})`,
         iconTextureKey: prizeWheelIconTextureKeys.superRare,
-        color: 0x8b5cf6
-      },
-      {
+        color: 0x8b5cf6,
+        superRareAmount: amount
+      }
+    }];
+  }
+
+  private prizeWheelRareFishCandidates(lane: "loss" | "win"): PrizeSegmentCandidate[] {
+    const betAmount = this.prizeMachine.selectedBetAmount;
+    const value = this.storedFishSellValue(this.prizeRareFish);
+    if (!this.prizeWheelValueMatchesLane(value, lane, betAmount)) {
+      return [];
+    }
+
+    return [{
+      key: `rareFish:${this.prizeRareFish.id}`,
+      value,
+      segment: {
         kind: "rareFish",
         label: "R Fish",
         iconTextureKey: this.textures.exists(`fish-${this.prizeRareFish.id}`) ? `fish-${this.prizeRareFish.id}` : prizeWheelIconTextureKeys.fish,
         color: 0x22c55e,
         resultLabel: this.prizeRareFish.name,
+        resultMarketLabel: `(Worth C${formatNumber(this.priceWealth(this.prizeRareFish.price))})`,
         fishTypeId: this.prizeRareFish.id
-      },
-      {
-        kind: "premiumCommon",
-        label: `C${formatNumber(premiumCommonAmount)}`,
-        iconTextureKey: prizeWheelIconTextureKeys.common,
-        color: 0xf59e0b,
-        resultLabel: `C${formatNumber(premiumCommonAmount)}`,
-        commonAmount: premiumCommonAmount
       }
-    ];
-
-    for (let index = 0; index < Math.max(foodOptions.length, commonAmounts.length); index += 1) {
-      const foodType = foodOptions[index];
-      if (foodType) {
-        candidateSegments.push({
-          kind: "food",
-          label: this.prizeWheelFoodLabel(foodType),
-          iconTextureKey: this.foodTextureKey(foodType.id),
-          color: foodColors[index % foodColors.length],
-          foodTypeId: foodType.id
-        });
-      }
-
-      const commonAmount = commonAmounts[index];
-      if (commonAmount) {
-        candidateSegments.push({
-          kind: "common",
-          label: `C${formatNumber(commonAmount)}`,
-          iconTextureKey: prizeWheelIconTextureKeys.common,
-          color: commonColors[index % commonColors.length],
-          commonAmount
-        });
-      }
-    }
-
-    const segments = candidateSegments.filter((segment) => this.isPrizeWheelSegmentAchievable(segment, betAmount));
-    return segments.slice(0, 12);
+    }];
   }
 
-  private isPrizeWheelSegmentAchievable(segment: PrizeWheelSegment, betAmount = this.prizeMachine.selectedBetAmount): boolean {
-    const reward = this.preparePrizeMachineSegmentReward(segment, 0);
-    return this.prizeMachineRewardResaleValue(reward) <= this.prizeWheelMaxAchievablePrizeValue(betAmount);
+  private prizeWheelQuantityForTarget(unitValue: number, targetValue: number, lane: "loss" | "win"): number {
+    const safeUnitValue = Math.max(1, unitValue);
+    const estimatedQuantity = Math.max(1, Math.round(targetValue / safeUnitValue));
+    const betAmount = this.prizeMachine.selectedBetAmount;
+    const quantities = Array.from({ length: 9 }, (_, offset) => Math.max(1, estimatedQuantity - 4 + offset));
+    const sorted = [...new Set(quantities)].sort((first, second) => {
+      const firstValue = first * safeUnitValue;
+      const secondValue = second * safeUnitValue;
+      const firstValid = this.prizeWheelValueMatchesLane(firstValue, lane, betAmount) ? 0 : 1;
+      const secondValid = this.prizeWheelValueMatchesLane(secondValue, lane, betAmount) ? 0 : 1;
+      return firstValid - secondValid || Math.abs(firstValue - targetValue) - Math.abs(secondValue - targetValue);
+    });
+    return sorted[0] ?? estimatedQuantity;
   }
 
-  private prizeWheelMaxAchievablePrizeValue(betAmount = this.prizeMachine.selectedBetAmount): number {
-    return Math.max(1, Math.floor(betAmount) * 100);
+  private prizeWheelValueMatchesLane(value: number, lane: "loss" | "win", betAmount = this.prizeMachine.selectedBetAmount): boolean {
+    const safeBet = Math.max(1, betAmount);
+    if (lane === "loss") {
+      return value >= Math.max(1, Math.floor(safeBet * 0.5)) && value < safeBet;
+    }
+    return value > safeBet && value <= Math.max(safeBet + 1, Math.ceil(safeBet * 1.5));
   }
 
-  private preparePrizeMachineReward(
-    prize: PrizeSpinPrize,
-    segments: PrizeWheelSegment[]
-  ): PreparedPrizeMachineReward {
-    if (prize === "rare") {
-      return { kind: "rare", segmentIndex: this.segmentIndexForPrize(segments, "rare") };
-    }
-    if (prize === "superRare") {
-      return { kind: "superRare", segmentIndex: this.segmentIndexForPrize(segments, "superRare") };
-    }
-    if (prize === "rareFish") {
-      return {
-        kind: "rareFish",
-        fishType: this.prizeRareFish,
-        segmentIndex: this.segmentIndexForPrize(segments, "rareFish")
-      };
-    }
-    if (prize === "premiumCommon") {
-      return { kind: "premiumCommon", amount: 500, segmentIndex: this.segmentIndexForPrize(segments, "premiumCommon") };
-    }
-
-    if (prize === "food") {
-      const foodSegments = segments.filter((segment) => segment.kind === "food" && segment.foodTypeId);
-      const segment = Phaser.Utils.Array.GetRandom(foodSegments);
-      const segmentIndex = Math.max(0, segments.indexOf(segment));
-      const foodType = foodTypes.find((candidate) => candidate.id === segment?.foodTypeId) ?? basicFood;
-      return { kind: "food", foodType, segmentIndex };
-    }
-
-    const commonSegments = segments.filter((segment) => segment.kind === "common" && segment.commonAmount);
-    const segment = Phaser.Utils.Array.GetRandom(commonSegments);
-    const segmentIndex = Math.max(0, segments.indexOf(segment));
-    return { kind: "common", amount: segment?.commonAmount ?? 10, segmentIndex };
+  private choosePrizeWheelSegmentCandidate(
+    candidates: PrizeSegmentCandidate[],
+    targetValue: number,
+    slotIndex: number,
+    usedKeys: Set<string>
+  ): PrizeSegmentCandidate {
+    const preferredKinds: PrizeSpinPrize[] = ["common", "food", "common", "food", "common", "rare", "common", "food", "rare", "food", "rareFish", "superRare"];
+    const unusedCandidates = candidates.filter((candidate) => !usedKeys.has(candidate.key));
+    const availableCandidates = unusedCandidates.length > 0 ? unusedCandidates : candidates;
+    const preferredKind = preferredKinds[slotIndex % preferredKinds.length];
+    const preferredCandidates = availableCandidates.filter((candidate) => candidate.segment.kind === preferredKind);
+    const pool = preferredCandidates.length > 0 ? preferredCandidates : availableCandidates;
+    return [...pool].sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))[0] ?? candidates[0];
   }
 
   private choosePrizeMachinePreparedReward(segments: PrizeWheelSegment[]): PreparedPrizeMachineReward {
@@ -3852,41 +3928,17 @@ export class AquariumScene extends Phaser.Scene {
       return {
         reward,
         value: this.prizeMachineRewardResaleValue(reward),
-        premium: this.isPremiumPrizeReward(reward),
         key: this.prizeMachineRewardKey(reward)
       };
     });
-    const plannedPrize = this.ensurePrizeMachinePlannedPremium(candidates);
+    const betAmount = this.prizeMachine.selectedBetAmount;
+    const laneCandidates = Math.random() < 0.5
+      ? candidates.filter((candidate) => candidate.value < betAmount)
+      : candidates.filter((candidate) => candidate.value > betAmount);
+    const lanePool = laneCandidates.length > 0 ? laneCandidates : candidates;
     const recentPrizeKeys = new Set(this.prizeMachine.recentPrizeKeys);
-    const filteredCandidates = this.filterPrizeRepeatCandidates(candidates, recentPrizeKeys);
-    const plannedCandidate = filteredCandidates.find((candidate) => candidate.reward.kind === plannedPrize && candidate.premium);
-    const owedValue = prizeMachineOwedResaleValue(this.prizeMachine);
-    if (plannedCandidate) {
-      const hardPityValue = plannedCandidate.value * 0.9;
-      const softPityValue = plannedCandidate.value * 0.8;
-      if (owedValue >= hardPityValue) {
-        return plannedCandidate.reward;
-      }
-      if (owedValue >= softPityValue) {
-        const progress = Phaser.Math.Clamp((owedValue - softPityValue) / Math.max(1, hardPityValue - softPityValue), 0, 1);
-        if (Math.random() < 0.18 + progress * 0.62) {
-          return plannedCandidate.reward;
-        }
-      }
-    }
-
-    const consolationCandidates = filteredCandidates
-      .filter((candidate) => !candidate.premium)
-      .sort((first, second) => first.value - second.value);
-    if (consolationCandidates.length === 0) {
-      const fallbackCandidates = candidates.filter((candidate) => !candidate.premium);
-      return Phaser.Utils.Array.GetRandom(fallbackCandidates.length > 0 ? fallbackCandidates : candidates)?.reward ?? { kind: "common", amount: 10, segmentIndex: 0 };
-    }
-
-    const consolationBudget = Math.max(10, owedValue * 0.34);
-    const affordable = consolationCandidates.filter((candidate) => candidate.value <= consolationBudget);
-    const pool = affordable.length > 0 ? affordable : [consolationCandidates[0]];
-    return Phaser.Utils.Array.GetRandom(pool).reward;
+    const filteredCandidates = this.filterPrizeRepeatCandidates(lanePool, recentPrizeKeys);
+    return Phaser.Utils.Array.GetRandom(filteredCandidates.length > 0 ? filteredCandidates : lanePool)?.reward ?? { kind: "common", amount: 10, segmentIndex: 0 };
   }
 
   private filterPrizeRepeatCandidates<T extends { key: string }>(candidates: T[], recentPrizeKeys: Set<string>): T[] {
@@ -3896,10 +3948,10 @@ export class AquariumScene extends Phaser.Scene {
 
   private preparePrizeMachineSegmentReward(segment: PrizeWheelSegment, segmentIndex: number): PreparedPrizeMachineReward {
     if (segment.kind === "rare") {
-      return { kind: "rare", segmentIndex };
+      return { kind: "rare", amount: Math.max(1, segment.rareAmount ?? 1), segmentIndex };
     }
     if (segment.kind === "superRare") {
-      return { kind: "superRare", segmentIndex };
+      return { kind: "superRare", amount: Math.max(1, segment.superRareAmount ?? 1), segmentIndex };
     }
     if (segment.kind === "rareFish") {
       const fishType = fishTypes.find((candidate) => candidate.id === segment.fishTypeId) ?? this.prizeRareFish;
@@ -3910,51 +3962,17 @@ export class AquariumScene extends Phaser.Scene {
     }
     if (segment.kind === "food") {
       const foodType = foodTypes.find((candidate) => candidate.id === segment.foodTypeId) ?? basicFood;
-      return { kind: "food", foodType, segmentIndex };
+      return { kind: "food", foodType, quantity: Math.max(1, segment.foodQuantity ?? 1), segmentIndex };
     }
     return { kind: "common", amount: segment.commonAmount ?? 10, segmentIndex };
   }
 
-  private ensurePrizeMachinePlannedPremium(candidates: Array<{ reward: PreparedPrizeMachineReward; value: number; premium: boolean; key: string }>): PrizeSpinPrize {
-    if (
-      this.prizeMachine.plannedPremiumPrize &&
-      candidates.some((candidate) => candidate.premium && candidate.reward.kind === this.prizeMachine.plannedPremiumPrize)
-    ) {
-      return this.prizeMachine.plannedPremiumPrize;
-    }
-
-    const weightedPremiums = candidates.flatMap((candidate) => {
-      if (!candidate.premium) {
-        return [];
-      }
-      const weightByKind: Record<PrizeSpinPrize, number> = {
-        rare: 7,
-        superRare: 2,
-        rareFish: 4,
-        premiumCommon: 5,
-        food: 0,
-        common: 0
-      };
-      return Array.from({ length: weightByKind[candidate.reward.kind] }, () => candidate.reward.kind);
-    });
-    const plannedPremiumPrize = Phaser.Utils.Array.GetRandom(weightedPremiums.length > 0 ? weightedPremiums : ["rare"] as PrizeSpinPrize[]);
-    this.prizeMachine = {
-      ...this.prizeMachine,
-      plannedPremiumPrize
-    };
-    return plannedPremiumPrize;
-  }
-
-  private isPremiumPrizeReward(reward: PreparedPrizeMachineReward): boolean {
-    return reward.kind === "rare" || reward.kind === "superRare" || reward.kind === "rareFish" || reward.kind === "premiumCommon";
-  }
-
   private prizeMachineRewardResaleValue(reward: PreparedPrizeMachineReward): number {
     if (reward.kind === "rare") {
-      return this.coinSellValue("rare");
+      return this.coinSellValue("rare", reward.amount);
     }
     if (reward.kind === "superRare") {
-      return this.coinSellValue("superRare");
+      return this.coinSellValue("superRare", reward.amount);
     }
     if (reward.kind === "rareFish") {
       return this.storedFishSellValue(reward.fishType);
@@ -3962,12 +3980,12 @@ export class AquariumScene extends Phaser.Scene {
     if (reward.kind === "premiumCommon" || reward.kind === "common") {
       return reward.amount;
     }
-    return this.foodSellValue(reward.foodType, this.isCalorieTrackedFood(reward.foodType.id) ? reward.foodType.calories : 1);
+    return this.foodSellValue(reward.foodType, (this.isCalorieTrackedFood(reward.foodType.id) ? reward.foodType.calories : 1) * reward.quantity);
   }
 
   private prizeMachineRewardKey(reward: PreparedPrizeMachineReward): string {
     if (reward.kind === "food") {
-      return `food:${reward.foodType.id}`;
+      return `food:${reward.foodType.id}:${reward.quantity}`;
     }
     if (reward.kind === "common" || reward.kind === "premiumCommon") {
       return `${reward.kind}:C${reward.amount}`;
@@ -3975,16 +3993,16 @@ export class AquariumScene extends Phaser.Scene {
     if (reward.kind === "rareFish") {
       return `rareFish:${reward.fishType.id}`;
     }
-    return reward.kind;
+    return `${reward.kind}:${reward.amount}`;
   }
 
   private awardPrizeMachinePreparedReward(reward: PreparedPrizeMachineReward): void {
     if (reward.kind === "rare") {
-      this.awardPrizeMachineRare();
+      this.awardPrizeMachineRare(reward.amount);
       return;
     }
     if (reward.kind === "superRare") {
-      this.awardPrizeMachineSuperRare();
+      this.awardPrizeMachineSuperRare(reward.amount);
       return;
     }
     if (reward.kind === "rareFish") {
@@ -3996,7 +4014,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
     if (reward.kind === "food") {
-      this.awardPrizeMachineFood(reward.foodType);
+      this.awardPrizeMachineFood(reward.foodType, reward.quantity);
       return;
     }
     this.awardPrizeMachineCommon(reward.amount);
@@ -4007,18 +4025,18 @@ export class AquariumScene extends Phaser.Scene {
     this.prizeSpinContainer = undefined;
   }
 
-  private awardPrizeMachineRare(): void {
-    earn(this.wallet, "rare", 1);
-    this.setPrizeMachineResult("rare", "R1 Prize!", "A rare coin dropped from the spinner.");
-    this.floatText("+R1 prize", toastX, toastY, "#9eefff");
-    this.showPrizeCelebration("Rare Coin!", "/assets/ui/shop/coin_icon_rare.png", "You won a rare coin.");
+  private awardPrizeMachineRare(amount: number): void {
+    earn(this.wallet, "rare", amount);
+    this.setPrizeMachineResult("rare", `R${formatNumber(amount)} Prize!`, "Rare coins dropped from the spinner.");
+    this.floatText(`+R${formatNumber(amount)} prize`, toastX, toastY, "#9eefff");
+    this.showPrizeCelebration("Rare Coin!", "/assets/ui/shop/coin_icon_rare.png", `You won R${formatNumber(amount)}.`);
   }
 
-  private awardPrizeMachineSuperRare(): void {
-    earn(this.wallet, "superRare", 1);
-    this.setPrizeMachineResult("superRare", "SR1 Prize!", "A super rare diamond dropped from the spinner.");
-    this.floatText("+SR1 prize", toastX, toastY, "#f0b6ff");
-    this.showPrizeCelebration("Super Rare!", "/assets/ui/shop/coin_icon_super_rare.png", "You won a super rare diamond.");
+  private awardPrizeMachineSuperRare(amount: number): void {
+    earn(this.wallet, "superRare", amount);
+    this.setPrizeMachineResult("superRare", `SR${formatNumber(amount)} Prize!`, "Super rare diamonds dropped from the spinner.");
+    this.floatText(`+SR${formatNumber(amount)} prize`, toastX, toastY, "#f0b6ff");
+    this.showPrizeCelebration("Super Rare!", "/assets/ui/shop/coin_icon_super_rare.png", `You won SR${formatNumber(amount)}.`);
   }
 
   private awardPrizeMachineRareFish(fishType: FishType): void {
@@ -4030,12 +4048,12 @@ export class AquariumScene extends Phaser.Scene {
     this.prizeRareFish = this.nextPrizeRareFish();
   }
 
-  private awardPrizeMachineFood(foodType: FoodType): void {
-    const amount = this.isCalorieTrackedFood(foodType.id) ? foodType.calories : 1;
+  private awardPrizeMachineFood(foodType: FoodType, quantity: number): void {
+    const amount = (this.isCalorieTrackedFood(foodType.id) ? foodType.calories : 1) * Math.max(1, quantity);
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + amount);
     this.recentInventoryDockItemKey = `food:${foodType.id}`;
-    this.setPrizeMachineResult("food", `Food Prize: ${foodType.name}`, `+${formatNumber(foodType.calories)} cal consolation food.`);
-    this.floatText(`+${foodType.name}`, toastX, toastY, "#ffe67a");
+    this.setPrizeMachineResult("food", `Food Prize: ${foodType.name}`, `+${formatNumber(amount)} cal food.`);
+    this.floatText(`+${foodType.name}${quantity > 1 ? ` x${formatNumber(quantity)}` : ""}`, toastX, toastY, "#ffe67a");
   }
 
   private awardPrizeMachineCommon(amount: number): void {
@@ -4059,35 +4077,6 @@ export class AquariumScene extends Phaser.Scene {
     const unowned = fishTypes.filter((fishType) => fishType.rarity === "rare" && !ownedFishIds.has(fishType.id));
     const pool = unowned.length > 0 ? unowned : fishTypes.filter((fishType) => fishType.rarity === "rare");
     return Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : fishTypes);
-  }
-
-  private segmentIndexForPrize(segments: PrizeWheelSegment[], prize: PrizeSpinPrize): number {
-    return Math.max(0, segments.findIndex((segment) => segment.kind === prize));
-  }
-
-  private prizeWheelPremiumCommonAmount(betAmount = this.prizeMachine.selectedBetAmount): number {
-    return betAmount * 5;
-  }
-
-  private prizeWheelFoodOptions(betAmount = this.prizeMachine.selectedBetAmount): FoodType[] {
-    const candidates = foodTypes
-      .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id))
-      .sort((first, second) => first.price.amount - second.price.amount);
-    const targetValues = [0.35, 0.75, 1.35, 2.4, 4.2].map((multiplier) => betAmount * multiplier);
-    const selected: FoodType[] = [];
-    for (const targetValue of targetValues) {
-      const nextFood = candidates
-        .filter((foodType) => !selected.includes(foodType))
-        .sort((first, second) => Math.abs(this.priceWealth(first.price) - targetValue) - Math.abs(this.priceWealth(second.price) - targetValue))[0];
-      if (nextFood) {
-        selected.push(nextFood);
-      }
-    }
-    return selected;
-  }
-
-  private prizeWheelCommonAmounts(betAmount = this.prizeMachine.selectedBetAmount): number[] {
-    return [0.1, 0.5, 1, 2.5].map((multiplier) => Math.max(1, Math.round(betAmount * multiplier)));
   }
 
   private prizeWheelFoodLabel(foodType: FoodType): string {

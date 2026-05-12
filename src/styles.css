@@ -1238,10 +1238,6 @@ canvas {
     transform-origin: center right;
   }
 
-  .aq-tank-menu-toggle-bubble {
-    @apply w-[68%];
-  }
-
   .aq-tank-menu-toggle-icon {
     @apply grid h-full w-full place-items-center text-xl font-black leading-none text-white;
     text-shadow:
@@ -1258,6 +1254,10 @@ canvas {
       inset 0 0 0 2px rgba(210, 250, 255, 0.34),
       inset 0 0 14px rgba(142, 232, 255, 0.35),
       0 2px 8px rgba(0, 25, 42, 0.35);
+  }
+
+  .aq-tank-menu-toggle-bubble {
+    @apply w-[86%];
   }
 
   .aq-tank-menu-button:active .aq-tank-menu-bubble,
@@ -1667,6 +1667,7 @@ canvas {
     }
 
     .aq-tank-menu-button,
+    .aq-tank-menu-toggle,
     .aq-food-button {
       width: clamp(50px, 14%, 64px);
     }

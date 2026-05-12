@@ -41,9 +41,13 @@ export type PrizeWheelSegment = {
   iconTextureKey: string;
   color: number;
   resultLabel?: string;
+  resultMarketLabel?: string;
   foodTypeId?: string;
+  foodQuantity?: number;
   fishTypeId?: string;
   commonAmount?: number;
+  rareAmount?: number;
+  superRareAmount?: number;
 };
 
 export type PrizeWheelHud = {
@@ -292,7 +296,7 @@ function createSegmentLabel(scene: Phaser.Scene, x: number, y: number, label: st
   }).setOrigin(0.5).setScale(1 / renderScale);
 }
 
-function createResultText(scene: Phaser.Scene, x: number, y: number, segment: PrizeWheelSegment): Phaser.GameObjects.Text {
+function createResultText(scene: Phaser.Scene, x: number, y: number, segment: PrizeWheelSegment): Phaser.GameObjects.GameObject {
   const colorByPrize: Record<PrizeSpinPrize, string> = {
     rare: "#9eefff",
     superRare: "#f0b6ff",
@@ -301,8 +305,25 @@ function createResultText(scene: Phaser.Scene, x: number, y: number, segment: Pr
     food: "#a8ffb0",
     common: "#ffe67a"
   };
-  return createPrizePopText(scene, x, y, resultLabel(segment), colorByPrize[segment.kind])
-    .setAlpha(0);
+  if (!segment.resultMarketLabel || segment.kind === "common") {
+    return createPrizePopText(scene, x, y, resultLabel(segment), colorByPrize[segment.kind])
+      .setAlpha(0);
+  }
+
+  const renderScale = prizeUiRenderScale(scene);
+  const title = createPrizePopText(scene, 0, -13, resultLabel(segment), colorByPrize[segment.kind]);
+  const market = scene.add.text(0, 32, segment.resultMarketLabel, {
+    fontFamily: gameFontFamily,
+    fontSize: `${Math.round(16 * renderScale)}px`,
+    color: "#ffe67a",
+    fontStyle: "900",
+    stroke: "#073047",
+    strokeThickness: Math.round(4 * renderScale),
+    align: "center",
+    shadow: { offsetX: 0, offsetY: Math.round(2 * renderScale), color: "#001723", blur: 0, fill: true }
+  }).setOrigin(0.5).setScale(1 / renderScale);
+
+  return scene.add.container(x, y, [title, market]).setAlpha(0);
 }
 
 function resultLabel(segment: PrizeWheelSegment): string {
