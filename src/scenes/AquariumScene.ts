@@ -156,7 +156,7 @@ import { createHtmlButton, htmlElement, htmlImage } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, StoreTab, Wallet } from "../types/mechanics";
 
-type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "prize" | "settings";
+type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "prize" | "makeup" | "settings";
 
 type PreparedPrizeMachineReward =
   | { kind: "rare"; segmentIndex: number }
@@ -174,6 +174,23 @@ type PlacementMode =
 
 type TankMenuTab = "tanks" | "background" | "seabed" | "decor" | "utility";
 type InventoryTab = "fish" | "food" | "decor" | "coins";
+type MakeupDecorationDraft = {
+  typeId: string;
+  size: DecorationSize;
+  x: number;
+  y: number;
+  image: Phaser.GameObjects.Image;
+};
+type MakeupDraft = {
+  backgroundIndex: number;
+  seabedIndex: number;
+  backgroundTintById: Map<string, number>;
+  seabedTintById: Map<string, number>;
+  selectedDecorationTypeIndex: number;
+  selectedSize: DecorationSize;
+  selectedDecorationIndex?: number;
+  decorations: MakeupDecorationDraft[];
+};
 type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; badgeLabel?: string; icon: string }
   | { kind: "fish"; id: string; label: string; count: number; icon: string }
@@ -627,6 +644,9 @@ export class AquariumScene extends Phaser.Scene {
   private storeOverlay?: StoreOverlay;
   private modal?: HTMLDivElement;
   private modalTitle?: string;
+  private makeupOverlay?: HTMLDivElement;
+  private makeupDraft?: MakeupDraft;
+  private makeupDraggedDecoration?: MakeupDecorationDraft;
   private draggedFish?: Fish;
   private nativeCanvasInputCleanup?: () => void;
   private nativeDraggedFish?: Fish;
@@ -710,6 +730,9 @@ export class AquariumScene extends Phaser.Scene {
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.updatePhaserDecorationDrag(pointer));
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.endPhaserDecorationDrag(pointer));
     this.input.on("pointerupoutside", (pointer: Phaser.Input.Pointer) => this.endPhaserDecorationDrag(pointer));
+    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.updateMakeupDecorationDrag(pointer));
+    this.input.on("pointerup", () => this.endMakeupDecorationDrag());
+    this.input.on("pointerupoutside", () => this.endMakeupDecorationDrag());
     this.installNativeCanvasInputFallback();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyHtmlGameInterface());
 
@@ -1070,13 +1093,22 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private themedTankTextureKeys(level = this.tankLevel): { backgroundKey: string; floorKey: string } {
-    const state = this.ensureTankState(level);
-    const background = this.tankCosmeticById("background", state.selectedBackgroundId);
-    const seabed = this.tankCosmeticById("seabed", state.selectedSeabedId);
+    const background = this.tankCosmeticById("background", this.renderTankCosmeticId("background", level));
+    const seabed = this.tankCosmeticById("seabed", this.renderTankCosmeticId("seabed", level));
     return {
       backgroundKey: background?.textureKey ?? aquariumBackgroundTextureKey,
       floorKey: seabed?.textureKey ?? aquariumFloorTextureKey
     };
+  }
+
+  private renderTankCosmeticId(category: TankCosmeticCategory, level = this.tankLevel): string {
+    if (this.activeScreen === "makeup" && level === this.tankLevel && this.makeupDraft) {
+      const cosmetics = this.tankCosmetics(category);
+      const index = category === "background" ? this.makeupDraft.backgroundIndex : this.makeupDraft.seabedIndex;
+      return cosmetics[index]?.id ?? this.selectedTankCosmeticId(category, level);
+    }
+
+    return this.selectedTankCosmeticId(category, level);
   }
 
   private tankThemeTint(level: number): number {
@@ -1097,9 +1129,18 @@ export class AquariumScene extends Phaser.Scene {
     return Phaser.Math.Clamp(this.tankCosmeticBlueTintInventory(category, level).get(id) ?? 0, 0, 100);
   }
 
+  private renderTankCosmeticBlueTintIntensity(category: TankCosmeticCategory, id: string, level = this.tankLevel): number {
+    if (this.activeScreen === "makeup" && level === this.tankLevel && this.makeupDraft) {
+      const tintMap = category === "background" ? this.makeupDraft.backgroundTintById : this.makeupDraft.seabedTintById;
+      return Phaser.Math.Clamp(tintMap.get(id) ?? 0, 0, 100);
+    }
+
+    return this.tankCosmeticBlueTintIntensity(category, id, level);
+  }
+
   private tankCosmeticTint(category: TankCosmeticCategory, id: string, level = this.tankLevel): number {
     const baseTint = category === "background" ? this.tankThemeTint(level) : 0xffffff;
-    return this.mixRgb(baseTint, tankCosmeticBlueTintColor, this.tankCosmeticBlueTintIntensity(category, id, level) / 100);
+    return this.mixRgb(baseTint, tankCosmeticBlueTintColor, this.renderTankCosmeticBlueTintIntensity(category, id, level) / 100);
   }
 
   private mixRgb(from: number, to: number, ratio: number): number {
@@ -1296,7 +1337,7 @@ export class AquariumScene extends Phaser.Scene {
     const scale = Math.max(0.01, this.tankViewScaleForLevel());
     const screenCompensatedWidth = tankBounds.width / scale;
     const screenCompensatedHeight = tankBounds.height / scale;
-    const selectedBackgroundId = this.selectedTankCosmeticId("background");
+    const selectedBackgroundId = this.renderTankCosmeticId("background");
     this.tankBackground.setPosition(tankBounds.centerX, tankBounds.centerY);
     if (this.tankBackground instanceof Phaser.GameObjects.Image) {
       const textureKeys = this.themedTankTextureKeys();
@@ -1316,7 +1357,7 @@ export class AquariumScene extends Phaser.Scene {
       tankBounds.centerY,
       screenCompensatedWidth,
       screenCompensatedHeight,
-      this.tankCosmeticBlueTintIntensity("background", selectedBackgroundId),
+      this.renderTankCosmeticBlueTintIntensity("background", selectedBackgroundId),
       0.48
     );
   }
@@ -1334,7 +1375,7 @@ export class AquariumScene extends Phaser.Scene {
     this.tankSand.setOrigin(0.5, 1);
     this.tankSand.setPosition(tankBounds.centerX, this.visibleTankBottomDesignY());
     const displayHeight = tankBounds.height / 6 / scale;
-    const selectedSeabedId = this.selectedTankCosmeticId("seabed");
+    const selectedSeabedId = this.renderTankCosmeticId("seabed");
     this.tankSand.setDisplaySize(tankBounds.width / scale, displayHeight);
     this.tankSand.setTint(this.tankCosmeticTint("seabed", selectedSeabedId));
   }
@@ -2243,6 +2284,9 @@ export class AquariumScene extends Phaser.Scene {
     this.nativeCanvasInputCleanup = undefined;
     this.cancelHtmlFoodDrag();
     this.closeModal();
+    this.destroyMakeupDraft();
+    this.makeupOverlay?.remove();
+    this.makeupOverlay = undefined;
     this.gameHudOverlay?.remove();
     this.gameHudOverlay = undefined;
     this.htmlFoodDock?.remove();
@@ -2297,11 +2341,17 @@ export class AquariumScene extends Phaser.Scene {
   private closePage(): void {
     this.prizeSpinInProgress = false;
     this.destroyPrizeSpinContainer();
+    if (this.activeScreen === "makeup") {
+      this.destroyMakeupDraft();
+      this.makeupOverlay?.classList.add("hidden");
+      this.makeupDraggedDecoration = undefined;
+    }
     this.activeScreen = "tank";
     this.storeOverlay?.hide();
     this.hideHtmlPageOverlay();
     this.createScreenNav();
     this.createFoodDock();
+    this.syncMakeupPresentation();
     this.refreshUi(false);
   }
 
@@ -2318,7 +2368,6 @@ export class AquariumScene extends Phaser.Scene {
         switchTank: (level) => this.switchTank(level),
         buyTankCosmetic: (category, id) => this.buyTankCosmeticFromStore(category, id),
         switchTankCosmetic: (category, id) => this.useTankCosmeticFromStore(category, id),
-        setTankCosmeticBlueTint: (category, id, intensity) => this.setTankCosmeticBlueTintFromStore(category, id, intensity),
         buyTankDecoration: (decorationId, size) => this.buyDecorationFromStore(decorationId, size),
         selectTankDecoration: (decorationId, size) => this.selectDecoration(decorationId, size),
         buyTankUtility: (utilityId) => this.buyTankUtility(utilityId)
@@ -2446,7 +2495,7 @@ export class AquariumScene extends Phaser.Scene {
       this.hideHtmlPageOverlay();
       return;
     }
-    if (this.activeScreen === "prize") {
+    if (this.activeScreen === "prize" || this.activeScreen === "makeup") {
       this.hideHtmlPageOverlay();
       return;
     }
@@ -2464,7 +2513,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private syncHtmlPageOverlay(): void {
-    if (this.activeScreen === "tank" || this.activeScreen === "store" || this.activeScreen === "prize") {
+    if (this.activeScreen === "tank" || this.activeScreen === "store" || this.activeScreen === "prize" || this.activeScreen === "makeup") {
       this.hideHtmlPageOverlay();
       return;
     }
@@ -2590,6 +2639,10 @@ export class AquariumScene extends Phaser.Scene {
   private createTankHtmlCard(level: number): HTMLElement {
     const owned = this.hasTankLevel(level);
     const card = htmlElement("article", `aq-tank-grid-card ${level === this.tankLevel ? "is-active" : ""}`);
+    this.attachTouchFeedback(card);
+    if (owned && level !== this.tankLevel) {
+      card.addEventListener("click", () => this.switchTank(level));
+    }
     const imageUrl = this.tankCardBackgroundUrl(level);
     if (imageUrl) {
       card.append(htmlImage(imageUrl, "", "aq-tank-grid-image cover"));
@@ -2606,16 +2659,548 @@ export class AquariumScene extends Phaser.Scene {
 
     if (owned) {
       const actions = htmlElement("div", "aq-page-actions compact");
-      actions.append(
-        this.htmlButton("Name", "aq-page-button aq-page-button-muted", () => this.renameTank(level)),
-        this.htmlButton(level === this.tankLevel ? "Active" : "Switch", "aq-page-button aq-page-button-good", () => this.switchTank(level))
-      );
-      overlay.append(actions);
+      if (level === this.tankLevel) {
+        actions.append(
+          this.htmlButton("Makeup", "aq-page-button aq-page-button-good", () => this.openMakeupMode(level))
+        );
+        overlay.append(actions);
+      } else {
+        overlay.append(htmlElement("p", "aq-page-card-meta", ["Tap card to activate"]));
+      }
     } else {
       overlay.append(htmlElement("p", "aq-page-card-meta", ["Available in Shop"]));
     }
     card.append(overlay);
     return card;
+  }
+
+  private openMakeupMode(level = this.tankLevel): void {
+    if (level !== this.tankLevel) {
+      this.floatText("Switch tank first", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    this.closeModal();
+    this.storeOverlay?.hide();
+    this.hideHtmlPageOverlay();
+    this.placementMode = { kind: "none" };
+    this.makeupDraft = this.createMakeupDraft();
+    this.activeScreen = "makeup";
+    this.layoutTankBackground();
+    this.layoutTankFloor();
+    this.syncMakeupPresentation();
+    this.syncHtmlGameInterface();
+    this.renderTabControls();
+    this.syncMakeupOverlay();
+  }
+
+  private createMakeupDraft(): MakeupDraft {
+    const backgroundIndex = Math.max(0, this.tankCosmetics("background").findIndex((asset) => asset.id === this.selectedTankCosmeticId("background")));
+    const seabedIndex = Math.max(0, this.tankCosmetics("seabed").findIndex((asset) => asset.id === this.selectedTankCosmeticId("seabed")));
+    const draft: MakeupDraft = {
+      backgroundIndex,
+      seabedIndex,
+      backgroundTintById: new Map(this.tankCosmeticBlueTintInventory("background")),
+      seabedTintById: new Map(this.tankCosmeticBlueTintInventory("seabed")),
+      selectedDecorationTypeIndex: 0,
+      selectedSize: "m",
+      decorations: []
+    };
+    for (const placedDecoration of this.activeDecorations()) {
+      const decorationType = decorationTypes.find((item) => item.id === placedDecoration.typeId);
+      if (!decorationType) {
+        continue;
+      }
+      draft.decorations.push(
+        this.createMakeupDecorationDraft(
+          decorationType,
+          this.sanitizeDecorationSize(placedDecoration.size),
+          placedDecoration.image.x,
+          placedDecoration.image.y
+        )
+      );
+    }
+    return draft;
+  }
+
+  private syncMakeupOverlay(): void {
+    if (this.activeScreen !== "makeup" || !this.makeupDraft) {
+      this.makeupOverlay?.classList.add("hidden");
+      return;
+    }
+
+    this.makeupOverlay ??= this.createMakeupOverlay();
+    this.makeupOverlay.classList.remove("hidden");
+    this.makeupOverlay.replaceChildren(this.createMakeupPanel());
+  }
+
+  private createMakeupOverlay(): HTMLDivElement {
+    const overlay = document.createElement("div");
+    overlay.className = "aq-makeup-overlay";
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+
+  private createMakeupPanel(): HTMLElement {
+    const draft = this.makeupDraft!;
+    const decorationType = decorationTypes[draft.selectedDecorationTypeIndex] ?? decorationTypes[0];
+    const cost = this.makeupTotalCost();
+    const selectedDecoration = draft.selectedDecorationIndex !== undefined ? draft.decorations[draft.selectedDecorationIndex] : undefined;
+    const panel = htmlElement("section", "aq-makeup-panel");
+    panel.append(
+      htmlElement("div", "aq-makeup-header", [
+        htmlElement("div", "aq-makeup-title-block", [
+          htmlElement("h2", "aq-makeup-title", ["Makeup"]),
+          this.makeupCostElement(cost)
+        ]),
+        this.makeupButton("Apply", "good", () => this.applyMakeupLook()),
+        this.makeupButton("Close", "danger", () => this.closeMakeupMode(false))
+      ]),
+      this.makeupPickerRow("Background", "background", () => this.cycleMakeupCosmetic("background", -1), () => this.cycleMakeupCosmetic("background", 1)),
+      this.makeupPickerRow("Sand", "seabed", () => this.cycleMakeupCosmetic("seabed", -1), () => this.cycleMakeupCosmetic("seabed", 1)),
+      htmlElement("div", `aq-makeup-decor-tools ${selectedDecoration ? "has-selection" : ""}`, [
+        htmlElement("div", "aq-makeup-decor-row", [
+          this.makeupButton("<", "muted", () => this.cycleMakeupDecoration(-1)),
+          htmlImage(`/assets/decorations/${decorationType?.id ?? "plant"}.png`, "", "aq-makeup-decor-preview"),
+          htmlElement("div", "aq-makeup-decor-name", [
+            htmlElement("span", "aq-makeup-row-label", ["Decor"]),
+            htmlElement("strong", "", [decorationType?.name ?? "Decor"])
+          ]),
+          this.makeupButton(">", "muted", () => this.cycleMakeupDecoration(1))
+        ]),
+        this.makeupButton("Add", "good", () => this.addMakeupDecoration()),
+        htmlElement("div", "aq-makeup-size-row", [
+          ...decorationSizeOrder.map((size) =>
+            this.makeupButton(
+              decorationSizes[size].label,
+              draft.selectedSize === size ? "selected" : "muted",
+              () => this.setMakeupDecorationSize(size)
+            )
+          ),
+          this.makeupButton("Remove", "danger", () => this.removeSelectedMakeupDecoration(), !selectedDecoration)
+        ])
+      ])
+    );
+    return panel;
+  }
+
+  private makeupPickerRow(label: string, category: TankCosmeticCategory, previous: () => void, next: () => void): HTMLElement {
+    const selectedAsset = this.makeupSelectedCosmetic(category);
+    return htmlElement("div", `aq-makeup-picker-row ${label.toLowerCase()}`, [
+      this.makeupButton("<", "muted", previous),
+      htmlElement("div", "aq-makeup-picker-copy", [
+        htmlElement("span", "aq-makeup-row-label", [label]),
+        htmlElement("div", "aq-makeup-cosmetic-title-row", [
+          htmlElement("strong", "", [selectedAsset.name]),
+          this.makeupCosmeticStatusElement(selectedAsset)
+        ]),
+        this.makeupTintControl(category)
+      ]),
+      this.makeupButton(">", "muted", next)
+    ]);
+  }
+
+  private makeupCosmeticStatusElement(asset: TankCosmetic): HTMLElement {
+    if (this.ownsTankCosmetic(asset)) {
+      return htmlElement("span", "aq-makeup-cosmetic-status owned", ["Owned"]);
+    }
+
+    const status = htmlElement("span", "aq-makeup-cosmetic-status price");
+    for (const [coinType, amount] of priceComponents(asset.price)) {
+      status.append(
+        htmlElement("span", "aq-makeup-cost-chip", [
+          htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
+          htmlElement("strong", "", [formatNumber(amount)])
+        ])
+      );
+    }
+    return status;
+  }
+
+  private makeupTintControl(category: TankCosmeticCategory): HTMLElement {
+    const selectedAsset = this.makeupSelectedCosmetic(category);
+    const value = Math.round(this.renderTankCosmeticBlueTintIntensity(category, selectedAsset.id));
+    const valueText = htmlElement("span", "", [`${formatNumber(value)}%`]);
+    const input = document.createElement("input");
+    input.className = "aq-makeup-tint-range";
+    input.type = "range";
+    input.min = "0";
+    input.max = "100";
+    input.step = "1";
+    input.value = String(value);
+    input.addEventListener("pointerdown", (event) => event.stopPropagation());
+    input.addEventListener("click", (event) => event.stopPropagation());
+    input.addEventListener("input", (event) => {
+      event.stopPropagation();
+      const nextValue = Number(input.value);
+      valueText.textContent = `${formatNumber(nextValue)}%`;
+      this.setMakeupBlueTint(category, nextValue);
+    });
+    return htmlElement("label", "aq-makeup-tint-control", [
+      htmlElement("span", "", ["Tint"]),
+      input,
+      valueText
+    ]);
+  }
+
+  private makeupButton(label: string, tone: string, onClick: () => void, disabled = false): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `aq-makeup-button ${tone}`;
+    button.disabled = disabled;
+    button.textContent = label;
+    this.attachTouchFeedback(button, true);
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!button.disabled) {
+        onClick();
+      }
+    });
+    return button;
+  }
+
+  private makeupSelectedCosmetic(category: TankCosmeticCategory): TankCosmetic {
+    const cosmetics = this.tankCosmetics(category);
+    const index = category === "background" ? this.makeupDraft?.backgroundIndex ?? 0 : this.makeupDraft?.seabedIndex ?? 0;
+    return cosmetics[index] ?? cosmetics[0]!;
+  }
+
+  private cycleMakeupCosmetic(category: TankCosmeticCategory, direction: number): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    const cosmetics = this.tankCosmetics(category);
+    if (cosmetics.length === 0) {
+      return;
+    }
+
+    if (category === "background") {
+      this.makeupDraft.backgroundIndex = (this.makeupDraft.backgroundIndex + direction + cosmetics.length) % cosmetics.length;
+      this.layoutTankBackground();
+    } else {
+      this.makeupDraft.seabedIndex = (this.makeupDraft.seabedIndex + direction + cosmetics.length) % cosmetics.length;
+      this.layoutTankFloor();
+    }
+    this.syncMakeupOverlay();
+  }
+
+  private setMakeupBlueTint(category: TankCosmeticCategory, intensity: number): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    const selectedAsset = this.makeupSelectedCosmetic(category);
+    const normalizedIntensity = Math.round(Phaser.Math.Clamp(intensity, 0, 100));
+    const tintMap = category === "background" ? this.makeupDraft.backgroundTintById : this.makeupDraft.seabedTintById;
+    if (normalizedIntensity > 0) {
+      tintMap.set(selectedAsset.id, normalizedIntensity);
+    } else {
+      tintMap.delete(selectedAsset.id);
+    }
+
+    if (category === "background") {
+      this.layoutTankBackground();
+    } else {
+      this.layoutTankFloor();
+    }
+  }
+
+  private cycleMakeupDecoration(direction: number): void {
+    if (!this.makeupDraft || decorationTypes.length === 0) {
+      return;
+    }
+
+    this.makeupDraft.selectedDecorationTypeIndex = (this.makeupDraft.selectedDecorationTypeIndex + direction + decorationTypes.length) % decorationTypes.length;
+    this.syncMakeupOverlay();
+  }
+
+  private setMakeupDecorationSize(size: DecorationSize): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    this.makeupDraft.selectedSize = size;
+    const selectedDecoration = this.makeupDraft.selectedDecorationIndex !== undefined ? this.makeupDraft.decorations[this.makeupDraft.selectedDecorationIndex] : undefined;
+    if (selectedDecoration) {
+      selectedDecoration.size = size;
+      const decorationType = decorationTypes.find((item) => item.id === selectedDecoration.typeId);
+      if (decorationType) {
+        this.fitDecorationDisplay(selectedDecoration.image, decorationType, size);
+      }
+    }
+    this.syncMakeupOverlay();
+  }
+
+  private addMakeupDecoration(): void {
+    if (!this.makeupDraft || decorationTypes.length === 0) {
+      return;
+    }
+
+    const decorationType = decorationTypes[this.makeupDraft.selectedDecorationTypeIndex] ?? decorationTypes[0];
+    if (!decorationType) {
+      return;
+    }
+    const draftDecoration = this.createMakeupDecorationDraft(
+      decorationType,
+      this.makeupDraft.selectedSize,
+      tankBounds.centerX,
+      tankBounds.bottom - 72
+    );
+    this.makeupDraft.decorations.push(draftDecoration);
+    this.makeupDraft.selectedDecorationIndex = this.makeupDraft.decorations.length - 1;
+    this.syncMakeupOverlay();
+  }
+
+  private createMakeupDecorationDraft(decoration: DecorationType, size: DecorationSize, x: number, y: number): MakeupDecorationDraft {
+    const image = this.add.image(x, y, decoration.texture).setDepth(11).setAlpha(0.9);
+    this.fitDecorationDisplay(image, decoration, size);
+    image.setInteractive({ useHandCursor: true });
+    this.tankLayer.add(image);
+    const draft: MakeupDecorationDraft = { typeId: decoration.id, size, x, y, image };
+    image.on("pointerdown", (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      this.selectMakeupDecoration(draft);
+      this.makeupDraggedDecoration = draft;
+      draft.image.setAlpha(0.72).setDepth(12);
+      this.updateMakeupDecorationDrag(pointer);
+    });
+    return draft;
+  }
+
+  private selectMakeupDecoration(decoration: MakeupDecorationDraft): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    const index = this.makeupDraft.decorations.indexOf(decoration);
+    if (index >= 0) {
+      this.makeupDraft.selectedDecorationIndex = index;
+      this.makeupDraft.selectedSize = decoration.size;
+      this.syncMakeupOverlay();
+    }
+  }
+
+  private updateMakeupDecorationDrag(pointer: Phaser.Input.Pointer): void {
+    if (this.activeScreen !== "makeup" || !this.makeupDraggedDecoration) {
+      return;
+    }
+
+    const pointerPoint = this.pointerDesignPoint(pointer);
+    const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
+    const decoration = this.makeupDraggedDecoration;
+    decoration.x = Phaser.Math.Clamp(tankPoint.x, tankBounds.left + 24, tankBounds.right - 24);
+    decoration.y = Phaser.Math.Clamp(tankPoint.y, tankBounds.top + 118, tankBounds.bottom - 30);
+    decoration.image.setPosition(decoration.x, decoration.y);
+  }
+
+  private endMakeupDecorationDrag(): void {
+    if (!this.makeupDraggedDecoration) {
+      return;
+    }
+
+    this.makeupDraggedDecoration.image.setAlpha(0.9).setDepth(11);
+    this.makeupDraggedDecoration = undefined;
+  }
+
+  private removeSelectedMakeupDecoration(): void {
+    if (!this.makeupDraft || this.makeupDraft.selectedDecorationIndex === undefined) {
+      return;
+    }
+
+    const [removed] = this.makeupDraft.decorations.splice(this.makeupDraft.selectedDecorationIndex, 1);
+    removed?.image.destroy();
+    this.makeupDraft.selectedDecorationIndex = undefined;
+    this.syncMakeupOverlay();
+  }
+
+  private makeupTotalCost(): Price {
+    if (!this.makeupDraft) {
+      return { coinType: "common", amount: 0 };
+    }
+
+    const total = createEmptyWallet();
+    const background = this.makeupSelectedCosmetic("background");
+    const seabed = this.makeupSelectedCosmetic("seabed");
+    if (!this.ownsTankCosmetic(background)) {
+      this.addPriceToWallet(total, background.price);
+    }
+    if (!this.ownsTankCosmetic(seabed)) {
+      this.addPriceToWallet(total, seabed.price);
+    }
+
+    const decorationCounts = new Map<string, { type: DecorationType; size: DecorationSize; count: number }>();
+    for (const decoration of this.makeupDraft.decorations) {
+      const decorationType = decorationTypes.find((item) => item.id === decoration.typeId);
+      if (!decorationType) {
+        continue;
+      }
+      const key = this.decorationInventoryKey(decoration.typeId, decoration.size);
+      const current = decorationCounts.get(key) ?? { type: decorationType, size: decoration.size, count: 0 };
+      current.count += 1;
+      decorationCounts.set(key, current);
+    }
+
+    for (const entry of decorationCounts.values()) {
+      const ownedCount = this.getOwnedDecorationCount(entry.type.id, entry.size);
+      const purchaseCount = Math.max(0, entry.count - ownedCount);
+      if (purchaseCount > 0) {
+        this.addPriceToWallet(total, this.decorationVariantPrice(entry.type, entry.size), purchaseCount);
+      }
+    }
+
+    return this.walletToPrice(total);
+  }
+
+  private makeupCostElement(price: Price): HTMLElement {
+    if (this.priceWealth(price) <= 0) {
+      return htmlElement("div", "aq-makeup-cost", ["Cost Free"]);
+    }
+
+    const row = htmlElement("div", "aq-makeup-cost aq-makeup-cost-icons", [htmlElement("span", "", ["Cost"])]);
+    for (const [coinType, amount] of priceComponents(price)) {
+      row.append(
+        htmlElement("span", "aq-makeup-cost-chip", [
+          htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
+          htmlElement("strong", "", [formatNumber(amount)])
+        ])
+      );
+    }
+    return row;
+  }
+
+  private addPriceToWallet(total: Wallet, price: Price, multiplier = 1): void {
+    for (const [coinType, amount] of priceComponents(price)) {
+      total[coinType] += Math.max(0, Math.floor(amount * multiplier));
+    }
+  }
+
+  private walletToPrice(wallet: Wallet): Price {
+    return {
+      coinType: "common",
+      amount: Math.max(0, Math.floor(wallet.common)),
+      rareAmount: wallet.rare > 0 ? Math.max(0, Math.floor(wallet.rare)) : undefined,
+      superRareAmount: wallet.superRare > 0 ? Math.max(0, Math.floor(wallet.superRare)) : undefined
+    };
+  }
+
+  private applyMakeupLook(): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    const cost = this.makeupTotalCost();
+    if (this.priceWealth(cost) > 0 && !this.spendPrice(cost)) {
+      return;
+    }
+
+    const background = this.makeupSelectedCosmetic("background");
+    const seabed = this.makeupSelectedCosmetic("seabed");
+    const state = this.ensureTankState(this.tankLevel);
+    if (!this.ownsTankCosmetic(background)) {
+      this.tankCosmeticInventory("background").set(background.id, 1);
+      this.recordDailyQuestAction("buy-background");
+    }
+    if (!this.ownsTankCosmetic(seabed)) {
+      this.tankCosmeticInventory("seabed").set(seabed.id, 1);
+      this.recordDailyQuestAction("buy-seabed");
+    }
+    state.selectedBackgroundId = background.id;
+    state.selectedSeabedId = seabed.id;
+    this.applyTankCosmeticBlueTint("background", background.id, this.renderTankCosmeticBlueTintIntensity("background", background.id));
+    this.applyTankCosmeticBlueTint("seabed", seabed.id, this.renderTankCosmeticBlueTintIntensity("seabed", seabed.id));
+
+    const draftDecorations = [...this.makeupDraft.decorations];
+    const reusablePlacedCounts = new Map<string, number>();
+    for (const decoration of this.activeDecorations()) {
+      const size = this.sanitizeDecorationSize(decoration.size);
+      const key = this.decorationInventoryKey(decoration.typeId, size);
+      reusablePlacedCounts.set(key, (reusablePlacedCounts.get(key) ?? 0) + 1);
+    }
+    this.removeAllPlacedDecorationsFromActiveTank();
+    this.makeupDraft.decorations = [];
+    for (const decoration of draftDecorations) {
+      const decorationType = decorationTypes.find((item) => item.id === decoration.typeId);
+      decoration.image.destroy();
+      if (!decorationType) {
+        continue;
+      }
+      const key = this.decorationInventoryKey(decoration.typeId, decoration.size);
+      const reusablePlacedCount = reusablePlacedCounts.get(key) ?? 0;
+      if (reusablePlacedCount > 0) {
+        reusablePlacedCounts.set(key, reusablePlacedCount - 1);
+      } else if (this.getDecorationInventory(decoration.typeId, decoration.size) > 0) {
+        this.consumeStoredDecoration(decoration.typeId, decoration.size);
+      }
+      this.addDecorationToTank(decorationType, decoration.x, decoration.y, decoration.size);
+      this.recordDailyQuestAction("place-decoration");
+    }
+
+    if (draftDecorations.length > 0) {
+      this.recordDailyQuestAction("buy-decoration");
+    }
+    this.floatText("Look applied", toastX, toastY, "#a8ffb0");
+    this.closeMakeupMode(true);
+    this.saveNow();
+  }
+
+  private closeMakeupMode(applied: boolean): void {
+    this.destroyMakeupDraft();
+    this.makeupOverlay?.classList.add("hidden");
+    this.makeupDraggedDecoration = undefined;
+    this.activeScreen = "tank";
+    this.layoutTankBackground();
+    this.layoutTankFloor();
+    this.syncMakeupPresentation();
+    this.refreshUi(false);
+    if (!applied) {
+      this.floatText("Makeup closed", toastX, toastY, "#d7f4ff");
+    }
+  }
+
+  private destroyMakeupDraft(): void {
+    for (const decoration of this.makeupDraft?.decorations ?? []) {
+      decoration.image.destroy();
+    }
+    this.makeupDraft = undefined;
+  }
+
+  private syncMakeupPresentation(): void {
+    const makeupActive = this.activeScreen === "makeup";
+    for (const currentFish of this.fish) {
+      currentFish.setTankVisible(!makeupActive && currentFish.tankLevel === this.tankLevel);
+    }
+    for (const helper of this.helperCreatures) {
+      helper.setTankVisible(!makeupActive && helper.tankLevel === this.tankLevel);
+    }
+    for (const food of this.foods) {
+      food.sprite.setVisible(!makeupActive);
+    }
+    for (const drop of this.pendingHelperCreatureDrops) {
+      drop.sprite.setVisible(!makeupActive && drop.tankLevel === this.tankLevel);
+    }
+    for (const coin of this.coinDrops) {
+      this.setCoinDropVisible(coin, !makeupActive);
+    }
+    for (const particle of this.ambientWaterParticles) {
+      particle.setVisible(!makeupActive);
+    }
+    for (const bubble of this.activeAirStoneBubbles) {
+      bubble.setVisible(!makeupActive);
+    }
+    for (const decoration of this.placedDecorations) {
+      decoration.image.setVisible(!makeupActive && decoration.tankLevel === this.tankLevel);
+    }
+    if (makeupActive) {
+      this.dirtyTankOverlay?.setVisible(false);
+      this.showDecorationTrashTarget(false);
+    } else {
+      this.refreshFishTankVisibility();
+      this.refreshHelperTankVisibility();
+      this.refreshDecorationTankVisibility();
+      this.updateDirtyTankOverlay();
+    }
   }
 
   private createCosmeticHtmlCard(asset: TankCosmetic): HTMLElement {
@@ -2635,40 +3220,10 @@ export class AquariumScene extends Phaser.Scene {
     overlay.append(
       htmlElement("span", "aq-page-mini-title", [asset.name]),
       htmlElement("span", "aq-page-mini-meta", [selected ? "Active" : "Owned"]),
-      this.createCosmeticTintHtmlControl(asset),
       this.htmlButton(selected ? "Active" : "Apply", "aq-page-button aq-page-button-good aq-cosmetic-apply-button", () => this.useTankCosmetic(asset), selected)
     );
     card.append(overlay);
     return card;
-  }
-
-  private createCosmeticTintHtmlControl(asset: TankCosmetic): HTMLElement {
-    const value = Math.round(this.tankCosmeticBlueTintIntensity(asset.category, asset.id));
-    const valueText = htmlElement("span", "shrink-0", [`${formatNumber(value)}%`]);
-    const label = htmlElement("div", "aq-store-tint-label", [
-      htmlElement("span", "truncate", ["Blue tint"]),
-      valueText
-    ]);
-    const input = document.createElement("input");
-    input.className = "aq-settings-range aq-store-tint-range aq-cosmetic-tint-range";
-    input.type = "range";
-    input.min = "0";
-    input.max = "100";
-    input.step = "1";
-    input.value = String(value);
-    input.addEventListener("pointerdown", (event) => event.stopPropagation());
-    input.addEventListener("click", (event) => event.stopPropagation());
-    input.addEventListener("input", (event) => {
-      event.stopPropagation();
-      const nextValue = Number(input.value);
-      valueText.textContent = `${formatNumber(nextValue)}%`;
-      const preview = input.closest(".aq-tank-grid-card")?.querySelector(".aq-blue-tint-preview");
-      if (preview instanceof HTMLElement) {
-        this.updateBlueTintPreviewOverlay(preview, nextValue);
-      }
-      this.setTankCosmeticBlueTintFromStore(asset.category, asset.id, nextValue);
-    });
-    return htmlElement("div", "aq-store-tint-control aq-cosmetic-tint-control", [label, input]);
   }
 
   private createBlueTintPreviewOverlay(intensity: number): HTMLElement {
@@ -3494,7 +4049,7 @@ export class AquariumScene extends Phaser.Scene {
     this.floatText("God mode unlocked", toastX, toastY, "#a8ffb0");
     this.storeOverlay?.refresh();
     this.refreshUi();
-    if (this.activeScreen !== "prize") {
+    if (this.activeScreen !== "prize" && this.activeScreen !== "makeup") {
       this.syncHtmlPageOverlay();
     }
     this.saveNow();
@@ -3505,7 +4060,7 @@ export class AquariumScene extends Phaser.Scene {
       disabled,
       attachTouchFeedback: (button) => this.attachTouchFeedback(button),
       afterClick: () => {
-        if (this.activeScreen !== "tank" && this.activeScreen !== "store" && this.activeScreen !== "prize") {
+        if (this.activeScreen !== "tank" && this.activeScreen !== "store" && this.activeScreen !== "prize" && this.activeScreen !== "makeup") {
           this.syncHtmlPageOverlay();
         }
       }
@@ -3789,12 +4344,7 @@ export class AquariumScene extends Phaser.Scene {
     }
   }
 
-  private setTankCosmeticBlueTintFromStore(category: TankCosmeticCategory, id: string, intensity: number): void {
-    const asset = this.tankCosmeticById(category, id);
-    if (!asset || !this.ownsTankCosmetic(asset)) {
-      return;
-    }
-
+  private applyTankCosmeticBlueTint(category: TankCosmeticCategory, id: string, intensity: number): void {
     const tintInventory = this.tankCosmeticBlueTintInventory(category);
     const normalizedIntensity = Math.round(Phaser.Math.Clamp(intensity, 0, 100));
     if (normalizedIntensity > 0) {
@@ -4450,18 +5000,6 @@ export class AquariumScene extends Phaser.Scene {
         return;
       }
 
-      const decoration = this.decorationAtPointer(point.x, point.y);
-      if (decoration) {
-        event.preventDefault();
-        event.stopPropagation();
-        activePointerId = event.pointerId;
-        this.capturePointerSafely(canvas, event.pointerId);
-        beginNativeDecorationDrag(decoration);
-        const tankPoint = this.screenToTankPoint(point.x, point.y);
-        this.moveDecoration(decoration, tankPoint.x, tankPoint.y);
-        return;
-      }
-
       const fish = this.fishAtPointer(point.x, point.y);
       if (!fish) {
         return;
@@ -4489,10 +5027,7 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       const tankPoint = this.screenToTankPoint(point.x, point.y);
-      if (this.nativeDraggedDecoration) {
-        this.moveDecoration(this.nativeDraggedDecoration, tankPoint.x, tankPoint.y);
-        this.highlightDecorationTrashTarget(decorationTrashZone.contains(point.x, point.y));
-      } else if (this.nativeDraggedFish) {
+      if (this.nativeDraggedFish) {
         this.nativeDraggedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
       }
     };
@@ -4610,12 +5145,10 @@ export class AquariumScene extends Phaser.Scene {
   private addDecorationToTank(decoration: DecorationType, x: number, y: number, size: DecorationSize = "m", tankLevel = this.tankLevel): void {
     const image = this.add.image(x, y, decoration.texture).setDepth(y > tankBounds.bottom - 80 ? 5 : 3);
     this.fitDecorationDisplay(image, decoration, size);
-    image.setInteractive({ useHandCursor: true });
     this.tankLayer.add(image);
     const placedDecoration = { typeId: decoration.id, size, image, tankLevel };
     image.setVisible(placedDecoration.tankLevel === this.tankLevel);
     this.placedDecorations.push(placedDecoration);
-    this.bindDecorationPointerGuard(placedDecoration);
   }
 
   private placeDecorationFromInventory(decoration: DecorationType, size: DecorationSize, x: number, y: number): void {
@@ -4629,13 +5162,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const inventoryKey = this.decorationInventoryKey(decoration.id, size);
-    const legacyKeyCount = size === "m" ? this.decorationInventory.get(decoration.id) ?? 0 : 0;
-    if (legacyKeyCount > 0) {
-      this.decorationInventory.set(decoration.id, legacyKeyCount - 1);
-    } else {
-      this.decorationInventory.set(inventoryKey, Math.max(0, (this.decorationInventory.get(inventoryKey) ?? 0) - 1));
-    }
+    this.consumeStoredDecoration(decoration.id, size);
     this.addDecorationToTank(decoration, x, y, size);
     this.recordDailyQuestAction("place-decoration");
     this.placementMode = { kind: "none" };
@@ -4665,6 +5192,10 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private updateAirStoneBubbles(deltaSeconds: number, activeDecorations: PlacedDecoration[]): void {
+    if (this.activeScreen === "makeup") {
+      return;
+    }
+
     if (this.activeAirStoneBubbles.size >= 16) {
       return;
     }
@@ -4724,21 +5255,12 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private bindDecorationPointerGuard(decoration: PlacedDecoration): void {
-    decoration.image.on("pointerdown", (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      this.startPhaserDecorationHold(decoration, pointer);
-    });
+    decoration.image.disableInteractive();
   }
 
   private startPhaserDecorationHold(decoration: PlacedDecoration, pointer: Phaser.Input.Pointer): void {
-    if (this.activeScreen !== "tank" || decoration.tankLevel !== this.tankLevel || this.htmlDockDragging) {
-      return;
-    }
-
-    const pointerPoint = this.pointerDesignPoint(pointer);
-    this.beginPhaserDecorationDrag(decoration);
-    const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
-    this.moveDecoration(decoration, tankPoint.x, tankPoint.y);
+    void decoration;
+    void pointer;
   }
 
   private beginPhaserDecorationDrag(decoration: PlacedDecoration): void {
@@ -5216,7 +5738,22 @@ export class AquariumScene extends Phaser.Scene {
     coin.hitZone.on("pointerdown", collect);
     coin.sprite.on("pointerdown", collect);
     this.coinDrops.push(coin);
+    this.setCoinDropVisible(coin, this.activeScreen !== "makeup");
     return coin;
+  }
+
+  private setCoinDropVisible(coin: CoinDrop, visible: boolean): void {
+    coin.sprite.setVisible(visible);
+    coin.hitZone.setVisible(visible);
+    coin.shimmer.setVisible(visible);
+    coin.valueText.setVisible(visible);
+    if (visible) {
+      coin.hitZone.setInteractive({ useHandCursor: true });
+      coin.sprite.setInteractive({ useHandCursor: true });
+    } else {
+      coin.hitZone.disableInteractive();
+      coin.sprite.disableInteractive();
+    }
   }
 
   private collectCoin(coin: CoinDrop, automated: boolean): void {
@@ -5477,7 +6014,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private refreshUi(renderControls = true): void {
     this.storeOverlay?.refresh();
-    if (this.activeScreen === "prize") {
+    if (this.activeScreen === "prize" || this.activeScreen === "makeup") {
       this.hideHtmlPageOverlay();
     } else if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
       this.syncHtmlPageOverlay();
@@ -5705,6 +6242,27 @@ export class AquariumScene extends Phaser.Scene {
     return variantCount;
   }
 
+  private consumeStoredDecoration(decorationTypeId: string, size: DecorationSize): void {
+    const legacyCount = size === "m" ? this.decorationInventory.get(decorationTypeId) ?? 0 : 0;
+    if (legacyCount > 0) {
+      const nextLegacyCount = legacyCount - 1;
+      if (nextLegacyCount > 0) {
+        this.decorationInventory.set(decorationTypeId, nextLegacyCount);
+      } else {
+        this.decorationInventory.delete(decorationTypeId);
+      }
+      return;
+    }
+
+    const inventoryKey = this.decorationInventoryKey(decorationTypeId, size);
+    const nextCount = Math.max(0, (this.decorationInventory.get(inventoryKey) ?? 0) - 1);
+    if (nextCount > 0) {
+      this.decorationInventory.set(inventoryKey, nextCount);
+    } else {
+      this.decorationInventory.delete(inventoryKey);
+    }
+  }
+
   private getPlacedDecorationCount(decorationTypeId: string, size: DecorationSize, level = this.tankLevel): number {
     return this.placedDecorations.filter((decoration) =>
       decoration.tankLevel === level &&
@@ -5733,6 +6291,19 @@ export class AquariumScene extends Phaser.Scene {
         this.sanitizeDecorationSize(decoration.size) === size;
 
       if (matchesActiveTank) {
+        decoration.image.destroy();
+      } else {
+        keptDecorations.push(decoration);
+      }
+    }
+
+    this.placedDecorations = keptDecorations;
+  }
+
+  private removeAllPlacedDecorationsFromActiveTank(): void {
+    const keptDecorations: PlacedDecoration[] = [];
+    for (const decoration of this.placedDecorations) {
+      if (decoration.tankLevel === this.tankLevel) {
         decoration.image.destroy();
       } else {
         keptDecorations.push(decoration);
@@ -6661,7 +7232,7 @@ export class AquariumScene extends Phaser.Scene {
       actions,
       attachTouchFeedback: (button) => this.attachTouchFeedback(button),
       afterAction: () => {
-        if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
+        if (this.activeScreen !== "tank" && this.activeScreen !== "store" && this.activeScreen !== "prize" && this.activeScreen !== "makeup") {
           this.syncHtmlPageOverlay();
         }
       }
