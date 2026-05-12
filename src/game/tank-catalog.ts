@@ -1,7 +1,7 @@
 import type { DecorationType, Price } from "../types/mechanics";
 import type { TankCosmeticCategory } from "./tank-state";
 
-export type DecorationSize = "s" | "m" | "l" | "xl";
+export type DecorationSize = "xs" | "s" | "m" | "l" | "xl";
 
 export type TankCosmetic = {
   id: string;
@@ -199,13 +199,14 @@ export const tankSeabedCosmetics: TankCosmetic[] = [
 ];
 
 export const decorationSizes: Record<DecorationSize, { label: string; scale: number; priceMultiplier: number }> = {
+  xs: { label: "XS", scale: 0.56, priceMultiplier: 0.45 },
   s: { label: "S", scale: 0.78, priceMultiplier: 0.7 },
   m: { label: "M", scale: 1, priceMultiplier: 1 },
   l: { label: "L", scale: 1.28, priceMultiplier: 1.65 },
   xl: { label: "XL", scale: 1.62, priceMultiplier: 2.6 }
 };
 
-export const decorationSizeOrder: DecorationSize[] = ["s", "m", "l", "xl"];
+export const decorationSizeOrder: DecorationSize[] = ["xs", "s", "m", "l", "xl"];
 
 export function tankCosmetics(category: TankCosmeticCategory): TankCosmetic[] {
   return category === "background" ? tankBackgroundCosmetics : tankSeabedCosmetics;

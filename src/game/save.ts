@@ -26,6 +26,7 @@ export type SavedDecoration = {
   x: number;
   y: number;
   size?: string;
+  depth?: number;
 };
 
 export type SavedHelperCreature = {
@@ -447,7 +448,8 @@ function sanitizeDecoration(decoration: Partial<SavedDecoration>): SavedDecorati
     tankLevel: Math.max(1, Math.floor(sanitizeNumber(decoration.tankLevel, 1))),
     x: sanitizeNumber(decoration.x, 0),
     y: sanitizeNumber(decoration.y, 0),
-    size: typeof decoration.size === "string" ? decoration.size : undefined
+    size: typeof decoration.size === "string" ? decoration.size : undefined,
+    depth: decoration.depth === undefined ? undefined : sanitizeNumber(decoration.depth, 0)
   };
 }
 

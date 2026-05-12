@@ -667,7 +667,12 @@ canvas {
     @apply col-span-2 mt-1.5 hidden grid-cols-5 gap-1.5;
   }
 
-  .aq-makeup-decor-tools.has-selection .aq-makeup-size-row {
+  .aq-makeup-depth-row {
+    @apply col-span-2 mt-1.5 hidden grid-cols-3 gap-1.5;
+  }
+
+  .aq-makeup-decor-tools.has-selection .aq-makeup-size-row,
+  .aq-makeup-decor-tools.has-selection .aq-makeup-depth-row {
     @apply grid;
   }
 
@@ -693,7 +698,8 @@ canvas {
     @apply min-h-[56px] px-1 text-sm;
   }
 
-  .aq-makeup-size-row > .aq-makeup-button {
+  .aq-makeup-size-row > .aq-makeup-button,
+  .aq-makeup-depth-row > .aq-makeup-button {
     @apply min-h-9 px-1 text-sm;
   }
 

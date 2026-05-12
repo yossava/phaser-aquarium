@@ -180,6 +180,7 @@ type MakeupDecorationDraft = {
   size: DecorationSize;
   x: number;
   y: number;
+  depth: number;
   image: Phaser.GameObjects.Image;
 };
 type MakeupDraft = {
@@ -2730,7 +2731,8 @@ export class AquariumScene extends Phaser.Scene {
       selectedSize: "m",
       decorations: []
     };
-    for (const placedDecoration of this.activeDecorations()) {
+    const activeDecorations = [...this.activeDecorations()].sort((first, second) => first.image.depth - second.image.depth);
+    for (const [index, placedDecoration] of activeDecorations.entries()) {
       const decorationType = decorationTypes.find((item) => item.id === placedDecoration.typeId);
       if (!decorationType) {
         continue;
@@ -2740,10 +2742,12 @@ export class AquariumScene extends Phaser.Scene {
           decorationType,
           this.sanitizeDecorationSize(placedDecoration.size),
           placedDecoration.image.x,
-          placedDecoration.image.y
+          placedDecoration.image.y,
+          index
         )
       );
     }
+    this.syncMakeupDecorationDepths(draft);
     return draft;
   }
 
@@ -2769,7 +2773,8 @@ export class AquariumScene extends Phaser.Scene {
     const draft = this.makeupDraft!;
     const decorationType = decorationTypes[draft.selectedDecorationTypeIndex] ?? decorationTypes[0];
     const cost = this.makeupTotalCost();
-    const selectedDecoration = draft.selectedDecorationIndex !== undefined ? draft.decorations[draft.selectedDecorationIndex] : undefined;
+    const selectedDecorationIndex = draft.selectedDecorationIndex;
+    const selectedDecoration = selectedDecorationIndex !== undefined ? draft.decorations[selectedDecorationIndex] : undefined;
     const panel = htmlElement("section", "aq-makeup-panel");
     panel.append(
       htmlElement("div", "aq-makeup-header", [
@@ -2800,7 +2805,11 @@ export class AquariumScene extends Phaser.Scene {
               draft.selectedSize === size ? "selected" : "muted",
               () => this.setMakeupDecorationSize(size)
             )
-          ),
+          )
+        ]),
+        htmlElement("div", "aq-makeup-depth-row", [
+          this.makeupButton("Back", "muted", () => this.moveSelectedMakeupDecorationDepth(-1), !selectedDecoration || selectedDecorationIndex === 0),
+          this.makeupButton("Front", "muted", () => this.moveSelectedMakeupDecorationDepth(1), !selectedDecoration || selectedDecorationIndex === draft.decorations.length - 1),
           this.makeupButton("Remove", "danger", () => this.removeSelectedMakeupDecoration(), !selectedDecoration)
         ])
       ])
@@ -2970,24 +2979,27 @@ export class AquariumScene extends Phaser.Scene {
       decorationType,
       this.makeupDraft.selectedSize,
       tankBounds.centerX,
-      tankBounds.bottom - 72
+      tankBounds.bottom - 72,
+      this.makeupDraft.decorations.length
     );
     this.makeupDraft.decorations.push(draftDecoration);
     this.makeupDraft.selectedDecorationIndex = this.makeupDraft.decorations.length - 1;
+    this.syncMakeupDecorationDepths();
     this.syncMakeupOverlay();
   }
 
-  private createMakeupDecorationDraft(decoration: DecorationType, size: DecorationSize, x: number, y: number): MakeupDecorationDraft {
-    const image = this.add.image(x, y, decoration.texture).setDepth(11).setAlpha(0.9);
+  private createMakeupDecorationDraft(decoration: DecorationType, size: DecorationSize, x: number, y: number, depth = 0): MakeupDecorationDraft {
+    const image = this.add.image(x, y, decoration.texture).setDepth(this.makeupDecorationDisplayDepth(depth)).setAlpha(0.9);
     this.fitDecorationDisplay(image, decoration, size);
     image.setInteractive({ useHandCursor: true });
     this.tankLayer.add(image);
-    const draft: MakeupDecorationDraft = { typeId: decoration.id, size, x, y, image };
+    const draft: MakeupDecorationDraft = { typeId: decoration.id, size, x, y, depth, image };
     image.on("pointerdown", (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       this.selectMakeupDecoration(draft);
       this.makeupDraggedDecoration = draft;
-      draft.image.setAlpha(0.72).setDepth(12);
+      draft.image.setAlpha(0.72).setDepth(20);
+      this.tankLayer.bringToTop(draft.image);
       this.updateMakeupDecorationDrag(pointer);
     });
     return draft;
@@ -3024,8 +3036,48 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.makeupDraggedDecoration.image.setAlpha(0.9).setDepth(11);
+    this.makeupDraggedDecoration.image.setAlpha(0.9);
     this.makeupDraggedDecoration = undefined;
+    this.syncMakeupDecorationDepths();
+  }
+
+  private moveSelectedMakeupDecorationDepth(direction: number): void {
+    if (!this.makeupDraft || this.makeupDraft.selectedDecorationIndex === undefined) {
+      return;
+    }
+
+    const currentIndex = this.makeupDraft.selectedDecorationIndex;
+    const nextIndex = Phaser.Math.Clamp(currentIndex + direction, 0, this.makeupDraft.decorations.length - 1);
+    if (nextIndex === currentIndex) {
+      return;
+    }
+
+    const [decoration] = this.makeupDraft.decorations.splice(currentIndex, 1);
+    if (!decoration) {
+      return;
+    }
+    this.makeupDraft.decorations.splice(nextIndex, 0, decoration);
+    this.makeupDraft.selectedDecorationIndex = nextIndex;
+    this.syncMakeupDecorationDepths();
+    this.syncMakeupOverlay();
+  }
+
+  private syncMakeupDecorationDepths(draft = this.makeupDraft): void {
+    if (!draft) {
+      return;
+    }
+
+    draft.decorations.forEach((decoration, index) => {
+      decoration.depth = index;
+      if (decoration !== this.makeupDraggedDecoration) {
+        decoration.image.setDepth(this.makeupDecorationDisplayDepth(index));
+      }
+      this.tankLayer.bringToTop(decoration.image);
+    });
+  }
+
+  private makeupDecorationDisplayDepth(index: number): number {
+    return 11 + index * 0.05;
   }
 
   private removeSelectedMakeupDecoration(): void {
@@ -3036,6 +3088,7 @@ export class AquariumScene extends Phaser.Scene {
     const [removed] = this.makeupDraft.decorations.splice(this.makeupDraft.selectedDecorationIndex, 1);
     removed?.image.destroy();
     this.makeupDraft.selectedDecorationIndex = undefined;
+    this.syncMakeupDecorationDepths();
     this.syncMakeupOverlay();
   }
 
@@ -3144,7 +3197,7 @@ export class AquariumScene extends Phaser.Scene {
     }
     this.removeAllPlacedDecorationsFromActiveTank();
     this.makeupDraft.decorations = [];
-    for (const decoration of draftDecorations) {
+    for (const [index, decoration] of draftDecorations.entries()) {
       const decorationType = decorationTypes.find((item) => item.id === decoration.typeId);
       decoration.image.destroy();
       if (!decorationType) {
@@ -3157,7 +3210,7 @@ export class AquariumScene extends Phaser.Scene {
       } else if (this.getDecorationInventory(decoration.typeId, decoration.size) > 0) {
         this.consumeStoredDecoration(decoration.typeId, decoration.size);
       }
-      this.addDecorationToTank(decorationType, decoration.x, decoration.y, decoration.size);
+      this.addDecorationToTank(decorationType, decoration.x, decoration.y, decoration.size, this.tankLevel, this.tankDecorationDepthFromOrder(index));
       this.recordDailyQuestAction("place-decoration");
     }
 
@@ -5222,13 +5275,24 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
-  private addDecorationToTank(decoration: DecorationType, x: number, y: number, size: DecorationSize = "m", tankLevel = this.tankLevel): void {
-    const image = this.add.image(x, y, decoration.texture).setDepth(y > tankBounds.bottom - 80 ? 5 : 3);
+  private addDecorationToTank(
+    decoration: DecorationType,
+    x: number,
+    y: number,
+    size: DecorationSize = "m",
+    tankLevel = this.tankLevel,
+    depth = y > tankBounds.bottom - 80 ? 5 : 3
+  ): void {
+    const image = this.add.image(x, y, decoration.texture).setDepth(depth);
     this.fitDecorationDisplay(image, decoration, size);
     this.tankLayer.add(image);
     const placedDecoration = { typeId: decoration.id, size, image, tankLevel };
     image.setVisible(placedDecoration.tankLevel === this.tankLevel);
     this.placedDecorations.push(placedDecoration);
+  }
+
+  private tankDecorationDepthFromOrder(index: number): number {
+    return 3 + Math.min(39, Math.max(0, index)) * 0.05;
   }
 
   private placeDecorationFromInventory(decoration: DecorationType, size: DecorationSize, x: number, y: number): void {
@@ -5545,7 +5609,8 @@ export class AquariumScene extends Phaser.Scene {
       this.prizeMachineRuntimeSessionId,
       Math.random
     );
-    for (const savedDecoration of saved.decorations) {
+    const savedDecorations = [...saved.decorations].sort((first, second) => (first.depth ?? 0) - (second.depth ?? 0));
+    for (const savedDecoration of savedDecorations) {
       const decoration = decorationTypes.find((item) => item.id === savedDecoration.typeId);
       if (decoration) {
         const savedTankLevel = Math.max(1, Math.floor(savedDecoration.tankLevel ?? 1));
@@ -5555,7 +5620,8 @@ export class AquariumScene extends Phaser.Scene {
           savedDecoration.x,
           savedDecoration.y,
           this.sanitizeDecorationSize(savedDecoration.size),
-          decorationTankLevel
+          decorationTankLevel,
+          savedDecoration.depth
         );
       }
     }
@@ -5730,7 +5796,8 @@ export class AquariumScene extends Phaser.Scene {
         tankLevel: decoration.tankLevel,
         x: decoration.image.x,
         y: decoration.image.y,
-        size: decoration.size
+        size: decoration.size,
+        depth: decoration.image.depth
       })),
       helperCreatures: this.helperCreatures.map((helper) => ({
         typeId: helper.type.id,

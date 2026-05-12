@@ -194,5 +194,317 @@
       "bubbles"
     ],
     "happinessBonus": 4
+  },
+  {
+    "id": "blue-vase-coral",
+    "name": "Blue Vase Coral",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 540
+    },
+    "texture": "decor-blue-vase-coral",
+    "habitatTags": [
+      "coral",
+      "reef"
+    ],
+    "happinessBonus": 5
+  },
+  {
+    "id": "ruby-coral-branch",
+    "name": "Ruby Coral Branch",
+    "rarity": "rare",
+    "price": {
+      "coinType": "rare",
+      "amount": 34
+    },
+    "texture": "decor-ruby-coral-branch",
+    "habitatTags": [
+      "coral",
+      "reef",
+      "red"
+    ],
+    "happinessBonus": 9
+  },
+  {
+    "id": "emerald-sea-grass",
+    "name": "Emerald Sea Grass",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 620
+    },
+    "texture": "decor-emerald-sea-grass",
+    "habitatTags": [
+      "plant",
+      "freshwater",
+      "grass"
+    ],
+    "happinessBonus": 5
+  },
+  {
+    "id": "golden-shell-seat",
+    "name": "Golden Shell Seat",
+    "rarity": "rare",
+    "price": {
+      "coinType": "rare",
+      "amount": 38
+    },
+    "texture": "decor-golden-shell-seat",
+    "habitatTags": [
+      "shell",
+      "treasure"
+    ],
+    "happinessBonus": 10
+  },
+  {
+    "id": "mini-stone-bridge",
+    "name": "Mini Stone Bridge",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 760
+    },
+    "texture": "decor-mini-stone-bridge",
+    "habitatTags": [
+      "stone",
+      "shelter"
+    ],
+    "happinessBonus": 6
+  },
+  {
+    "id": "bamboo-hideout",
+    "name": "Bamboo Hideout",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 860
+    },
+    "texture": "decor-bamboo-hideout",
+    "habitatTags": [
+      "wood",
+      "shelter",
+      "freshwater"
+    ],
+    "happinessBonus": 6
+  },
+  {
+    "id": "amethyst-cluster",
+    "name": "Amethyst Cluster",
+    "rarity": "superRare",
+    "price": {
+      "coinType": "superRare",
+      "amount": 10
+    },
+    "texture": "decor-amethyst-cluster",
+    "habitatTags": [
+      "crystal",
+      "fantasy"
+    ],
+    "happinessBonus": 14
+  },
+  {
+    "id": "sunken-lantern",
+    "name": "Sunken Lantern",
+    "rarity": "rare",
+    "price": {
+      "coinType": "rare",
+      "amount": 42
+    },
+    "texture": "decor-sunken-lantern",
+    "habitatTags": [
+      "ruin",
+      "glow"
+    ],
+    "happinessBonus": 10
+  },
+  {
+    "id": "pearl-ring-arch",
+    "name": "Pearl Ring Arch",
+    "rarity": "superRare",
+    "price": {
+      "coinType": "superRare",
+      "amount": 12
+    },
+    "texture": "decor-pearl-ring-arch",
+    "habitatTags": [
+      "pearl",
+      "shell",
+      "fantasy"
+    ],
+    "happinessBonus": 15
+  },
+  {
+    "id": "mossy-log-tunnel",
+    "name": "Mossy Log Tunnel",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 980
+    },
+    "texture": "decor-mossy-log-tunnel",
+    "habitatTags": [
+      "wood",
+      "plant",
+      "shelter"
+    ],
+    "happinessBonus": 7
+  },
+  {
+    "id": "starfish-totem",
+    "name": "Starfish Totem",
+    "rarity": "rare",
+    "price": {
+      "coinType": "rare",
+      "amount": 46
+    },
+    "texture": "decor-starfish-totem",
+    "habitatTags": [
+      "starfish",
+      "reef"
+    ],
+    "happinessBonus": 11
+  },
+  {
+    "id": "bubble-crown-stone",
+    "name": "Bubble Crown Stone",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 1120
+    },
+    "texture": "decor-bubble-crown-stone",
+    "habitatTags": [
+      "stone",
+      "aeration",
+      "bubbles"
+    ],
+    "happinessBonus": 7
+  },
+  {
+    "id": "pink-quartz-cave",
+    "name": "Pink Quartz Cave",
+    "rarity": "superRare",
+    "price": {
+      "coinType": "superRare",
+      "amount": 14
+    },
+    "texture": "decor-pink-quartz-cave",
+    "habitatTags": [
+      "crystal",
+      "shelter",
+      "fantasy"
+    ],
+    "happinessBonus": 16
+  },
+  {
+    "id": "blue-kelp-statue",
+    "name": "Blue Kelp Statue",
+    "rarity": "rare",
+    "price": {
+      "coinType": "rare",
+      "amount": 50
+    },
+    "texture": "decor-blue-kelp-statue",
+    "habitatTags": [
+      "plant",
+      "kelp",
+      "statue"
+    ],
+    "happinessBonus": 11
+  },
+  {
+    "id": "tiny-ship-wheel",
+    "name": "Tiny Ship Wheel",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 1280
+    },
+    "texture": "decor-tiny-ship-wheel",
+    "habitatTags": [
+      "shipwreck",
+      "wood"
+    ],
+    "happinessBonus": 7
+  },
+  {
+    "id": "moon-shell-shrine",
+    "name": "Moon Shell Shrine",
+    "rarity": "superRare",
+    "price": {
+      "coinType": "superRare",
+      "amount": 16
+    },
+    "texture": "decor-moon-shell-shrine",
+    "habitatTags": [
+      "shell",
+      "fantasy",
+      "glow"
+    ],
+    "happinessBonus": 17
+  },
+  {
+    "id": "jade-turtle-idol",
+    "name": "Jade Turtle Idol",
+    "rarity": "rare",
+    "price": {
+      "coinType": "rare",
+      "amount": 56
+    },
+    "texture": "decor-jade-turtle-idol",
+    "habitatTags": [
+      "statue",
+      "jade",
+      "fantasy"
+    ],
+    "happinessBonus": 12
+  },
+  {
+    "id": "candy-coral-ring",
+    "name": "Candy Coral Ring",
+    "rarity": "rare",
+    "price": {
+      "coinType": "rare",
+      "amount": 62
+    },
+    "texture": "decor-candy-coral-ring",
+    "habitatTags": [
+      "coral",
+      "reef",
+      "colorful"
+    ],
+    "happinessBonus": 12
+  },
+  {
+    "id": "obsidian-pebble-stack",
+    "name": "Obsidian Pebble Stack",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 1440
+    },
+    "texture": "decor-obsidian-pebble-stack",
+    "habitatTags": [
+      "stone",
+      "volcanic"
+    ],
+    "happinessBonus": 8
+  },
+  {
+    "id": "royal-crown-ruin",
+    "name": "Royal Crown Ruin",
+    "rarity": "superRare",
+    "price": {
+      "coinType": "superRare",
+      "amount": 18
+    },
+    "texture": "decor-royal-crown-ruin",
+    "habitatTags": [
+      "treasure",
+      "ruin",
+      "fantasy"
+    ],
+    "happinessBonus": 18
   }
 ]

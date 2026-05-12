@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-03T23:32:05.116Z",
+  "generatedAt": "2026-05-12T00:00:00.000Z",
   "assets": [
     {
       "file": "/assets/decorations/plant.png",
@@ -91,6 +91,146 @@
       "height": 160,
       "source": "assets/generated/source/decorations/air_stone_imagegen_source.png",
       "processing": "create-assets imagegen raster PNG, chroma-key removed, transparent background, no SVG"
+    },
+    {
+      "file": "/assets/decorations/blue-vase-coral.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/01-05-clean/blue-vase-coral_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/emerald-sea-grass.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/01-05-clean/emerald-sea-grass_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/golden-shell-seat.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/01-05-clean/golden-shell-seat_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/mini-stone-bridge.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/01-05-clean/mini-stone-bridge_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/ruby-coral-branch.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/01-05-clean/ruby-coral-branch_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/amethyst-cluster.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/06-10/amethyst-cluster_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/bamboo-hideout.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/06-10/bamboo-hideout_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/mossy-log-tunnel.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/06-10/mossy-log-tunnel_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/pearl-ring-arch.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/06-10/pearl-ring-arch_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/sunken-lantern.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/06-10/sunken-lantern_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/blue-kelp-statue.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/11-15/blue-kelp-statue_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/bubble-crown-stone.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/11-15/bubble-crown-stone_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/pink-quartz-cave.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/11-15/pink-quartz-cave_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/starfish-totem.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/11-15/starfish-totem_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/tiny-ship-wheel.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/11-15/tiny-ship-wheel_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/candy-coral-ring.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/16-20/candy-coral-ring_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/jade-turtle-idol.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/16-20/jade-turtle-idol_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/moon-shell-shrine.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/16-20/moon-shell-shrine_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/obsidian-pebble-stack.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/16-20/obsidian-pebble-stack_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
+    },
+    {
+      "file": "/assets/decorations/royal-crown-ruin.png",
+      "width": 160,
+      "height": 160,
+      "source": "assets/generated/source/decorations-20/16-20/royal-crown-ruin_source.png",
+      "processing": "create-assets generated keyed raster source, chroma-key removed, resized to 160x160 transparent PNG"
     }
   ]
 }
