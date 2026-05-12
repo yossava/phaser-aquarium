@@ -1,6 +1,6 @@
 import type { FishType, FoodType, HelperCreatureType, Price, Rarity, Wallet } from "../../types/mechanics";
 
-export type StoreDecorationSize = "s" | "m" | "l" | "xl";
+export type StoreDecorationSize = "xs" | "s" | "m" | "l" | "xl";
 
 export type StoreTankCard = {
   level: number;
