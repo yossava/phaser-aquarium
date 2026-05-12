@@ -100,6 +100,24 @@ export const tankTextureAssetPathByKey = new Map<string, string>([
   ...generatedTankSeabedTexturePairs.map((theme) => [theme.textureKey, theme.path] as const)
 ]);
 
+const generatedSeabedCropTops = [
+  194, 206, 194, 197, 195, 216, 215, 354, 416, 291, 338, 498, 225, 186, 292, 223, 197, 300, 274, 442
+] as const;
+
+const themeFloorCropTopById = new Map<string, number>([
+  ["abyss", 133],
+  ["coral", 277],
+  ["crystal", 188],
+  ["kelp", 227],
+  ["lagoon", 177],
+  ["sunset", 94]
+]);
+
+export const tankFloorTextureCropTopByKey = new Map<string, number>([
+  ...generatedTankSeabedTexturePairs.map((theme, index) => [theme.textureKey, generatedSeabedCropTops[index] ?? 0] as const),
+  ...tankThemeTexturePairs.map((theme) => [theme.floorKey, themeFloorCropTopById.get(theme.id) ?? 0] as const)
+]);
+
 function tankCosmeticPrice(index: number, baseCommon: number): Price {
   if (index >= 16) {
     return { coinType: "common", amount: Math.round(baseCommon * 6), superRareAmount: 1 + Math.floor((index - 16) / 4) };

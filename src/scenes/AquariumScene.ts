@@ -68,6 +68,7 @@ import {
   decorationVariantPrice as tankCatalogDecorationVariantPrice,
   tankCosmeticImageUrl as tankCatalogCosmeticImageUrl,
   tankCosmetics as tankCatalogCosmetics,
+  tankFloorTextureCropTopByKey,
   tankTextureAssetPathByKey,
   tankThemeTexturePairs,
   tankThumbnailBaseAssetPath,
@@ -1380,8 +1381,27 @@ export class AquariumScene extends Phaser.Scene {
     this.tankSand.setPosition(tankBounds.centerX, this.visibleTankBottomDesignY());
     const displayHeight = tankBounds.height / 6 / scale;
     const selectedSeabedId = this.renderTankCosmeticId("seabed");
+    this.applyTankFloorCrop(textureKey);
     this.tankSand.setDisplaySize(tankBounds.width / scale, displayHeight);
     this.tankSand.setTint(this.tankCosmeticTint("seabed", selectedSeabedId));
+  }
+
+  private applyTankFloorCrop(textureKey: string): void {
+    if (!this.tankSand) {
+      return;
+    }
+
+    const cropTop = tankFloorTextureCropTopByKey.get(textureKey) ?? 0;
+    if (cropTop <= 0) {
+      this.tankSand.setCrop();
+      return;
+    }
+
+    const frame = this.textures.getFrame(textureKey);
+    const sourceWidth = frame?.width ?? 1024;
+    const sourceHeight = frame?.height ?? 1024;
+    const safeCropTop = Phaser.Math.Clamp(cropTop, 0, sourceHeight - 1);
+    this.tankSand.setCrop(0, safeCropTop, sourceWidth, sourceHeight - safeCropTop);
   }
 
   private layoutTankBlueTintOverlay(
