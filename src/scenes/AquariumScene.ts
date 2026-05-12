@@ -226,7 +226,8 @@ type AdjustableSound = Phaser.Sound.BaseSound & {
   setVolume: (value: number) => unknown;
 };
 
-const maxCoinDrops = 50;
+const maxCoinDrops = 25;
+const maxFoodDrops = 5;
 const coinCollectSoundKey = "sfx-coin-collect";
 const coinCollectSoundPath = "/assets/audio/sfx/coin-pick.ogg";
 const fishEatSoundKey = "sfx-fish-eat";
@@ -4595,6 +4596,10 @@ export class AquariumScene extends Phaser.Scene {
     if (!foodType || !this.isDroppableFood(foodType.id) || this.getFoodInventory(foodType.id) <= 0) {
       return;
     }
+    if (this.foods.length >= maxFoodDrops) {
+      this.floatTankText("Too much food", x, y - 18, "#ffdd8a");
+      return;
+    }
 
     this.selectedFoodTypeId = foodType.id;
     const reservedCalories = this.reserveFoodForDrop(foodType);
@@ -6787,6 +6792,9 @@ export class AquariumScene extends Phaser.Scene {
     if (hasPendingDispenserFoodModel(this.foods)) {
       return;
     }
+    if (this.foods.length >= maxFoodDrops) {
+      return;
+    }
 
     const medicineTarget = findMedicineDispenserTargetModel(tankFish, this.getFoodInventory("medicine"));
     const targetFish = medicineTarget ?? findFoodDispenserTargetModel(tankFish);
@@ -7949,7 +7957,7 @@ export class AquariumScene extends Phaser.Scene {
       },
       dropFoodForTest: (foodTypeId: FoodTypeId, x: number, y: number) => {
         const foodType = foodTypes.find((item) => item.id === foodTypeId);
-        if (!foodType) {
+        if (!foodType || this.foods.length >= maxFoodDrops) {
           return;
         }
 
