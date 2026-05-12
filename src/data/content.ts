@@ -76,7 +76,7 @@ function normalizeFishTypes(source: FishType[]): FishType[] {
     return {
       ...fishType,
       price,
-      sellBaseValue: { coinType: "common", amount: Math.max(1, Math.floor(commonAmount * 0.45)) },
+      sellBaseValue: { coinType: "common", amount: Math.max(1, Math.floor(commonAmount * 0.7)) },
       requiredFoodTypes: [],
       preferredFoodTypes: [],
       ageCurve: Object.fromEntries(

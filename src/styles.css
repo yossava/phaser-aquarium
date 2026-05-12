@@ -1094,28 +1094,6 @@ canvas {
       0 2px 8px rgba(0, 25, 42, 0.35);
   }
 
-  .aq-clean-progress-ring {
-    --clean-progress: 0deg;
-    @apply pointer-events-none absolute -inset-1 rounded-full;
-    background:
-      conic-gradient(from -90deg, rgba(151, 255, 177, 0.98) var(--clean-progress), rgba(9, 62, 82, 0.32) 0deg),
-      radial-gradient(circle, rgba(255, 255, 255, 0.72), rgba(117, 235, 255, 0.1) 66%, transparent 70%);
-    box-shadow:
-      0 0 10px rgba(111, 255, 187, 0.48),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.42);
-    mask: radial-gradient(circle, transparent 59%, #000 61%);
-    -webkit-mask: radial-gradient(circle, transparent 59%, #000 61%);
-    transition: background 160ms linear, filter 120ms ease;
-  }
-
-  .aq-tank-menu-button.is-cleaning .aq-tank-menu-bubble {
-    box-shadow:
-      inset 0 0 0 2px rgba(210, 250, 255, 0.38),
-      inset 0 0 16px rgba(142, 232, 255, 0.42),
-      0 0 12px rgba(111, 255, 187, 0.34),
-      0 2px 8px rgba(0, 25, 42, 0.35);
-  }
-
   .aq-tank-menu-button:active .aq-tank-menu-bubble,
   .aq-tank-menu-button.is-touching .aq-tank-menu-bubble {
     transform: scale(0.88);

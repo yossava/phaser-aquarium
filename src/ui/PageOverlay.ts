@@ -29,8 +29,8 @@ export type PageButtonFactory = (label: string, className: string, onClick: () =
 export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
   const meta: Record<PageOverlayScreen, PageScreenMeta> = {
     album: {
-      title: "Album",
-      subtitle: `${input.fishCount} fish | ${input.helperCount} helpers`,
+      title: "Inventory",
+      subtitle: `${input.fishCount} fish | food, coins, and stored prizes`,
       icon: "/assets/ui/book.png"
     },
     tanks: {

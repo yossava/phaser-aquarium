@@ -11,6 +11,14 @@ export type PrizeMachineResult = {
 
 export type PrizeMachineState = {
   premiumCooldownSpins: number;
+  selectedBetAmount: PrizeMachineBetAmount;
+  sessionId: number;
+  sessionGainPerSpin: number;
+  sessionSpinCount: number;
+  sessionSpent: number;
+  sessionWonValue: number;
+  recentPrizeKeys: string[];
+  plannedPremiumPrize?: PrizeSpinPrize;
   lastResult?: PrizeMachineResult;
 };
 
@@ -31,9 +39,27 @@ export const prizeMachineConfig: PrizeMachineConfig = {
   rewardLabel: "Rare Prizes",
   spinCost: { coinType: "common", amount: 100 }
 };
+export const prizeMachineBetAmounts = [1, 10, 100, 500, 1000, 10000] as const;
+export type PrizeMachineBetAmount = typeof prizeMachineBetAmounts[number];
+
+export function prizeMachineConfigForBet(betAmount: number): PrizeMachineConfig {
+  return {
+    ...prizeMachineConfig,
+    spinCost: { coinType: "common", amount: normalizeBetAmount(betAmount) }
+  };
+}
 
 export function createDefaultPrizeMachineState(): PrizeMachineState {
-  return { premiumCooldownSpins: 0 };
+  return {
+    premiumCooldownSpins: 0,
+    selectedBetAmount: 100,
+    sessionId: 0,
+    sessionGainPerSpin: 0,
+    sessionSpinCount: 0,
+    sessionSpent: 0,
+    sessionWonValue: 0,
+    recentPrizeKeys: []
+  };
 }
 
 export function normalizePrizeMachineState(source: Partial<PrizeMachineState> | undefined): PrizeMachineState {
@@ -43,8 +69,90 @@ export function normalizePrizeMachineState(source: Partial<PrizeMachineState> | 
 
   return {
     premiumCooldownSpins: sanitizeCount(source.premiumCooldownSpins),
+    selectedBetAmount: normalizeBetAmount(source.selectedBetAmount),
+    sessionId: sanitizeCount(source.sessionId),
+    sessionGainPerSpin: sanitizeGainRate(source.sessionGainPerSpin),
+    sessionSpinCount: sanitizeCount(source.sessionSpinCount),
+    sessionSpent: sanitizeCount(source.sessionSpent),
+    sessionWonValue: sanitizeCount(source.sessionWonValue),
+    recentPrizeKeys: sanitizeRecentPrizeKeys(source.recentPrizeKeys),
+    plannedPremiumPrize: normalizePremiumPrize(source.plannedPremiumPrize),
     lastResult: normalizeLastResult(source.lastResult)
   };
+}
+
+export function setPrizeMachineBet(state: PrizeMachineState, betAmount: number): PrizeMachineState {
+  const normalized = normalizePrizeMachineState(state);
+  const selectedBetAmount = normalizeBetAmount(betAmount);
+  if (normalized.selectedBetAmount === selectedBetAmount) {
+    return normalized;
+  }
+
+  return {
+    ...normalized,
+    selectedBetAmount,
+    recentPrizeKeys: [],
+    plannedPremiumPrize: undefined
+  };
+}
+
+export function beginPrizeMachineSession(
+  state: PrizeMachineState,
+  sessionId: number,
+  random = Math.random
+): PrizeMachineState {
+  const normalized = normalizePrizeMachineState(state);
+  const nextSessionId = sanitizeCount(sessionId);
+  if (normalized.sessionId === nextSessionId) {
+    return normalized;
+  }
+
+  return {
+    ...normalized,
+    premiumCooldownSpins: 0,
+    sessionId: nextSessionId,
+    sessionGainPerSpin: random() * 0.002 - 0.001,
+    sessionSpinCount: 0,
+    sessionSpent: 0,
+    sessionWonValue: 0,
+    recentPrizeKeys: [],
+    plannedPremiumPrize: undefined
+  };
+}
+
+export function recordPrizeMachineSpin(state: PrizeMachineState, spinCostValue: number): PrizeMachineState {
+  const normalized = normalizePrizeMachineState(state);
+  return {
+    ...normalized,
+    sessionSpinCount: normalized.sessionSpinCount + 1,
+    sessionSpent: normalized.sessionSpent + Math.max(0, Math.floor(spinCostValue))
+  };
+}
+
+export function recordPrizeMachineWin(
+  state: PrizeMachineState,
+  wonResaleValue: number,
+  prizeKey?: string,
+  clearPlannedPremium = false
+): PrizeMachineState {
+  const normalized = normalizePrizeMachineState(state);
+  return {
+    ...normalized,
+    sessionWonValue: normalized.sessionWonValue + Math.max(0, Math.floor(wonResaleValue)),
+    recentPrizeKeys: prizeKey ? [prizeKey, ...normalized.recentPrizeKeys.filter((key) => key !== prizeKey)].slice(0, 2) : normalized.recentPrizeKeys,
+    plannedPremiumPrize: clearPlannedPremium ? undefined : normalized.plannedPremiumPrize
+  };
+}
+
+export function prizeMachineTargetResaleValue(state: PrizeMachineState): number {
+  const normalized = normalizePrizeMachineState(state);
+  const gainMultiplier = 1 + normalized.sessionGainPerSpin * normalized.sessionSpinCount;
+  return Math.max(0, normalized.sessionSpent * gainMultiplier);
+}
+
+export function prizeMachineOwedResaleValue(state: PrizeMachineState): number {
+  const normalized = normalizePrizeMachineState(state);
+  return prizeMachineTargetResaleValue(normalized) - normalized.sessionWonValue;
 }
 
 export function runPrizeMachineSpin(
@@ -124,6 +232,27 @@ function normalizeLastResult(source: PrizeMachineResult | undefined): PrizeMachi
   };
 }
 
+function normalizePremiumPrize(source: unknown): PrizeSpinPrize | undefined {
+  return source === "rare" || source === "superRare" || source === "rareFish" || source === "premiumCommon"
+    ? source
+    : undefined;
+}
+
+function normalizeBetAmount(source: unknown): PrizeMachineBetAmount {
+  const numeric = Number(source);
+  return prizeMachineBetAmounts.includes(numeric as PrizeMachineBetAmount) ? numeric as PrizeMachineBetAmount : 100;
+}
+
+function sanitizeRecentPrizeKeys(source: unknown): string[] {
+  return Array.isArray(source)
+    ? source.filter((item): item is string => typeof item === "string" && item.length > 0).slice(0, 2)
+    : [];
+}
+
 function sanitizeCount(value: unknown): number {
   return Number.isFinite(value) ? Math.max(0, Math.floor(Number(value))) : 0;
+}
+
+function sanitizeGainRate(value: unknown): number {
+  return Number.isFinite(value) ? Math.max(-0.001, Math.min(0.001, Number(value))) : 0;
 }

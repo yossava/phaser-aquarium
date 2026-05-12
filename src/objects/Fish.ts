@@ -80,6 +80,7 @@ const overfullHungerFloor = -10000;
 const hungryStateThreshold = 68;
 const severeHungerDamageThreshold = 94;
 const sickAfterContinuousHungerSeconds = 5 * 60;
+const fishResaleBaseRate = 0.7;
 export const fatalCareSeconds = 24 * 60 * 60;
 
 export class Fish {
@@ -423,6 +424,10 @@ export class Fish {
   }
 
   public getSellValue(): number {
+    return Math.max(1, Math.floor(fishCommonPrice(this.type) * fishResaleBaseRate * this.resaleAdjustmentMultiplier()));
+  }
+
+  public resaleAdjustmentMultiplier(): number {
     const ageMultiplierByStage: Record<AgeStage, number> = {
       baby: 0.82,
       juvenile: 1.25,
@@ -444,16 +449,13 @@ export class Fish {
       1.12
     );
     const rawValue =
-      this.type.sellBaseValue.amount *
       ageMultiplierByStage[this.ageStage] *
       rarityMultiplier[this.type.rarity] *
       productionMultiplier *
       sizeMultiplier *
       resilienceMultiplier *
       conditionMultiplier;
-    const babyResaleCap = Math.floor(fishCommonPrice(this.type) * 0.82);
-    const cappedValue = this.ageStage === "baby" ? Math.min(rawValue, babyResaleCap) : rawValue;
-    return Math.max(1, Math.floor(cappedValue));
+    return Math.max(0.35, rawValue);
   }
 
   public movementSizeMultiplier(): number {
