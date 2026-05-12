@@ -235,26 +235,14 @@ canvas {
     display: grid;
     min-height: 0;
     flex: 1 1 auto;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto;
     gap: clamp(0.14rem, 0.55vw, 0.25rem);
     overflow: hidden;
   }
 
-  .aq-decor-size-grid {
-    @apply grid min-h-0 grid-cols-2 gap-0.5;
-  }
-
-  .aq-decor-card .aq-qty {
-    min-height: 0;
-    height: clamp(19px, 45%, 24px);
-    @apply px-1 py-0 text-[9px] leading-none;
-  }
-
-  .aq-decor-buy {
-    align-self: end;
-    height: clamp(23px, 11%, 28px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
-    @apply flex items-center justify-center px-1 py-0 text-[10px] leading-none;
+  .aq-decor-shop-note {
+    @apply mt-auto rounded-xl border border-cyan-100/18 bg-sky-950/42 px-2 py-1.5 text-[10px] font-bold leading-tight text-cyan-50/82;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
   .aq-page-shell {

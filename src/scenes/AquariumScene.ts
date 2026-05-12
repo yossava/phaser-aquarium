@@ -315,10 +315,11 @@ const coinAssetPathByType: Record<CoinType, string> = {
 };
 const menuIconAssetPathByKey: Record<string, string> = {
   "ui-shop": "/assets/ui/shop.png",
-  "ui-clean": "/assets/ui/care.png",
-  "ui-book": "/assets/ui/book.png",
-  "ui-goals": "/assets/ui/goals.png",
-  "ui-settings": "/assets/ui/settings.png"
+  "ui-game": "/assets/ui/menu/menu_game_shell.png",
+  "ui-book": "/assets/ui/menu/menu_inventory_book.png",
+  "ui-tanks": "/assets/ui/menu/menu_tanks_aquarium.png",
+  "ui-goals": "/assets/ui/menu/menu_quest_trophy.png",
+  "ui-settings": "/assets/ui/menu/menu_settings_gear.png"
 };
 const hudIconAssetPathByKey: Record<string, string> = {
   "ui-icon-common-coin": "/assets/ui/icon-common-coin.png",
@@ -1501,11 +1502,11 @@ export class AquariumScene extends Phaser.Scene {
     const gameY = toggleY + menuSpacing;
     const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
       { id: "shop", label: "Shop", y: shopY, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
-      { id: "game", label: "Game", y: gameY, icon: "/assets/ui/shop/shell_reward_badge.png", action: () => this.openPrizeMachineArcade() },
-      { id: "book", label: "Inventory", y: gameY + menuSpacing, icon: "/assets/ui/book.png", action: () => this.openScreen("album") },
-      { id: "tanks", label: "Tanks", y: gameY + menuSpacing * 2, icon: "/assets/ui/shop/icon_category_tanks.png", action: () => this.openScreen("tanks") },
-      { id: "quest", label: "Quest", y: gameY + menuSpacing * 3, icon: "/assets/ui/goals.png", action: () => this.openScreen("goals") },
-      { id: "settings", label: "Set", y: gameY + menuSpacing * 4, icon: "/assets/ui/settings.png", action: () => this.openScreen("settings") }
+      { id: "game", label: "Game", y: gameY, icon: menuIconAssetPathByKey["ui-game"], action: () => this.openPrizeMachineArcade() },
+      { id: "book", label: "Inventory", y: gameY + menuSpacing, icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
+      { id: "tanks", label: "Tanks", y: gameY + menuSpacing * 2, icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openScreen("tanks") },
+      { id: "quest", label: "Quest", y: gameY + menuSpacing * 3, icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals") },
+      { id: "settings", label: "Set", y: gameY + menuSpacing * 4, icon: menuIconAssetPathByKey["ui-settings"], action: () => this.openScreen("settings") }
     ];
 
     for (const item of screens) {

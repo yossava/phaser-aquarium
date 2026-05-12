@@ -234,9 +234,8 @@ export class Fish {
       const tooSmall = this.isFoodTooSmall(closestFood);
       const accepted = this.acceptsFood(closestFood);
       const neededMealCalories = this.mealCaloriesNeeded();
-      const missingCalories = Math.max(0, (this.hunger / 100) * this.fullCaloriesNeed());
       const consumedCalories = accepted
-        ? Phaser.Math.Clamp(Math.min(closestFood.nutrition, neededMealCalories, Math.max(1, missingCalories)), 0, closestFood.nutrition)
+        ? closestFood.nutrition
         : 0;
       if (accepted) {
         this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromCalories(consumedCalories), overfullHungerFloor, 100);

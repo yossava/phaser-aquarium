@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-05-12T17:53:00+07:00",
+  "style": "cohesive glossy toy-like mobile aquarium menu icons, keyed from magenta source",
+  "assets": [
+    {
+      "file": "menu_game_shell.png",
+      "menu": "Game",
+      "subject": "spinner wheel with dart"
+    },
+    {
+      "file": "menu_inventory_book.png",
+      "menu": "Inventory",
+      "subject": "open storage container with items"
+    },
+    {
+      "file": "menu_tanks_aquarium.png",
+      "menu": "Tanks",
+      "subject": "stacked aquarium collection cards"
+    },
+    {
+      "file": "menu_quest_trophy.png",
+      "menu": "Quest",
+      "subject": "quest scroll map with star seal"
+    },
+    {
+      "file": "menu_settings_gear.png",
+      "menu": "Settings",
+      "subject": "simple turquoise gear with pearl center"
+    }
+  ]
+}

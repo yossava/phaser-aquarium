@@ -263,7 +263,7 @@ export class StoreOverlay {
       return this.tankCosmeticCard(item, state);
     }
     if ("kind" in item && item.kind === "tankDecoration") {
-      return this.tankDecorationCard(item, state);
+      return this.tankDecorationCard(item);
     }
     if ("kind" in item && item.kind === "tankUtility") {
       return this.tankUtilityCard(item, state);
@@ -457,23 +457,9 @@ export class StoreOverlay {
     overlay.style.opacity = String(Math.max(0, Math.min(100, Math.round(intensity))) / 100);
   }
 
-  private tankDecorationCard(decoration: StoreTankDecorationCard, state: StoreOverlayState): HTMLElement {
+  private tankDecorationCard(decoration: StoreTankDecorationCard): HTMLElement {
     const card = createStoreBaseCard(decoration.rarity);
     card.classList.add("aq-decor-card");
-    const controls = el("div", "aq-decor-size-grid");
-    decoration.variants.forEach((variant) => {
-      const label = variant.owned > 0
-        ? `${variant.label} x${formatNumber(variant.owned)}`
-        : `${variant.label} ${formatPrice(variant.price)}`;
-      controls.append(
-        button(label, "aq-qty", () => {
-          variant.owned > 0
-            ? this.actions.selectTankDecoration(decoration.id, variant.size)
-            : this.actions.buyTankDecoration(decoration.id, variant.size);
-        }, variant.owned <= 0 && !state.developerGodMode && !canAfford(state.wallet, variant.price))
-      );
-    });
-    const mediumAffordable = state.developerGodMode || canAfford(state.wallet, decoration.price);
     card.append(
       createStorePreview(`/assets/decorations/${decoration.id}.png`, decoration.name, "aq-decor-preview"),
       div("aq-decor-card-body", [
@@ -481,8 +467,7 @@ export class StoreOverlay {
           div("min-w-0 truncate text-sm font-black leading-tight", [decoration.name]),
           createStorePriceBadge(decoration.price)
         ]),
-        controls,
-        button(mediumAffordable ? "Buy Medium" : `Need ${formatPrice(decoration.price)}`, "aq-buy aq-decor-buy w-full", () => this.actions.buyTankDecoration(decoration.id, "m"), !mediumAffordable)
+        div("aq-decor-shop-note", ["Buy and place this in Background mode."])
       ])
     );
     return card;
