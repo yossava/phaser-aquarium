@@ -173,7 +173,7 @@ type PlacementMode =
   | { kind: "decoration"; decorationTypeId: string; size: DecorationSize };
 
 type TankMenuTab = "tanks" | "background" | "seabed" | "decor" | "utility";
-type InventoryTab = "fish" | "food" | "coins";
+type InventoryTab = "fish" | "food" | "decor" | "coins";
 type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; badgeLabel?: string; icon: string }
   | { kind: "fish"; id: string; label: string; count: number; icon: string }
@@ -2561,7 +2561,7 @@ export class AquariumScene extends Phaser.Scene {
     }
     if (this.tankMenuTab === "decor") {
       return decorationTypes
-        .filter((decorationType) => decorationSizeOrder.some((size) => this.getDecorationInventory(decorationType.id, size) > 0))
+        .filter((decorationType) => decorationSizeOrder.some((size) => this.getOwnedDecorationCount(decorationType.id, size) > 0))
         .map((decorationType) => this.createDecorationHtmlCard(decorationType));
     }
     return this.hasFoodDispenser() ? [this.createFoodDispenserHtmlCard()] : [];
@@ -2688,16 +2688,21 @@ export class AquariumScene extends Phaser.Scene {
     );
     const sizeGrid = htmlElement("div", "aq-page-size-grid");
     decorationSizeOrder.forEach((size) => {
-      const owned = this.getDecorationInventory(decorationType.id, size);
+      const stored = this.getDecorationInventory(decorationType.id, size);
+      const placed = this.getPlacedDecorationCount(decorationType.id, size);
+      const owned = stored + placed;
       if (owned <= 0) {
         return;
       }
-      const label = `${decorationSizes[size].label} x${formatNumber(owned)}`;
+      const label = stored > 0
+        ? `${decorationSizes[size].label} x${formatNumber(stored)}`
+        : `${decorationSizes[size].label} in tank x${formatNumber(placed)}`;
       sizeGrid.append(
         this.htmlButton(
           label,
           "aq-page-size-button owned",
-          () => this.selectDecoration(decorationType.id, size)
+          () => this.selectDecoration(decorationType.id, size),
+          stored <= 0
         )
       );
     });
@@ -2730,6 +2735,10 @@ export class AquariumScene extends Phaser.Scene {
       this.appendInventoryFoodTab(content);
       return;
     }
+    if (this.inventoryTab === "decor") {
+      this.appendInventoryDecorTab(content);
+      return;
+    }
     this.appendInventoryCoinsTab(content);
   }
 
@@ -2737,6 +2746,7 @@ export class AquariumScene extends Phaser.Scene {
     const tabs: Array<{ tab: InventoryTab; label: string; icon: string }> = [
       { tab: "fish", label: "Fish", icon: "/assets/ui/shop/icon_category_fish.png" },
       { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png" },
+      { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png" },
       { tab: "coins", label: "Coins", icon: "/assets/ui/shop/coin_icon_rare.png" }
     ];
     return createPageTabRow(tabs, this.inventoryTab, this.pageButtonFactory(), (tab) => {
@@ -2786,6 +2796,24 @@ export class AquariumScene extends Phaser.Scene {
       ownedFood.forEach((foodType) => foodList.append(this.createFoodInventoryRow(foodType)));
     }
     content.append(foodList);
+  }
+
+  private appendInventoryDecorTab(content: HTMLElement): void {
+    const decorList = htmlElement("div", "aq-album-list");
+    const rows: HTMLElement[] = [];
+    decorationTypes.forEach((decorationType) => {
+      decorationSizeOrder.forEach((size) => {
+        if (this.getOwnedDecorationCount(decorationType.id, size) > 0) {
+          rows.push(this.createDecorationInventoryRow(decorationType, size));
+        }
+      });
+    });
+    if (rows.length === 0) {
+      decorList.append(createPageEmptyCard("No decorations owned", "Buy tank decorations from Shop."));
+    } else {
+      decorList.append(...rows);
+    }
+    content.append(decorList);
   }
 
   private appendInventoryCoinsTab(content: HTMLElement): void {
@@ -2854,6 +2882,26 @@ export class AquariumScene extends Phaser.Scene {
         () => this.showCoinSellConfirmation(coinType),
         count <= 0
       )
+    );
+    return row;
+  }
+
+  private createDecorationInventoryRow(decorationType: DecorationType, size: DecorationSize): HTMLElement {
+    const storedCount = this.getDecorationInventory(decorationType.id, size);
+    const placedCount = this.getPlacedDecorationCount(decorationType.id, size);
+    const count = storedCount + placedCount;
+    const sellValue = this.decorationSellValue(decorationType, size, count);
+    const sizeLabel = decorationSizes[size].label;
+    const row = htmlElement("article", "aq-album-row decor");
+    const body = htmlElement("div", "aq-album-row-body", [
+      htmlElement("h3", "aq-album-row-title", [decorationType.name]),
+      htmlElement("p", "aq-album-row-meta", [`${sizeLabel} x${formatNumber(count)} | Stored ${formatNumber(storedCount)} | Tank ${formatNumber(placedCount)}`]),
+      htmlElement("p", "aq-album-row-copy", [`Sell all for C${formatNumber(sellValue)}`])
+    ]);
+    row.append(
+      htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-album-row-image"),
+      body,
+      this.htmlButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showDecorationSellConfirmation(decorationType.id, size))
     );
     return row;
   }
@@ -4075,6 +4123,29 @@ export class AquariumScene extends Phaser.Scene {
     this.saveNow();
   }
 
+  private decorationSellValue(decorationType: DecorationType, size: DecorationSize, count = this.getOwnedDecorationCount(decorationType.id, size)): number {
+    return Math.max(1, Math.floor(this.priceWealth(this.decorationVariantPrice(decorationType, size)) * inventorySellRate * Math.max(0, count)));
+  }
+
+  private sellDecorationInventory(decorationTypeId: string, size: DecorationSize): void {
+    const decorationType = decorationTypes.find((item) => item.id === decorationTypeId);
+    const count = this.getOwnedDecorationCount(decorationTypeId, size);
+    if (!decorationType || count <= 0) {
+      this.floatText("No decor to sell", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    const sellValue = this.decorationSellValue(decorationType, size, count);
+    this.clearStoredDecorationInventory(decorationTypeId, size);
+    this.removePlacedDecorationsFromActiveTank(decorationTypeId, size);
+    earn(this.wallet, "common", sellValue);
+    this.floatText(`Sold ${decorationType.name} +C${formatNumber(sellValue)}`, toastX, toastY, "#ffe67a");
+    this.closeModal();
+    this.createFoodDock();
+    this.refreshUi();
+    this.saveNow();
+  }
+
   private sellCoinInventory(coinType: "rare" | "superRare"): void {
     if (this.wallet[coinType] <= 0) {
       this.floatText("No coins to sell", toastX, toastY, "#ffb0a8");
@@ -4557,12 +4628,12 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
-  private addDecorationToTank(decoration: DecorationType, x: number, y: number, size: DecorationSize = "m"): void {
+  private addDecorationToTank(decoration: DecorationType, x: number, y: number, size: DecorationSize = "m", tankLevel = this.tankLevel): void {
     const image = this.add.image(x, y, decoration.texture).setDepth(y > tankBounds.bottom - 80 ? 5 : 3);
     this.fitDecorationDisplay(image, decoration, size);
     image.setInteractive({ useHandCursor: true });
     this.tankLayer.add(image);
-    const placedDecoration = { typeId: decoration.id, size, image, tankLevel: this.tankLevel };
+    const placedDecoration = { typeId: decoration.id, size, image, tankLevel };
     image.setVisible(placedDecoration.tankLevel === this.tankLevel);
     this.placedDecorations.push(placedDecoration);
     this.bindDecorationPointerGuard(placedDecoration);
@@ -4836,10 +4907,15 @@ export class AquariumScene extends Phaser.Scene {
     for (const savedDecoration of saved.decorations) {
       const decoration = decorationTypes.find((item) => item.id === savedDecoration.typeId);
       if (decoration) {
-        const previousTank = this.tankLevel;
-        this.tankLevel = Math.max(1, Math.floor(savedDecoration.tankLevel ?? 1));
-        this.addDecorationToTank(decoration, savedDecoration.x, savedDecoration.y, this.sanitizeDecorationSize(savedDecoration.size));
-        this.tankLevel = previousTank;
+        const savedTankLevel = Math.max(1, Math.floor(savedDecoration.tankLevel ?? 1));
+        const decorationTankLevel = this.hasTankLevel(savedTankLevel) ? savedTankLevel : this.tankLevel;
+        this.addDecorationToTank(
+          decoration,
+          savedDecoration.x,
+          savedDecoration.y,
+          this.sanitizeDecorationSize(savedDecoration.size),
+          decorationTankLevel
+        );
       }
     }
 
@@ -5588,6 +5664,43 @@ export class AquariumScene extends Phaser.Scene {
       return variantCount + (this.decorationInventory.get(decorationTypeId) ?? 0);
     }
     return variantCount;
+  }
+
+  private getPlacedDecorationCount(decorationTypeId: string, size: DecorationSize, level = this.tankLevel): number {
+    return this.placedDecorations.filter((decoration) =>
+      decoration.tankLevel === level &&
+      decoration.typeId === decorationTypeId &&
+      this.sanitizeDecorationSize(decoration.size) === size
+    ).length;
+  }
+
+  private getOwnedDecorationCount(decorationTypeId: string, size: DecorationSize, level = this.tankLevel): number {
+    return this.getDecorationInventory(decorationTypeId, size) + this.getPlacedDecorationCount(decorationTypeId, size, level);
+  }
+
+  private clearStoredDecorationInventory(decorationTypeId: string, size: DecorationSize): void {
+    this.decorationInventory.delete(this.decorationInventoryKey(decorationTypeId, size));
+    if (size === "m") {
+      this.decorationInventory.delete(decorationTypeId);
+    }
+  }
+
+  private removePlacedDecorationsFromActiveTank(decorationTypeId: string, size: DecorationSize): void {
+    const keptDecorations: PlacedDecoration[] = [];
+    for (const decoration of this.placedDecorations) {
+      const matchesActiveTank =
+        decoration.tankLevel === this.tankLevel &&
+        decoration.typeId === decorationTypeId &&
+        this.sanitizeDecorationSize(decoration.size) === size;
+
+      if (matchesActiveTank) {
+        decoration.image.destroy();
+      } else {
+        keptDecorations.push(decoration);
+      }
+    }
+
+    this.placedDecorations = keptDecorations;
   }
 
   private hasFoodDispenser(): boolean {
@@ -6392,6 +6505,33 @@ export class AquariumScene extends Phaser.Scene {
       ],
       [
         { label: `SELL ${formatNumber(sellValue)}`, fill: 0x76512d, action: () => this.sellFoodInventory(foodTypeId) },
+        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
+      ]
+    );
+  }
+
+  private showDecorationSellConfirmation(decorationTypeId: string, size: DecorationSize): void {
+    const decorationType = decorationTypes.find((item) => item.id === decorationTypeId);
+    const storedCount = this.getDecorationInventory(decorationTypeId, size);
+    const placedCount = this.getPlacedDecorationCount(decorationTypeId, size);
+    const count = storedCount + placedCount;
+    if (!decorationType || count <= 0) {
+      this.floatText("No decor to sell", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    const sellValue = this.decorationSellValue(decorationType, size, count);
+    const sizeLabel = decorationSizes[size].label;
+    this.showModal(
+      "Sell Decoration",
+      [
+        `${decorationType.name} ${sizeLabel} will be converted to common coins.`,
+        `Owned: x${formatNumber(count)}`,
+        `Stored: ${formatNumber(storedCount)} | In tank: ${formatNumber(placedCount)}`,
+        `You receive C${formatNumber(sellValue)}.`
+      ],
+      [
+        { label: `SELL ${formatNumber(sellValue)}`, fill: 0x76512d, action: () => this.sellDecorationInventory(decorationTypeId, size) },
         { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
       ]
     );
