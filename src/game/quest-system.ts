@@ -13,7 +13,7 @@ export type DailyGoalsState = {
   claimed: string[];
 };
 
-export type RewardedAdKind = "common" | "rare" | "superRare" | "ageBoost";
+export type RewardedAdKind = "common" | "food" | "fish" | "helper";
 
 export type RewardedAdState = {
   kind: RewardedAdKind;
@@ -25,6 +25,13 @@ export type RewardedAdOption = {
   title: string;
   detail: string;
   icon: string;
+};
+
+export type RewardedAdCatalogInput = {
+  common: { detail: string; icon: string };
+  food: { detail: string; icon: string };
+  fish: { detail: string; icon: string };
+  helper: { detail: string; icon: string };
 };
 
 export type BuildDailyQuestItemsInput = {
@@ -145,12 +152,12 @@ export function rewardedAdCoinReward(coinType: CoinType, level: number, wallet: 
   return commonQuestReward(level, wallet, totalWealth, 0.9);
 }
 
-export function rewardedAdOptions(rewardForCoin: (coinType: CoinType) => Price): RewardedAdOption[] {
+export function rewardedAdOptions(input: RewardedAdCatalogInput): RewardedAdOption[] {
   return [
-    { kind: "common", title: "Common Coins", detail: formatPrice(rewardForCoin("common")), icon: "/assets/ui/shop/coin_icon_common.png" },
-    { kind: "rare", title: "Rare Coins", detail: formatPrice(rewardForCoin("rare")), icon: "/assets/ui/shop/coin_icon_rare.png" },
-    { kind: "superRare", title: "Ultra Rare Coins", detail: formatPrice(rewardForCoin("superRare")), icon: "/assets/ui/shop/coin_icon_super_rare.png" },
-    { kind: "ageBoost", title: "Growth Tonic", detail: "1 age booster pill", icon: "/assets/food/ageBoost.png" }
+    { kind: "common", title: "Common Coins", detail: input.common.detail, icon: input.common.icon },
+    { kind: "food", title: "Food Pack", detail: input.food.detail, icon: input.food.icon },
+    { kind: "fish", title: "Fish", detail: input.fish.detail, icon: input.fish.icon },
+    { kind: "helper", title: "Helper", detail: input.helper.detail, icon: input.helper.icon }
   ];
 }
 

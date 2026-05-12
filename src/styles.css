@@ -499,6 +499,10 @@ canvas {
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.26), 0 3px 0 rgba(6, 50, 73, 0.8);
   }
 
+  .aq-tank-background-button {
+    @apply col-span-2 flex w-full items-center justify-center text-center;
+  }
+
   .aq-page-button-good {
     @apply border-lime-200/70;
     background: linear-gradient(#80e43a, #26921f);
@@ -969,8 +973,10 @@ canvas {
   }
 
   .aq-page-tank-level {
-    @apply rounded-full border border-white/30 bg-sky-950/55 px-4 py-2 text-xl font-black text-white;
-    text-shadow: 0 3px 0 rgba(0, 31, 53, 0.72);
+    @apply absolute right-2.5 top-2.5 inline-flex w-fit items-center justify-center rounded-full border border-orange-100/75 px-2.5 py-1 text-center text-xs font-black leading-none text-white;
+    background: linear-gradient(#ffbd42, #e46f0f);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 2px 0 rgba(88, 35, 4, 0.62);
+    text-shadow: 0 2px 0 rgba(83, 32, 0, 0.68);
   }
 
   .aq-modal-shell {

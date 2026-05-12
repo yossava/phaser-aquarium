@@ -232,9 +232,9 @@ const fishEatSoundPath = "/assets/audio/sfx/fish-eat.ogg";
 const fishHungrySoundKey = "sfx-fish-hungry";
 const fishHungrySoundPath = "/assets/audio/sfx/fish-hungry.ogg";
 const prizeHighlightSoundKey = "sfx-prize-highlight";
-const prizeHighlightSoundPath = "/assets/audio/kenney/ui-audio/Audio/switch17.ogg";
+const prizeHighlightSoundPath = "/assets/audio/sfx/prize-highlight.ogg";
 const prizeRewardSoundKey = "sfx-prize-reward";
-const prizeRewardSoundPath = "/assets/audio/kenney/interface-sounds/Audio/toggle_002.ogg";
+const prizeRewardSoundPath = "/assets/audio/sfx/prize-reward.ogg";
 const backgroundMusicKey = "music-underwater-ambient";
 const backgroundMusicPath = "/assets/audio/bgm/underwater.mp3";
 const fishCapacityByCatalogTankLevel: Record<number, number> = {
@@ -1369,8 +1369,12 @@ export class AquariumScene extends Phaser.Scene {
 
     const scale = Math.max(0.01, this.tankViewScaleForLevel());
     const textureKeys = this.themedTankTextureKeys();
-    const textureKey = this.textures.exists(textureKeys.floorKey) ? textureKeys.floorKey : aquariumFloorTextureKey;
+    const floorTextureReady = this.textures.exists(textureKeys.floorKey);
     this.ensureTextureLoaded(textureKeys.floorKey, tankTextureAssetPathByKey.get(textureKeys.floorKey), () => this.layoutTankFloor());
+    if (!floorTextureReady && this.activeScreen === "makeup") {
+      return;
+    }
+    const textureKey = floorTextureReady ? textureKeys.floorKey : aquariumFloorTextureKey;
     this.tankSand.setTexture(textureKey);
     this.tankSand.setOrigin(0.5, 1);
     this.tankSand.setPosition(tankBounds.centerX, this.visibleTankBottomDesignY());
@@ -2651,7 +2655,7 @@ export class AquariumScene extends Phaser.Scene {
     }
     const overlay = htmlElement("div", "aq-tank-grid-overlay");
     overlay.append(
-      htmlElement("span", "aq-page-tank-level", [`Lv${formatNumber(this.tankDisplayLevel(level))}`]),
+      htmlElement("span", "aq-page-tank-level", [`Level ${formatNumber(this.tankDisplayLevel(level))}`]),
       htmlElement("h3", "aq-page-card-title", [this.getTankName(level)]),
       htmlElement("p", "aq-page-card-meta", [`${owned ? "Owned" : "Locked"} | ${formatNumber(this.fishInTank(level).length)}/${formatNumber(this.maxFishCapacityForLevel(level))} fish`]),
       htmlElement("p", "aq-page-card-copy", [`Worth ${formatNumber(this.calculateTankNetWorth(level))} | ${this.tankSummary(level)}`])
@@ -2661,7 +2665,7 @@ export class AquariumScene extends Phaser.Scene {
       const actions = htmlElement("div", "aq-page-actions compact");
       if (level === this.tankLevel) {
         actions.append(
-          this.htmlButton("Makeup", "aq-page-button aq-page-button-good", () => this.openMakeupMode(level))
+          this.htmlButton("Background", "aq-page-button aq-page-button-good aq-tank-background-button", () => this.openMakeupMode(level))
         );
         overlay.append(actions);
       } else {
@@ -3980,7 +3984,63 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private rewardedAdOptions(): RewardedAdOption[] {
-    return buildRewardedAdOptions((coinType) => this.rewardedAdCoinReward(coinType));
+    const commonReward = this.rewardedAdCoinReward("common");
+    const foodReward = this.rewardedAdFoodReward();
+    const fishReward = this.rewardedAdFishReward();
+    const helperReward = this.rewardedAdHelperReward();
+    return buildRewardedAdOptions({
+      common: {
+        detail: formatPrice(commonReward),
+        icon: coinAssetPathByType.common
+      },
+      food: {
+        detail: foodReward.name,
+        icon: foodAssetPath(foodReward.id)
+      },
+      fish: {
+        detail: fishReward.name,
+        icon: `/assets/fish/${fishReward.id}.png`
+      },
+      helper: {
+        detail: helperReward.name,
+        icon: `/assets/helpers/${helperReward.id}.png`
+      }
+    });
+  }
+
+  private rewardedAdFoodReward(): FoodType {
+    const candidates = foodTypes.filter((foodType) => this.isCalorieTrackedFood(foodType.id) && this.isDroppableFood(foodType.id));
+    const targetCalories = this.activeFish()
+      .map((fish) => fish.mealCaloriesNeeded())
+      .sort((first, second) => second - first)[0] ?? basicFood.calories;
+    const sorted = [...candidates].sort((first, second) => {
+      const firstShortfall = first.calories >= targetCalories ? 0 : targetCalories - first.calories;
+      const secondShortfall = second.calories >= targetCalories ? 0 : targetCalories - second.calories;
+      return firstShortfall - secondShortfall || first.calories - second.calories;
+    });
+    return sorted[0] ?? basicFood;
+  }
+
+  private rewardedAdFishReward(): FishType {
+    const ownedFishIds = new Set([
+      ...this.fish.map((fish) => fish.type.id),
+      ...[...this.fishInventory.entries()].filter(([, count]) => count > 0).map(([fishTypeId]) => fishTypeId)
+    ]);
+    const availableCommon = fishTypes
+      .filter((fishType) => fishType.rarity === "common" && fishType.tankLevel <= this.tankDisplayLevel())
+      .sort((first, second) => first.tankLevel - second.tankLevel || this.priceWealth(first.price) - this.priceWealth(second.price));
+    return availableCommon.find((fishType) => !ownedFishIds.has(fishType.id)) ?? availableCommon[0] ?? fishTypes[0];
+  }
+
+  private rewardedAdHelperReward(): HelperCreatureType {
+    const ownedHelperIds = new Set([
+      ...this.helperCreatures.map((helper) => helper.type.id),
+      ...[...this.creatureInventory.entries()].filter(([, count]) => count > 0).map(([helperTypeId]) => helperTypeId)
+    ]);
+    const availableCommon = helperCreatureTypes
+      .filter((creatureType) => creatureType.rarity === "common")
+      .sort((first, second) => this.priceWealth(first.price) - this.priceWealth(second.price));
+    return availableCommon.find((creatureType) => !ownedHelperIds.has(creatureType.id)) ?? availableCommon[0] ?? helperCreatureTypes[0];
   }
 
   private appendSettingsPage(content: HTMLElement): void {
@@ -6868,17 +6928,29 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    if (kind === "ageBoost") {
-      const foodType = foodTypes.find((item) => item.id === "ageBoost");
-      if (foodType) {
-        this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + 1);
-        this.recentInventoryDockItemKey = `food:${foodType.id}`;
-        this.floatText("+1 Growth Tonic", toastX, toastY, "#d9c2ff");
-      }
-    } else {
+    if (kind === "common") {
       const reward = this.rewardedAdCoinReward(kind);
       earn(this.wallet, reward.coinType, reward.amount);
       this.floatText(`+${formatPrice(reward)} ad`, toastX, toastY, "#ffe67a");
+    } else if (kind === "food") {
+      const foodType = this.rewardedAdFoodReward();
+      const inventoryAmount = this.isCalorieTrackedFood(foodType.id) ? foodType.calories : 1;
+      this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + inventoryAmount);
+      this.recentInventoryDockItemKey = `food:${foodType.id}`;
+      if (this.isDroppableFood(foodType.id)) {
+        this.selectedFoodTypeId = foodType.id;
+      }
+      this.floatText(`+${foodType.name}`, toastX, toastY, "#ffe67a");
+    } else if (kind === "fish") {
+      const fishType = this.rewardedAdFishReward();
+      this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
+      this.recentInventoryDockItemKey = `fish:${fishType.id}`;
+      this.floatText(`+${fishType.name}`, toastX, toastY, "#a8ffb0");
+    } else if (kind === "helper") {
+      const creatureType = this.rewardedAdHelperReward();
+      this.creatureInventory.set(creatureType.id, this.getCreatureInventory(creatureType.id) + 1);
+      this.recentInventoryDockItemKey = `helper:${creatureType.id}`;
+      this.floatText(`+${creatureType.name}`, toastX, toastY, "#a8ffb0");
     }
 
     this.rewardedAd = undefined;

@@ -82,15 +82,16 @@ export function playPrizeMachineSpin(
   const centerY = prizeRingCenterY();
   const ringRadius = prizeRingRadius(segmentCount);
   const resultSegment = segments[Phaser.Math.Clamp(resultIndex, 0, segmentCount - 1)] ?? segments[0];
+  const textScale = 1 / prizeUiRenderScale(scene);
   const resultText = createResultText(scene, centerX, centerY, resultSegment);
-  const costText = createPrizePopText(scene, centerX, centerY, `-${formatPrice(config.spinCost)}`, "#ffb0a8").setScale(0.74);
+  const costText = createPrizePopText(scene, centerX, centerY, `-${formatPrice(config.spinCost)}`, "#ffb0a8").setScale(0.74 * textScale);
   const ring = createPrizeRing(scene, segments, centerX, centerY, ringRadius);
   const balanceText = createBalanceText(scene, centerX, hud.commonCoins);
   const container = createPrizeSpinnerShell(scene, config, segments, [balanceText], [costText, resultText], ring);
 
   scene.tweens.add({
     targets: costText,
-    scale: { from: 0.58, to: 0.94 },
+    scale: { from: 0.58 * textScale, to: 0.94 * textScale },
     duration: 240,
     ease: "Back.easeOut"
   });
@@ -100,14 +101,14 @@ export function playPrizeMachineSpin(
     scene.tweens.add({
       targets: costText,
       alpha: 0,
-      scale: 0.55,
+      scale: 0.55 * textScale,
       duration: 160,
       ease: "Sine.easeIn"
     });
     scene.tweens.add({
       targets: resultText,
       alpha: 1,
-      scale: { from: 0.58, to: 1 },
+      scale: { from: 0.58 * textScale, to: textScale },
       duration: 280,
       ease: "Back.easeOut",
       onComplete: () => {
@@ -265,26 +266,30 @@ function setActivePrizeCell(scene: Phaser.Scene, cells: PrizeRingCell[], activeI
 }
 
 function createTitle(scene: Phaser.Scene, x: number, y: number, label: string, fontSize: string, color: string): Phaser.GameObjects.Text {
+  const renderScale = prizeUiRenderScale(scene);
+  const numericFontSize = parseFontSize(fontSize);
   return scene.add.text(x, y, label, {
     fontFamily: gameFontFamily,
-    fontSize,
+    fontSize: `${Math.round(numericFontSize * renderScale)}px`,
     color,
     fontStyle: "900",
     stroke: "#073047",
-    strokeThickness: fontSize === "34px" ? 6 : 4
-  }).setOrigin(0.5);
+    strokeThickness: Math.round((fontSize === "34px" ? 6 : 4) * renderScale)
+  }).setOrigin(0.5).setScale(1 / renderScale);
 }
 
 function createSegmentLabel(scene: Phaser.Scene, x: number, y: number, label: string, segmentCount: number): Phaser.GameObjects.Text {
+  const renderScale = prizeUiRenderScale(scene);
+  const fontSize = segmentCount >= 12 ? 8 : 10;
   return scene.add.text(x, y, label, {
     fontFamily: gameFontFamily,
-    fontSize: segmentCount >= 12 ? "8px" : "10px",
+    fontSize: `${Math.round(fontSize * renderScale)}px`,
     color: "#ffffff",
     fontStyle: "900",
     stroke: "#073047",
-    strokeThickness: 3,
+    strokeThickness: Math.round(3 * renderScale),
     align: "center"
-  }).setOrigin(0.5);
+  }).setOrigin(0.5).setScale(1 / renderScale);
 }
 
 function createResultText(scene: Phaser.Scene, x: number, y: number, segment: PrizeWheelSegment): Phaser.GameObjects.Text {
@@ -323,15 +328,25 @@ function resultLabel(segment: PrizeWheelSegment): string {
 }
 
 function createPrizePopText(scene: Phaser.Scene, x: number, y: number, label: string, color: string): Phaser.GameObjects.Text {
+  const renderScale = prizeUiRenderScale(scene);
   return scene.add.text(x, y, label, {
     fontFamily: gameFontFamily,
-    fontSize: "31px",
+    fontSize: `${Math.round(31 * renderScale)}px`,
     color,
     fontStyle: "900",
     stroke: "#073047",
-    strokeThickness: 7,
-    shadow: { offsetX: 0, offsetY: 4, color: "#001723", blur: 0, fill: true }
-  }).setOrigin(0.5);
+    strokeThickness: Math.round(7 * renderScale),
+    shadow: { offsetX: 0, offsetY: Math.round(4 * renderScale), color: "#001723", blur: 0, fill: true }
+  }).setOrigin(0.5).setScale(1 / renderScale);
+}
+
+function prizeUiRenderScale(scene: Phaser.Scene): number {
+  return Phaser.Math.Clamp(scene.scale.gameSize.width / gameWidth, 1, 2);
+}
+
+function parseFontSize(fontSize: string): number {
+  const parsed = Number.parseFloat(fontSize);
+  return Number.isFinite(parsed) ? parsed : 16;
 }
 
 function createBetSelector(
