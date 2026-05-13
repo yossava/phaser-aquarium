@@ -59,11 +59,15 @@ const fishMovementSpeedMultiplier = 0.62;
 const fishRestChanceAtTarget = 0.42;
 const minFishRestMs = 1800;
 const maxFishRestMs = 5200;
-const minPlayChaseDelayMs = 30000;
-const maxPlayChaseDelayMs = 45000;
-const minPlayChaseDurationMs = 3600;
-const maxPlayChaseDurationMs = 6200;
-const playChaseSpeedMultiplier = 1.9;
+const dragReleaseEscapeDurationMs = 900;
+const dragReleaseEscapeDistance = gameWidth * 0.62;
+const dragReleaseEscapeSpeedMultiplier = 5.2;
+const minOffscreenVisitDelayMs = 24_000;
+const maxOffscreenVisitDelayMs = 42_000;
+const minOffscreenVisitDurationMs = 2500;
+const maxOffscreenVisitDurationMs = 4200;
+const offscreenVisitMargin = gameWidth * 0.48;
+const offscreenVisitSpeedMultiplier = 1.45;
 const minimumFoodChaseSpeed = 150;
 const minimumMedicineChaseSpeed = 180;
 const foodPickupRadius = 34;
@@ -82,6 +86,8 @@ const severeHungerDamageThreshold = 94;
 const sickAfterContinuousHungerSeconds = 5 * 60;
 const fishResaleBaseRate = 0.7;
 export const fatalCareSeconds = 24 * 60 * 60;
+
+type OffscreenVisitState = "none" | "leaving" | "hidden" | "returning";
 
 export class Fish {
   public sprite: Phaser.GameObjects.Sprite;
@@ -115,9 +121,12 @@ export class Fish {
   private velocity = new Phaser.Math.Vector2();
   private restUntil = 0;
   private hasRestedAtTarget = false;
-  private nextPlayChaseAt = 0;
-  private playChaseUntil = 0;
-  private playChaseTarget?: Fish;
+  private dragReleaseEscapeUntil = 0;
+  private previousManualDragPosition = new Phaser.Math.Vector2();
+  private lastManualDragPosition = new Phaser.Math.Vector2();
+  private nextOffscreenVisitAt = 0;
+  private offscreenVisitState: OffscreenVisitState = "none";
+  private offscreenVisitHiddenUntil = 0;
   private pendingFacing?: number;
   private flipTransitionStartedAt = 0;
   private manuallyDragging = false;
@@ -162,7 +171,7 @@ export class Fish {
       .setOrigin(0.5)
       .setDepth(13);
     this.pickWanderTarget();
-    this.scheduleNextPlayChase();
+    this.scheduleNextOffscreenVisit();
     this.scheduleNextCoinProduction(scene.time.now);
     this.updateTailMark();
     this.updateStatusBars(true);
@@ -170,8 +179,7 @@ export class Fish {
 
   public update(
     deltaSeconds: number,
-    foods: FoodPellet[],
-    tankFish: Fish[] = []
+    foods: FoodPellet[]
   ): { food: FoodPellet; accepted: boolean; reason?: "tooSmall"; consumedCalories: number; neededMealCalories: number } | undefined {
     this.ageSeconds += deltaSeconds;
     this.updateAgeStage();
@@ -201,22 +209,35 @@ export class Fish {
       return undefined;
     }
 
-    const closestFood = this.findClosestFood(foods);
-    const chaseTarget = closestFood ? undefined : this.updatePlayChase(tankFish);
+    const escapingFromDrag = this.scene.time.now < this.dragReleaseEscapeUntil;
+    const offscreenVisitState = this.updateOffscreenVisit(foods, escapingFromDrag);
+    if (offscreenVisitState === "hidden") {
+      this.velocity.set(0, 0);
+      this.setStateTint();
+      this.animateSwimming(deltaSeconds, 0, false, true);
+      this.updateStateEmoji();
+      this.maybeUpdateStatusBars();
+      return undefined;
+    }
+
+    const visitingOffscreen = offscreenVisitState !== "none";
+    const closestFood = escapingFromDrag || visitingOffscreen ? undefined : this.findClosestFood(foods);
     let resting = false;
     if (closestFood) {
       this.restUntil = 0;
       this.hasRestedAtTarget = false;
       this.target.set(closestFood.sprite.x, closestFood.sprite.y);
-    } else if (chaseTarget) {
-      this.restUntil = 0;
-      this.hasRestedAtTarget = false;
-      this.target.set(chaseTarget.sprite.x, chaseTarget.sprite.y);
     } else if (Phaser.Math.Distance.BetweenPoints(this.sprite, this.target) < 16) {
       resting = this.updateIdleRest();
     }
 
-    const speedMultiplier = closestFood ? this.foodChaseSpeedMultiplier(closestFood) : chaseTarget ? playChaseSpeedMultiplier : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
+    const speedMultiplier = closestFood
+      ? this.foodChaseSpeedMultiplier(closestFood)
+      : escapingFromDrag
+        ? dragReleaseEscapeSpeedMultiplier
+        : visitingOffscreen
+          ? offscreenVisitSpeedMultiplier
+        : this.state === "ill" ? 0.45 : this.state === "hungry" ? 1.22 : 1;
     const rawMoveSpeed = this.type.speed * speedMultiplier * this.movementSizeMultiplier() * fishMovementSpeedMultiplier;
     const moveSpeed = closestFood
       ? Math.max(rawMoveSpeed, closestFood.foodType.id === "medicine" ? minimumMedicineChaseSpeed : minimumFoodChaseSpeed)
@@ -227,7 +248,7 @@ export class Fish {
       this.moveTowardTarget(deltaSeconds, moveSpeed);
     }
     this.setStateTint();
-    this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined || chaseTarget !== undefined, resting);
+    this.animateSwimming(deltaSeconds, resting ? moveSpeed * 0.16 : moveSpeed, closestFood !== undefined || escapingFromDrag || visitingOffscreen, resting);
     this.updateStateEmoji();
 
     if (closestFood && Phaser.Math.Distance.BetweenPoints(this.sprite, closestFood.sprite) < this.foodPickupRadius(closestFood)) {
@@ -282,9 +303,8 @@ export class Fish {
     this.updateCareState();
     this.restUntil = 0;
     this.hasRestedAtTarget = false;
-    this.playChaseTarget = undefined;
-    this.playChaseUntil = 0;
-    this.scheduleNextPlayChase();
+    this.offscreenVisitState = "none";
+    this.scheduleNextOffscreenVisit();
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
     this.ensureCoinProductionScheduled(this.scene.time.now);
@@ -372,17 +392,25 @@ export class Fish {
 
   public beginManualDrag(): void {
     this.manuallyDragging = true;
+    this.dragReleaseEscapeUntil = 0;
+    this.offscreenVisitState = "none";
+    this.scheduleNextOffscreenVisit();
+    this.pendingFacing = undefined;
     this.velocity.set(0, 0);
     this.target.set(this.sprite.x, this.sprite.y);
+    this.previousManualDragPosition.set(this.sprite.x, this.sprite.y);
+    this.lastManualDragPosition.set(this.sprite.x, this.sprite.y);
     this.showDragLoveEmoji();
     this.updateStatusBars(true);
   }
 
   public moveManuallyTo(x: number, y: number): void {
+    this.previousManualDragPosition.copy(this.lastManualDragPosition);
     this.sprite.setPosition(
       Phaser.Math.Clamp(x, tankBounds.left + 28, tankBounds.right - 28),
       Phaser.Math.Clamp(y, tankBounds.top + 26, tankBounds.bottom - 26)
     );
+    this.lastManualDragPosition.set(this.sprite.x, this.sprite.y);
     this.target.set(this.sprite.x, this.sprite.y);
     this.velocity.set(0, 0);
     this.updateStatusBars(true);
@@ -391,7 +419,8 @@ export class Fish {
   public endManualDrag(): void {
     this.manuallyDragging = false;
     this.velocity.set(0, 0);
-    this.target.set(this.sprite.x, this.sprite.y);
+    this.startDragReleaseEscape();
+    this.scheduleNextOffscreenVisit();
     this.updateStatusBars(true);
   }
 
@@ -517,7 +546,7 @@ export class Fish {
   }
 
   public canDropCoin(now: number): boolean {
-    return this.state !== "ill" && this.currentFullnessCalories() > 0 && this.nextCoinDropAt > 0 && now >= this.nextCoinDropAt;
+    return this.state !== "ill" && this.offscreenVisitState === "none" && !this.isOutsideView() && this.currentFullnessCalories() > 0 && this.nextCoinDropAt > 0 && now >= this.nextCoinDropAt;
   }
 
   public takeCoinProductionDrop(now: number): number {
@@ -1153,8 +1182,12 @@ export class Fish {
       deltaSeconds,
       3.8
     );
-    this.sprite.x = Phaser.Math.Clamp(this.sprite.x, tankBounds.left + 28, tankBounds.right - 28);
+    this.sprite.x = Phaser.Math.Clamp(this.sprite.x, this.minimumMovementX(), this.maximumMovementX());
     this.sprite.y = Phaser.Math.Clamp(this.sprite.y, tankBounds.top + 26, tankBounds.bottom - 26);
+
+    if (this.scene.time.now < this.dragReleaseEscapeUntil) {
+      return;
+    }
 
     const horizontalDistance = this.target.x - this.sprite.x;
     if (Math.abs(horizontalDistance) > directionFlipDeadzone) {
@@ -1180,40 +1213,126 @@ export class Fish {
     return false;
   }
 
-  private updatePlayChase(tankFish: Fish[]): Fish | undefined {
+  private startDragReleaseEscape(): void {
+    const direction = new Phaser.Math.Vector2(
+      this.lastManualDragPosition.x - this.previousManualDragPosition.x,
+      this.lastManualDragPosition.y - this.previousManualDragPosition.y
+    );
+
+    if (direction.lengthSq() < 36) {
+      direction.set(this.sprite.x - gameWidth * 0.5, this.sprite.y - gameHeight * 0.5);
+    }
+
+    if (direction.lengthSq() < 36) {
+      direction.set(Phaser.Math.FloatBetween(-1, 1), Phaser.Math.FloatBetween(-0.7, 0.7));
+    }
+
+    direction.x = Math.max(Math.abs(direction.x), 0.42) * this.facing;
+    direction.y = 0;
+    direction.normalize();
+    const targetX = Phaser.Math.Clamp(this.sprite.x + direction.x * dragReleaseEscapeDistance, tankBounds.left + 28, tankBounds.right - 28);
+    const targetY = Phaser.Math.Clamp(this.sprite.y + direction.y * dragReleaseEscapeDistance, tankBounds.top + 26, tankBounds.bottom - 26);
+    this.target.set(targetX, targetY);
+    this.restUntil = 0;
+    this.hasRestedAtTarget = false;
+    this.pendingFacing = undefined;
+    this.dragReleaseEscapeUntil = this.scene.time.now + dragReleaseEscapeDurationMs;
+  }
+
+  private updateOffscreenVisit(foods: FoodPellet[], escapingFromDrag: boolean): OffscreenVisitState {
     const now = this.scene.time.now;
-    if (this.playChaseTarget && now < this.playChaseUntil && this.isValidPlayChaseTarget(this.playChaseTarget, tankFish)) {
-      return this.playChaseTarget;
+    if (escapingFromDrag || this.state === "ill" || this.manuallyDragging) {
+      this.cancelOffscreenVisit();
+      return "none";
     }
 
-    if (this.playChaseTarget) {
-      this.playChaseTarget = undefined;
-      this.playChaseUntil = 0;
-      this.scheduleNextPlayChase();
-      return undefined;
+    if (this.offscreenVisitState === "hidden") {
+      if (now < this.offscreenVisitHiddenUntil) {
+        return "hidden";
+      }
+
+      this.offscreenVisitState = "returning";
+      this.target.set(
+        Phaser.Math.Between(tankBounds.left + 56, tankBounds.right - 56),
+        Phaser.Math.Clamp(this.sprite.y, tankBounds.top + 46, tankBounds.bottom - 56)
+      );
+      this.restUntil = 0;
+      this.hasRestedAtTarget = false;
+      this.requestFacing(this.target.x >= this.sprite.x ? 1 : -1);
+      return this.offscreenVisitState;
     }
 
-    if (now < this.nextPlayChaseAt) {
-      return undefined;
+    if (this.offscreenVisitState === "leaving") {
+      if (this.isOutsideView()) {
+        this.offscreenVisitState = "hidden";
+        this.offscreenVisitHiddenUntil = now + Phaser.Math.Between(minOffscreenVisitDurationMs, maxOffscreenVisitDurationMs);
+        this.velocity.set(0, 0);
+        return "hidden";
+      }
+      return this.offscreenVisitState;
     }
 
-    const candidates = tankFish.filter((fish) => this.isValidPlayChaseTarget(fish, tankFish));
-    if (candidates.length === 0) {
-      this.scheduleNextPlayChase();
-      return undefined;
+    if (this.offscreenVisitState === "returning") {
+      if (!this.isOutsideView() && Phaser.Math.Distance.BetweenPoints(this.sprite, this.target) < 18) {
+        this.offscreenVisitState = "none";
+        this.scheduleNextOffscreenVisit();
+        this.pickWanderTarget();
+        return "none";
+      }
+      return this.offscreenVisitState;
     }
 
-    this.playChaseTarget = Phaser.Utils.Array.GetRandom(candidates);
-    this.playChaseUntil = now + Phaser.Math.Between(minPlayChaseDurationMs, maxPlayChaseDurationMs);
-    return this.playChaseTarget;
+    if (now >= this.nextOffscreenVisitAt && foods.length === 0 && this.state !== "hungry") {
+      this.startOffscreenVisit();
+    }
+
+    return this.offscreenVisitState;
   }
 
-  private isValidPlayChaseTarget(fish: Fish, tankFish: Fish[]): boolean {
-    return fish !== this && tankFish.includes(fish) && fish.sprite.active && fish.sprite.visible;
+  private startOffscreenVisit(): void {
+    const exitFacing = Phaser.Math.Between(0, 1) === 0 ? -1 : 1;
+    this.offscreenVisitState = "leaving";
+    this.offscreenVisitHiddenUntil = 0;
+    this.restUntil = 0;
+    this.hasRestedAtTarget = false;
+    this.target.set(
+      exitFacing < 0 ? tankBounds.left - offscreenVisitMargin : tankBounds.right + offscreenVisitMargin,
+      Phaser.Math.Clamp(this.sprite.y, tankBounds.top + 46, tankBounds.bottom - 56)
+    );
+    this.requestFacing(exitFacing);
   }
 
-  private scheduleNextPlayChase(): void {
-    this.nextPlayChaseAt = this.scene.time.now + Phaser.Math.Between(minPlayChaseDelayMs, maxPlayChaseDelayMs);
+  private cancelOffscreenVisit(): void {
+    if (this.offscreenVisitState === "none") {
+      return;
+    }
+
+    this.offscreenVisitState = "none";
+    this.offscreenVisitHiddenUntil = 0;
+    this.scheduleNextOffscreenVisit();
+    if (this.isOutsideView()) {
+      this.target.set(
+        Phaser.Math.Between(tankBounds.left + 56, tankBounds.right - 56),
+        Phaser.Math.Clamp(this.sprite.y, tankBounds.top + 46, tankBounds.bottom - 56)
+      );
+    }
+  }
+
+  private scheduleNextOffscreenVisit(): void {
+    this.nextOffscreenVisitAt = this.scene.time.now + Phaser.Math.Between(minOffscreenVisitDelayMs, maxOffscreenVisitDelayMs);
+  }
+
+  private isOutsideView(): boolean {
+    const outsidePadding = Math.max(72, this.sprite.displayWidth * 0.72);
+    return this.sprite.x < tankBounds.left - outsidePadding || this.sprite.x > tankBounds.right + outsidePadding;
+  }
+
+  private minimumMovementX(): number {
+    return this.offscreenVisitState === "none" ? tankBounds.left + 28 : tankBounds.left - offscreenVisitMargin;
+  }
+
+  private maximumMovementX(): number {
+    return this.offscreenVisitState === "none" ? tankBounds.right - 28 : tankBounds.right + offscreenVisitMargin;
   }
 
   private driftWhileResting(deltaSeconds: number, speed: number): void {
@@ -1224,7 +1343,7 @@ export class Fish {
       deltaSeconds,
       1.4
     );
-    this.sprite.x = Phaser.Math.Clamp(this.sprite.x, tankBounds.left + 28, tankBounds.right - 28);
+    this.sprite.x = Phaser.Math.Clamp(this.sprite.x, this.minimumMovementX(), this.maximumMovementX());
     this.sprite.y = Phaser.Math.Clamp(this.sprite.y, tankBounds.top + 26, tankBounds.bottom - 26);
   }
 

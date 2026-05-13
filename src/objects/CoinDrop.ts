@@ -66,8 +66,9 @@ export class CoinDrop {
   public valueText: Phaser.GameObjects.Text;
   public readonly bottomY: number;
   public readonly visual: CoinVisual;
-  public readonly sinkSpeed = 82;
+  public readonly sinkSpeed: number;
   public readonly landingX: number;
+  public hasTouchedSand: boolean;
   private tankViewScale = 1;
   private shimmerTime = Phaser.Math.FloatBetween(0, 1.8);
 
@@ -78,7 +79,7 @@ export class CoinDrop {
     public readonly value: number,
     public readonly coinType: CoinType,
     public readonly isMega = false,
-    options: { landingX?: number; bottomY?: number } = {}
+    options: { landingX?: number; bottomY?: number; sinkSpeed?: number } = {}
   ) {
     const horizontalPadding = coinTapTargetSize * 0.5;
     this.landingX = options.landingX ?? Phaser.Math.Between(
@@ -89,6 +90,8 @@ export class CoinDrop {
       Math.round(tankBounds.bottom - coinBottomPadding - coinSeabedDepthBand),
       Math.round(tankBounds.bottom - coinBottomPadding)
     );
+    this.sinkSpeed = Math.max(1, options.sinkSpeed ?? 82);
+    this.hasTouchedSand = y >= this.bottomY - 0.5;
     this.visual = coinVisualsByType[coinType];
     ensureCoinShimmerTexture(scene);
     const customTextureKey = coinTextureKeyByType[coinType];
@@ -118,14 +121,19 @@ export class CoinDrop {
     this.setWorldScaleCompensation(1);
   }
 
-  public update(deltaSeconds: number): void {
+  public update(deltaSeconds: number): boolean {
+    const hadTouchedSand = this.hasTouchedSand;
     this.sprite.y = Math.min(this.bottomY, this.sprite.y + this.sinkSpeed * deltaSeconds);
+    if (this.atBottom) {
+      this.hasTouchedSand = true;
+    }
     if (!this.atBottom) {
       this.sprite.x = Phaser.Math.Linear(this.sprite.x, this.landingX, Math.min(1, deltaSeconds * 1.4));
     }
     this.hitZone.setPosition(this.sprite.x, this.sprite.y);
     this.updateShimmer(deltaSeconds);
     this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + this.valueTextOffset(), tankBounds.bottom - 8));
+    return !hadTouchedSand && this.hasTouchedSand;
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {

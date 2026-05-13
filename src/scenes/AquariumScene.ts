@@ -231,7 +231,7 @@ type AdjustableSound = Phaser.Sound.BaseSound & {
   setVolume: (value: number) => unknown;
 };
 
-const maxCoinDrops = 25;
+const maxCoinDrops = 5;
 const maxFoodDrops = 5;
 const coinCollectSoundKey = "sfx-coin-collect";
 const coinCollectSoundPath = "/assets/audio/sfx/coin-pick.ogg";
@@ -245,13 +245,7 @@ const prizeRewardSoundKey = "sfx-prize-reward";
 const prizeRewardSoundPath = "/assets/audio/sfx/prize-reward.ogg";
 const backgroundMusicKey = "music-underwater-ambient";
 const backgroundMusicPath = "/assets/audio/bgm/underwater.mp3";
-const fishCapacityByCatalogTankLevel: Record<number, number> = {
-  1: 10,
-  2: 14,
-  3: 18,
-  4: 22,
-  5: 30
-};
+const baseFishCapacity = 5;
 const maxDecorations = 8;
 const maxHelperCreatures = 5;
 const maxFishCatalogLevel = 5;
@@ -266,9 +260,12 @@ const baseTankDirtPerSecond = maxTankDirtPerSecond * 0.22;
 const fishTankDirtPerSecond = maxTankDirtPerSecond * 0.075;
 const looseFoodTankDirtPerSecond = maxTankDirtPerSecond * 0.11;
 const automatedCoinCollectFeeRate = 0;
-const coinComboWindowMs = 900;
+const coinComboMaxCount = 50;
 const coinComboRewardPercentPerCount = 1;
 const coinComboRewardTextDurationMs = 3000;
+const fastCoinDropSinkSpeed = 260;
+const fastCoinDropChance = 0.08;
+const fastCoinDropComboChance = 0.42;
 const hudStatusSyncIntervalSeconds = 0.25;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
@@ -666,7 +663,6 @@ export class AquariumScene extends Phaser.Scene {
   private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
   private coinComboCount = 0;
   private coinComboCollectedValue = 0;
-  private coinComboTimer?: Phaser.Time.TimerEvent;
   private coinComboLastPosition = new Phaser.Math.Vector2(toastX, toastY);
   private coinComboOverlay?: HTMLDivElement;
   private backgroundMusic?: Phaser.Sound.BaseSound;
@@ -779,7 +775,10 @@ export class AquariumScene extends Phaser.Scene {
 
     this.foods.forEach((food) => food.update(deltaSeconds));
     this.removeExpiredFood();
-    this.coinDrops.forEach((coin) => coin.update(deltaSeconds));
+    const coinTouchedSand = this.coinDrops.some((coin) => coin.update(deltaSeconds));
+    if (coinTouchedSand) {
+      this.resolveCoinCombo();
+    }
     const tankFish = this.activeFish();
     const activeDecorations = this.activeDecorations();
     const activeHelpers = this.activeHelperCreatures();
@@ -794,7 +793,7 @@ export class AquariumScene extends Phaser.Scene {
     for (const currentFish of tankFish) {
       const previousAgeStage = currentFish.ageStage;
       const previousState = currentFish.state;
-      const eatenFood = currentFish.update(deltaSeconds, foodAssignments.get(currentFish) ?? [], tankFish);
+      const eatenFood = currentFish.update(deltaSeconds, foodAssignments.get(currentFish) ?? []);
       if (currentFish.ageStage !== previousAgeStage) {
         this.saveNow();
       }
@@ -1004,12 +1003,11 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private maxFishCapacityForLevel(level = this.tankLevel): number {
-    const displayLevel = this.tankDisplayLevel(level);
-    if (displayLevel <= 5) {
-      return fishCapacityByCatalogTankLevel[Math.max(1, displayLevel)] ?? fishCapacityByCatalogTankLevel[1];
-    }
+    return baseFishCapacity + this.fishCapacityUpgradeBonusForLevel(level);
+  }
 
-    return fishCapacityByCatalogTankLevel[5] + (displayLevel - 5) * 6;
+  private fishCapacityUpgradeBonusForLevel(_level = this.tankLevel): number {
+    return 0;
   }
 
   private activeFish(): Fish[] {
@@ -5902,11 +5900,15 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const fastDropChance = this.coinComboCount > 0 ? fastCoinDropComboChance : fastCoinDropChance;
+    const sinkSpeed = Phaser.Math.FloatBetween(0, 1) < fastDropChance ? fastCoinDropSinkSpeed : undefined;
     this.createCoinDrop(
       fish.sprite.x + Phaser.Math.Between(-18, 18),
       fish.sprite.y + Phaser.Math.Between(-28, -14),
       value,
-      "common"
+      "common",
+      false,
+      { sinkSpeed }
     );
   }
 
@@ -5916,7 +5918,7 @@ export class AquariumScene extends Phaser.Scene {
     value: number,
     coinType: CoinType,
     isMega = false,
-    options: { landingX?: number; bottomY?: number } = {}
+    options: { landingX?: number; bottomY?: number; sinkSpeed?: number } = {}
   ): CoinDrop {
     const coin = new CoinDrop(this, x, y, value, coinType, isMega, options);
     coin.setWorldScaleCompensation(this.tankViewScaleForLevel());
@@ -5958,7 +5960,9 @@ export class AquariumScene extends Phaser.Scene {
     this.floatCoinClaimText(claimedValue, coin.coinType, coin.sprite.x, coin.sprite.y - 20, coin.visual.textColor, automated, fee);
     if (!automated) {
       this.playSfx(coinCollectSoundKey, { volume: 0.24, detune: this.coinCollectDetune(coin.coinType) });
-      this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42, claimedValue * coinWealthValue[coin.coinType]);
+      if (!coin.hasTouchedSand) {
+        this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42, claimedValue * coinWealthValue[coin.coinType]);
+      }
     }
     this.coinDrops = this.coinDrops.filter((drop) => drop !== coin);
     coin.destroy();
@@ -6073,7 +6077,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private registerCoinCombo(x: number, y: number, collectedCommonValue: number): void {
-    this.coinComboCount += 1;
+    this.coinComboCount = Math.min(coinComboMaxCount, this.coinComboCount + 1);
     this.coinComboCollectedValue += Math.max(0, collectedCommonValue);
     this.coinComboLastPosition.set(x, y);
 
@@ -6081,8 +6085,9 @@ export class AquariumScene extends Phaser.Scene {
       this.showCoinComboOverlay(`${formatNumber(this.coinComboCount)}x COMBO`);
     }
 
-    this.coinComboTimer?.remove(false);
-    this.coinComboTimer = this.time.delayedCall(coinComboWindowMs, () => this.resolveCoinCombo());
+    if (this.coinComboCount >= coinComboMaxCount) {
+      this.resolveCoinCombo();
+    }
   }
 
   private resolveCoinCombo(): void {
@@ -6091,7 +6096,6 @@ export class AquariumScene extends Phaser.Scene {
     const position = this.coinComboLastPosition.clone();
     this.coinComboCount = 0;
     this.coinComboCollectedValue = 0;
-    this.coinComboTimer = undefined;
 
     const bonusPercent = comboCount * coinComboRewardPercentPerCount;
     const bonus = Math.floor(collectedValue * (bonusPercent / 100));
@@ -6100,8 +6104,8 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     earn(this.wallet, "common", bonus);
-    this.showCoinComboOverlay(`BONUS C${formatNumber(bonus)}!`, true, coinComboRewardTextDurationMs);
-    this.floatTankText(`BONUS C${formatNumber(bonus)}!`, position.x, position.y - 24, coinVisualsByType.common.textColor);
+    this.showCoinComboOverlay(`COMBO BONUS C${formatNumber(bonus)}!`, true, coinComboRewardTextDurationMs);
+    this.floatTankText(`COMBO BONUS C${formatNumber(bonus)}!`, position.x, position.y - 24, coinVisualsByType.common.textColor);
     this.refreshUi(false);
     this.saveNow();
   }
@@ -8018,6 +8022,9 @@ export class AquariumScene extends Phaser.Scene {
         this.refreshUi();
       },
       addCoin: (coinType: CoinType, value: number, x: number, y: number) => {
+        if (this.coinDrops.length >= maxCoinDrops) {
+          return;
+        }
         this.createCoinDrop(
           Phaser.Math.Clamp(x, tankBounds.left + 18, tankBounds.right - 18),
           Phaser.Math.Clamp(y, tankBounds.top + 18, tankBounds.bottom - 18),
