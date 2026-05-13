@@ -68,6 +68,12 @@ export class StoreOverlay {
   ) {
     this.root = document.createElement("div");
     this.root.className = "aq-store-shell hidden";
+    const stopEvent = (event: Event) => {
+      event.stopPropagation();
+    };
+    this.root.addEventListener("pointerdown", stopEvent);
+    this.root.addEventListener("pointerup", stopEvent);
+    this.root.addEventListener("click", stopEvent);
     document.body.appendChild(this.root);
   }
 

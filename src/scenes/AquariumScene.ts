@@ -2375,6 +2375,7 @@ export class AquariumScene extends Phaser.Scene {
     this.activeScreen = screen;
     this.placementMode = { kind: "none" };
     this.closeModal();
+    this.syncCoinDropVisibilityAndInput();
     this.createScreenNav();
     this.createFoodDock();
 
@@ -2401,6 +2402,7 @@ export class AquariumScene extends Phaser.Scene {
     this.activeScreen = "tank";
     this.storeOverlay?.hide();
     this.hideHtmlPageOverlay();
+    this.syncCoinDropVisibilityAndInput();
     this.createScreenNav();
     this.createFoodDock();
     this.syncMakeupPresentation();
@@ -3669,6 +3671,7 @@ export class AquariumScene extends Phaser.Scene {
       event.stopPropagation();
     };
     shell.addEventListener("pointerdown", stopEvent);
+    shell.addEventListener("pointerup", stopEvent);
     shell.addEventListener("click", stopEvent);
 
     const selectedKeys = [...this.fusionPreviewSourceKeys].slice(0, 2);
@@ -3708,6 +3711,7 @@ export class AquariumScene extends Phaser.Scene {
     shell.append(panel);
     document.body.appendChild(shell);
     this.modal = shell;
+    this.syncCoinDropVisibilityAndInput();
   }
 
   private appendInventoryFoodTab(content: HTMLElement): void {
@@ -5304,6 +5308,10 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private handleTankPointer(pointer: Phaser.Input.Pointer): void {
+    if (this.activeScreen !== "tank" || this.modal) {
+      return;
+    }
+
     const pointerPoint = this.pointerDesignPoint(pointer);
     if (!tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
       return;
@@ -5344,7 +5352,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private coinAtPointer(designX: number, designY: number): CoinDrop | undefined {
-    if (this.activeScreen !== "tank" || this.coinDrops.length === 0) {
+    if (!this.canManuallyCollectTankCoins() || this.coinDrops.length === 0) {
       return undefined;
     }
 
@@ -6246,6 +6254,9 @@ export class AquariumScene extends Phaser.Scene {
     coin.addToContainer(this.tankLayer);
     const collect = (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
+      if (!this.canManuallyCollectTankCoins()) {
+        return;
+      }
       this.collectCoin(coin, false);
     };
     coin.hitZone.on("pointerdown", collect);
@@ -6260,7 +6271,7 @@ export class AquariumScene extends Phaser.Scene {
     coin.hitZone.setVisible(visible);
     coin.shimmer.setVisible(visible);
     coin.valueText.setVisible(visible);
-    if (visible) {
+    if (visible && this.canManuallyCollectTankCoins()) {
       coin.hitZone.setInteractive({ useHandCursor: true });
       coin.sprite.setInteractive({ useHandCursor: true });
     } else {
@@ -6271,6 +6282,9 @@ export class AquariumScene extends Phaser.Scene {
 
   private collectCoin(coin: CoinDrop, automated: boolean): void {
     if (!this.coinDrops.includes(coin)) {
+      return;
+    }
+    if (!automated && !this.canManuallyCollectTankCoins()) {
       return;
     }
 
@@ -6287,6 +6301,17 @@ export class AquariumScene extends Phaser.Scene {
     coin.destroy();
     this.refreshUi();
     this.saveNow();
+  }
+
+  private canManuallyCollectTankCoins(): boolean {
+    return this.activeScreen === "tank" && !this.modal && !this.htmlDockDragging;
+  }
+
+  private syncCoinDropVisibilityAndInput(): void {
+    const visible = this.activeScreen !== "makeup";
+    for (const coin of this.coinDrops) {
+      this.setCoinDropVisible(coin, visible);
+    }
   }
 
   private useCoinMagnetAtClientPoint(clientX: number, clientY: number, showEmptyMessage: boolean): void {
@@ -7639,6 +7664,7 @@ export class AquariumScene extends Phaser.Scene {
       event.stopPropagation();
     };
     shell.addEventListener("pointerdown", stopEvent);
+    shell.addEventListener("pointerup", stopEvent);
     shell.addEventListener("click", stopEvent);
 
     const selectedLabel = htmlElement("p", "aq-modal-line aq-fusion-selected", ["Select 2 fish"]);
@@ -7774,6 +7800,7 @@ export class AquariumScene extends Phaser.Scene {
     shell.append(panel);
     document.body.appendChild(shell);
     this.modal = shell;
+    this.syncCoinDropVisibilityAndInput();
     updateSelection();
   }
 
@@ -8126,6 +8153,7 @@ export class AquariumScene extends Phaser.Scene {
     });
     document.body.appendChild(shell);
     this.modal = shell;
+    this.syncCoinDropVisibilityAndInput();
   }
 
   private showPrizeCelebration(title: string, imageUrl: string, detail: string, buttonLabel = "Awesome", onClose?: () => void): void {
@@ -8136,6 +8164,7 @@ export class AquariumScene extends Phaser.Scene {
       event.stopPropagation();
     };
     shell.addEventListener("pointerdown", stopEvent);
+    shell.addEventListener("pointerup", stopEvent);
     shell.addEventListener("click", stopEvent);
 
     const closeButton = this.htmlButton(buttonLabel, "aq-modal-button good", () => {
@@ -8153,6 +8182,7 @@ export class AquariumScene extends Phaser.Scene {
     shell.append(panel);
     document.body.appendChild(shell);
     this.modal = shell;
+    this.syncCoinDropVisibilityAndInput();
   }
 
   private closeModal(): void {
@@ -8161,6 +8191,7 @@ export class AquariumScene extends Phaser.Scene {
     this.modalTitle = undefined;
     this.rewardedAdCountdownText = undefined;
     this.rewardedAdModalButton = undefined;
+    this.syncCoinDropVisibilityAndInput();
   }
 
   private floatText(message: string, x: number, y: number, color: string): void {
@@ -8555,6 +8586,7 @@ export class AquariumScene extends Phaser.Scene {
       setStoreTab: (tab: StoreTab) => {
         this.activeScreen = "store";
         this.activeTab = tab;
+        this.syncCoinDropVisibilityAndInput();
         this.createScreenNav();
         this.createFoodDock();
         this.renderTabControls();

@@ -1486,13 +1486,36 @@ export class Fish {
     const bodyWidth = this.fishVisibleBodyWidth();
     const headOffsetX = this.facing * bodyWidth * 0.62;
     const emojiX = Phaser.Math.Clamp(this.sprite.x + headOffsetX, tankBounds.left + 18, tankBounds.right - 18);
-    const emojiY = Math.max(tankBounds.top + 18, this.sprite.y - bodyHeight * 0.62);
+    const emojiY = Math.max(tankBounds.top + 18, this.sprite.y - bodyHeight * 0.88);
     const isTextMessage = emoji.length > 3;
     this.stateEmoji
       .setText(emoji)
       .setFontSize(isTextMessage ? "16px" : "18px")
+      .setColor(isTextMessage ? "#073047" : "#ffffff")
+      .setStroke(isTextMessage ? "#ffffff" : "#061725", isTextMessage ? 2 : 3)
       .setOrigin(0.5, 1)
       .setPosition(emojiX, emojiY)
+      .setVisible(true);
+
+    this.drawStateChatBubble(emojiX, emojiY, isTextMessage);
+  }
+
+  private drawStateChatBubble(x: number, textBottomY: number, isTextMessage: boolean): void {
+    const paddingX = isTextMessage ? 10 : 7;
+    const paddingY = isTextMessage ? 6 : 5;
+    const width = Math.max(isTextMessage ? 54 : 30, this.stateEmoji.displayWidth + paddingX * 2);
+    const height = Math.max(isTextMessage ? 26 : 28, this.stateEmoji.displayHeight + paddingY * 2);
+    const left = x - width / 2;
+    const top = textBottomY - this.stateEmoji.displayHeight - paddingY;
+    const bottom = top + height;
+    const tailHalfWidth = isTextMessage ? 6 : 5;
+    const tailHeight = 7;
+
+    this.stateBubble
+      .clear()
+      .fillStyle(0xffffff, 0.96)
+      .fillRoundedRect(left, top, width, height, 9)
+      .fillTriangle(x - tailHalfWidth, bottom - 1, x + tailHalfWidth, bottom - 1, x, bottom + tailHeight)
       .setVisible(true);
   }
 

@@ -56,6 +56,12 @@ export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
 export function createPageOverlayRoot(): HTMLDivElement {
   const overlay = document.createElement("div");
   overlay.className = "aq-page-shell hidden";
+  const stopEvent = (event: Event) => {
+    event.stopPropagation();
+  };
+  overlay.addEventListener("pointerdown", stopEvent);
+  overlay.addEventListener("pointerup", stopEvent);
+  overlay.addEventListener("click", stopEvent);
   document.body.appendChild(overlay);
   return overlay;
 }

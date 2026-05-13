@@ -22,6 +22,7 @@ export function createModalShell(options: {
     event.stopPropagation();
   };
   shell.addEventListener("pointerdown", stopEvent);
+  shell.addEventListener("pointerup", stopEvent);
   shell.addEventListener("click", stopEvent);
 
   const panel = htmlElement("section", "aq-modal");
@@ -56,6 +57,7 @@ export function createRewardedAdModalShell(options: {
     event.stopPropagation();
   };
   shell.addEventListener("pointerdown", stopEvent);
+  shell.addEventListener("pointerup", stopEvent);
   shell.addEventListener("click", stopEvent);
 
   const countdownText = htmlElement("span", "aq-ad-countdown", ["30"]);
