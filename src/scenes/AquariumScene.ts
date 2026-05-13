@@ -5900,8 +5900,9 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const canFastDrop = fish.sprite.y <= tankBounds.centerY;
     const fastDropChance = this.coinComboCount > 0 ? fastCoinDropComboChance : fastCoinDropChance;
-    const sinkSpeed = Phaser.Math.FloatBetween(0, 1) < fastDropChance ? fastCoinDropSinkSpeed : undefined;
+    const sinkSpeed = canFastDrop && Phaser.Math.FloatBetween(0, 1) < fastDropChance ? fastCoinDropSinkSpeed : undefined;
     this.createCoinDrop(
       fish.sprite.x + Phaser.Math.Between(-18, 18),
       fish.sprite.y + Phaser.Math.Between(-28, -14),

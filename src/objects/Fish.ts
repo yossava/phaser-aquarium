@@ -546,7 +546,14 @@ export class Fish {
   }
 
   public canDropCoin(now: number): boolean {
-    return this.state !== "ill" && this.offscreenVisitState === "none" && !this.isOutsideView() && this.currentFullnessCalories() > 0 && this.nextCoinDropAt > 0 && now >= this.nextCoinDropAt;
+    return (
+      this.state !== "ill" &&
+      this.offscreenVisitState === "none" &&
+      !this.isOutsideView() &&
+      this.currentFullnessCalories() > 0 &&
+      this.nextCoinDropAt > 0 &&
+      now >= this.nextCoinDropAt
+    );
   }
 
   public takeCoinProductionDrop(now: number): number {
@@ -1436,6 +1443,13 @@ export class Fish {
     }
 
     this.statusIndicatorElapsed = 0;
+    if (this.shouldHideTankStatusUi()) {
+      this.statusBars.clear();
+      this.hideStateEmoji();
+      this.updateTailMark();
+      return;
+    }
+
     const barWidth = 34;
     const barHeight = 3;
     const gap = 2;
@@ -1474,7 +1488,7 @@ export class Fish {
     this.stateBubble.clear();
     this.stateBubble.setVisible(false);
 
-    if (!this.sprite.visible) {
+    if (!this.sprite.visible || this.shouldHideTankStatusUi()) {
       this.hideStateEmoji();
       return;
     }
@@ -1542,6 +1556,10 @@ export class Fish {
     this.stateEmoji.setVisible(false);
     this.stateBubble.clear();
     this.stateBubble.setVisible(false);
+  }
+
+  private shouldHideTankStatusUi(): boolean {
+    return this.offscreenVisitState !== "none" || this.isOutsideView();
   }
 
   private showDragLoveEmoji(now = this.scene.time.now): void {
