@@ -54,6 +54,7 @@ export type SavedGame = {
   wallet: Wallet;
   foodInventory: Record<FoodTypeId, number>;
   fishInventory: Record<string, number>;
+  fishInventoryAges?: Record<string, number[]>;
   decorationInventory: Record<string, number>;
   creatureInventory: Record<string, number>;
   fish: SavedFish[];
@@ -87,6 +88,7 @@ export type SavedTankState = {
   wallet?: Wallet;
   foodInventory?: Record<FoodTypeId, number>;
   fishInventory?: Record<string, number>;
+  fishInventoryAges?: Record<string, number[]>;
   decorationInventory?: Record<string, number>;
   creatureInventory?: Record<string, number>;
   backgroundInventory?: Record<string, number>;
@@ -167,6 +169,7 @@ export function loadGame(): SavedGame | undefined {
       wallet: sanitizeWallet(migrated.wallet),
       foodInventory: sanitizeFoodInventory(migrated.foodInventory),
       fishInventory: sanitizeCountRecord(migrated.fishInventory),
+      fishInventoryAges: sanitizeAgeRecord(migrated.fishInventoryAges),
       decorationInventory: sanitizeCountRecord(migrated.decorationInventory),
       creatureInventory: sanitizeCountRecord(migrated.creatureInventory),
       fish: migrated.fish.map(sanitizeFish).filter((fish): fish is SavedFish => Boolean(fish)),
@@ -241,6 +244,7 @@ function migrateSave(
       wallet: sanitizeWallet(parsed.wallet ?? {}),
       foodInventory: { basic: foodCount } as Record<FoodTypeId, number>,
       fishInventory: sanitizeCountRecord(parsed.fishInventory),
+      fishInventoryAges: sanitizeAgeRecord(parsed.fishInventoryAges),
       decorationInventory: sanitizeCountRecord(parsed.decorationInventory),
       creatureInventory: {},
       fish: Array.isArray(parsed.fish) ? parsed.fish : [],
@@ -286,6 +290,28 @@ function sanitizeCountRecord(source: Record<string, number> | undefined): Record
     const count = Math.floor(sanitizeNumber(value, 0));
     if (id && count > 0) {
       result[id] = count;
+    }
+  }
+
+  return result;
+}
+
+function sanitizeAgeRecord(source: Record<string, number[]> | undefined): Record<string, number[]> {
+  const result: Record<string, number[]> = {};
+  if (!source) {
+    return result;
+  }
+
+  for (const [id, values] of Object.entries(source)) {
+    if (!id || !Array.isArray(values)) {
+      continue;
+    }
+    const ages = values
+      .map((value) => Math.max(0, Math.floor(sanitizeNumber(value, 0))))
+      .filter((value) => value > 0)
+      .sort((a, b) => b - a);
+    if (ages.length > 0) {
+      result[id] = ages;
     }
   }
 
@@ -403,6 +429,7 @@ function sanitizeTankStates(source: Record<string, SavedTankState> | undefined):
       wallet: sanitizeWallet(value.wallet ?? {}),
       foodInventory: sanitizeFoodInventory(value.foodInventory),
       fishInventory: sanitizeCountRecord(value.fishInventory),
+      fishInventoryAges: sanitizeAgeRecord(value.fishInventoryAges),
       decorationInventory: sanitizeCountRecord(value.decorationInventory),
       creatureInventory: sanitizeCountRecord(value.creatureInventory),
       backgroundInventory: sanitizeCountRecord(value.backgroundInventory),

@@ -8,6 +8,7 @@ export type TankRuntimeState = {
   wallet: Wallet;
   foodInventory: Map<FoodTypeId, number>;
   fishInventory: Map<string, number>;
+  fishInventoryAges: Map<string, number[]>;
   decorationInventory: Map<string, number>;
   creatureInventory: Map<string, number>;
   backgroundInventory: Map<string, number>;
@@ -58,6 +59,7 @@ export function createDefaultTankState(level: number, config: TankStateConfig, n
     wallet: level === 1 ? createWallet(120, 0, 0) : createEmptyWallet(),
     foodInventory: new Map<FoodTypeId, number>(level === 1 ? [[config.basicFoodId, config.basicFoodCalories * 3]] : []),
     fishInventory: new Map<string, number>(),
+    fishInventoryAges: new Map<string, number[]>(),
     decorationInventory: new Map<string, number>(),
     creatureInventory: new Map<string, number>(),
     backgroundInventory: new Map<string, number>([[cosmeticId, 1]]),
@@ -87,6 +89,7 @@ export function ensureTankState(
   const fallbackCosmeticId = config.defaultCosmeticId(sanitizedLevel);
   state.backgroundInventory ??= new Map<string, number>([[fallbackCosmeticId, 1]]);
   state.seabedInventory ??= new Map<string, number>([[fallbackCosmeticId, 1]]);
+  state.fishInventoryAges ??= new Map<string, number[]>();
   state.backgroundBlueTints ??= new Map<string, number>();
   state.seabedBlueTints ??= new Map<string, number>();
   state.selectedBackgroundId ??= fallbackCosmeticId;
@@ -119,6 +122,7 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       wallet: createWallet(value.wallet?.common ?? 0, value.wallet?.rare ?? 0, value.wallet?.superRare ?? 0),
       foodInventory: recordToMap(value.foodInventory) as Map<FoodTypeId, number>,
       fishInventory: recordToMap(value.fishInventory),
+      fishInventoryAges: ageRecordToMap(value.fishInventoryAges),
       decorationInventory: recordToMap(value.decorationInventory),
       creatureInventory: recordToMap(value.creatureInventory),
       backgroundInventory: cosmeticInventoryFromRecord(value.backgroundInventory, level, config),
@@ -138,6 +142,7 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       wallet: { ...saved.wallet },
       foodInventory: recordToMap(saved.foodInventory) as Map<FoodTypeId, number>,
       fishInventory: recordToMap(saved.fishInventory),
+      fishInventoryAges: ageRecordToMap(saved.fishInventoryAges),
       decorationInventory: recordToMap(saved.decorationInventory),
       creatureInventory: recordToMap(saved.creatureInventory),
       backgroundInventory: cosmeticInventoryFromRecord(undefined, 1, config),
@@ -167,6 +172,7 @@ export function tankStatesRecord(
       wallet: { ...state.wallet },
       foodInventory: Object.fromEntries([...state.foodInventory.entries()].filter(([, count]) => count > 0)) as Record<FoodTypeId, number>,
       fishInventory: mapToRecord(state.fishInventory),
+      fishInventoryAges: ageMapToRecord(state.fishInventoryAges),
       decorationInventory: mapToRecord(state.decorationInventory),
       creatureInventory: mapToRecord(state.creatureInventory),
       backgroundInventory: mapToRecord(state.backgroundInventory),
@@ -181,6 +187,30 @@ export function tankStatesRecord(
     };
   }
   return result;
+}
+
+export function ageRecordToMap(source: Record<string, number[]> | undefined): Map<string, number[]> {
+  const result = new Map<string, number[]>();
+  if (!source) {
+    return result;
+  }
+  for (const [id, values] of Object.entries(source)) {
+    const ages = Array.isArray(values)
+      ? values.filter((value) => Number.isFinite(value) && value > 0).map((value) => Math.floor(value)).sort((a, b) => b - a)
+      : [];
+    if (ages.length > 0) {
+      result.set(id, ages);
+    }
+  }
+  return result;
+}
+
+export function ageMapToRecord(source: Map<string, number[]>): Record<string, number[]> {
+  return Object.fromEntries(
+    [...source.entries()]
+      .map(([id, values]) => [id, values.filter((value) => Number.isFinite(value) && value > 0).map((value) => Math.floor(value)).sort((a, b) => b - a)] as const)
+      .filter(([, values]) => values.length > 0)
+  );
 }
 
 function clamp(value: number, min: number, max: number): number {

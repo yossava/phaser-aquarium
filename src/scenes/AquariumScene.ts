@@ -48,6 +48,7 @@ import {
   type SavedGame
 } from "../game/save";
 import {
+  ageMapToRecord,
   ensureTankState as ensureTankStateModel,
   tankNamesFromRecord as tankNamesFromRecordModel,
   tankNamesRecord as tankNamesRecordModel,
@@ -179,7 +180,19 @@ type PlacementMode =
   | { kind: "decoration"; decorationTypeId: string; size: DecorationSize };
 
 type TankMenuTab = "tanks" | "background" | "seabed" | "decor" | "utility";
-type InventoryTab = "fish" | "food" | "decor" | "coins";
+type InventoryTab = "fish" | "fusion" | "food" | "decor" | "coins";
+type FishFusionSource =
+  | { key: string; kind: "active"; type: FishType; ageSeconds: number; activeIndex: number; label: string }
+  | { key: string; kind: "stored"; type: FishType; ageSeconds: number; storedAgeIndex?: number; label: string };
+type FishFusionChances = {
+  normal: number;
+  premium: number;
+};
+type FishFusionPageResult = {
+  label: string;
+  fishTypeId: string;
+  ageSeconds: number;
+};
 type MakeupDecorationDraft = {
   typeId: string;
   size: DecorationSize;
@@ -311,6 +324,10 @@ const coinWealthValue: Record<CoinType, number> = {
   superRare: 10000
 };
 const inventorySellRate = 0.7;
+const fishFusionMaxPremiumChance = 1 / 3;
+const fishFusionMinPremiumChance = 0.05;
+const fishFusionPremiumChanceLossPerAgeGapMonth = 0.02;
+const fishFusionCostRate = 0.5;
 const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
   rare: "/assets/ui/icon-rare-coin.png",
@@ -571,6 +588,9 @@ export class AquariumScene extends Phaser.Scene {
   private foodInventory = new Map<FoodTypeId, number>([[basicFood.id, basicFood.calories * 3]]);
   private foodBuyQuantities = new Map<FoodTypeId, number>();
   private fishInventory = new Map<string, number>();
+  private fishInventoryAges = new Map<string, number[]>();
+  private fusionPreviewSourceKeys = new Set<string>();
+  private fusionPageResult?: FishFusionPageResult;
   private decorationInventory = new Map<string, number>();
   private creatureInventory = new Map<string, number>();
   private fish: Fish[] = [];
@@ -1055,6 +1075,7 @@ export class AquariumScene extends Phaser.Scene {
       wallet: this.wallet,
       foodInventory: this.foodInventory,
       fishInventory: this.fishInventory,
+      fishInventoryAges: this.fishInventoryAges,
       decorationInventory: this.decorationInventory,
       creatureInventory: this.creatureInventory,
       backgroundInventory: state.backgroundInventory,
@@ -1074,6 +1095,7 @@ export class AquariumScene extends Phaser.Scene {
     this.wallet = state.wallet;
     this.foodInventory = state.foodInventory;
     this.fishInventory = state.fishInventory;
+    this.fishInventoryAges = state.fishInventoryAges;
     this.decorationInventory = state.decorationInventory;
     this.creatureInventory = state.creatureInventory;
     this.cleanliness = state.cleanliness;
@@ -3377,6 +3399,10 @@ export class AquariumScene extends Phaser.Scene {
       this.appendInventoryFishTab(content);
       return;
     }
+    if (this.inventoryTab === "fusion") {
+      this.appendInventoryFusionTab(content);
+      return;
+    }
     if (this.inventoryTab === "food") {
       this.appendInventoryFoodTab(content);
       return;
@@ -3391,6 +3417,7 @@ export class AquariumScene extends Phaser.Scene {
   private createInventoryTabs(): HTMLElement {
     const tabs: Array<{ tab: InventoryTab; label: string; icon: string }> = [
       { tab: "fish", label: "Fish", icon: "/assets/ui/shop/icon_category_fish.png" },
+      { tab: "fusion", label: "Fusion", icon: "/assets/ui/shop/icon_category_fish.png" },
       { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png" },
       { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png" },
       { tab: "coins", label: "Coins", icon: "/assets/ui/shop/coin_icon_rare.png" }
@@ -3431,6 +3458,262 @@ export class AquariumScene extends Phaser.Scene {
       storedFish.forEach((fishType) => storedList.append(this.createStoredFishInventoryRow(fishType)));
     }
     content.append(storedList);
+  }
+
+  private appendInventoryFusionTab(content: HTMLElement): void {
+    const sources = this.fishFusionSources();
+    const fusionList = htmlElement("div", "aq-fusion-page");
+    const canStart = sources.length >= 2;
+    const validKeys = new Set(sources.map((source) => source.key));
+    this.fusionPreviewSourceKeys = new Set([...this.fusionPreviewSourceKeys].filter((key) => validKeys.has(key)).slice(0, 2));
+    fusionList.append(
+      htmlElement("section", "aq-fusion-hero", [
+        htmlElement("div", "aq-fusion-hero-art", [
+          htmlImage("/assets/ui/shop/icon_category_fish.png", "", "aq-fusion-hero-fish"),
+          htmlElement("span", "aq-fusion-hero-glow")
+        ]),
+        htmlElement("div", "aq-fusion-hero-copy", [
+          htmlElement("h2", "aq-fusion-hero-title", ["Select 2 Fish for Fusion"]),
+          htmlElement("p", "aq-fusion-hero-meta", ["Guaranteed fusion. Premium chance rewards close ages."])
+        ])
+      ])
+    );
+    if (!canStart && !this.fusionPageResult) {
+      fusionList.append(createPageEmptyCard("Need 2 owned fish", "Keep at least two tank or stored fish to start fusion."));
+    } else {
+      const selectedDock = htmlElement("div", "aq-fusion-selected-dock");
+      const outputStage = htmlElement("div", "aq-fusion-machine-output", [
+        htmlElement("p", "aq-fusion-machine-placeholder", ["Choose two fish to reveal Normal and Premium outcomes."])
+      ]);
+      const statStrip = htmlElement("div", "aq-fusion-stat-strip", [
+        htmlElement("span", "aq-fusion-stat-pill", ["Always succeeds"]),
+        htmlElement("span", "aq-fusion-stat-pill", ["Premium rewards close ages"])
+      ]);
+      const renderSavedResult = () => {
+        const resultFish = this.fusionPageResult ? fishTypes.find((fishType) => fishType.id === this.fusionPageResult?.fishTypeId) : undefined;
+        if (!resultFish || !this.fusionPageResult) {
+          outputStage.replaceChildren(htmlElement("p", "aq-fusion-machine-placeholder", ["Choose two fish to reveal Normal and Premium outcomes."]));
+          return;
+        }
+        outputStage.replaceChildren(
+          htmlElement("div", "aq-fusion-final-result", [
+            htmlElement("span", "aq-fusion-result-tier", [this.fusionPageResult.label]),
+            htmlImage(`/assets/fish/${resultFish.id}.png`, "", "aq-fusion-result-image"),
+            htmlElement("p", "aq-fusion-result-name", [resultFish.name]),
+            htmlElement("p", "aq-fusion-result-copy success", [`Stored | ${this.fusionAgeLabel(this.fusionPageResult.ageSeconds)}`])
+          ])
+        );
+      };
+      let previewButton: HTMLButtonElement;
+      const sourceByKey = new Map(sources.map((source) => [source.key, source]));
+      const selectedSourceKeys = (): string[] => [...this.fusionPreviewSourceKeys].filter((key) => sourceByKey.has(key)).slice(0, 2);
+      const selectedSources = (): FishFusionSource[] => selectedSourceKeys().map((key) => sourceByKey.get(key)).filter((source): source is FishFusionSource => Boolean(source));
+      const updatePreviewSelection = () => {
+        const selected = selectedSources();
+        const fusionCost = selected.length === 2 ? this.fishFusionCostFor(selected) : undefined;
+        const canPayFusionCost = !fusionCost || this.developerGodMode || canAfford(this.wallet, fusionCost);
+        previewButton.disabled = selected.length !== 2 || !canPayFusionCost;
+        previewButton.textContent = selected.length === 2
+          ? canPayFusionCost
+            ? `Fuse C${formatNumber(fusionCost?.amount ?? 0)}`
+            : `Need C${formatNumber(fusionCost?.amount ?? 0)}`
+          : `Select ${formatNumber(2 - selected.length)} More`;
+        selectedDock.replaceChildren(
+          ...[0, 1].flatMap((slotIndex) => {
+            const source = selected[slotIndex];
+            const slotButton = createHtmlButton("", `aq-fusion-selected-slot ${source ? "filled" : ""}`, () => {
+              this.showFusionFishPicker(slotIndex as 0 | 1, sources);
+            }, { attachTouchFeedback: (button) => this.attachTouchFeedback(button) });
+            slotButton.append(...(source
+              ? [
+                htmlElement("span", "aq-fusion-selected-remove", ["x"]),
+                htmlImage(`/assets/fish/${source.type.id}.png`, "", "aq-fusion-selected-image"),
+                htmlElement("span", "aq-fusion-selected-name", [source.type.name]),
+                htmlElement("span", "aq-fusion-selected-tag", [this.fusionAgeLabel(source.ageSeconds)])
+              ]
+              : [
+                htmlElement("span", "aq-fusion-selected-empty", [`Slot ${formatNumber(slotIndex + 1)}`])
+              ]));
+            return slotIndex === 0
+              ? [
+                slotButton,
+                htmlElement("div", "aq-fusion-plus-core", [
+                  htmlElement("span", "aq-fusion-core-ring"),
+                  htmlElement("span", "aq-fusion-core-symbol", ["+"])
+                ])
+              ]
+              : [slotButton];
+          })
+        );
+        if (selected.length === 2) {
+          const resultTypes = this.fishFusionResultTypes(selected);
+          if (resultTypes.normal) {
+            const chances = this.fishFusionChancesFor(selected, Boolean(resultTypes.premium));
+            const inheritedAge = Math.max(...selected.map((source) => source.ageSeconds));
+            outputStage.replaceChildren(
+              htmlElement("div", "aq-fusion-machine-results", [
+                this.createFusionResultCandidate("Normal", resultTypes.normal, chances.normal),
+                resultTypes.premium
+                  ? this.createFusionResultCandidate("Premium", resultTypes.premium, chances.premium)
+                  : htmlElement("div", "aq-fusion-result-card unavailable", [
+                    htmlElement("span", "aq-fusion-result-tier", ["Premium"]),
+                    htmlElement("p", "aq-fusion-result-copy", ["No premium fish available"])
+                  ])
+              ]),
+              htmlElement("p", "aq-fusion-machine-meta", [`Result age ${this.fusionAgeLabel(inheritedAge)} | Cost C${formatNumber(this.fishFusionCostFor(selected).amount)}`])
+            );
+          } else {
+            outputStage.replaceChildren(htmlElement("p", "aq-fusion-machine-placeholder", ["No un-owned fish available."]));
+          }
+        } else {
+          renderSavedResult();
+        }
+      };
+      previewButton = createHtmlButton("Select 2 Fish", "aq-fusion-preview-button", () => {
+        const selected = selectedSources();
+        if (selected.length !== 2) {
+          return;
+        }
+        const resultTypes = this.fishFusionResultTypes(selected);
+        if (!resultTypes.normal) {
+          this.floatText("No un-owned fish", toastX, toastY, "#ffb0a8");
+          return;
+        }
+        const fusionCost = this.fishFusionCostFor(selected);
+        if (!this.spendPrice(fusionCost)) {
+          return;
+        }
+        this.captureActiveTankState();
+        this.refreshStatus();
+        this.syncHtmlGameInterface();
+        this.saveNow();
+        this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
+
+        previewButton.disabled = true;
+        previewButton.textContent = "Fusing...";
+        outputStage.replaceChildren(
+          htmlElement("div", "aq-fusion-chamber", [
+            htmlElement("div", "aq-fusion-chamber-window", [
+              htmlImage(`/assets/fish/${selected[0].type.id}.png`, "", "aq-fusion-chamber-fish left"),
+              htmlElement("div", "aq-fusion-chamber-core"),
+              htmlImage(`/assets/fish/${selected[1].type.id}.png`, "", "aq-fusion-chamber-fish right")
+            ]),
+            htmlElement("div", "aq-fusion-chamber-status", [
+              htmlElement("span", "", ["Mixing DNA"]),
+              htmlElement("span", "", ["Growing fins"]),
+              htmlElement("span", "", ["Final shine"])
+            ]),
+            htmlElement("div", "aq-fusion-chamber-progress", [
+              htmlElement("span")
+            ]),
+            htmlElement("p", "aq-fusion-loading-title", ["Fusion in progress"]),
+            htmlElement("p", "aq-fusion-result-copy", ["Preparing your new stored fish"])
+          ])
+        );
+
+        const chances = this.fishFusionChancesFor(selected, Boolean(resultTypes.premium));
+        const roll = Math.random();
+        const resultOutcome = resultTypes.premium && roll < chances.premium
+          ? { label: "Premium", fishType: resultTypes.premium }
+          : { label: "Normal", fishType: resultTypes.normal };
+        const inheritedAge = Math.max(...selected.map((source) => source.ageSeconds));
+
+        window.setTimeout(() => {
+          const resultType = resultOutcome.fishType;
+          this.consumeFishFusionSources(selected);
+          this.fishInventory.set(resultType.id, this.getFishInventory(resultType.id) + 1);
+          this.addStoredFishAge(resultType.id, inheritedAge);
+          this.ensureFishTexturesLoaded(resultType);
+          this.fusionPageResult = {
+            label: resultOutcome.label,
+            fishTypeId: resultType.id,
+            ageSeconds: inheritedAge
+          };
+          this.fusionPreviewSourceKeys.clear();
+          this.floatText(`${resultType.name} stored`, toastX, toastY, "#a8ffb0");
+          this.createFoodDock();
+          updatePreviewSelection();
+          this.saveNow();
+          this.refreshStatus();
+          this.syncHtmlGameInterface();
+          this.showPrizeCelebration(
+            `Fusion ${resultOutcome.label}!`,
+            `/assets/fish/${resultType.id}.png`,
+            `${resultType.name} stored | ${this.fusionAgeLabel(inheritedAge)}`,
+            "Close",
+            () => this.closePage()
+          );
+        }, this.settings.reducedMotion ? 2000 : 10000);
+      }, {
+        disabled: this.fusionPreviewSourceKeys.size !== 2,
+        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+      });
+      fusionList.append(
+        htmlElement("section", "aq-fusion-machine", [
+          selectedDock,
+          htmlElement("div", "aq-fusion-result-divider", [
+            htmlElement("span", "aq-fusion-result-divider-line"),
+            htmlElement("span", "aq-fusion-result-divider-text", ["Possible Results"]),
+            htmlElement("span", "aq-fusion-result-divider-line")
+          ]),
+          outputStage,
+          statStrip
+        ]),
+        htmlElement("div", "aq-fusion-action-bar", [previewButton])
+      );
+      updatePreviewSelection();
+    }
+    content.append(fusionList);
+  }
+
+  private showFusionFishPicker(slotIndex: 0 | 1, sources: FishFusionSource[]): void {
+    this.closeModal();
+    this.modalTitle = "Choose Fish";
+
+    const shell = htmlElement("div", "aq-modal-shell aq-fusion-picker-shell");
+    const stopEvent = (event: Event) => {
+      event.stopPropagation();
+    };
+    shell.addEventListener("pointerdown", stopEvent);
+    shell.addEventListener("click", stopEvent);
+
+    const selectedKeys = [...this.fusionPreviewSourceKeys].slice(0, 2);
+    const chooseSource = (source: FishFusionSource) => {
+      this.fusionPageResult = undefined;
+      selectedKeys[slotIndex] = source.key;
+      this.fusionPreviewSourceKeys = new Set(selectedKeys.filter((key, index) => key && selectedKeys.indexOf(key) === index).slice(0, 2));
+      this.closeModal();
+      this.syncHtmlPageOverlay();
+    };
+
+    const grid = htmlElement("div", "aq-fusion-picker-grid");
+    sources.forEach((source) => {
+      const selected = this.fusionPreviewSourceKeys.has(source.key);
+      const sourceButton = createHtmlButton("", `aq-fusion-preview-card ${selected ? "selected" : ""}`, () => chooseSource(source), {
+        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+      });
+      sourceButton.append(
+        htmlImage(`/assets/fish/${source.type.id}.png`, "", "aq-fusion-preview-image"),
+        htmlElement("span", "aq-fusion-preview-name", [source.type.name]),
+        htmlElement("span", "aq-fusion-preview-meta", [`${source.label} | ${this.fusionAgeLabel(source.ageSeconds)}`])
+      );
+      grid.append(sourceButton);
+    });
+
+    const closeButton = createHtmlButton("Cancel", "aq-modal-button muted", () => this.closeModal(), {
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+    });
+    const panel = htmlElement("section", "aq-modal aq-fusion-picker-modal", [
+      htmlElement("div", "aq-fusion-modal-header", [
+        htmlElement("span", "aq-fusion-modal-badge", [`Slot ${formatNumber(slotIndex + 1)}`]),
+        htmlElement("h2", "aq-modal-title aq-fusion-modal-title", ["Choose Fish"])
+      ]),
+      htmlElement("div", "aq-modal-body aq-fusion-picker-body", [grid]),
+      htmlElement("div", "aq-modal-actions single", [closeButton])
+    ]);
+    shell.append(panel);
+    document.body.appendChild(shell);
+    this.modal = shell;
   }
 
   private appendInventoryFoodTab(content: HTMLElement): void {
@@ -3474,10 +3757,12 @@ export class AquariumScene extends Phaser.Scene {
   private createStoredFishInventoryRow(fishType: FishType): HTMLElement {
     const count = this.getFishInventory(fishType.id);
     const sellValue = this.storedFishSellValue(fishType);
+    const storedAges = this.storedFishAgesFor(fishType.id);
+    const ageCopy = storedAges.length > 0 ? ` | Oldest ${this.fusionAgeLabel(storedAges[0])}` : "";
     const row = htmlElement("article", "aq-album-row fish");
     const body = htmlElement("div", "aq-album-row-body", [
       htmlElement("h3", "aq-album-row-title", [fishType.name]),
-      htmlElement("p", "aq-album-row-meta", [`Stored x${formatNumber(count)} | ${this.rarityLabel(fishType.rarity)}`]),
+      htmlElement("p", "aq-album-row-meta", [`Stored x${formatNumber(count)} | ${this.rarityLabel(fishType.rarity)}${ageCopy}`]),
       htmlElement("p", "aq-album-row-copy", [`Sell converts one fish to C${formatNumber(sellValue)}`])
     ]);
     row.append(
@@ -4847,6 +5132,7 @@ export class AquariumScene extends Phaser.Scene {
     } else {
       this.fishInventory.set(fishTypeId, current - 1);
     }
+    this.takeStoredFishAge(fishTypeId);
     earn(this.wallet, "common", sellValue);
     this.floatText(`Sold ${fishType.name} +C${formatNumber(sellValue)}`, toastX, toastY, "#ffe67a");
     this.closeModal();
@@ -5273,8 +5559,11 @@ export class AquariumScene extends Phaser.Scene {
     };
   }
 
-  private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number } = {}): Fish {
+  private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number; ageSeconds?: number } = {}): Fish {
     const placedFish = new Fish(this, type, x, y, options);
+    if (options.ageSeconds && options.ageSeconds > 0) {
+      placedFish.setAgeSeconds(options.ageSeconds);
+    }
     this.ensureFishTexturesLoaded(type, () => placedFish.refreshTextureIfAvailable());
     placedFish.addToContainer(this.tankLayer);
     placedFish.setTankVisible(placedFish.tankLevel === this.tankLevel);
@@ -5328,8 +5617,9 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const storedAgeSeconds = this.takeStoredFishAge(type.id);
     this.fishInventory.set(type.id, this.getFishInventory(type.id) - 1);
-    this.addFishToTank(type, x, y, { tankLevel: this.tankLevel });
+    this.addFishToTank(type, x, y, { tankLevel: this.tankLevel, ageSeconds: storedAgeSeconds });
     this.recordDailyQuestAction("place-fish");
 
     this.floatTankText(`${type.name} added`, x, y - 34, "#ffffff");
@@ -5856,6 +6146,7 @@ export class AquariumScene extends Phaser.Scene {
       wallet: { ...this.wallet },
       foodInventory: this.foodInventoryRecord(),
       fishInventory: mapToRecord(this.fishInventory),
+      fishInventoryAges: ageMapToRecord(this.fishInventoryAges),
       decorationInventory: mapToRecord(this.decorationInventory),
       creatureInventory: mapToRecord(this.creatureInventory),
       fish: this.fish.map((currentFish) => ({
@@ -7340,6 +7631,363 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
+  private showFishFusionModal(preselectedKeys: Iterable<string> = []): void {
+    const sources = this.fishFusionSources();
+    if (sources.length < 2) {
+      this.floatText("Need 2 fish", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    this.closeModal();
+    this.modalTitle = "Fusion";
+    const validKeys = new Set(sources.map((source) => source.key));
+    const selectedKeys = new Set([...preselectedKeys].filter((key) => validKeys.has(key)).slice(0, 2));
+    const selectedSources = (): FishFusionSource[] => sources.filter((source) => selectedKeys.has(source.key));
+
+    const shell = htmlElement("div", "aq-modal-shell aq-fusion-modal-shell");
+    const stopEvent = (event: Event) => {
+      event.stopPropagation();
+    };
+    shell.addEventListener("pointerdown", stopEvent);
+    shell.addEventListener("click", stopEvent);
+
+    const selectedLabel = htmlElement("p", "aq-modal-line aq-fusion-selected", ["Select 2 fish"]);
+    const resultStage = htmlElement("div", "aq-fusion-result-stage", [
+      htmlElement("p", "aq-fusion-result-copy", ["Select 2 fish to preview the result."])
+    ]);
+    const sourceGrid = htmlElement("div", "aq-fusion-source-grid");
+    let fuseButton: HTMLButtonElement;
+
+    const updateSelection = () => {
+      const selected = selectedSources();
+      selectedLabel.textContent = selected.length === 0
+        ? "Select 2 fish"
+        : selected.map((source) => `${source.type.name} (${source.label})`).join(" + ");
+      fuseButton.disabled = selected.length !== 2;
+      fuseButton.textContent = selected.length === 2 ? `FUSE C${formatNumber(this.fishFusionCostFor(selected).amount)}` : "FUSE";
+      const resultTypes = selected.length === 2 ? this.fishFusionResultTypes(selected) : undefined;
+      if (resultTypes?.normal) {
+        const inheritedAge = Math.max(...selected.map((source) => source.ageSeconds));
+        const chances = this.fishFusionChancesFor(selected, Boolean(resultTypes.premium));
+        resultStage.replaceChildren(
+          htmlElement("div", "aq-fusion-result-candidates", [
+            this.createFusionResultCandidate("Normal", resultTypes.normal, chances.normal),
+            resultTypes.premium
+              ? this.createFusionResultCandidate("Premium", resultTypes.premium, chances.premium)
+              : htmlElement("div", "aq-fusion-result-card unavailable", [
+                htmlElement("span", "aq-fusion-result-tier", ["Premium"]),
+                htmlElement("p", "aq-fusion-result-copy", ["No premium fish available"])
+              ])
+          ]),
+          htmlElement("p", "aq-fusion-result-copy", [`Age ${this.fusionAgeLabel(inheritedAge)} | Always succeeds`])
+        );
+      } else {
+        resultStage.replaceChildren(
+          htmlElement("p", "aq-fusion-result-copy", [selected.length === 2 ? "No un-owned fish available." : "Select 2 fish to preview the result."])
+        );
+      }
+      sourceGrid.querySelectorAll<HTMLButtonElement>(".aq-fusion-source-button").forEach((button) => {
+        button.classList.toggle("selected", selectedKeys.has(button.dataset.sourceKey ?? ""));
+      });
+    };
+
+    sources.forEach((source) => {
+      const sourceButton = createHtmlButton("", "aq-fusion-source-button", () => {
+        if (selectedKeys.has(source.key)) {
+          selectedKeys.delete(source.key);
+        } else if (selectedKeys.size < 2) {
+          selectedKeys.add(source.key);
+        }
+        updateSelection();
+      }, { attachTouchFeedback: (button) => this.attachTouchFeedback(button) });
+      sourceButton.dataset.sourceKey = source.key;
+      sourceButton.append(
+        htmlImage(`/assets/fish/${source.type.id}.png`, "", "aq-fusion-source-image"),
+        htmlElement("span", "aq-fusion-source-name", [source.type.name]),
+        htmlElement("span", "aq-fusion-source-meta", [`${source.label} | ${this.fusionAgeLabel(source.ageSeconds)}`])
+      );
+      sourceGrid.append(sourceButton);
+    });
+
+    const closeButton = createHtmlButton("Cancel", "aq-modal-button muted", () => this.closeModal(), {
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+    });
+    fuseButton = createHtmlButton("FUSE", "aq-modal-button good", () => {
+      const selected = selectedSources();
+      if (selected.length !== 2) {
+        return;
+      }
+      const resultTypes = this.fishFusionResultTypes(selected);
+      if (!resultTypes.normal) {
+        this.floatText("No un-owned fish", toastX, toastY, "#ffb0a8");
+        return;
+      }
+      const fusionCost = this.fishFusionCostFor(selected);
+      if (!this.spendPrice(fusionCost)) {
+        return;
+      }
+
+      fuseButton.disabled = true;
+      closeButton.disabled = true;
+      sourceGrid.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+        button.disabled = true;
+      });
+      resultStage.classList.add("processing");
+      resultStage.replaceChildren(
+        htmlElement("div", "aq-fusion-spinner"),
+        htmlElement("p", "aq-fusion-result-copy", ["Fusing..."])
+      );
+
+      const chances = this.fishFusionChancesFor(selected, Boolean(resultTypes.premium));
+      const roll = Math.random();
+      const resultOutcome = resultTypes.premium && roll < chances.premium
+        ? { label: "Premium", fishType: resultTypes.premium }
+        : { label: "Normal", fishType: resultTypes.normal };
+      const inheritedAge = Math.max(...selected.map((source) => source.ageSeconds));
+
+      window.setTimeout(() => {
+        const resultType = resultOutcome.fishType;
+        this.consumeFishFusionSources(selected);
+        this.fishInventory.set(resultType.id, this.getFishInventory(resultType.id) + 1);
+        this.addStoredFishAge(resultType.id, inheritedAge);
+        this.ensureFishTexturesLoaded(resultType);
+        resultStage.classList.remove("processing");
+        resultStage.replaceChildren(
+          htmlImage(`/assets/fish/${resultType.id}.png`, "", "aq-fusion-result-image"),
+          htmlElement("p", "aq-fusion-result-copy success", [`${resultOutcome.label} success: ${resultType.name} stored | ${this.fusionAgeLabel(inheritedAge)}`])
+        );
+        this.floatText(`${resultType.name} stored`, toastX, toastY, "#a8ffb0");
+        closeButton.textContent = "Close";
+        closeButton.disabled = false;
+        this.createFoodDock();
+        this.refreshUi();
+        this.saveNow();
+      }, this.settings.reducedMotion ? 250 : 1400);
+    }, {
+      disabled: true,
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+    });
+
+    const panel = htmlElement("section", "aq-modal aq-fusion-modal", [
+      htmlElement("div", "aq-fusion-modal-header", [
+        htmlElement("span", "aq-fusion-modal-badge", ["Fusion Lab"]),
+        htmlElement("h2", "aq-modal-title aq-fusion-modal-title", ["Preview Results"])
+      ]),
+      htmlElement("div", "aq-modal-body aq-fusion-modal-body", [
+        htmlElement("p", "aq-modal-line", ["Cost is shown on the Fuse button. Fusion always succeeds. Close-age fish have better Premium chance."]),
+        selectedLabel,
+        sourceGrid,
+        resultStage
+      ]),
+      htmlElement("div", "aq-modal-actions", [fuseButton, closeButton])
+    ]);
+    shell.append(panel);
+    document.body.appendChild(shell);
+    this.modal = shell;
+    updateSelection();
+  }
+
+  private fishFusionSources(): FishFusionSource[] {
+    const activeSources = this.activeFish().map((fish) => ({
+      key: `active:${this.fish.indexOf(fish)}`,
+      kind: "active" as const,
+      type: fish.type,
+      ageSeconds: fish.ageSeconds,
+      activeIndex: this.fish.indexOf(fish),
+      label: "Tank"
+    }));
+    const storedSources = fishTypes.flatMap((fishType) => {
+      const count = this.getFishInventory(fishType.id);
+      const ages = this.storedFishAgesFor(fishType.id);
+      return Array.from({ length: count }, (_, index): FishFusionSource => ({
+        key: `stored:${fishType.id}:${index}`,
+        kind: "stored",
+        type: fishType,
+        ageSeconds: ages[index] ?? 0,
+        storedAgeIndex: index < ages.length ? index : undefined,
+        label: "Stored"
+      }));
+    });
+    return [...activeSources, ...storedSources];
+  }
+
+  private fishFusionResultTypes(sources: FishFusionSource[]): { normal?: FishType; premium?: FishType } {
+    const normal = this.fishFusionResultType(sources);
+    if (!normal) {
+      return {};
+    }
+
+    const premium = this.fishFusionResultType(
+      sources,
+      this.priceWealth(normal.price) * 2,
+      new Set([normal.id])
+    );
+    return { normal, premium };
+  }
+
+  private fishFusionResultType(sources: FishFusionSource[], targetValueOverride?: number, excludedIds = new Set<string>()): FishType | undefined {
+    const ownedIds = this.ownedFishTypeIds();
+    const unowned = fishTypes.filter((fishType) => !ownedIds.has(fishType.id) && !excludedIds.has(fishType.id));
+    if (unowned.length === 0) {
+      return undefined;
+    }
+
+    const combinedSellValue = sources.reduce((total, source) => total + this.fishFusionSourceSellValue(source), 0);
+    const targetValue = targetValueOverride ?? combinedSellValue * 1.08;
+    const minimumValue = targetValueOverride ? targetValue * 0.72 : combinedSellValue * 0.95;
+    const higherOrSimilar = unowned.filter((fishType) => this.priceWealth(fishType.price) >= minimumValue);
+    const pool = higherOrSimilar.length > 0 ? higherOrSimilar : unowned;
+    return [...pool].sort((first, second) => {
+      const firstDistance = Math.abs(this.priceWealth(first.price) - targetValue);
+      const secondDistance = Math.abs(this.priceWealth(second.price) - targetValue);
+      return firstDistance - secondDistance || this.priceWealth(first.price) - this.priceWealth(second.price);
+    })[0];
+  }
+
+  private fishFusionSourceSellValue(source: FishFusionSource): number {
+    if (source.kind === "active") {
+      const fish = this.fish[source.activeIndex];
+      if (fish && fish.type.id === source.type.id) {
+        return this.activeFishSellValue(fish);
+      }
+    }
+    return this.storedFishSellValue(source.type);
+  }
+
+  private fishFusionCostFor(sources: FishFusionSource[]): Price {
+    const combinedSellValue = sources.reduce((total, source) => total + this.fishFusionSourceSellValue(source), 0);
+    return { coinType: "common", amount: Math.max(1, Math.round(combinedSellValue * fishFusionCostRate)) };
+  }
+
+  private createFusionResultCandidate(label: string, fishType: FishType, chance: number): HTMLElement {
+    return htmlElement("div", "aq-fusion-result-card", [
+      htmlElement("span", "aq-fusion-result-tier", [label]),
+      htmlImage(`/assets/fish/${fishType.id}.png`, "", "aq-fusion-result-image"),
+      htmlElement("p", "aq-fusion-result-name", [fishType.name]),
+      htmlElement("p", "aq-fusion-result-copy", [`Chance ${this.fusionChanceLabel(chance)}`])
+    ]);
+  }
+
+  private fusionChanceLabel(chance: number): string {
+    return `${formatNumber(Math.round(Phaser.Math.Clamp(chance, 0, 1) * 100))}%`;
+  }
+
+  private fishFusionChancesFor(sources: FishFusionSource[], hasPremium: boolean): FishFusionChances {
+    const ages = sources.map((source) => source.ageSeconds);
+    const ageGapMonths = sources.length >= 2 ? Math.abs(Math.max(...ages) - Math.min(...ages)) / 3600 : 0;
+    const premium = hasPremium
+      ? Phaser.Math.Clamp(
+        fishFusionMaxPremiumChance - ageGapMonths * fishFusionPremiumChanceLossPerAgeGapMonth,
+        fishFusionMinPremiumChance,
+        fishFusionMaxPremiumChance
+      )
+      : 0;
+    return {
+      normal: 1 - premium,
+      premium
+    };
+  }
+
+  private consumeFishFusionSources(sources: FishFusionSource[]): void {
+    sources
+      .filter((source): source is Extract<FishFusionSource, { kind: "active" }> => source.kind === "active")
+      .sort((first, second) => second.activeIndex - first.activeIndex)
+      .forEach((source) => {
+        const fish = this.fish[source.activeIndex];
+        if (!fish || fish.type.id !== source.type.id) {
+          return;
+        }
+        this.fish.splice(source.activeIndex, 1);
+        fish.destroy();
+      });
+
+    sources
+      .filter((source): source is Extract<FishFusionSource, { kind: "stored" }> => source.kind === "stored")
+      .sort((first, second) => (second.storedAgeIndex ?? -1) - (first.storedAgeIndex ?? -1))
+      .forEach((source) => this.consumeStoredFishForFusion(source));
+  }
+
+  private consumeStoredFishForFusion(source: Extract<FishFusionSource, { kind: "stored" }>): void {
+    const current = this.getFishInventory(source.type.id);
+    if (current <= 1) {
+      this.fishInventory.delete(source.type.id);
+    } else {
+      this.fishInventory.set(source.type.id, current - 1);
+    }
+
+    if (source.storedAgeIndex !== undefined) {
+      const ages = this.storedFishAgesFor(source.type.id);
+      ages.splice(source.storedAgeIndex, 1);
+      this.setStoredFishAges(source.type.id, ages);
+    }
+    this.trimStoredFishAges(source.type.id);
+  }
+
+  private ownedFishTypeIds(): Set<string> {
+    const ownedIds = new Set(this.fish.map((fish) => fish.type.id));
+    for (const [fishTypeId, count] of this.fishInventory.entries()) {
+      if (count > 0) {
+        ownedIds.add(fishTypeId);
+      }
+    }
+    for (const state of this.tankStates.values()) {
+      for (const [fishTypeId, count] of state.fishInventory.entries()) {
+        if (count > 0) {
+          ownedIds.add(fishTypeId);
+        }
+      }
+    }
+    return ownedIds;
+  }
+
+  private storedFishAgesFor(fishTypeId: string): number[] {
+    return [...(this.fishInventoryAges.get(fishTypeId) ?? [])].sort((first, second) => second - first);
+  }
+
+  private addStoredFishAge(fishTypeId: string, ageSeconds: number): void {
+    if (ageSeconds <= 0) {
+      return;
+    }
+    this.setStoredFishAges(fishTypeId, [...this.storedFishAgesFor(fishTypeId), Math.floor(ageSeconds)]);
+  }
+
+  private takeStoredFishAge(fishTypeId: string): number {
+    const ages = this.storedFishAgesFor(fishTypeId);
+    const ageSeconds = ages.shift() ?? 0;
+    this.setStoredFishAges(fishTypeId, ages);
+    return ageSeconds;
+  }
+
+  private setStoredFishAges(fishTypeId: string, ages: number[]): void {
+    const count = this.getFishInventory(fishTypeId);
+    const sanitized = ages
+      .filter((ageSeconds) => Number.isFinite(ageSeconds) && ageSeconds > 0)
+      .map((ageSeconds) => Math.floor(ageSeconds))
+      .sort((first, second) => second - first)
+      .slice(0, Math.max(0, count));
+    if (sanitized.length === 0) {
+      this.fishInventoryAges.delete(fishTypeId);
+      return;
+    }
+    this.fishInventoryAges.set(fishTypeId, sanitized);
+  }
+
+  private trimStoredFishAges(fishTypeId: string): void {
+    this.setStoredFishAges(fishTypeId, this.storedFishAgesFor(fishTypeId));
+  }
+
+  private fusionAgeLabel(ageSeconds: number): string {
+    const months = Math.max(0, Math.floor(ageSeconds / 3600));
+    if (months >= 12) {
+      const years = Math.floor(months / 12);
+      const remainingMonths = months % 12;
+      const yearLabel = `${formatNumber(years)} ${years === 1 ? "year" : "years"}`;
+      const monthLabel = remainingMonths > 0 ? `${formatNumber(remainingMonths)} ${remainingMonths === 1 ? "month" : "months"}` : "";
+      return monthLabel ? `${yearLabel} ${monthLabel}` : yearLabel;
+    }
+    return months > 0 ? `${formatNumber(months)} ${months === 1 ? "month" : "months"}` : "new";
+  }
+
   private showFoodSellConfirmation(foodTypeId: FoodTypeId): void {
     const foodType = foodTypes.find((item) => item.id === foodTypeId);
     const storedAmount = this.getFoodInventory(foodTypeId);
@@ -7490,7 +8138,7 @@ export class AquariumScene extends Phaser.Scene {
     this.modal = shell;
   }
 
-  private showPrizeCelebration(title: string, imageUrl: string, detail: string): void {
+  private showPrizeCelebration(title: string, imageUrl: string, detail: string, buttonLabel = "Awesome", onClose?: () => void): void {
     this.closeModal();
     this.modalTitle = title;
     const shell = htmlElement("div", "aq-modal-shell aq-prize-celebration-shell");
@@ -7500,7 +8148,10 @@ export class AquariumScene extends Phaser.Scene {
     shell.addEventListener("pointerdown", stopEvent);
     shell.addEventListener("click", stopEvent);
 
-    const closeButton = this.htmlButton("Awesome", "aq-modal-button good", () => this.closeModal());
+    const closeButton = this.htmlButton(buttonLabel, "aq-modal-button good", () => {
+      this.closeModal();
+      onClose?.();
+    });
     const panel = htmlElement("section", "aq-modal aq-prize-celebration-modal", [
       htmlElement("h2", "aq-modal-title aq-prize-celebration-title", [title]),
       htmlElement("div", "aq-prize-celebration-image-wrap", [
