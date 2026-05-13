@@ -1413,15 +1413,15 @@ canvas {
 
   .aq-fusion-chamber-status span {
     @apply rounded-md bg-[#05285d] px-1.5 py-1;
-    animation: aq-fusion-chamber-step 10s linear forwards;
+    animation: aq-fusion-chamber-step var(--aq-fusion-duration, 3s) linear forwards;
   }
 
   .aq-fusion-chamber-status span:nth-child(2) {
-    animation-delay: 2.7s;
+    animation-delay: calc(var(--aq-fusion-duration, 3s) * 0.27);
   }
 
   .aq-fusion-chamber-status span:nth-child(3) {
-    animation-delay: 5.4s;
+    animation-delay: calc(var(--aq-fusion-duration, 3s) * 0.54);
   }
 
   .aq-fusion-chamber-progress {
@@ -1430,7 +1430,7 @@ canvas {
 
   .aq-fusion-chamber-progress span {
     @apply block h-full rounded-full bg-lime-400;
-    animation: aq-fusion-chamber-progress 10s linear forwards;
+    animation: aq-fusion-chamber-progress var(--aq-fusion-duration, 3s) linear forwards;
   }
 
   .aq-fusion-loading-title {

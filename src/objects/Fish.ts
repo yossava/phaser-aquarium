@@ -1441,6 +1441,10 @@ export class Fish {
 
     const now = this.scene.time.now;
     const nextEmoji = this.nextStateEmojiText(now);
+    if (this.activeStateEmoji.length > 3 && now < this.stateEmojiVisibleUntil) {
+      this.positionStateEmoji(this.activeStateEmoji);
+      return;
+    }
     if (nextEmoji && this.isPersistentStateEmoji(nextEmoji)) {
       this.activeStateEmoji = nextEmoji;
       this.stateEmojiVisibleUntil = 0;

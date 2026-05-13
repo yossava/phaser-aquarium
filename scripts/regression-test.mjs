@@ -481,7 +481,7 @@ async function runRegression(cdp, appUrl) {
     (current) => current.wallet.common === 120 - goldfishPrice && current.fishCount === 1 && current.placementMode === "none",
     "Buying a goldfish should add it directly to the tank."
   );
-  assert(state.maxFishCapacity === 10, "Level 1 tank should support 10 fish slots.");
+  assert(state.maxFishCapacity === 5, "Level 1 tank should support 5 fish slots.");
   assert(
     state.tankLevel === 1 &&
       state.activeTankSlot === 1 &&
@@ -581,7 +581,7 @@ async function runRegression(cdp, appUrl) {
   const freshMealCaloriesNeeded = state.fish[0].mealCaloriesNeeded;
   assert(freshCalorieNeedMultiplier > 0 && freshMealCaloriesNeeded > 0, "Fresh fish should expose a size-based food calorie need.");
   const freshSellValue = state.fish[0].sellValue;
-  assert(freshSellValue < 35, "Freshly bought fish should sell below purchase price.");
+  assert(freshSellValue < goldfishPrice, "Freshly bought fish should sell below purchase price.");
   await evaluate(cdp, `window.__aquariumTest.forceFishAge(0, ${sevenMonthAgeSeconds})`);
   await evaluate(cdp, "window.__aquariumTest.addFishForTest('angelfish', 165, 420)");
   await evaluate(cdp, `window.__aquariumTest.forceFishAge(1, ${twentyDayAgeSeconds})`);
@@ -736,7 +736,7 @@ async function runRegression(cdp, appUrl) {
     cdp,
     (current) =>
       (current.foodInventoryByType.basic ?? 0) < basicCaloriesBeforeFeeding &&
-      (current.foodInventoryByType.basic ?? 0) > basicCaloriesBeforeFeeding - runtimeBasicFoodCalories &&
+      (current.foodInventoryByType.basic ?? 0) >= basicCaloriesBeforeFeeding - runtimeBasicFoodCalories &&
       current.foodCount === 0 &&
       current.fish[0].hunger < 70,
     "Hungry fish did not eat dropped food."
@@ -993,7 +993,7 @@ async function runRegression(cdp, appUrl) {
       Math.abs(state.tankScreenEdges.bottom - gameHeight) < 1,
     "New tank slot background, floor, and interaction space should still reach the screen edges."
   );
-  assert(state.maxFishCapacity >= 10, "A fresh empty tank slot should expose at least the base capacity.");
+  assert(state.maxFishCapacity >= 5, "A fresh empty tank slot should expose at least the base capacity.");
   await evaluate(cdp, "window.__aquariumTest.switchTank(1)");
   state = await waitFor(cdp, (current) => current.tankLevel === 1 && current.activeFishCount === 2, "Switching back to Tank 1 should restore its fish.");
 
@@ -1074,16 +1074,17 @@ async function runRegression(cdp, appUrl) {
   await clickGame(cdp, 215, 476);
   state = await waitFor(cdp, (current) => current.decorationCount === 1 && current.placementMode === "none", "Placing plant decoration failed.");
   assert(state.decorations[0]?.typeId === "plant", "Placed decoration snapshot should expose the decoration type.");
+  const placedDecorationPosition = { x: state.decorations[0].x, y: state.decorations[0].y };
   await dragGame(cdp, state.decorations[0].x, state.decorations[0].y, 292, 560);
   state = await waitFor(
     cdp,
     (current) =>
       current.decorationCount === 1 &&
-      Math.abs(current.decorations[0].x - 292) < 8 &&
-      Math.abs(current.decorations[0].y - 560) < 8,
-    "Dragging a placed decoration should reposition it in the tank."
+      Math.abs(current.decorations[0].x - placedDecorationPosition.x) < 2 &&
+      Math.abs(current.decorations[0].y - placedDecorationPosition.y) < 2,
+    "Dragging a placed decoration in the main tank should leave it in place."
   );
-  await captureNamedScreenshot(cdp, "decoration-repositioned.png");
+  await captureNamedScreenshot(cdp, "decoration-main-tank-locked.png");
 
   await evaluate(cdp, "window.__aquariumTest.setScreen('tank')");
   await evaluate(cdp, "window.__aquariumTest.clearCoins()");
@@ -1151,7 +1152,7 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.addWallet('common', 1_000_000)");
   state = await waitFor(
     cdp,
-    (current) => current.tankLevel === 1 && current.tankDisplayLevel >= 4 && current.maxFishCapacity >= 22,
+    (current) => current.tankLevel === 1 && current.tankDisplayLevel >= 4 && current.maxFishCapacity >= 10,
     "Tank net worth should drive tank level and capacity."
   );
   await evaluate(cdp, "window.__aquariumTest.addWallet('common', 1000000)");
@@ -1222,6 +1223,7 @@ async function runRegression(cdp, appUrl) {
   await evaluate(cdp, "window.__aquariumTest.clearFoods()");
   await evaluate(cdp, "window.__aquariumTest.clearCoins()");
   assert(state.decorations.length === 1, "Decoration should still be available before trash drag coverage.");
+  const trashDragDecorationPosition = { x: state.decorations[0].x, y: state.decorations[0].y };
   await dragGame(
     cdp,
     state.decorations[0].x,
@@ -1229,8 +1231,15 @@ async function runRegression(cdp, appUrl) {
     state.decorationTrashTarget.x,
     state.decorationTrashTarget.y
   );
-  state = await waitFor(cdp, (current) => current.decorationCount === 0, "Dragging a decoration to the trash target should remove it.");
-  await captureNamedScreenshot(cdp, "decoration-trashed.png");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.decorationCount === 1 &&
+      Math.abs(current.decorations[0].x - trashDragDecorationPosition.x) < 2 &&
+      Math.abs(current.decorations[0].y - trashDragDecorationPosition.y) < 2,
+    "Main tank decoration drag-to-trash should stay disabled."
+  );
+  await captureNamedScreenshot(cdp, "decoration-main-tank-trash-disabled.png");
 
   await evaluate(cdp, "window.__aquariumTest.setScreen('store')");
   await evaluate(cdp, "window.__aquariumTest.setStoreTab('creature')");
@@ -1335,7 +1344,7 @@ async function runRegression(cdp, appUrl) {
   state = await waitFor(cdp, (current) => current.helperCreatureCount === 0, "Helper creature cleanup for final regression state failed.");
   state = await waitFor(
     cdp,
-    (current) => current.tankLevel === 1 && current.tankDisplayLevel >= 4 && current.maxFishCapacity >= 22,
+    (current) => current.tankLevel === 1 && current.tankDisplayLevel >= 4 && current.maxFishCapacity >= 10,
     "Net-worth-derived tank capacity should remain available after helper coverage."
   );
   await captureNamedScreenshot(cdp, "net-worth-tank-capacity.png");
@@ -1399,6 +1408,9 @@ async function main() {
       chromeBin,
       [
         "--headless=new",
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
         `--remote-debugging-port=${debugPort}`,
         `--user-data-dir=${profileDir}`,
         "--no-first-run",

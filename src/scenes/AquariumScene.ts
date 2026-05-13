@@ -80,7 +80,7 @@ import {
   type TankThemeTexturePair
 } from "../game/tank-catalog";
 import { createFallbackTextures } from "../game/texture-fallbacks";
-import { foodCssFilterFor, rarityStarCount } from "../game/visuals";
+import { fishFoodTintFor, foodCssFilterFor, rarityStarCount } from "../game/visuals";
 import {
   buildDailyQuestItems,
   commonQuestReward as questCommonReward,
@@ -328,6 +328,7 @@ const fishFusionMaxPremiumChance = 1 / 3;
 const fishFusionMinPremiumChance = 0.05;
 const fishFusionPremiumChanceLossPerAgeGapMonth = 0.02;
 const fishFusionCostRate = 0.5;
+const fishFusionDurationMs = 3000;
 const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
   rare: "/assets/ui/icon-rare-coin.png",
@@ -583,6 +584,8 @@ export class AquariumScene extends Phaser.Scene {
   private fishInventoryAges = new Map<string, number[]>();
   private fusionPreviewSourceKeys = new Set<string>();
   private fusionPageResult?: FishFusionPageResult;
+  private pendingFusionTimer?: number;
+  private fusionRunToken = 0;
   private decorationInventory = new Map<string, number>();
   private creatureInventory = new Map<string, number>();
   private fish: Fish[] = [];
@@ -2334,6 +2337,7 @@ export class AquariumScene extends Phaser.Scene {
   private destroyHtmlGameInterface(): void {
     this.nativeCanvasInputCleanup?.();
     this.nativeCanvasInputCleanup = undefined;
+    this.cancelPendingFusion();
     this.cancelHtmlFoodDrag();
     this.closeModal();
     this.destroyMakeupDraft();
@@ -2392,6 +2396,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private closePage(): void {
+    this.cancelPendingFusion();
     this.prizeSpinInProgress = false;
     this.destroyPrizeSpinContainer();
     if (this.activeScreen === "makeup") {
@@ -3576,17 +3581,13 @@ export class AquariumScene extends Phaser.Scene {
           return;
         }
         const fusionCost = this.fishFusionCostFor(selected);
-        if (!this.spendPrice(fusionCost)) {
+        if (!this.developerGodMode && !canAfford(this.wallet, fusionCost)) {
           return;
         }
-        this.captureActiveTankState();
-        this.refreshStatus();
-        this.syncHtmlGameInterface();
-        this.saveNow();
-        this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
 
         previewButton.disabled = true;
         previewButton.textContent = "Fusing...";
+        const fusionDurationMs = this.settings.reducedMotion ? 1200 : fishFusionDurationMs;
         outputStage.replaceChildren(
           htmlElement("div", "aq-fusion-chamber", [
             htmlElement("div", "aq-fusion-chamber-window", [
@@ -3606,6 +3607,7 @@ export class AquariumScene extends Phaser.Scene {
             htmlElement("p", "aq-fusion-result-copy", ["Preparing your new stored fish"])
           ])
         );
+        outputStage.style.setProperty("--aq-fusion-duration", `${fusionDurationMs}ms`);
 
         const chances = this.fishFusionChancesFor(selected, Boolean(resultTypes.premium));
         const roll = Math.random();
@@ -3613,19 +3615,40 @@ export class AquariumScene extends Phaser.Scene {
           ? { label: "Premium", fishType: resultTypes.premium }
           : { label: "Normal", fishType: resultTypes.normal };
         const inheritedAge = Math.max(...selected.map((source) => source.ageSeconds));
+        const fusionToken = ++this.fusionRunToken;
 
-        window.setTimeout(() => {
+        this.pendingFusionTimer = window.setTimeout(() => {
+          this.pendingFusionTimer = undefined;
+          if (fusionToken !== this.fusionRunToken || this.activeScreen !== "album" || !document.body.contains(outputStage)) {
+            return;
+          }
+          if (!this.areFishFusionSourcesAvailable(selected)) {
+            this.fusionPreviewSourceKeys.clear();
+            outputStage.style.removeProperty("--aq-fusion-duration");
+            updatePreviewSelection();
+            outputStage.replaceChildren(htmlElement("p", "aq-fusion-machine-placeholder", ["Fusion source changed. Select two fish again."]));
+            return;
+          }
+          if (!this.spendPrice(fusionCost)) {
+            outputStage.style.removeProperty("--aq-fusion-duration");
+            updatePreviewSelection();
+            outputStage.replaceChildren(htmlElement("p", "aq-fusion-machine-placeholder", [`Need ${formatPrice(fusionCost)} to fuse.`]));
+            return;
+          }
           const resultType = resultOutcome.fishType;
+          this.captureActiveTankState();
           this.consumeFishFusionSources(selected);
           this.fishInventory.set(resultType.id, this.getFishInventory(resultType.id) + 1);
           this.addStoredFishAge(resultType.id, inheritedAge);
           this.ensureFishTexturesLoaded(resultType);
+          outputStage.style.removeProperty("--aq-fusion-duration");
           this.fusionPageResult = {
             label: resultOutcome.label,
             fishTypeId: resultType.id,
             ageSeconds: inheritedAge
           };
           this.fusionPreviewSourceKeys.clear();
+          this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
           this.floatText(`${resultType.name} stored`, toastX, toastY, "#a8ffb0");
           this.createFoodDock();
           updatePreviewSelection();
@@ -3639,7 +3662,7 @@ export class AquariumScene extends Phaser.Scene {
             "Close",
             () => this.closePage()
           );
-        }, this.settings.reducedMotion ? 2000 : 10000);
+        }, fusionDurationMs);
       }, {
         disabled: this.fusionPreviewSourceKeys.size !== 2,
         attachTouchFeedback: (button) => this.attachTouchFeedback(button)
@@ -7739,7 +7762,7 @@ export class AquariumScene extends Phaser.Scene {
         return;
       }
       const fusionCost = this.fishFusionCostFor(selected);
-      if (!this.spendPrice(fusionCost)) {
+      if (!this.developerGodMode && !canAfford(this.wallet, fusionCost)) {
         return;
       }
 
@@ -7760,9 +7783,35 @@ export class AquariumScene extends Phaser.Scene {
         ? { label: "Premium", fishType: resultTypes.premium }
         : { label: "Normal", fishType: resultTypes.normal };
       const inheritedAge = Math.max(...selected.map((source) => source.ageSeconds));
+      const fusionToken = ++this.fusionRunToken;
+      const unlockFusionControls = () => {
+        closeButton.disabled = false;
+        sourceGrid.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+          button.disabled = false;
+        });
+        updateSelection();
+      };
 
-      window.setTimeout(() => {
+      this.pendingFusionTimer = window.setTimeout(() => {
+        this.pendingFusionTimer = undefined;
+        if (fusionToken !== this.fusionRunToken || this.modal !== shell || !document.body.contains(shell)) {
+          return;
+        }
+        if (!this.areFishFusionSourcesAvailable(selected)) {
+          resultStage.classList.remove("processing");
+          selectedKeys.clear();
+          unlockFusionControls();
+          resultStage.replaceChildren(htmlElement("p", "aq-fusion-result-copy", ["Fusion source changed. Select two fish again."]));
+          return;
+        }
+        if (!this.spendPrice(fusionCost)) {
+          resultStage.classList.remove("processing");
+          unlockFusionControls();
+          resultStage.replaceChildren(htmlElement("p", "aq-fusion-result-copy", [`Need ${formatPrice(fusionCost)} to fuse.`]));
+          return;
+        }
         const resultType = resultOutcome.fishType;
+        this.captureActiveTankState();
         this.consumeFishFusionSources(selected);
         this.fishInventory.set(resultType.id, this.getFishInventory(resultType.id) + 1);
         this.addStoredFishAge(resultType.id, inheritedAge);
@@ -7772,6 +7821,7 @@ export class AquariumScene extends Phaser.Scene {
           htmlImage(`/assets/fish/${resultType.id}.png`, "", "aq-fusion-result-image"),
           htmlElement("p", "aq-fusion-result-copy success", [`${resultOutcome.label} success: ${resultType.name} stored | ${this.fusionAgeLabel(inheritedAge)}`])
         );
+        this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
         this.floatText(`${resultType.name} stored`, toastX, toastY, "#a8ffb0");
         closeButton.textContent = "Close";
         closeButton.disabled = false;
@@ -7874,6 +7924,11 @@ export class AquariumScene extends Phaser.Scene {
   private fishFusionCostFor(sources: FishFusionSource[]): Price {
     const combinedSellValue = sources.reduce((total, source) => total + this.fishFusionSourceSellValue(source), 0);
     return { coinType: "common", amount: Math.max(1, Math.round(combinedSellValue * fishFusionCostRate)) };
+  }
+
+  private areFishFusionSourcesAvailable(sources: FishFusionSource[]): boolean {
+    const availableKeys = new Set(this.fishFusionSources().map((source) => source.key));
+    return sources.every((source) => availableKeys.has(source.key));
   }
 
   private createFusionResultCandidate(label: string, fishType: FishType, chance: number): HTMLElement {
@@ -8185,7 +8240,16 @@ export class AquariumScene extends Phaser.Scene {
     this.syncCoinDropVisibilityAndInput();
   }
 
+  private cancelPendingFusion(): void {
+    if (this.pendingFusionTimer !== undefined) {
+      window.clearTimeout(this.pendingFusionTimer);
+      this.pendingFusionTimer = undefined;
+    }
+    this.fusionRunToken += 1;
+  }
+
   private closeModal(): void {
+    this.cancelPendingFusion();
     this.modal?.remove();
     this.modal = undefined;
     this.modalTitle = undefined;
@@ -8373,6 +8437,10 @@ export class AquariumScene extends Phaser.Scene {
           const tailAnimation = currentFish.getTailAnimationSnapshot();
           const emotePosition = this.tankToScreenPoint(emote.x, emote.y);
           const emojiPosition = this.tankToScreenPoint(emote.emojiX, emote.emojiY);
+          const fullnessRatio = currentFish.fullnessRatio();
+          const moodRatio = Phaser.Math.Clamp(currentFish.health / 100, 0, 1);
+          const growthBlockedByTank = currentFish.isGrowthLimitedByTank();
+          const fullyGrown = currentFish.visualScale() >= currentFish.tankGrowthScaleCap() - 0.01;
           return {
             typeId: currentFish.type.id,
             typeName: currentFish.type.name,
@@ -8391,7 +8459,7 @@ export class AquariumScene extends Phaser.Scene {
             weightLabel: currentFish.weightLabel(),
             naturalAgeScale: currentFish.naturalAgeScale() * this.tankViewScaleForLevel(),
             tankGrowthScaleCap: currentFish.tankGrowthScaleCap() * this.tankViewScaleForLevel(),
-            growthBlockedByTank: currentFish.isGrowthLimitedByTank(),
+            growthBlockedByTank,
             gender: currentFish.gender,
             fatalCareSeconds: currentFish.fatalCareSeconds,
             fatalCareRemainingSeconds: currentFish.fatalCareRemainingSeconds(),
@@ -8414,6 +8482,19 @@ export class AquariumScene extends Phaser.Scene {
             bodyTint: currentFish.sprite.tintTopLeft,
             sellValue: this.activeFishSellValue(currentFish),
             nextCoinDropInMs: Math.max(0, currentFish.nextCoinDropAt - this.time.now),
+            statusBars: {
+              careBarsVisible: false,
+              y: Math.min(emotePosition.y, fishPosition.y - 1),
+              fullnessRatio,
+              moodRatio,
+              tailTint: fishFoodTintFor(currentFish.type),
+              rarityStars: 0,
+              fullyGrown,
+              growthBlockedByTank,
+              emoji: emote.emoji,
+              emojiVisible: emote.emojiVisible,
+              emojiBubbleVisible: emote.emojiBubbleVisible
+            },
             emote: {
               ...emote,
               x: emotePosition.x,
