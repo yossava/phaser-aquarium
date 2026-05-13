@@ -277,13 +277,8 @@ const looseFoodTankDirtPerSecond = maxTankDirtPerSecond * 0.11;
 const automatedCoinCollectFeeRate = 0;
 const coinComboMaxCount = 50;
 const coinComboRewardPercentPerCount = 1;
+const coinComboIdleTimeoutMs = 10_000;
 const coinComboRewardTextDurationMs = 3000;
-const fastCoinDropSinkSpeed = 340;
-const quickCoinDropSinkSpeed = 430;
-const fastCoinDropChance = 0.08;
-const fastCoinDropComboChance = 0.42;
-const quickCoinDropChance = 0.22;
-const quickCoinDropComboChance = 0.38;
 const hudStatusSyncIntervalSeconds = 0.25;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
@@ -489,22 +484,14 @@ type AquariumTestSnapshot = {
     bodyTint: number;
     sellValue: number;
     nextCoinDropInMs: number;
-    statusBars: {
-      visible: boolean;
+    emote: {
       x: number;
       y: number;
-      fullnessRatio: number;
-      moodRatio: number;
-      tailTint: number;
-      rarityStars: number;
-      fullyGrown: boolean;
-      growthBlockedByTank: boolean;
       emoji: string;
       emojiVisible: boolean;
       emojiX: number;
       emojiY: number;
       emojiBubbleVisible: boolean;
-      careBarsVisible: boolean;
     };
     tailAnimation: {
       wag: number;
@@ -688,6 +675,7 @@ export class AquariumScene extends Phaser.Scene {
   private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
   private coinComboCount = 0;
   private coinComboCollectedValue = 0;
+  private coinComboLastClaimedAt = 0;
   private coinComboLastPosition = new Phaser.Math.Vector2(toastX, toastY);
   private coinComboOverlay?: HTMLDivElement;
   private backgroundMusic?: Phaser.Sound.BaseSound;
@@ -801,8 +789,8 @@ export class AquariumScene extends Phaser.Scene {
 
     this.foods.forEach((food) => food.update(deltaSeconds));
     this.removeExpiredFood();
-    const coinTouchedSand = this.coinDrops.some((coin) => coin.update(deltaSeconds));
-    if (coinTouchedSand) {
+    this.coinDrops.forEach((coin) => coin.update(deltaSeconds));
+    if (this.coinComboCount > 0 && now - this.coinComboLastClaimedAt >= coinComboIdleTimeoutMs) {
       this.resolveCoinCombo();
     }
     const tankFish = this.activeFish();
@@ -6236,22 +6224,12 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const canFastDrop = fish.sprite.y <= tankBounds.centerY;
-    const fastDropChance = this.coinComboCount > 0 ? fastCoinDropComboChance : fastCoinDropChance;
-    const isFastDrop = canFastDrop && Phaser.Math.FloatBetween(0, 1) < fastDropChance;
-    const quickDropChance = this.coinComboCount > 0 ? quickCoinDropComboChance : quickCoinDropChance;
-    const sinkSpeed = isFastDrop
-      ? Phaser.Math.FloatBetween(0, 1) < quickDropChance
-        ? quickCoinDropSinkSpeed
-        : fastCoinDropSinkSpeed
-      : undefined;
     this.createCoinDrop(
       fish.sprite.x + Phaser.Math.Between(-18, 18),
       fish.sprite.y + Phaser.Math.Between(-28, -14),
       value,
       "common",
-      false,
-      { sinkSpeed }
+      false
     );
   }
 
@@ -6303,9 +6281,7 @@ export class AquariumScene extends Phaser.Scene {
     this.floatCoinClaimText(claimedValue, coin.coinType, coin.sprite.x, coin.sprite.y - 20, coin.visual.textColor, automated, fee);
     if (!automated) {
       this.playSfx(coinCollectSoundKey, { volume: 0.24, detune: this.coinCollectDetune(coin.coinType) });
-      if (!coin.hasTouchedSand) {
-        this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42, claimedValue * coinWealthValue[coin.coinType]);
-      }
+      this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42, claimedValue * coinWealthValue[coin.coinType]);
     }
     this.coinDrops = this.coinDrops.filter((drop) => drop !== coin);
     coin.destroy();
@@ -6422,6 +6398,7 @@ export class AquariumScene extends Phaser.Scene {
   private registerCoinCombo(x: number, y: number, collectedCommonValue: number): void {
     this.coinComboCount = Math.min(coinComboMaxCount, this.coinComboCount + 1);
     this.coinComboCollectedValue += Math.max(0, collectedCommonValue);
+    this.coinComboLastClaimedAt = this.time.now;
     this.coinComboLastPosition.set(x, y);
 
     if (this.coinComboCount >= 2) {
@@ -6439,6 +6416,7 @@ export class AquariumScene extends Phaser.Scene {
     const position = this.coinComboLastPosition.clone();
     this.coinComboCount = 0;
     this.coinComboCollectedValue = 0;
+    this.coinComboLastClaimedAt = 0;
 
     const bonusPercent = comboCount * coinComboRewardPercentPerCount;
     const bonus = Math.floor(collectedValue * (bonusPercent / 100));
@@ -8360,10 +8338,10 @@ export class AquariumScene extends Phaser.Scene {
         },
         fish: this.fish.map((currentFish) => {
           const fishPosition = this.tankToScreenPoint(currentFish.sprite.x, currentFish.sprite.y);
-          const statusBars = currentFish.getStatusBarsSnapshot();
+          const emote = currentFish.getEmoteSnapshot();
           const tailAnimation = currentFish.getTailAnimationSnapshot();
-          const statusPosition = this.tankToScreenPoint(statusBars.x, statusBars.y);
-          const emojiPosition = this.tankToScreenPoint(statusBars.emojiX, statusBars.emojiY);
+          const emotePosition = this.tankToScreenPoint(emote.x, emote.y);
+          const emojiPosition = this.tankToScreenPoint(emote.emojiX, emote.emojiY);
           return {
             typeId: currentFish.type.id,
             typeName: currentFish.type.name,
@@ -8405,10 +8383,10 @@ export class AquariumScene extends Phaser.Scene {
             bodyTint: currentFish.sprite.tintTopLeft,
             sellValue: this.activeFishSellValue(currentFish),
             nextCoinDropInMs: Math.max(0, currentFish.nextCoinDropAt - this.time.now),
-            statusBars: {
-              ...statusBars,
-              x: statusPosition.x,
-              y: statusPosition.y,
+            emote: {
+              ...emote,
+              x: emotePosition.x,
+              y: emotePosition.y,
               emojiX: emojiPosition.x,
               emojiY: emojiPosition.y
             },

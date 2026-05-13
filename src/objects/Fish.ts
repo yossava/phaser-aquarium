@@ -104,7 +104,6 @@ export class Fish {
   public continuousHungrySeconds = 0;
   public gender: FishGender;
   public tankLevel: number;
-  private statusBars: Phaser.GameObjects.Graphics;
   private tailMark: Phaser.GameObjects.Graphics;
   private stateBubble: Phaser.GameObjects.Graphics;
   private stateEmoji: Phaser.GameObjects.Text;
@@ -157,8 +156,6 @@ export class Fish {
     this.sprite.setDepth(8);
     this.tailMark = scene.add.graphics();
     this.tailMark.setDepth(9);
-    this.statusBars = scene.add.graphics();
-    this.statusBars.setDepth(12);
     this.stateBubble = scene.add.graphics();
     this.stateBubble.setDepth(12);
     this.stateEmoji = scene.add
@@ -425,13 +422,12 @@ export class Fish {
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {
-    container.add([this.sprite, this.tailMark, this.statusBars, this.stateBubble, this.stateEmoji]);
+    container.add([this.sprite, this.tailMark, this.stateBubble, this.stateEmoji]);
   }
 
   public setTankVisible(visible: boolean): void {
     this.sprite.setVisible(visible);
     this.tailMark.setVisible(visible);
-    this.statusBars.setVisible(visible);
     if (visible) {
       this.updateStatusBars(true);
     } else {
@@ -732,7 +728,6 @@ export class Fish {
 
   public destroy(): void {
     this.tailMark.destroy();
-    this.statusBars.destroy();
     this.stateBubble.destroy();
     this.stateEmoji.destroy();
     this.sprite.destroy();
@@ -775,41 +770,23 @@ export class Fish {
     return iconByStatus[this.hudStatusLabel()] ?? "😊";
   }
 
-  public getStatusBarsSnapshot(): {
-    visible: boolean;
+  public getEmoteSnapshot(): {
     x: number;
     y: number;
-    fullnessRatio: number;
-    moodRatio: number;
-    tailTint: number;
-    rarityStars: number;
-    fullyGrown: boolean;
-    growthBlockedByTank: boolean;
     emoji: string;
     emojiVisible: boolean;
     emojiX: number;
     emojiY: number;
     emojiBubbleVisible: boolean;
-    careBarsVisible: boolean;
   } {
-    const fullnessRatio = this.currentFullnessRatio();
-    const moodRatio = this.currentMoodRatio();
     return {
-      visible: this.statusBars.visible,
-      x: this.statusBars.x,
-      y: this.statusBars.y,
-      fullnessRatio,
-      moodRatio,
-      tailTint: this.tailTint(),
-      rarityStars: 0,
-      fullyGrown: this.isFullyGrown(),
-      growthBlockedByTank: this.isGrowthLimitedByTank(),
+      x: this.stateEmoji.x,
+      y: this.stateEmoji.y,
       emoji: this.stateEmoji.text,
       emojiVisible: this.stateEmoji.visible,
       emojiX: this.stateEmoji.x,
       emojiY: this.stateEmoji.y,
-      emojiBubbleVisible: this.stateBubble.visible,
-      careBarsVisible: this.shouldShowCareBars(fullnessRatio, moodRatio)
+      emojiBubbleVisible: this.stateBubble.visible
     };
   }
 
@@ -1444,40 +1421,9 @@ export class Fish {
 
     this.statusIndicatorElapsed = 0;
     if (this.shouldHideTankStatusUi()) {
-      this.statusBars.clear();
       this.hideStateEmoji();
       this.updateTailMark();
       return;
-    }
-
-    const barWidth = 34;
-    const barHeight = 3;
-    const gap = 2;
-    const x = Math.round(this.sprite.x - barWidth / 2);
-    const yOffset = 16;
-    const y = Math.round(Math.max(tankBounds.top + yOffset, this.sprite.y - this.sprite.displayHeight / 2 - yOffset));
-    const fullnessRatio = this.currentFullnessRatio();
-    const moodRatio = this.currentMoodRatio();
-    const fullnessColor = fullnessRatio < 0.35 ? 0xff6d75 : fullnessRatio < 0.68 ? 0xffd15c : 0x62f2a8;
-    const moodColor = moodRatio < 0.35 ? 0xff6d75 : moodRatio < 0.68 ? 0xffd15c : 0x62f2a8;
-    const barY = 0;
-    const showCareBars = this.shouldShowCareBars(fullnessRatio, moodRatio);
-
-    this.statusBars.clear();
-    this.statusBars.setPosition(x, y);
-
-    if (showCareBars && !this.shouldShowHungryBubble()) {
-      this.statusBars.fillStyle(0x061725, 0.72);
-      this.statusBars.fillRoundedRect(-1, barY - 1, barWidth + 2, barHeight * 2 + gap + 2, 2);
-      this.statusBars.fillStyle(0x19364a, 0.95);
-      this.statusBars.fillRoundedRect(0, barY, barWidth, barHeight, 1);
-      this.statusBars.fillRoundedRect(0, barY + barHeight + gap, barWidth, barHeight, 1);
-      this.statusBars.fillStyle(fullnessColor, 1);
-      this.statusBars.fillRoundedRect(0, barY, Math.max(2, barWidth * fullnessRatio), barHeight, 1);
-      this.statusBars.fillStyle(moodColor, 1);
-      this.statusBars.fillRoundedRect(0, barY + barHeight + gap, Math.max(2, barWidth * moodRatio), barHeight, 1);
-      this.statusBars.lineStyle(1, 0xd7f4ff, 0.28);
-      this.statusBars.strokeRoundedRect(-1, barY - 1, barWidth + 2, barHeight * 2 + gap + 2, 2);
     }
 
     this.updateStateEmoji();
@@ -1589,10 +1535,6 @@ export class Fish {
 
   private currentFullnessRatio(): number {
     return Phaser.Math.Clamp(1 - this.hunger / 100, 0, 1);
-  }
-
-  private shouldShowCareBars(fullnessRatio = this.currentFullnessRatio(), moodRatio = this.currentMoodRatio()): boolean {
-    return fullnessRatio < 0.5 || moodRatio < 0.5;
   }
 
   private shouldShowHungryBubble(): boolean {
