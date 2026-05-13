@@ -6,6 +6,7 @@ import type { FoodType } from "../types/mechanics";
 const screenSizedPellet = (ratio: number): number => Math.round(gameWidth * ratio);
 const defaultPelletDisplaySize = screenSizedPellet(0.06);
 const pillPelletDisplaySize = screenSizedPellet(0.072);
+const foodPelletEdibleDelaySeconds = 1;
 const maxFoodPelletAgeSeconds = 5 * 60;
 const foodPelletSizeByDensity: Record<number, number> = {
   1: screenSizedPellet(0.06),
@@ -92,6 +93,10 @@ export class FoodPellet {
 
   public isExpired(): boolean {
     return this.expired;
+  }
+
+  public canBeEaten(): boolean {
+    return this.ageSeconds >= foodPelletEdibleDelaySeconds;
   }
 
   public destroy(): void {

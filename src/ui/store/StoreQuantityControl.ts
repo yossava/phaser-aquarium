@@ -4,6 +4,7 @@ export type QuantityHoldState = {
   delay?: number;
   interval?: number;
   pointerStarted: boolean;
+  releaseController?: AbortController;
 };
 
 export function createQuantityHoldState(): QuantityHoldState {
@@ -30,13 +31,17 @@ export function createQuantityHoldButton(
     }
 
     holdState.pointerStarted = event.type === "pointerdown";
-    onDelta();
     stopQuantityHold(holdState);
+    onDelta();
     holdState.delay = window.setTimeout(() => {
       holdState.interval = window.setInterval(onDelta, 70);
     }, 320);
-    window.addEventListener("pointerup", stop, { once: true });
-    window.addEventListener("pointercancel", stop, { once: true });
+    holdState.releaseController = new AbortController();
+    const releaseOptions = { capture: true, once: true, signal: holdState.releaseController.signal };
+    window.addEventListener("pointerup", stop, releaseOptions);
+    window.addEventListener("pointercancel", stop, releaseOptions);
+    window.addEventListener("blur", stop, releaseOptions);
+    document.addEventListener("visibilitychange", stop, releaseOptions);
   };
 
   node.addEventListener("pointerdown", start);
@@ -60,6 +65,10 @@ export function createQuantityValue(value: string): HTMLElement {
 }
 
 export function stopQuantityHold(holdState: QuantityHoldState): void {
+  if (holdState.releaseController !== undefined) {
+    holdState.releaseController.abort();
+    holdState.releaseController = undefined;
+  }
   if (holdState.delay !== undefined) {
     window.clearTimeout(holdState.delay);
     holdState.delay = undefined;

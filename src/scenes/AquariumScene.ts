@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../data/content";
 import { gameHeight, gameWidth, maxRenderScale, setTankWorldScale, shouldUseLowPowerMode, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
 import {
+  coinMagnetPositionStorageKey,
   foodDispenserAssetPath,
   foodDispenserInventoryKey,
   foodDispenserMinIntervalMs,
@@ -316,9 +317,9 @@ const tankFallbackBaseColor = 0x0b7097;
 const coinMagnetInventoryKey = "utility:coin-magnet";
 const coinMagnetPrice: Price = { coinType: "common", amount: 720 };
 const coinMagnetIconPath = "/assets/ui/coin-magnet.png";
-const coinMagnetCollectRadius = 170;
-const coinMagnetDurationMs = 15 * 60 * 1000;
-const coinMagnetAttractDurationMs = 100;
+const coinMagnetDurationMs = 30 * 60 * 1000;
+const coinMagnetAttractDurationMs = 260;
+const coinMagnetAttractScale = 0.44;
 const coinWealthValue: Record<CoinType, number> = {
   common: 1,
   rare: 1000,
@@ -648,13 +649,17 @@ export class AquariumScene extends Phaser.Scene {
   private gameHudHappyText?: HTMLSpanElement;
   private foodDispenserText?: HTMLSpanElement;
   private foodDispenserElement?: HTMLDivElement;
+  private coinMagnetText?: HTMLSpanElement;
+  private coinMagnetElement?: HTMLDivElement;
   private foodDispenserY = tankBounds.bottom - 74;
+  private coinMagnetY = tankBounds.bottom - 160;
   private nextFoodDispenseAt = 0;
   private htmlFoodDock?: HTMLDivElement;
   private htmlFoodDragGhost?: HTMLDivElement;
   private htmlFoodDragCleanup?: () => void;
   private htmlDockDragging = false;
   private magnetCollectingCoins = new Set<CoinDrop>();
+  private coinMagnetPreviousCoinY = new Map<CoinDrop, number>();
   private coinMagnetWasActive = false;
   private coinMagnetDisplayedMinutes = 0;
   private gameHudLevelBadge?: HTMLDivElement;
@@ -739,6 +744,7 @@ export class AquariumScene extends Phaser.Scene {
     createFallbackTextures(this, decorationTypes, helperCreatureTypes);
     this.createFishAnimations();
     this.loadFoodDispenserY();
+    this.loadCoinMagnetY();
     this.createWorld();
     this.createUi();
     this.restoreSavedGame();
@@ -789,11 +795,17 @@ export class AquariumScene extends Phaser.Scene {
     const deltaSeconds = delta / 1000;
     const now = this.time.now;
     this.updateStoreOverlayTimer(deltaSeconds);
+
+    if (!this.shouldRunTankActivity()) {
+      return;
+    }
+
     this.updateTimedUtilities();
 
     this.foods.forEach((food) => food.update(deltaSeconds));
     this.removeExpiredFood();
     this.coinDrops.forEach((coin) => coin.update(deltaSeconds));
+    this.updateCoinMagnet();
     if (this.coinComboCount > 0 && now - this.coinComboLastClaimedAt >= coinComboIdleTimeoutMs) {
       this.resolveCoinCombo();
     }
@@ -894,6 +906,10 @@ export class AquariumScene extends Phaser.Scene {
       this.hudStatusSyncElapsed = 0;
       this.refreshStatus();
     }
+  }
+
+  private shouldRunTankActivity(): boolean {
+    return this.activeScreen === "tank";
   }
 
   private configureCameraForHighDpi(): void {
@@ -1307,7 +1323,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private updateDirtyTankOverlay(overlay = this.dirtyTankOverlay): void {
     const dirtyRatio = Phaser.Math.Clamp((dirtyTankOverlayThreshold - this.cleanliness) / dirtyTankOverlayThreshold, 0, 1);
-    const visible = dirtyRatio > 0;
+    const visible = dirtyRatio > 0 && this.shouldShowTankScene();
     const easedRatio = Math.pow(dirtyRatio, 0.72);
 
     if (overlay) {
@@ -1630,9 +1646,25 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private syncHtmlGameInterface(): void {
+    this.syncTankSceneVisibility();
     this.syncTankMenuOverlay();
     this.syncHtmlHud();
     this.syncHtmlFoodDock();
+  }
+
+  private shouldShowTankScene(): boolean {
+    return this.activeScreen === "tank" || this.activeScreen === "makeup";
+  }
+
+  private syncTankSceneVisibility(): void {
+    const visible = this.shouldShowTankScene();
+    this.tankLayer?.setVisible(visible);
+    if (!visible) {
+      this.dirtyTankOverlay?.setVisible(false);
+      this.showDecorationTrashTarget(false);
+    } else if (this.activeScreen === "tank") {
+      this.updateDirtyTankOverlay();
+    }
   }
 
   private syncHtmlHud(): void {
@@ -1658,6 +1690,10 @@ export class AquariumScene extends Phaser.Scene {
     if (this.foodDispenserText) {
       this.foodDispenserText.textContent = this.foodBadgeLabel(this.getTotalDispenserInventory());
     }
+    if (this.coinMagnetText) {
+      this.coinMagnetText.textContent = `${formatNumber(this.coinMagnetRemainingMinutes())}m`;
+    }
+    this.syncCoinMagnetPosition();
     this.syncFoodDispenserPosition();
     this.syncFoodDockPosition();
   }
@@ -1714,22 +1750,53 @@ export class AquariumScene extends Phaser.Scene {
     ]);
 
     panel.append(summary, wallet, care);
+    const coinMagnet = document.createElement("div");
+    coinMagnet.className = "aq-tank-side-tool aq-coin-magnet-tool";
+    this.coinMagnetElement = coinMagnet;
+    const coinMagnetIcon = document.createElement("img");
+    coinMagnetIcon.src = coinMagnetIconPath;
+    coinMagnetIcon.alt = "Coin magnet";
+    coinMagnetIcon.draggable = false;
+    const coinMagnetBadge = document.createElement("span");
+    coinMagnetBadge.className = "aq-tank-side-tool-count aq-coin-magnet-count";
+    this.coinMagnetText = coinMagnetBadge;
+    coinMagnet.append(coinMagnetIcon, coinMagnetBadge);
+    this.bindCoinMagnetDrag(coinMagnet);
+
     const foodDispenser = document.createElement("div");
-    foodDispenser.className = "aq-food-dispenser";
+    foodDispenser.className = "aq-tank-side-tool aq-food-dispenser";
     this.foodDispenserElement = foodDispenser;
     const foodDispenserIcon = document.createElement("img");
     foodDispenserIcon.src = foodDispenserAssetPath;
     foodDispenserIcon.alt = "Fish food dispenser";
     foodDispenserIcon.draggable = false;
     const foodDispenserBadge = document.createElement("span");
-    foodDispenserBadge.className = "aq-food-dispenser-count";
+    foodDispenserBadge.className = "aq-tank-side-tool-count aq-food-dispenser-count";
     this.foodDispenserText = foodDispenserBadge;
     foodDispenser.append(foodDispenserIcon, foodDispenserBadge);
     this.bindFoodDispenserDrag(foodDispenser);
 
-    overlay.append(panel, foodDispenser);
+    overlay.append(panel, coinMagnet, foodDispenser);
     document.body.appendChild(overlay);
     return overlay;
+  }
+
+  private syncCoinMagnetPosition(): void {
+    if (!this.coinMagnetElement) {
+      return;
+    }
+
+    if (!this.hasCoinMagnet()) {
+      this.coinMagnetElement.classList.add("hidden");
+      return;
+    }
+
+    this.coinMagnetElement.classList.remove("hidden");
+    this.coinMagnetY = Phaser.Math.Clamp(this.coinMagnetY, this.foodDispenserMinY(), this.foodDispenserMaxY());
+    const position = this.coinMagnetTankPosition();
+    const screenPosition = this.tankToScreenPoint(position.x, position.y);
+    this.coinMagnetElement.style.setProperty("--tank-side-tool-left", `${Math.round(screenPosition.x)}px`);
+    this.coinMagnetElement.style.setProperty("--tank-side-tool-top", `${Math.round(screenPosition.y)}px`);
   }
 
   private syncFoodDispenserPosition(): void {
@@ -1813,6 +1880,68 @@ export class AquariumScene extends Phaser.Scene {
     element.addEventListener("lostpointercapture", () => cleanup());
   }
 
+  private bindCoinMagnetDrag(element: HTMLElement): void {
+    let pressed = false;
+    let dragging = false;
+    let startClientY = 0;
+    let startMagnetY = this.coinMagnetY;
+    const dragThresholdPx = 8;
+    const cleanup = (pointerId?: number) => {
+      pressed = false;
+      dragging = false;
+      element.classList.remove("is-dragging");
+      if (pointerId !== undefined) {
+        this.releasePointerSafely(element, pointerId);
+      }
+    };
+    const move = (event: PointerEvent) => {
+      if (!pressed) {
+        return;
+      }
+
+      event.preventDefault();
+      const clientDeltaY = event.clientY - startClientY;
+      if (!dragging && Math.abs(clientDeltaY) < dragThresholdPx) {
+        return;
+      }
+
+      dragging = true;
+      element.classList.add("is-dragging");
+      const rect = this.game.canvas.getBoundingClientRect();
+      const designDeltaY = rect.height > 0 ? (clientDeltaY / rect.height) * gameHeight : 0;
+      this.coinMagnetY = Phaser.Math.Clamp(startMagnetY + designDeltaY, this.foodDispenserMinY(), this.foodDispenserMaxY());
+      this.syncCoinMagnetPosition();
+    };
+    const end = (event: PointerEvent) => {
+      if (!pressed) {
+        return;
+      }
+      event.preventDefault();
+      const shouldSave = dragging;
+      cleanup(event.pointerId);
+      if (shouldSave) {
+        this.saveCoinMagnetY();
+      }
+    };
+
+    element.addEventListener("pointerdown", (event) => {
+      if (this.activeScreen !== "tank") {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      pressed = true;
+      dragging = false;
+      startClientY = event.clientY;
+      startMagnetY = this.coinMagnetY;
+      this.capturePointerSafely(element, event.pointerId);
+    });
+    element.addEventListener("pointermove", move);
+    element.addEventListener("pointerup", end);
+    element.addEventListener("pointercancel", end);
+    element.addEventListener("lostpointercapture", () => cleanup());
+  }
+
   private loadFoodDispenserY(): void {
     try {
       const stored =
@@ -1834,6 +1963,29 @@ export class AquariumScene extends Phaser.Scene {
     try {
       localStorage.setItem(foodDispenserPositionStorageKey, String(Math.round(this.foodDispenserY)));
       localStorage.removeItem(legacyFoodDispenserPositionStorageKey);
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  private loadCoinMagnetY(): void {
+    try {
+      const stored = localStorage.getItem(coinMagnetPositionStorageKey);
+      if (!stored) {
+        return;
+      }
+      const parsed = Number(stored);
+      if (Number.isFinite(parsed)) {
+        this.coinMagnetY = Phaser.Math.Clamp(parsed, this.foodDispenserMinY(), this.foodDispenserMaxY());
+      }
+    } catch {
+      // Optional UI position persistence should not block game startup.
+    }
+  }
+
+  private saveCoinMagnetY(): void {
+    try {
+      localStorage.setItem(coinMagnetPositionStorageKey, String(Math.round(this.coinMagnetY)));
     } catch {
       // Ignore storage failures.
     }
@@ -2059,17 +2211,7 @@ export class AquariumScene extends Phaser.Scene {
         count: this.getCreatureInventory(creatureType.id),
         icon: creatureType.id === "feeder-snail" ? "/assets/helpers/feeder-snail.png" : `/assets/helpers/${creatureType.id}.png`
       }));
-    const utilityItems: InventoryDockItem[] = this.hasCoinMagnet()
-      ? [{
-        kind: "utility",
-        id: "coin-magnet",
-        label: "Magnet",
-        count: this.coinMagnetRemainingMinutes(),
-        icon: coinMagnetIconPath
-      }]
-      : [];
-
-    return [...foodItems, ...utilityItems, ...fishItems, ...decorationItems, ...helperItems];
+    return [...foodItems, ...fishItems, ...decorationItems, ...helperItems];
   }
 
   private inventoryDockItemKey(item: InventoryDockItem): string {
@@ -5162,7 +5304,7 @@ export class AquariumScene extends Phaser.Scene {
       this.decorationInventory.set(coinMagnetInventoryKey, Date.now() + coinMagnetDurationMs);
       this.coinMagnetWasActive = true;
       this.recentInventoryDockItemKey = "utility:coin-magnet";
-      this.floatText("Coin Magnet active 15m", toastX, toastY, "#a8ffb0");
+      this.floatText("Coin Magnet active 30m", toastX, toastY, "#a8ffb0");
       this.createFoodDock();
     }
     this.storeOverlay?.refresh();
@@ -6374,6 +6516,7 @@ export class AquariumScene extends Phaser.Scene {
     coin.hitZone.on("pointerdown", collect);
     coin.sprite.on("pointerdown", collect);
     this.coinDrops.push(coin);
+    this.coinMagnetPreviousCoinY.set(coin, coin.sprite.y);
     this.setCoinDropVisible(coin, this.activeScreen !== "makeup");
     return coin;
   }
@@ -6410,9 +6553,31 @@ export class AquariumScene extends Phaser.Scene {
       this.registerCoinCombo(coin.sprite.x, coin.sprite.y - 42, claimedValue * coinWealthValue[coin.coinType]);
     }
     this.coinDrops = this.coinDrops.filter((drop) => drop !== coin);
+    this.coinMagnetPreviousCoinY.delete(coin);
     coin.destroy();
     this.refreshUi();
     this.saveNow();
+  }
+
+  private updateCoinMagnet(): void {
+    if (!this.hasCoinMagnet() || this.modal || this.coinDrops.length === 0) {
+      for (const coin of this.coinDrops) {
+        this.coinMagnetPreviousCoinY.set(coin, coin.sprite.y);
+      }
+      return;
+    }
+
+    const position = this.coinMagnetTankPosition();
+    for (const coin of this.coinDrops) {
+      const previousY = this.coinMagnetPreviousCoinY.get(coin) ?? coin.sprite.y;
+      this.coinMagnetPreviousCoinY.set(coin, coin.sprite.y);
+      if (this.magnetCollectingCoins.has(coin)) {
+        continue;
+      }
+      if (previousY < position.y && coin.sprite.y >= position.y) {
+        this.pullCoinToMagnet(coin, position.x, position.y);
+      }
+    }
   }
 
   private canManuallyCollectTankCoins(): boolean {
@@ -6441,32 +6606,19 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    if (this.magnetCollectingCoins.size > 0) {
+    const coinToCollect = this.coinDrops.find((coin) => !this.magnetCollectingCoins.has(coin) && coin.sprite.y >= y);
+    if (coinToCollect) {
+      this.pullCoinToMagnet(coinToCollect, x, y);
+    } else if (showEmptyMessage) {
+      this.floatTankText("No coins past line", x, y - 22, "#d7f4ff");
+    }
+  }
+
+  private pullCoinToMagnet(coinToCollect: CoinDrop, x: number, y: number): void {
+    if (!this.coinDrops.includes(coinToCollect) || this.magnetCollectingCoins.has(coinToCollect)) {
       return;
     }
 
-    let nearestCoin: CoinDrop | undefined;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    for (const coin of this.coinDrops) {
-      if (this.magnetCollectingCoins.has(coin)) {
-        continue;
-      }
-      const distance = Phaser.Math.Distance.Between(x, y, coin.sprite.x, coin.sprite.y);
-      if (distance <= coinMagnetCollectRadius && distance < nearestDistance) {
-        nearestCoin = coin;
-        nearestDistance = distance;
-      }
-    }
-
-    if (!nearestCoin) {
-      if (showEmptyMessage) {
-        this.floatTankText("No coins nearby", x, y - 22, "#d7f4ff");
-      }
-      return;
-    }
-
-    const coinToCollect = nearestCoin;
-    this.floatTankText("Magnet", x, y - 28, "#9eeeff");
     this.magnetCollectingCoins.add(coinToCollect);
     coinToCollect.hitZone.disableInteractive();
     coinToCollect.sprite.disableInteractive();
@@ -6474,7 +6626,7 @@ export class AquariumScene extends Phaser.Scene {
       targets: [coinToCollect.sprite, coinToCollect.hitZone, coinToCollect.shimmer, coinToCollect.valueText],
       x,
       y,
-      scale: 0.72,
+      scale: coinMagnetAttractScale,
       duration: coinMagnetAttractDurationMs,
       ease: "Sine.easeInOut",
       onComplete: () => {
@@ -6482,6 +6634,13 @@ export class AquariumScene extends Phaser.Scene {
         this.collectCoin(coinToCollect, false);
       }
     });
+  }
+
+  private coinMagnetTankPosition(): Phaser.Math.Vector2 {
+    return new Phaser.Math.Vector2(
+      tankBounds.left,
+      Phaser.Math.Clamp(this.coinMagnetY, this.foodDispenserMinY(), this.foodDispenserMaxY())
+    );
   }
 
   private playSfx(key: string, config: Phaser.Types.Sound.SoundConfig = {}): void {
@@ -7312,10 +7471,11 @@ export class AquariumScene extends Phaser.Scene {
     if (reservedCalories <= 0) {
       return;
     }
-    const targetDirection = Math.sign(targetFish.sprite.x - outlet.x) || 1;
+    const throwAngle = Phaser.Math.FloatBetween(-Math.PI * 0.82, -Math.PI * 0.18);
+    const throwPower = Phaser.Math.Between(130, 270);
     const pellet = new FoodPellet(this, outlet.x, outlet.y, foodType, {
-      velocityX: Phaser.Math.Between(70, 145) * targetDirection,
-      velocityY: -Phaser.Math.Between(120, 220),
+      velocityX: Math.cos(throwAngle) * throwPower,
+      velocityY: Math.sin(throwAngle) * throwPower,
       displayScale: foodDispenserPelletScale,
       reservedCalories,
       source: "dispenser"

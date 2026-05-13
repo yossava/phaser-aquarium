@@ -36,14 +36,46 @@ export function createHtmlButton(
   button.textContent = label;
   button.disabled = Boolean(options.disabled);
   options.attachTouchFeedback?.(button);
-  button.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
+
+  let pointerArmed = false;
+  let ignoreNextClick = false;
+  const run = (): void => {
     if (button.disabled) {
       return;
     }
     onClick();
     options.afterClick?.();
+  };
+
+  button.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+    pointerArmed = !button.disabled && event.isPrimary && event.button === 0;
+  });
+  button.addEventListener("pointerup", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!pointerArmed || !event.isPrimary) {
+      pointerArmed = false;
+      return;
+    }
+    pointerArmed = false;
+    ignoreNextClick = true;
+    run();
+  });
+  button.addEventListener("pointercancel", () => {
+    pointerArmed = false;
+  });
+  button.addEventListener("pointerleave", () => {
+    pointerArmed = false;
+  });
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (ignoreNextClick) {
+      ignoreNextClick = false;
+      return;
+    }
+    run();
   });
   return button;
 }

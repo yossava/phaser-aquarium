@@ -2164,33 +2164,55 @@ canvas {
     }
   }
 
-  .aq-food-dispenser {
+  .aq-tank-side-tool {
     @apply pointer-events-auto absolute z-[3] flex items-end;
+    width: clamp(62px, 16vw, 82px);
+    filter: drop-shadow(0 5px 7px rgba(0, 28, 44, 0.42));
+    transition: filter 90ms ease, transform 90ms ease;
+  }
+
+  .aq-food-dispenser {
     left: var(--food-dispenser-left, 0px);
     top: var(--food-dispenser-top, 70%);
     width: clamp(66px, 18vw, 84px);
     transform: translate(-24%, -50%);
-    filter: drop-shadow(0 5px 7px rgba(0, 28, 44, 0.42));
     touch-action: none;
     cursor: ns-resize;
-    transition: filter 90ms ease, transform 90ms ease;
   }
 
-  .aq-food-dispenser.is-dragging {
+  .aq-coin-magnet-tool {
+    left: var(--tank-side-tool-left, 0px);
+    top: var(--tank-side-tool-top, 60%);
+    width: clamp(46px, 12vw, 60px);
+    transform: translate(-22%, -50%);
+    touch-action: none;
+    cursor: ns-resize;
+  }
+
+  .aq-food-dispenser.is-dragging,
+  .aq-coin-magnet-tool.is-dragging {
     transform: translate(-24%, -50%) scale(1.04);
     filter: brightness(1.12) drop-shadow(0 5px 7px rgba(0, 28, 44, 0.48));
   }
 
-  .aq-food-dispenser img {
+  .aq-coin-magnet-tool.is-dragging {
+    transform: translate(-22%, -50%) scale(1.04);
+  }
+
+  .aq-tank-side-tool img {
     @apply w-full object-contain;
   }
 
-  .aq-food-dispenser-count {
+  .aq-tank-side-tool-count {
     @apply absolute -right-0.5 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/85 bg-emerald-500 px-1 text-[10px] font-black leading-none text-white;
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.32),
       0 2px 5px rgba(0, 38, 45, 0.38);
     text-shadow: 0 1px 1px rgba(0, 65, 38, 0.62);
+  }
+
+  .aq-coin-magnet-count {
+    @apply bg-sky-500;
   }
 
   .aq-food-dock {

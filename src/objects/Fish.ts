@@ -1103,6 +1103,10 @@ export class Fish {
   }
 
   private willChaseFood(food: FoodPellet): boolean {
+    if (!food.canBeEaten()) {
+      return false;
+    }
+
     if (food.foodType.id === "creature") {
       return false;
     }
