@@ -154,7 +154,7 @@ import { createDeveloperSettingsCard, createSettingsMusicCard, createSettingsTog
 import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
 import { createHtmlButton, htmlElement, htmlImage } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
-import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, StoreTab, Wallet } from "../types/mechanics";
+import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
 type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "prize" | "makeup" | "settings";
 
@@ -263,7 +263,7 @@ const automatedCoinCollectFeeRate = 0;
 const coinComboMaxCount = 50;
 const coinComboRewardPercentPerCount = 1;
 const coinComboRewardTextDurationMs = 3000;
-const fastCoinDropSinkSpeed = 260;
+const fastCoinDropSinkSpeed = 340;
 const fastCoinDropChance = 0.08;
 const fastCoinDropComboChance = 0.42;
 const hudStatusSyncIntervalSeconds = 0.25;
@@ -673,6 +673,7 @@ export class AquariumScene extends Phaser.Scene {
   private prizeMachine: PrizeMachineState = createDefaultPrizeMachineState();
   private prizeSpinContainer?: Phaser.GameObjects.Container;
   private prizeSpinInProgress = false;
+  private prizeCommonFish = this.nextPrizeFish("common");
   private prizeRareFish = this.nextPrizeRareFish();
 
   public constructor() {
@@ -2235,6 +2236,11 @@ export class AquariumScene extends Phaser.Scene {
     if (item.kind === "fish") {
       const fishType = fishTypes.find((candidate) => candidate.id === item.id);
       if (fishType) {
+        if (this.activeFish().length >= this.maxFishCapacityForLevel()) {
+          this.showTankFullText(x, y);
+          return;
+        }
+
         this.placeFishWithCompatibility(fishType, x, y);
       }
       return;
@@ -3592,8 +3598,9 @@ export class AquariumScene extends Phaser.Scene {
     this.hideHtmlPageOverlay();
     this.createFoodDock();
     this.syncHtmlGameInterface();
+    this.prizeCommonFish = this.nextPrizeFish("common");
     this.prizeRareFish = this.nextPrizeRareFish();
-    this.ensureFishTexturesLoaded(this.prizeRareFish);
+    this.ensureFishTexturesLoaded(this.prizeWheelFishPrize());
     this.showPrizeMachineSpinner();
   }
 
@@ -3623,6 +3630,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.prizeMachine = setPrizeMachineBet(this.prizeMachine, betAmount);
+    this.ensureFishTexturesLoaded(this.prizeWheelFishPrize());
     this.showPrizeMachineSpinner();
     this.saveNow();
   }
@@ -3744,6 +3752,10 @@ export class AquariumScene extends Phaser.Scene {
     const usedKeys = new Set<string>();
 
     return targetMultipliers.map((multiplier, index) => {
+      if (index === 10) {
+        return this.prizeWheelRareFishCandidate().segment;
+      }
+
       const lane: "loss" | "win" = multiplier < 1 ? "loss" : "win";
       const rawTargetValue = betAmount * multiplier;
       const targetValue = lane === "loss"
@@ -3861,25 +3873,35 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private prizeWheelRareFishCandidates(lane: "loss" | "win"): PrizeSegmentCandidate[] {
-    const betAmount = this.prizeMachine.selectedBetAmount;
-    const value = this.storedFishSellValue(this.prizeRareFish);
-    if (!this.prizeWheelValueMatchesLane(value, lane, betAmount)) {
+    const candidate = this.prizeWheelRareFishCandidate();
+    if (!this.prizeWheelValueMatchesLane(candidate.value, lane)) {
       return [];
     }
 
-    return [{
-      key: `rareFish:${this.prizeRareFish.id}`,
+    return [candidate];
+  }
+
+  private prizeWheelRareFishCandidate(): PrizeSegmentCandidate {
+    const fishType = this.prizeWheelFishPrize();
+    const label = fishType.rarity === "common" ? "C Fish" : "R Fish";
+    const value = this.storedFishSellValue(fishType);
+    return {
+      key: `rareFish:${fishType.id}`,
       value,
       segment: {
         kind: "rareFish",
-        label: "R Fish",
-        iconTextureKey: this.textures.exists(`fish-${this.prizeRareFish.id}`) ? `fish-${this.prizeRareFish.id}` : prizeWheelIconTextureKeys.fish,
+        label,
+        iconTextureKey: this.textures.exists(`fish-${fishType.id}`) ? `fish-${fishType.id}` : prizeWheelIconTextureKeys.fish,
         color: 0x22c55e,
-        resultLabel: this.prizeRareFish.name,
-        resultMarketLabel: `(Worth C${formatNumber(this.priceWealth(this.prizeRareFish.price))})`,
-        fishTypeId: this.prizeRareFish.id
+        resultLabel: fishType.name,
+        resultMarketLabel: `(Worth C${formatNumber(this.priceWealth(fishType.price))})`,
+        fishTypeId: fishType.id
       }
-    }];
+    };
+  }
+
+  private prizeWheelFishPrize(): FishType {
+    return this.prizeMachine.selectedBetAmount < coinWealthValue.rare ? this.prizeCommonFish : this.prizeRareFish;
   }
 
   private prizeWheelQuantityForTarget(unitValue: number, targetValue: number, lane: "loss" | "win"): number {
@@ -4042,8 +4064,12 @@ export class AquariumScene extends Phaser.Scene {
     this.recentInventoryDockItemKey = `fish:${fishType.id}`;
     this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is waiting in your left dock.");
     this.floatText(`${fishType.name} prize`, toastX, toastY, "#a8ffb0");
-    this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A rare fish is waiting in your dock.");
-    this.prizeRareFish = this.nextPrizeRareFish();
+    this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is waiting in your dock.");
+    if (fishType.rarity === "common") {
+      this.prizeCommonFish = this.nextPrizeFish("common");
+    } else {
+      this.prizeRareFish = this.nextPrizeRareFish();
+    }
   }
 
   private awardPrizeMachineFood(foodType: FoodType, quantity: number): void {
@@ -4068,12 +4094,17 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private nextPrizeRareFish(): FishType {
+    return this.nextPrizeFish("rare");
+  }
+
+  private nextPrizeFish(rarity: Rarity): FishType {
     const ownedFishIds = new Set([
       ...this.fish.map((fish) => fish.type.id),
       ...[...this.fishInventory.entries()].filter(([, count]) => count > 0).map(([fishTypeId]) => fishTypeId)
     ]);
-    const unowned = fishTypes.filter((fishType) => fishType.rarity === "rare" && !ownedFishIds.has(fishType.id));
-    const pool = unowned.length > 0 ? unowned : fishTypes.filter((fishType) => fishType.rarity === "rare");
+    const rarityPool = fishTypes.filter((fishType) => fishType.rarity === rarity);
+    const unowned = rarityPool.filter((fishType) => !ownedFishIds.has(fishType.id));
+    const pool = unowned.length > 0 ? unowned : rarityPool;
     return Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : fishTypes);
   }
 
@@ -5293,7 +5324,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private placeFishWithCompatibility(type: FishType, x: number, y: number): void {
     if (this.activeFish().length >= this.maxFishCapacityForLevel()) {
-      this.floatText("Active tank full", toastX, toastY, "#ffb0a8");
+      this.showTankFullText(x, y);
       return;
     }
 
@@ -5307,6 +5338,14 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi();
     this.createFoodDock();
     this.saveNow();
+  }
+
+  private showTankFullText(x = toastX, y = toastY): void {
+    const message = `Tank full ${formatNumber(this.activeFish().length)}/${formatNumber(this.maxFishCapacityForLevel())}`;
+    this.floatText(message, toastX, toastY, "#ffb0a8");
+    if (tankBounds.contains(x, y)) {
+      this.floatTankText(message, x, y - 28, "#ffb0a8");
+    }
   }
 
   private randomFishPlacement(): Phaser.Math.Vector2 {
@@ -7484,8 +7523,9 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private floatText(message: string, x: number, y: number, color: string): void {
+    const safeY = Math.max(y, 172);
     const text = this.add
-      .text(x, y, message, {
+      .text(x, safeY, message, {
         fontFamily: gameFontFamily,
         fontSize: "16px",
         color,
@@ -7497,11 +7537,18 @@ export class AquariumScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: text,
-      y: y - 28,
-      alpha: 0,
-      duration: 950,
+      y: safeY - 18,
+      duration: 2000,
       ease: "Sine.out",
-      onComplete: () => text.destroy()
+      onComplete: () => {
+        this.tweens.add({
+          targets: text,
+          alpha: 0,
+          duration: 700,
+          ease: "Sine.in",
+          onComplete: () => text.destroy()
+        });
+      }
     });
   }
 

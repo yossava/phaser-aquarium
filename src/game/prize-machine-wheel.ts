@@ -233,7 +233,7 @@ function createPrizeCell(scene: Phaser.Scene, segment: PrizeWheelSegment, x: num
 function animatePrizeSelection(scene: Phaser.Scene, cells: PrizeRingCell[], resultIndex: number, onHighlight: () => void, onComplete: () => void): void {
   const segmentCount = cells.length;
   const safeResultIndex = Phaser.Math.Clamp(resultIndex, 0, segmentCount - 1);
-  const steps = segmentCount * 2 + safeResultIndex + 1;
+  const steps = segmentCount + safeResultIndex + 1;
   let currentStep = 0;
   const advance = () => {
     const activeIndex = currentStep % segmentCount;
@@ -242,11 +242,11 @@ function animatePrizeSelection(scene: Phaser.Scene, cells: PrizeRingCell[], resu
     currentStep += 1;
     if (currentStep >= steps) {
       setActivePrizeCell(scene, cells, safeResultIndex);
-      scene.time.delayedCall(180, onComplete);
+      scene.time.delayedCall(90, onComplete);
       return;
     }
     const progress = currentStep / steps;
-    scene.time.delayedCall(30 + progress * 62, advance);
+    scene.time.delayedCall(18 + progress * 36, advance);
   };
   advance();
 }
