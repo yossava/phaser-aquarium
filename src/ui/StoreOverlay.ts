@@ -497,7 +497,7 @@ export class StoreOverlay {
 
   private productionHint(fish: FishType): string {
     const tokenHint = fish.rarity === "common" ? "" : " Rare tokens gate the purchase; production is still Common.";
-    return `Converts fullness into Common coins every 5-30s.${tokenHint}`;
+    return `Converts fullness into Common coins every 3-12s.${tokenHint}`;
   }
 }
 

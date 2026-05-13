@@ -12,6 +12,7 @@ import {
   legacyFoodDispenserPositionStorageKey
 } from "../game/dispenser-system";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, priceComponents, spend } from "../game/economy";
+import { fishCoinProductionMaxDelayMs, fishCoinProductionMinDelayMs } from "../game/economy-model";
 import { gameFontFamily } from "../game/fonts";
 import {
   bestCalorieFoodForTarget,
@@ -259,6 +260,7 @@ const prizeRewardSoundPath = "/assets/audio/sfx/prize-reward.ogg";
 const backgroundMusicKey = "music-underwater-ambient";
 const backgroundMusicPath = "/assets/audio/bgm/underwater.mp3";
 const baseFishCapacity = 5;
+const upgradedTankFishCapacity = 10;
 const maxDecorations = 8;
 const maxHelperCreatures = 5;
 const maxFishCatalogLevel = 5;
@@ -832,7 +834,7 @@ export class AquariumScene extends Phaser.Scene {
           this.recordDailyQuestAction("feed");
           this.showMissedFoodEmotes(eatenFood.food, currentFish);
           if (currentFish.nextCoinDropAt <= this.time.now) {
-            currentFish.postponeCoinProduction(this.time.now, Phaser.Math.Between(5000, 30000));
+            currentFish.postponeCoinProduction(this.time.now, Phaser.Math.Between(fishCoinProductionMinDelayMs, fishCoinProductionMaxDelayMs));
           }
         }
         this.refundUnusedFood(eatenFood.food, eatenFood.consumedCalories);
@@ -1024,7 +1026,8 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private maxFishCapacityForLevel(level = this.tankLevel): number {
-    return baseFishCapacity + this.fishCapacityUpgradeBonusForLevel(level);
+    const baseCapacity = level <= 1 ? baseFishCapacity : upgradedTankFishCapacity;
+    return baseCapacity + this.fishCapacityUpgradeBonusForLevel(level);
   }
 
   private fishCapacityUpgradeBonusForLevel(_level = this.tankLevel): number {
@@ -6215,7 +6218,7 @@ export class AquariumScene extends Phaser.Scene {
     const now = this.time.now;
     if (!fish.canDropCoin(now)) {
       if (fish.nextCoinDropAt > 0 && now >= fish.nextCoinDropAt) {
-        fish.postponeCoinProduction(now, Phaser.Math.Between(5000, 30000));
+        fish.postponeCoinProduction(now, Phaser.Math.Between(fishCoinProductionMinDelayMs, fishCoinProductionMaxDelayMs));
       }
       return;
     }
