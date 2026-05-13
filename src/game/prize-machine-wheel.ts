@@ -3,6 +3,7 @@ import { gameHeight, gameWidth } from "./constants";
 import { formatNumber, formatPrice } from "./economy";
 import { gameFontFamily } from "./fonts";
 import type { PrizeMachineBetAmount, PrizeMachineConfig, PrizeSpinPrize } from "./prize-machine";
+import type { DecorationSize } from "./tank-catalog";
 
 export const prizeWheelIconTextureKeys = {
   food: "prize-wheel-food",
@@ -44,6 +45,8 @@ export type PrizeWheelSegment = {
   resultMarketLabel?: string;
   foodTypeId?: string;
   foodQuantity?: number;
+  decorationTypeId?: string;
+  decorationSize?: DecorationSize;
   fishTypeId?: string;
   commonAmount?: number;
   rareAmount?: number;
@@ -322,19 +325,19 @@ function animatePrizePointer(scene: Phaser.Scene, wheel: PrizeWheelView, resultI
 function spinStepDuration(step: number, totalSteps: number): number {
   const remaining = totalSteps - step;
   if (remaining <= 0) {
-    return 360;
+    return 240;
   }
   if (remaining <= 3) {
-    return [360, 260, 190][remaining - 1] ?? 190;
+    return [240, 180, 130][remaining - 1] ?? 130;
   }
   const progress = step / Math.max(1, totalSteps);
   if (progress < 0.18) {
-    return Phaser.Math.Linear(130, 55, progress / 0.18);
+    return Phaser.Math.Linear(90, 34, progress / 0.18);
   }
   if (progress > 0.72) {
-    return Phaser.Math.Linear(55, 150, (progress - 0.72) / 0.28);
+    return Phaser.Math.Linear(34, 95, (progress - 0.72) / 0.28);
   }
-  return 45;
+  return 28;
 }
 
 function createTitle(scene: Phaser.Scene, x: number, y: number, label: string, fontSize: string, color: string): Phaser.GameObjects.Text {
@@ -392,6 +395,7 @@ function createResultText(scene: Phaser.Scene, x: number, y: number, segment: Pr
     rareFish: "#a8ffb0",
     premiumCommon: "#fff3a3",
     food: "#a8ffb0",
+    decoration: "#ffd28a",
     common: "#ffe67a"
   };
   if (!segment.resultMarketLabel || segment.kind === "common") {
@@ -432,6 +436,9 @@ function resultLabel(segment: PrizeWheelSegment): string {
     return `${segment.label}!`;
   }
   if (segment.kind === "common") {
+    return `${segment.label}!`;
+  }
+  if (segment.kind === "decoration") {
     return `${segment.label}!`;
   }
   return `${segment.label} Food!`;

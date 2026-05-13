@@ -166,6 +166,7 @@ type PreparedPrizeMachineReward =
   | { kind: "rareFish"; fishType: FishType; segmentIndex: number }
   | { kind: "premiumCommon"; amount: number; segmentIndex: number }
   | { kind: "food"; foodType: FoodType; quantity: number; segmentIndex: number }
+  | { kind: "decoration"; decorationType: DecorationType; size: DecorationSize; segmentIndex: number }
   | { kind: "common"; amount: number; segmentIndex: number };
 
 type PrizeSegmentCandidate = {
@@ -3443,6 +3444,7 @@ export class AquariumScene extends Phaser.Scene {
             index: this.fish.indexOf(fish),
             happinessPercent: this.fishHappinessPercent(fish),
             rarityLabel: this.rarityLabel(fish.type.rarity),
+            sellValue: this.activeFishSellValue(fish),
             createButton: this.pageButtonFactory(),
             onSell: (index) => this.showSellConfirmation(index)
           })
@@ -3789,7 +3791,7 @@ export class AquariumScene extends Phaser.Scene {
     row.append(
       htmlImage(`/assets/fish/${fishType.id}.png`, "", "aq-album-row-image fish"),
       body,
-      this.htmlButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showStoredFishSellConfirmation(fishType.id))
+      this.htmlButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showStoredFishSellConfirmation(fishType.id))
     );
     return row;
   }
@@ -3809,7 +3811,7 @@ export class AquariumScene extends Phaser.Scene {
     row.append(
       image,
       body,
-      this.htmlButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showFoodSellConfirmation(foodType.id))
+      this.htmlButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showFoodSellConfirmation(foodType.id))
     );
     return row;
   }
@@ -3829,7 +3831,7 @@ export class AquariumScene extends Phaser.Scene {
       htmlImage(icon, "", "aq-album-row-image"),
       body,
       this.htmlButton(
-        "Sell",
+        `Sell C${formatNumber(value)}`,
         "aq-page-button aq-page-button-danger aq-album-row-button",
         () => this.showCoinSellConfirmation(coinType),
         count <= 0
@@ -3853,7 +3855,7 @@ export class AquariumScene extends Phaser.Scene {
     row.append(
       htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-album-row-image"),
       body,
-      this.htmlButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showDecorationSellConfirmation(decorationType.id, size))
+      this.htmlButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showDecorationSellConfirmation(decorationType.id, size))
     );
     return row;
   }
@@ -3906,7 +3908,7 @@ export class AquariumScene extends Phaser.Scene {
     this.syncHtmlGameInterface();
     this.prizeCommonFish = this.nextPrizeFish("common");
     this.prizeRareFish = this.nextPrizeRareFish();
-    this.ensureFishTexturesLoaded(this.prizeWheelFishPrize());
+    this.ensurePrizeWheelFishTexturesLoaded();
     this.showPrizeMachineSpinner();
   }
 
@@ -3936,7 +3938,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.prizeMachine = setPrizeMachineBet(this.prizeMachine, betAmount);
-    this.ensureFishTexturesLoaded(this.prizeWheelFishPrize());
+    this.ensurePrizeWheelFishTexturesLoaded();
     this.showPrizeMachineSpinner();
     this.saveNow();
   }
@@ -4058,15 +4060,17 @@ export class AquariumScene extends Phaser.Scene {
     const usedKeys = new Set<string>();
 
     return targetMultipliers.map((multiplier, index) => {
-      if (index === 10) {
-        return this.prizeWheelRareFishCandidate().segment;
-      }
-
       const lane: "loss" | "win" = multiplier < 1 ? "loss" : "win";
       const rawTargetValue = betAmount * multiplier;
       const targetValue = lane === "loss"
         ? Math.max(1, Math.min(betAmount - 1, Math.floor(rawTargetValue)))
         : Math.max(betAmount + 1, Math.round(rawTargetValue));
+      if (index === 10) {
+        const fishCandidate = this.prizeWheelFishCandidateForTarget(targetValue, lane);
+        usedKeys.add(fishCandidate.key);
+        return fishCandidate.segment;
+      }
+
       const candidates = this.prizeWheelCandidatesForTarget(targetValue, lane, index);
       const candidate = this.choosePrizeWheelSegmentCandidate(candidates, targetValue, index, usedKeys);
       usedKeys.add(candidate.key);
@@ -4079,9 +4083,10 @@ export class AquariumScene extends Phaser.Scene {
     const candidates = [
       this.prizeWheelCommonCandidate(targetValue, slotIndex),
       ...this.prizeWheelFoodCandidates(targetValue, lane, slotIndex),
+      ...this.prizeWheelDecorationCandidates(targetValue, lane, slotIndex),
       ...this.prizeWheelRareCoinCandidates(targetValue, lane),
       ...this.prizeWheelSuperRareCoinCandidates(targetValue, lane),
-      ...this.prizeWheelRareFishCandidates(lane)
+      ...this.prizeWheelRareFishCandidates(targetValue, lane)
     ].filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane, betAmount));
 
     return candidates.length > 0 ? candidates : [this.prizeWheelCommonCandidate(targetValue, slotIndex)];
@@ -4127,6 +4132,45 @@ export class AquariumScene extends Phaser.Scene {
             color: foodColors[(slotIndex + index) % foodColors.length],
             foodTypeId: foodType.id,
             foodQuantity: quantity
+          }
+        };
+      });
+  }
+
+  private prizeWheelDecorationCandidates(targetValue: number, lane: "loss" | "win", slotIndex: number): PrizeSegmentCandidate[] {
+    const decorationColors = [0xc58c4a, 0xa76ee6, 0x26b8a6, 0xe0a13a, 0x6fa8dc, 0xd47f6a];
+    return decorationTypes
+      .flatMap((decorationType, decorationIndex) =>
+        decorationSizeOrder.map((size, sizeIndex) => {
+          const unitValue = this.decorationSellValue(decorationType, size, 1);
+          const price = this.decorationVariantPrice(decorationType, size);
+          return {
+            decorationType,
+            size,
+            value: unitValue,
+            marketValue: this.priceWealth(price),
+            color: decorationColors[(slotIndex + decorationIndex + sizeIndex) % decorationColors.length]
+          };
+        })
+      )
+      .filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane))
+      .sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))
+      .slice(0, 8)
+      .map((candidate) => {
+        const sizeLabel = decorationSizes[candidate.size].label;
+        const label = `${candidate.decorationType.name} ${sizeLabel}`;
+        return {
+          key: `decoration:${candidate.decorationType.id}:${candidate.size}`,
+          value: candidate.value,
+          segment: {
+            kind: "decoration" as const,
+            label,
+            resultLabel: label,
+            resultMarketLabel: `(Worth C${formatNumber(candidate.marketValue)})`,
+            iconTextureKey: this.textures.exists(candidate.decorationType.texture) ? candidate.decorationType.texture : prizeWheelIconTextureKeys.food,
+            color: candidate.color,
+            decorationTypeId: candidate.decorationType.id,
+            decorationSize: candidate.size
           }
         };
       });
@@ -4178,18 +4222,28 @@ export class AquariumScene extends Phaser.Scene {
     }];
   }
 
-  private prizeWheelRareFishCandidates(lane: "loss" | "win"): PrizeSegmentCandidate[] {
-    const candidate = this.prizeWheelRareFishCandidate();
-    if (!this.prizeWheelValueMatchesLane(candidate.value, lane)) {
-      return [];
-    }
-
-    return [candidate];
+  private prizeWheelRareFishCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
+    return this.prizeWheelFishPrizePool()
+      .map((fishType) => this.prizeWheelFishCandidate(fishType))
+      .filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane))
+      .sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))
+      .slice(0, 4);
   }
 
-  private prizeWheelRareFishCandidate(): PrizeSegmentCandidate {
-    const fishType = this.prizeWheelFishPrize();
-    const label = fishType.rarity === "common" ? "C Fish" : "R Fish";
+  private prizeWheelFishCandidateForTarget(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate {
+    const candidates = this.prizeWheelFishPrizePool().map((fishType) => this.prizeWheelFishCandidate(fishType));
+    const fittingCandidates = candidates.filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane));
+    const saneCandidates = candidates.filter((candidate) => candidate.value <= Math.max(1, Math.ceil(this.prizeMachine.selectedBetAmount * 1.5)));
+    const pool = fittingCandidates.length > 0
+      ? fittingCandidates
+      : saneCandidates.length > 0
+        ? saneCandidates
+        : candidates;
+    return [...pool].sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))[0] ?? this.prizeWheelFishCandidate(fishTypes[0]);
+  }
+
+  private prizeWheelFishCandidate(fishType: FishType): PrizeSegmentCandidate {
+    const label = fishType.rarity === "common" ? "C Fish" : fishType.rarity === "rare" ? "R Fish" : "SR Fish";
     const value = this.storedFishSellValue(fishType);
     return {
       key: `rareFish:${fishType.id}`,
@@ -4206,8 +4260,23 @@ export class AquariumScene extends Phaser.Scene {
     };
   }
 
-  private prizeWheelFishPrize(): FishType {
-    return this.prizeMachine.selectedBetAmount < coinWealthValue.rare ? this.prizeCommonFish : this.prizeRareFish;
+  private prizeWheelFishPrizePool(): FishType[] {
+    const ownedFishIds = new Set([
+      ...this.fish.map((fish) => fish.type.id),
+      ...[...this.fishInventory.entries()].filter(([, count]) => count > 0).map(([fishTypeId]) => fishTypeId)
+    ]);
+    const rarityPool = this.prizeMachine.selectedBetAmount < coinWealthValue.rare
+      ? fishTypes.filter((fishType) => fishType.rarity === "common")
+      : fishTypes.filter((fishType) => fishType.rarity !== "common");
+    const basePool = rarityPool.length > 0 ? rarityPool : fishTypes;
+    const unowned = basePool.filter((fishType) => !ownedFishIds.has(fishType.id));
+    return unowned.length > 0 ? unowned : basePool;
+  }
+
+  private ensurePrizeWheelFishTexturesLoaded(): void {
+    this.prizeWheelFishPrizePool()
+      .slice(0, 8)
+      .forEach((fishType) => this.ensureFishTexturesLoaded(fishType));
   }
 
   private prizeWheelQuantityForTarget(unitValue: number, targetValue: number, lane: "loss" | "win"): number {
@@ -4239,7 +4308,7 @@ export class AquariumScene extends Phaser.Scene {
     slotIndex: number,
     usedKeys: Set<string>
   ): PrizeSegmentCandidate {
-    const preferredKinds: PrizeSpinPrize[] = ["common", "food", "common", "food", "common", "rare", "common", "food", "rare", "food", "rareFish", "superRare"];
+    const preferredKinds: PrizeSpinPrize[] = ["common", "food", "decoration", "food", "common", "rare", "decoration", "food", "rare", "food", "rareFish", "superRare"];
     const unusedCandidates = candidates.filter((candidate) => !usedKeys.has(candidate.key));
     const availableCandidates = unusedCandidates.length > 0 ? unusedCandidates : candidates;
     const preferredKind = preferredKinds[slotIndex % preferredKinds.length];
@@ -4257,14 +4326,9 @@ export class AquariumScene extends Phaser.Scene {
         key: this.prizeMachineRewardKey(reward)
       };
     });
-    const betAmount = this.prizeMachine.selectedBetAmount;
-    const laneCandidates = Math.random() < 0.5
-      ? candidates.filter((candidate) => candidate.value < betAmount)
-      : candidates.filter((candidate) => candidate.value > betAmount);
-    const lanePool = laneCandidates.length > 0 ? laneCandidates : candidates;
     const recentPrizeKeys = new Set(this.prizeMachine.recentPrizeKeys);
-    const filteredCandidates = this.filterPrizeRepeatCandidates(lanePool, recentPrizeKeys);
-    return Phaser.Utils.Array.GetRandom(filteredCandidates.length > 0 ? filteredCandidates : lanePool)?.reward ?? { kind: "common", amount: 10, segmentIndex: 0 };
+    const filteredCandidates = this.filterPrizeRepeatCandidates(candidates, recentPrizeKeys);
+    return Phaser.Utils.Array.GetRandom(filteredCandidates.length > 0 ? filteredCandidates : candidates)?.reward ?? { kind: "common", amount: 10, segmentIndex: 0 };
   }
 
   private filterPrizeRepeatCandidates<T extends { key: string }>(candidates: T[], recentPrizeKeys: Set<string>): T[] {
@@ -4290,6 +4354,15 @@ export class AquariumScene extends Phaser.Scene {
       const foodType = foodTypes.find((candidate) => candidate.id === segment.foodTypeId) ?? basicFood;
       return { kind: "food", foodType, quantity: Math.max(1, segment.foodQuantity ?? 1), segmentIndex };
     }
+    if (segment.kind === "decoration") {
+      const decorationType = decorationTypes.find((candidate) => candidate.id === segment.decorationTypeId) ?? decorationTypes[0];
+      return {
+        kind: "decoration",
+        decorationType,
+        size: this.sanitizeDecorationSize(segment.decorationSize),
+        segmentIndex
+      };
+    }
     return { kind: "common", amount: segment.commonAmount ?? 10, segmentIndex };
   }
 
@@ -4306,6 +4379,9 @@ export class AquariumScene extends Phaser.Scene {
     if (reward.kind === "premiumCommon" || reward.kind === "common") {
       return reward.amount;
     }
+    if (reward.kind === "decoration") {
+      return this.decorationSellValue(reward.decorationType, reward.size, 1);
+    }
     return this.foodSellValue(reward.foodType, (this.isCalorieTrackedFood(reward.foodType.id) ? reward.foodType.calories : 1) * reward.quantity);
   }
 
@@ -4318,6 +4394,9 @@ export class AquariumScene extends Phaser.Scene {
     }
     if (reward.kind === "rareFish") {
       return `rareFish:${reward.fishType.id}`;
+    }
+    if (reward.kind === "decoration") {
+      return `decoration:${reward.decorationType.id}:${reward.size}`;
     }
     return `${reward.kind}:${reward.amount}`;
   }
@@ -4341,6 +4420,10 @@ export class AquariumScene extends Phaser.Scene {
     }
     if (reward.kind === "food") {
       this.awardPrizeMachineFood(reward.foodType, reward.quantity);
+      return;
+    }
+    if (reward.kind === "decoration") {
+      this.awardPrizeMachineDecoration(reward.decorationType, reward.size);
       return;
     }
     this.awardPrizeMachineCommon(reward.amount);
@@ -4380,6 +4463,17 @@ export class AquariumScene extends Phaser.Scene {
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + amount);
     this.recentInventoryDockItemKey = `food:${foodType.id}`;
     this.setPrizeMachineResult("food", `Food Prize: ${foodType.name}`, `+${formatNumber(amount)} cal food.`);
+  }
+
+  private awardPrizeMachineDecoration(decorationType: DecorationType, size: DecorationSize): void {
+    const inventoryKey = this.decorationInventoryKey(decorationType.id, size);
+    this.decorationInventory.set(inventoryKey, (this.decorationInventory.get(inventoryKey) ?? 0) + 1);
+    this.recentInventoryDockItemKey = `decoration:${decorationType.id}:${size}`;
+    this.setPrizeMachineResult(
+      "decoration",
+      `${decorationType.name} ${decorationSizes[size].label} Prize!`,
+      "The decoration is waiting in your Inventory."
+    );
   }
 
   private awardPrizeMachineCommon(amount: number): void {

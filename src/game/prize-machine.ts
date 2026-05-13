@@ -1,6 +1,6 @@
 import type { Price } from "../types/mechanics";
 
-export type PrizeSpinPrize = "rare" | "superRare" | "rareFish" | "premiumCommon" | "food" | "common";
+export type PrizeSpinPrize = "rare" | "superRare" | "rareFish" | "premiumCommon" | "food" | "decoration" | "common";
 
 export type PrizeMachineResult = {
   kind: PrizeSpinPrize;
@@ -111,7 +111,7 @@ export function beginPrizeMachineSession(
     ...normalized,
     premiumCooldownSpins: 0,
     sessionId: nextSessionId,
-    sessionGainPerSpin: random() * 0.002 - 0.001,
+    sessionGainPerSpin: 0,
     sessionSpinCount: 0,
     sessionSpent: 0,
     sessionWonValue: 0,
@@ -146,7 +146,7 @@ export function recordPrizeMachineWin(
 
 export function prizeMachineTargetResaleValue(state: PrizeMachineState): number {
   const normalized = normalizePrizeMachineState(state);
-  const gainMultiplier = 1 + normalized.sessionGainPerSpin * normalized.sessionSpinCount;
+  const gainMultiplier = 1 + normalized.sessionGainPerSpin;
   return Math.max(0, normalized.sessionSpent * gainMultiplier);
 }
 
@@ -216,6 +216,7 @@ function normalizeLastResult(source: PrizeMachineResult | undefined): PrizeMachi
       kind !== "rareFish" &&
       kind !== "premiumCommon" &&
       kind !== "food" &&
+      kind !== "decoration" &&
       kind !== "common" &&
       kind !== "jackpot"
     )
@@ -233,7 +234,7 @@ function normalizeLastResult(source: PrizeMachineResult | undefined): PrizeMachi
 }
 
 function normalizePremiumPrize(source: unknown): PrizeSpinPrize | undefined {
-  return source === "rare" || source === "superRare" || source === "rareFish" || source === "premiumCommon"
+  return source === "rare" || source === "superRare" || source === "rareFish" || source === "premiumCommon" || source === "decoration"
     ? source
     : undefined;
 }
@@ -257,5 +258,5 @@ function sanitizeCount(value: unknown): number {
 }
 
 function sanitizeGainRate(value: unknown): number {
-  return Number.isFinite(value) ? Math.max(-0.001, Math.min(0.001, Number(value))) : 0;
+  return Number.isFinite(value) ? Math.max(-0.5, Math.min(0.5, Number(value))) : 0;
 }

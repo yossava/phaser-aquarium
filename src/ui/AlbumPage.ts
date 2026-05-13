@@ -10,6 +10,7 @@ export type FishAlbumRowOptions = {
   index: number;
   happinessPercent: number;
   rarityLabel: string;
+  sellValue: number;
   createButton: PageButtonFactory;
   onSell: (index: number) => void;
 };
@@ -24,7 +25,7 @@ export type HelperAlbumRowOptions = {
 };
 
 export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
-  const { fish, index, happinessPercent, rarityLabel, createButton, onSell } = options;
+  const { fish, index, happinessPercent, rarityLabel, sellValue, createButton, onSell } = options;
   const growthStatus = fish.isGrowthLimitedByTank() ? "Max screen size" : "Growing";
   const row = htmlElement("article", "aq-album-row fish");
   const fullnessValue = Math.round(clampPercent(fish.fullnessRatio() * 100));
@@ -47,7 +48,7 @@ export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
   row.append(
     imageWrap,
     body,
-    createButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => onSell(index))
+    createButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => onSell(index))
   );
   return row;
 }
@@ -64,7 +65,7 @@ export function createHelperAlbumRow(options: HelperAlbumRowOptions): HTMLElemen
   row.append(
     htmlImage(`/assets/helpers/${helper.type.id}.png`, "", "aq-album-row-image helper"),
     body,
-    createButton("Sell", "aq-page-button aq-page-button-danger aq-album-row-button", () => onSell(index))
+    createButton(`Sell ${formatPrice(sellPrice)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => onSell(index))
   );
   return row;
 }
