@@ -4088,7 +4088,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private prizeWheelCommonCandidate(targetValue: number, slotIndex: number): PrizeSegmentCandidate {
-    const commonColors = [0x0ea5e9, 0x14b8a6, 0x7dd3fc, 0x0284c7, 0x38bdf8, 0x0f766e];
+    const commonColors = [0x0c8fb3, 0x136f96, 0x1ba8c9, 0x0b7f8c, 0x2e9fc0, 0x0f5f7f];
     const amount = Math.max(1, Math.round(targetValue));
     return {
       key: `common:${amount}`,
@@ -4104,7 +4104,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private prizeWheelFoodCandidates(targetValue: number, lane: "loss" | "win", slotIndex: number): PrizeSegmentCandidate[] {
-    const foodColors = [0x22c55e, 0x38bdf8, 0xa3e635, 0x06b6d4, 0x84cc16, 0x10b981];
+    const foodColors = [0x55b987, 0x6fc6aa, 0x78ad72, 0x2c9c8d, 0x76b8c8, 0x4f9a6b];
     return foodTypes
       .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id) && this.isDroppableFood(foodType.id))
       .map((foodType, index) => {
@@ -4149,7 +4149,7 @@ export class AquariumScene extends Phaser.Scene {
         resultLabel: `R${formatNumber(amount)}`,
         resultMarketLabel: `(Worth C${formatNumber(coinWealthValue.rare * amount)})`,
         iconTextureKey: prizeWheelIconTextureKeys.rare,
-        color: 0x0ea5e9,
+        color: 0x89d5e8,
         rareAmount: amount
       }
     }];
@@ -4172,7 +4172,7 @@ export class AquariumScene extends Phaser.Scene {
         resultLabel: `SR${formatNumber(amount)}`,
         resultMarketLabel: `(Worth C${formatNumber(coinWealthValue.superRare * amount)})`,
         iconTextureKey: prizeWheelIconTextureKeys.superRare,
-        color: 0x8b5cf6,
+        color: 0x7d73dd,
         superRareAmount: amount
       }
     }];
@@ -4198,7 +4198,7 @@ export class AquariumScene extends Phaser.Scene {
         kind: "rareFish",
         label,
         iconTextureKey: this.textures.exists(`fish-${fishType.id}`) ? `fish-${fishType.id}` : prizeWheelIconTextureKeys.fish,
-        color: 0x22c55e,
+        color: 0xf28f6b,
         resultLabel: fishType.name,
         resultMarketLabel: `(Worth C${formatNumber(this.priceWealth(fishType.price))})`,
         fishTypeId: fishType.id
@@ -4354,14 +4354,12 @@ export class AquariumScene extends Phaser.Scene {
   private awardPrizeMachineRare(amount: number): void {
     earn(this.wallet, "rare", amount);
     this.setPrizeMachineResult("rare", `R${formatNumber(amount)} Prize!`, "Rare coins dropped from the spinner.");
-    this.floatText(`+R${formatNumber(amount)} prize`, toastX, toastY, "#9eefff");
     this.showPrizeCelebration("Rare Coin!", "/assets/ui/shop/coin_icon_rare.png", `You won R${formatNumber(amount)}.`);
   }
 
   private awardPrizeMachineSuperRare(amount: number): void {
     earn(this.wallet, "superRare", amount);
     this.setPrizeMachineResult("superRare", `SR${formatNumber(amount)} Prize!`, "Super rare diamonds dropped from the spinner.");
-    this.floatText(`+SR${formatNumber(amount)} prize`, toastX, toastY, "#f0b6ff");
     this.showPrizeCelebration("Super Rare!", "/assets/ui/shop/coin_icon_super_rare.png", `You won SR${formatNumber(amount)}.`);
   }
 
@@ -4369,7 +4367,6 @@ export class AquariumScene extends Phaser.Scene {
     this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
     this.recentInventoryDockItemKey = `fish:${fishType.id}`;
     this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is waiting in your left dock.");
-    this.floatText(`${fishType.name} prize`, toastX, toastY, "#a8ffb0");
     this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is waiting in your dock.");
     if (fishType.rarity === "common") {
       this.prizeCommonFish = this.nextPrizeFish("common");
@@ -4383,13 +4380,11 @@ export class AquariumScene extends Phaser.Scene {
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + amount);
     this.recentInventoryDockItemKey = `food:${foodType.id}`;
     this.setPrizeMachineResult("food", `Food Prize: ${foodType.name}`, `+${formatNumber(amount)} cal food.`);
-    this.floatText(`+${foodType.name}${quantity > 1 ? ` x${formatNumber(quantity)}` : ""}`, toastX, toastY, "#ffe67a");
   }
 
   private awardPrizeMachineCommon(amount: number): void {
     earn(this.wallet, "common", amount);
     this.setPrizeMachineResult("common", `Common Prize C${formatNumber(amount)}`, `+C${formatNumber(amount)} from the wheel.`);
-    this.floatText(`+C${formatNumber(amount)}`, toastX, toastY, "#ffe67a");
   }
 
   private setPrizeMachineResult(kind: PrizeSpinPrize, title: string, detail: string): void {

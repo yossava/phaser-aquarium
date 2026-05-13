@@ -86,12 +86,13 @@ export function playPrizeMachineSpin(
   const centerY = prizeRingCenterY();
   const ringRadius = prizeRingRadius(segmentCount);
   const resultSegment = segments[Phaser.Math.Clamp(resultIndex, 0, segmentCount - 1)] ?? segments[0];
+  const resultY = centerY - ringRadius - 40;
   const textScale = 1 / prizeUiRenderScale(scene);
-  const resultText = createResultText(scene, centerX, centerY, resultSegment);
-  const costText = createPrizePopText(scene, centerX, centerY, `-${formatPrice(config.spinCost)}`, "#ffb0a8").setScale(0.74 * textScale);
-  const ring = createPrizeRing(scene, segments, centerX, centerY, ringRadius);
+  const resultText = createResultText(scene, centerX, resultY, resultSegment);
+  const costText = createPrizePopText(scene, centerX, resultY, `-${formatPrice(config.spinCost)}`, "#ffb0a8").setScale(0.74 * textScale);
+  const wheel = createPrizeWheel(scene, segments, centerX, centerY, ringRadius);
   const balanceText = createBalanceText(scene, centerX, hud.commonCoins);
-  const container = createPrizeSpinnerShell(scene, config, segments, [balanceText], [costText, resultText], ring);
+  const container = createPrizeSpinnerShell(scene, config, segments, [balanceText], [costText, resultText], wheel);
 
   scene.tweens.add({
     targets: costText,
@@ -100,7 +101,7 @@ export function playPrizeMachineSpin(
     ease: "Back.easeOut"
   });
 
-  animatePrizeSelection(scene, ring.cells, resultIndex, () => actions.onHighlight?.(), () => {
+  animatePrizePointer(scene, wheel, resultIndex, () => actions.onHighlight?.(), () => {
     actions.onStop?.();
     scene.tweens.add({
       targets: costText,
@@ -137,14 +138,14 @@ function createPrizeSpinnerShell(
   segments: PrizeWheelSegment[],
   headerChildren: Phaser.GameObjects.GameObject[],
   children: Phaser.GameObjects.GameObject[],
-  ring = createPrizeRing(scene, segments, gameWidth / 2, prizeRingCenterY(), prizeRingRadius(segments.length))
+  wheel = createPrizeWheel(scene, segments, gameWidth / 2, prizeRingCenterY(), prizeRingRadius(segments.length))
 ): Phaser.GameObjects.Container {
   const centerX = gameWidth / 2;
   return scene.add.container(0, 0, [
     scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x011827, 0.86),
     createTitle(scene, centerX, 58, config.title, "31px", "#ffffff"),
     ...headerChildren,
-    ring.container,
+    wheel.container,
     ...children
   ]).setDepth(95);
 }
@@ -158,115 +159,182 @@ function commonCoinLabel(commonCoins: number): string {
 }
 
 function prizeRingCenterY(): number {
-  return gameHeight * 0.455;
+  return gameHeight * 0.44;
 }
 
 function prizeRingRadius(segmentCount: number): number {
   if (segmentCount >= 12) {
-    return 156;
+    return 190;
   }
   if (segmentCount >= 10) {
-    return 154;
+    return 186;
   }
-  return 152;
+  return 182;
 }
 
-function prizeCellRadius(segmentCount: number): number {
-  if (segmentCount >= 12) {
-    return 31;
-  }
-  if (segmentCount >= 10) {
-    return 35;
-  }
-  return 43;
-}
-
-type PrizeRingCell = {
+type PrizeWheelView = {
   container: Phaser.GameObjects.Container;
-  fill: Phaser.GameObjects.Arc;
-  highlight: Phaser.GameObjects.Arc;
-  color: number;
   radius: number;
-  isJackpot: boolean;
+  segmentCount: number;
+  highlight: Phaser.GameObjects.Graphics;
+  pointer: Phaser.GameObjects.Container;
 };
 
-function createPrizeRing(
+function createPrizeWheel(
   scene: Phaser.Scene,
   segments: PrizeWheelSegment[],
   centerX: number,
   centerY: number,
   radius: number
-): { container: Phaser.GameObjects.Container; cells: PrizeRingCell[] } {
-  const container = scene.add.container(0, 0);
-  const cells: PrizeRingCell[] = [];
+): PrizeWheelView {
+  const container = scene.add.container(centerX, centerY);
+  const wheelGraphics = scene.add.graphics();
+  const separatorGraphics = scene.add.graphics();
+  const highlight = scene.add.graphics().setAlpha(0);
   const segmentCount = segments.length;
+  const stepDeg = 360 / segmentCount;
+
+  segments.forEach((segment, index) => {
+    drawWheelSlice(wheelGraphics, index, segmentCount, radius, segment.color, index === 0 ? 0.98 : 0.9);
+    drawWheelSeparator(separatorGraphics, index, segmentCount, radius);
+  });
+
+  const outerGlow = scene.add.circle(0, 0, radius + 5, 0x8eeeff, 0.06)
+    .setStrokeStyle(4, 0x8eeeff, 0.5);
+  const outerRim = scene.add.circle(0, 0, radius + 1, 0x001723, 0)
+    .setStrokeStyle(3, 0xc8fbff, 0.24);
+  const innerHubGlow = scene.add.circle(0, 0, 34, 0x020914, 0.92)
+    .setStrokeStyle(3, 0x8eeeff, 0.45);
+  const pointer = createPrizePointer(scene, radius);
+
+  container.add([outerGlow, wheelGraphics, highlight, separatorGraphics, outerRim]);
 
   for (let index = 0; index < segmentCount; index += 1) {
     const segment = segments[index];
-    const angle = Phaser.Math.DegToRad(index * (360 / segmentCount) - 90);
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius;
-    const cell = createPrizeCell(scene, segment, x, y, index === 0, segmentCount);
-    cells.push(cell);
-    container.add(cell.container);
+    const angle = Phaser.Math.DegToRad(index * stepDeg - 90);
+    const iconDistance = radius * 0.79;
+    const labelDistance = radius * 0.43;
+    const icon = scene.add.image(Math.cos(angle) * iconDistance, Math.sin(angle) * iconDistance, segment.iconTextureKey);
+    icon.setDisplaySize(radius * 0.31, radius * 0.31);
+    const label = createSegmentLabel(
+      scene,
+      Math.cos(angle) * labelDistance,
+      Math.sin(angle) * labelDistance,
+      compactPrizeWheelLabel(segment.label),
+      segmentCount
+    );
+    label.setRotation(readableRadialLabelRotation(angle));
+    container.add([icon, label]);
   }
 
-  setActivePrizeCell(scene, cells, 0);
-  return { container, cells };
+  container.add([pointer, innerHubGlow]);
+  drawWheelSlice(highlight, 0, segmentCount, radius, 0xffffff, 0.16, 0xfff3a3, 0.95);
+  return { container, radius, segmentCount, highlight, pointer };
 }
 
-function createPrizeCell(scene: Phaser.Scene, segment: PrizeWheelSegment, x: number, y: number, isJackpot: boolean, segmentCount: number): PrizeRingCell {
-  const radius = prizeCellRadius(segmentCount);
-  const container = scene.add.container(x, y);
-  const fill = scene.add.circle(0, 0, radius, segment.color, isJackpot ? 0.98 : 0.84)
-    .setStrokeStyle(3, 0x8eeeff, 0.36);
-  const highlight = scene.add.circle(0, 0, radius, 0xffffff, 0.08)
-    .setStrokeStyle(6, 0xfff3a3, 0)
-    .setAlpha(0);
-  const icon = scene.add.image(0, -5, segment.iconTextureKey);
-  icon.setDisplaySize(radius * 0.86, radius * 0.86);
-  const label = createSegmentLabel(scene, 0, radius * 0.54, segment.label, segmentCount);
-  container.add([fill, highlight, icon, label]);
-  return { container, fill, highlight, color: segment.color, radius, isJackpot };
+function drawWheelSlice(
+  graphics: Phaser.GameObjects.Graphics,
+  index: number,
+  segmentCount: number,
+  radius: number,
+  fill: number,
+  alpha: number,
+  stroke = 0x8eeeff,
+  strokeAlpha = 0.28
+): void {
+  const stepDeg = 360 / segmentCount;
+  const startDeg = index * stepDeg - 90 - stepDeg / 2;
+  const endDeg = startDeg + stepDeg;
+  const points = [new Phaser.Math.Vector2(0, 0)];
+  const pointCount = Math.max(4, Math.ceil(stepDeg / 5));
+  for (let pointIndex = 0; pointIndex <= pointCount; pointIndex += 1) {
+    const angle = Phaser.Math.DegToRad(Phaser.Math.Linear(startDeg, endDeg, pointIndex / pointCount));
+    points.push(new Phaser.Math.Vector2(Math.cos(angle) * radius, Math.sin(angle) * radius));
+  }
+  graphics.fillStyle(fill, alpha);
+  graphics.fillPoints(points, true, true);
+  graphics.lineStyle(stroke === 0xfff3a3 ? 5 : 2, stroke, strokeAlpha);
+  graphics.strokePoints(points, true, true);
 }
 
-function animatePrizeSelection(scene: Phaser.Scene, cells: PrizeRingCell[], resultIndex: number, onHighlight: () => void, onComplete: () => void): void {
-  const segmentCount = cells.length;
+function drawWheelSeparator(graphics: Phaser.GameObjects.Graphics, index: number, segmentCount: number, radius: number): void {
+  const angle = Phaser.Math.DegToRad(index * (360 / segmentCount) - 90 - 180 / segmentCount);
+  graphics.lineStyle(2, 0xffffff, 0.2);
+  graphics.lineBetween(0, 0, Math.cos(angle) * radius, Math.sin(angle) * radius);
+}
+
+function createPrizePointer(scene: Phaser.Scene, radius: number): Phaser.GameObjects.Container {
+  const pointer = scene.add.container(0, 0);
+  const marker = scene.add.graphics();
+  marker.fillStyle(0xb91c1c, 0.98);
+  marker.lineStyle(3, 0x073047, 0.86);
+  marker.beginPath();
+  marker.moveTo(0, -52);
+  marker.lineTo(-15, -22);
+  marker.lineTo(15, -22);
+  marker.closePath();
+  marker.fillPath();
+  marker.strokePath();
+  pointer.add(marker);
+  return pointer;
+}
+
+function animatePrizePointer(scene: Phaser.Scene, wheel: PrizeWheelView, resultIndex: number, onHighlight: () => void, onComplete: () => void): void {
+  const segmentCount = wheel.segmentCount;
   const safeResultIndex = Phaser.Math.Clamp(resultIndex, 0, segmentCount - 1);
-  const steps = segmentCount + safeResultIndex + 1;
+  const stepRad = Phaser.Math.DegToRad(360 / segmentCount);
+  const totalSteps = segmentCount * 3 + safeResultIndex;
   let currentStep = 0;
+
   const advance = () => {
-    const activeIndex = currentStep % segmentCount;
-    setActivePrizeCell(scene, cells, activeIndex);
+    const highlightedIndex = currentStep % segmentCount;
+    wheel.pointer.rotation = currentStep * stepRad;
+    wheel.highlight.clear();
+    wheel.highlight.setAlpha(0.48);
+    drawWheelSlice(wheel.highlight, highlightedIndex, segmentCount, wheel.radius, 0xffffff, 0.16, 0xfff3a3, 0.95);
     onHighlight();
-    currentStep += 1;
-    if (currentStep >= steps) {
-      setActivePrizeCell(scene, cells, safeResultIndex);
-      scene.time.delayedCall(90, onComplete);
+
+    if (currentStep >= totalSteps) {
+      wheel.pointer.rotation = safeResultIndex * stepRad;
+      wheel.highlight.clear();
+      drawWheelSlice(wheel.highlight, safeResultIndex, segmentCount, wheel.radius, 0xffffff, 0.2, 0xfff3a3, 1);
+      scene.tweens.add({
+        targets: wheel.highlight,
+        alpha: { from: 0.55, to: 1 },
+        duration: 180,
+        yoyo: true,
+        repeat: 1,
+        ease: "Sine.easeInOut",
+        onComplete: () => onComplete()
+      });
       return;
     }
-    const progress = currentStep / steps;
-    scene.time.delayedCall(18 + progress * 36, advance);
+
+    scene.time.delayedCall(spinStepDuration(currentStep, totalSteps), () => {
+      currentStep += 1;
+      advance();
+    });
   };
+
   advance();
 }
 
-function setActivePrizeCell(scene: Phaser.Scene, cells: PrizeRingCell[], activeIndex: number): void {
-  cells.forEach((cell, index) => {
-    const active = index === activeIndex;
-    cell.highlight.setAlpha(active ? 1 : 0);
-    cell.fill.setStrokeStyle(active ? 4 : 3, active ? 0xffffff : 0x8eeeff, active ? 0.9 : 0.36);
-    cell.highlight.setStrokeStyle(6, 0xfff3a3, active ? 1 : 0);
-    cell.container.setScale(active ? 1.1 : 1);
-    if (active) {
-      scene.tweens.add({
-        targets: cell.container,
-        scale: { from: 0.98, to: 1.1 },
-        duration: 65,
-        ease: "Sine.easeOut"
-      });
-    }
-  });
+function spinStepDuration(step: number, totalSteps: number): number {
+  const remaining = totalSteps - step;
+  if (remaining <= 0) {
+    return 360;
+  }
+  if (remaining <= 3) {
+    return [360, 260, 190][remaining - 1] ?? 190;
+  }
+  const progress = step / Math.max(1, totalSteps);
+  if (progress < 0.18) {
+    return Phaser.Math.Linear(130, 55, progress / 0.18);
+  }
+  if (progress > 0.72) {
+    return Phaser.Math.Linear(55, 150, (progress - 0.72) / 0.28);
+  }
+  return 45;
 }
 
 function createTitle(scene: Phaser.Scene, x: number, y: number, label: string, fontSize: string, color: string): Phaser.GameObjects.Text {
@@ -284,7 +352,7 @@ function createTitle(scene: Phaser.Scene, x: number, y: number, label: string, f
 
 function createSegmentLabel(scene: Phaser.Scene, x: number, y: number, label: string, segmentCount: number): Phaser.GameObjects.Text {
   const renderScale = prizeUiRenderScale(scene);
-  const fontSize = segmentCount >= 12 ? 8 : 10;
+  const fontSize = segmentCount >= 12 ? 11 : 13;
   return scene.add.text(x, y, label, {
     fontFamily: gameFontFamily,
     fontSize: `${Math.round(fontSize * renderScale)}px`,
@@ -292,8 +360,29 @@ function createSegmentLabel(scene: Phaser.Scene, x: number, y: number, label: st
     fontStyle: "900",
     stroke: "#073047",
     strokeThickness: Math.round(3 * renderScale),
-    align: "center"
+    align: "center",
+    wordWrap: { width: Math.round(82 * renderScale), useAdvancedWrap: true }
   }).setOrigin(0.5).setScale(1 / renderScale);
+}
+
+function compactPrizeWheelLabel(label: string): string {
+  return label
+    .replace(/\bBasic\b/g, "Basic")
+    .replace(/\bMicro\b/g, "Micro")
+    .replace(/\bPremium\b/g, "Premium")
+    .replace(/\bMedium\b/g, "M")
+    .replace(/\bLarge\b/g, "L")
+    .replace(/\bExtra Large\b/g, "XL")
+    .replace(/\bSmall\b/g, "S")
+    .replace(/\s+x(\d+)/i, " x$1");
+}
+
+function readableRadialLabelRotation(angle: number): number {
+  const normalized = Phaser.Math.Wrap(angle, -Math.PI, Math.PI);
+  if (normalized > Math.PI / 2 || normalized < -Math.PI / 2) {
+    return normalized + Math.PI;
+  }
+  return normalized;
 }
 
 function createResultText(scene: Phaser.Scene, x: number, y: number, segment: PrizeWheelSegment): Phaser.GameObjects.GameObject {
