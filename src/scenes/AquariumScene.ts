@@ -279,8 +279,11 @@ const coinComboMaxCount = 50;
 const coinComboRewardPercentPerCount = 1;
 const coinComboRewardTextDurationMs = 3000;
 const fastCoinDropSinkSpeed = 340;
+const quickCoinDropSinkSpeed = 430;
 const fastCoinDropChance = 0.08;
 const fastCoinDropComboChance = 0.42;
+const quickCoinDropChance = 0.22;
+const quickCoinDropComboChance = 0.38;
 const hudStatusSyncIntervalSeconds = 0.25;
 const helperCreatureDropSpeed = 142;
 const helperCreatureSeabedY = tankBounds.bottom - 36;
@@ -6235,7 +6238,13 @@ export class AquariumScene extends Phaser.Scene {
 
     const canFastDrop = fish.sprite.y <= tankBounds.centerY;
     const fastDropChance = this.coinComboCount > 0 ? fastCoinDropComboChance : fastCoinDropChance;
-    const sinkSpeed = canFastDrop && Phaser.Math.FloatBetween(0, 1) < fastDropChance ? fastCoinDropSinkSpeed : undefined;
+    const isFastDrop = canFastDrop && Phaser.Math.FloatBetween(0, 1) < fastDropChance;
+    const quickDropChance = this.coinComboCount > 0 ? quickCoinDropComboChance : quickCoinDropChance;
+    const sinkSpeed = isFastDrop
+      ? Phaser.Math.FloatBetween(0, 1) < quickDropChance
+        ? quickCoinDropSinkSpeed
+        : fastCoinDropSinkSpeed
+      : undefined;
     this.createCoinDrop(
       fish.sprite.x + Phaser.Math.Between(-18, 18),
       fish.sprite.y + Phaser.Math.Between(-28, -14),

@@ -7,9 +7,9 @@ export const mealsToFull = 4;
 export const minimumFullCaloriesNeed = 60;
 export const maximumMealCaloriesNeed = 1_000_000_000_000;
 export const maximumFullCaloriesNeed = maximumMealCaloriesNeed * mealsToFull;
-export const fishCoinProductionMinDelayMs = 3000;
-export const fishCoinProductionMaxDelayMs = 12000;
-export const fishCoinProductionAverageDelaySeconds = 7.5;
+export const fishCoinProductionMinDelayMs = 2000;
+export const fishCoinProductionMaxDelayMs = 8000;
+export const fishCoinProductionAverageDelaySeconds = 5;
 
 export type FishCoinDropPlanInput = {
   fullnessCalories: number;

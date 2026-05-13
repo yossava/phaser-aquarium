@@ -46,7 +46,7 @@ const happyEmojiDurationMs = statusEmojiDurationMs;
 const missedFoodEmojiDurationMs = statusEmojiDurationMs;
 const dragLoveEmojiDurationMs = statusEmojiDurationMs;
 const dragLoveEmojiCooldownMs = statusEmojiCooldownMs;
-const hungryBubbleFullnessThreshold = 0.7;
+const hungryBubbleHungerThreshold = 75;
 const statusIndicatorUpdateIntervalSeconds = 0.16;
 const minimumMealCalorieRatio = 1;
 const fishLengthDisplayMultiplier = 10;
@@ -1495,6 +1495,13 @@ export class Fish {
 
     const now = this.scene.time.now;
     const nextEmoji = this.nextStateEmojiText(now);
+    if (nextEmoji && this.isPersistentStateEmoji(nextEmoji)) {
+      this.activeStateEmoji = nextEmoji;
+      this.stateEmojiVisibleUntil = 0;
+      this.nextStateEmojiAt = 0;
+      this.positionStateEmoji(nextEmoji);
+      return;
+    }
     if (this.activeStateEmoji && now < this.stateEmojiVisibleUntil) {
       this.positionStateEmoji(this.activeStateEmoji);
       return;
@@ -1519,7 +1526,7 @@ export class Fish {
     if (this.state === "ill") {
       return "🤢";
     }
-    if (now < this.missedFoodEmojiUntil || this.state === "hungry") {
+    if (now < this.missedFoodEmojiUntil || this.shouldShowHungryBubble()) {
       return "😩";
     }
     if (now < this.happyEmojiUntil || (this.state === "happy" && this.currentFullnessRatio() >= 0.995)) {
@@ -1558,6 +1565,10 @@ export class Fish {
     this.stateBubble.setVisible(false);
   }
 
+  private isPersistentStateEmoji(emoji: string): boolean {
+    return emoji === "😩" && this.shouldShowHungryBubble();
+  }
+
   private shouldHideTankStatusUi(): boolean {
     return this.offscreenVisitState !== "none" || this.isOutsideView();
   }
@@ -1585,7 +1596,7 @@ export class Fish {
   }
 
   private shouldShowHungryBubble(): boolean {
-    return this.currentFullnessRatio() < hungryBubbleFullnessThreshold;
+    return this.hunger >= hungryBubbleHungerThreshold;
   }
 
   private tailTint(): number {
