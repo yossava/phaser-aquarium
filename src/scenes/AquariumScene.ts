@@ -1017,7 +1017,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private maxFishCapacityForLevel(level = this.tankLevel): number {
-    const baseCapacity = level <= 1 ? baseFishCapacity : upgradedTankFishCapacity;
+    const baseCapacity = this.tankDisplayLevel(level) <= 1 ? baseFishCapacity : upgradedTankFishCapacity;
     return baseCapacity + this.fishCapacityUpgradeBonusForLevel(level);
   }
 
