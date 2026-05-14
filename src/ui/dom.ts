@@ -35,6 +35,7 @@ export function createHtmlButton(
   button.className = className;
   button.textContent = label;
   button.disabled = Boolean(options.disabled);
+  button.style.touchAction = "manipulation";
   options.attachTouchFeedback?.(button);
 
   let pointerArmed = false;
@@ -49,7 +50,14 @@ export function createHtmlButton(
 
   button.addEventListener("pointerdown", (event) => {
     event.stopPropagation();
-    pointerArmed = !button.disabled && event.isPrimary && event.button === 0;
+    pointerArmed = !button.disabled && event.isPrimary && (event.pointerType !== "mouse" || event.button === 0);
+    if (pointerArmed) {
+      try {
+        button.setPointerCapture(event.pointerId);
+      } catch {
+        // Some browsers do not allow pointer capture for every pointer source.
+      }
+    }
   });
   button.addEventListener("pointerup", (event) => {
     event.preventDefault();
@@ -59,13 +67,13 @@ export function createHtmlButton(
       return;
     }
     pointerArmed = false;
+    if (button.hasPointerCapture(event.pointerId)) {
+      button.releasePointerCapture(event.pointerId);
+    }
     ignoreNextClick = true;
     run();
   });
   button.addEventListener("pointercancel", () => {
-    pointerArmed = false;
-  });
-  button.addEventListener("pointerleave", () => {
     pointerArmed = false;
   });
   button.addEventListener("click", (event) => {
