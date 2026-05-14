@@ -348,7 +348,7 @@ const coinMagnetPrice: Price = { coinType: "common", amount: 720 };
 const coinMagnetIconPath = "/assets/ui/coin-magnet.png";
 const coinMagnetDurationMs = 30 * 60 * 1000;
 const autoFoodBuyerDurationMs = 30 * 60 * 1000;
-const productionBoostDurationMs = 3 * 60 * 1000;
+const productionBoostDurationMs = 30 * 1000;
 const autoFoodBuyerPurchaseCooldownMs = 3500;
 const autoFoodBuyerPurchaseQuantity = 10;
 const coinMagnetAttractDurationMs = 260;
@@ -6025,7 +6025,7 @@ export class AquariumScene extends Phaser.Scene {
       [],
       [
         htmlElement("p", "aq-modal-line", ["Select which fish gets the boost. Only that fish will eat the pill."]),
-        htmlElement("p", "aq-modal-line", ["Effect: 5x production speed and 5x fullness use for 3m."]),
+        htmlElement("p", "aq-modal-line", ["Effect: 5x production speed and 5x fullness use for 30s."]),
         grid,
         htmlElement("p", "aq-modal-line", ["Selected: ", selectedName, " | Age ", selectedAge]),
         priceText,
