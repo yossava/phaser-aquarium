@@ -20,6 +20,16 @@ export function htmlImage(src: string, alt: string, className: string): HTMLImag
   return image;
 }
 
+let suppressSyntheticClickUntil = 0;
+
+export function suppressNextSyntheticHtmlClick(durationMs = 350): void {
+  suppressSyntheticClickUntil = performance.now() + durationMs;
+}
+
+export function shouldSuppressHtmlClick(): boolean {
+  return performance.now() < suppressSyntheticClickUntil;
+}
+
 export function createHtmlButton(
   label: string,
   className: string,
@@ -71,6 +81,7 @@ export function createHtmlButton(
       button.releasePointerCapture(event.pointerId);
     }
     ignoreNextClick = true;
+    suppressNextSyntheticHtmlClick();
     run();
   });
   button.addEventListener("pointercancel", () => {
@@ -79,7 +90,7 @@ export function createHtmlButton(
   button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (ignoreNextClick) {
+    if (ignoreNextClick || performance.now() < suppressSyntheticClickUntil) {
       ignoreNextClick = false;
       return;
     }

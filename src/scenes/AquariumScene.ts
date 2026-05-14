@@ -158,7 +158,7 @@ import { createQuestList } from "../ui/QuestPage";
 import { createRewardedAdsPage } from "../ui/RewardedAdsPage";
 import { createDeveloperSettingsCard, createSettingsMusicCard, createSettingsToggleCard } from "../ui/SettingsPage";
 import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
-import { createHtmlButton, htmlElement, htmlImage } from "../ui/dom";
+import { createHtmlButton, htmlElement, htmlImage, shouldSuppressHtmlClick } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
@@ -2135,6 +2135,9 @@ export class AquariumScene extends Phaser.Scene {
     const show = (event: Event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (event instanceof MouseEvent && shouldSuppressHtmlClick()) {
+        return;
+      }
       this.showModal(title, lines, [{ label: "Close", fill: 0x254d68, action: () => this.closeModal() }]);
     };
     element.addEventListener("click", show);
@@ -2154,6 +2157,9 @@ export class AquariumScene extends Phaser.Scene {
     const run = (event: Event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (event instanceof MouseEvent && shouldSuppressHtmlClick()) {
+        return;
+      }
       action();
     };
     element.addEventListener("click", run);
@@ -2235,6 +2241,9 @@ export class AquariumScene extends Phaser.Scene {
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (shouldSuppressHtmlClick()) {
+        return;
+      }
       onClick();
     });
     return button;
@@ -2658,6 +2667,7 @@ export class AquariumScene extends Phaser.Scene {
 
   private openStoreOverlay(): void {
     this.hideHtmlPageOverlay();
+    this.htmlPageOverlay ??= this.createHtmlPageOverlay();
     this.storeOverlay ??= new StoreOverlay(
       () => this.storeOverlayState(),
       {
@@ -2672,7 +2682,8 @@ export class AquariumScene extends Phaser.Scene {
         buyTankDecoration: (decorationId, size) => this.buyDecorationFromStore(decorationId, size),
         selectTankDecoration: (decorationId, size) => this.selectDecoration(decorationId, size),
         buyTankUtility: (utilityId) => this.buyTankUtility(utilityId)
-      }
+      },
+      this.htmlPageOverlay
     );
     this.storeOverlay.show();
   }
@@ -2847,6 +2858,7 @@ export class AquariumScene extends Phaser.Scene {
     this.htmlPageOverlayScrollTop = capturePageScrollTop(this.htmlPageOverlay);
     const nextKey = `${this.activeScreen}:${this.tankMenuTab}:${this.tankMenuDrillOpen}:${this.tankMenuPage}:${this.inventoryTab}:${this.inventoryDrillOpen}`;
     this.htmlPageOverlayRenderKey = nextKey;
+    this.htmlPageOverlay.className = "aq-page-shell";
     this.htmlPageOverlay.classList.remove("hidden");
     this.htmlPageOverlay.replaceChildren(this.createHtmlPage());
     if (previousKey === nextKey && this.htmlPageOverlayScrollTop > 0) {
@@ -3070,7 +3082,14 @@ export class AquariumScene extends Phaser.Scene {
     const card = htmlElement("article", `aq-tank-grid-card ${level === this.tankLevel ? "is-active" : ""}`);
     this.attachTouchFeedback(card);
     if (owned && level !== this.tankLevel) {
-      card.addEventListener("click", () => this.switchTank(level));
+      card.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (shouldSuppressHtmlClick()) {
+          return;
+        }
+        this.switchTank(level);
+      });
     }
     const imageUrl = this.tankCardBackgroundUrl(level);
     if (imageUrl) {
@@ -3290,6 +3309,9 @@ export class AquariumScene extends Phaser.Scene {
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (shouldSuppressHtmlClick()) {
+        return;
+      }
       if (!button.disabled) {
         onClick();
       }

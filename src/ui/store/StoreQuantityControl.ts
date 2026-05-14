@@ -1,4 +1,4 @@
-import { createHtmlButton, htmlElement } from "../dom";
+import { createHtmlButton, htmlElement, shouldSuppressHtmlClick } from "../dom";
 
 export type QuantityHoldState = {
   delay?: number;
@@ -50,6 +50,9 @@ export function createQuantityHoldButton(
     event.stopPropagation();
     if (holdState.pointerStarted) {
       holdState.pointerStarted = false;
+      return;
+    }
+    if (shouldSuppressHtmlClick()) {
       return;
     }
     if (!node.disabled) {

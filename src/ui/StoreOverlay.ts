@@ -49,6 +49,7 @@ type StoreOverlayActions = {
 
 export class StoreOverlay {
   private readonly root: HTMLDivElement;
+  private readonly ownsRoot: boolean;
   private activeTab: StoreTab = "fish";
   private tankCategory: TankStoreCategory = "tank";
   private browseLevel: StoreBrowseLevel = "categories";
@@ -62,9 +63,11 @@ export class StoreOverlay {
 
   constructor(
     private readonly getState: () => StoreOverlayState,
-    private readonly actions: StoreOverlayActions
+    private readonly actions: StoreOverlayActions,
+    root?: HTMLDivElement
   ) {
-    this.root = document.createElement("div");
+    this.root = root ?? document.createElement("div");
+    this.ownsRoot = !root;
     this.root.className = "aq-store-shell hidden";
     const stopEvent = (event: Event) => {
       event.stopPropagation();
@@ -72,20 +75,21 @@ export class StoreOverlay {
     this.root.addEventListener("pointerdown", stopEvent);
     this.root.addEventListener("pointerup", stopEvent);
     this.root.addEventListener("click", stopEvent);
-    document.body.appendChild(this.root);
+    if (this.ownsRoot) {
+      document.body.appendChild(this.root);
+    }
   }
 
   show(): void {
+    this.root.className = "aq-store-shell";
     if (this.visible) {
-      this.root.classList.remove("hidden");
-      this.render();
+      this.render(this.root.childElementCount === 0);
       return;
     }
 
     this.visible = true;
     this.browseLevel = "categories";
     this.page = 1;
-    this.root.classList.remove("hidden");
     this.render();
   }
 
@@ -93,6 +97,7 @@ export class StoreOverlay {
     this.visible = false;
     this.stopQuantityHold();
     this.root.classList.add("hidden");
+    this.root.replaceChildren();
   }
 
   refresh(): void {
@@ -102,7 +107,9 @@ export class StoreOverlay {
   }
 
   destroy(): void {
-    this.root.remove();
+    if (this.ownsRoot) {
+      this.root.remove();
+    }
   }
 
   private render(force = false): void {
