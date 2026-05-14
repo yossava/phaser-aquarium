@@ -1291,6 +1291,14 @@ canvas {
     @apply h-7 w-7 object-contain drop-shadow;
   }
 
+  .aq-main-menu-status-icon-wrap {
+    @apply relative flex h-7 w-7 items-center justify-center;
+  }
+
+  .aq-main-menu-status-badge {
+    @apply -right-2 -top-2 min-h-4 min-w-4 px-0 text-[9px];
+  }
+
   .aq-main-menu-status-label {
     @apply mt-0.5 max-w-full truncate text-[9px] font-extrabold leading-none text-cyan-100/78;
   }

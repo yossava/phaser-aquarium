@@ -145,7 +145,7 @@ function createPrizeSpinnerShell(
 ): Phaser.GameObjects.Container {
   const centerX = gameWidth / 2;
   return scene.add.container(0, 0, [
-    scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x9b7ae8, 1),
+    scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0xc7a8ff, 1),
     createTitle(scene, centerX, 58, config.title, "31px", "#ffffff"),
     ...headerChildren,
     wheel.container,

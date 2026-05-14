@@ -1577,6 +1577,7 @@ export class AquariumScene extends Phaser.Scene {
     const overlay = document.createElement("div");
     overlay.className = "aq-tank-menu";
     overlay.dataset.version = tankMenuVersion;
+    const tankDirty = this.isTankDirty();
 
     const menuY = tankMenuButtonY;
     const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
@@ -1613,6 +1614,12 @@ export class AquariumScene extends Phaser.Scene {
         icon.classList.add("aq-tank-menu-icon-small");
       }
       bubble.append(icon);
+      if (item.id === "menu" && tankDirty) {
+        const badge = document.createElement("span");
+        badge.className = "aq-tank-menu-badge";
+        badge.textContent = "!";
+        bubble.append(badge);
+      }
       button.append(bubble);
       overlay.append(button);
     }
@@ -2925,19 +2932,25 @@ export class AquariumScene extends Phaser.Scene {
 
   private createMainMenuStatusGrid(): HTMLElement {
     const grid = htmlElement("div", "aq-main-menu-status-grid");
-    const statusItems: Array<{ icon: string; label: string; value: string; action?: () => void }> = [
+    const statusItems: Array<{ icon: string; label: string; value: string; action?: () => void; badge?: string }> = [
       { icon: "/assets/ui/shop/icon_category_tanks.png", label: "Level", value: formatNumber(this.tankDisplayLevel()) },
       { icon: hudIconAssetPathByKey["ui-icon-total-wealth"], label: "Wealth", value: formatNumber(this.calculateTankNetWorth()) },
       { icon: hudIconAssetPathByKey["ui-icon-food-status"], label: "Food", value: formatNumber(this.getTotalFoodInventory()) },
-      { icon: hudIconAssetPathByKey["ui-icon-clean-status"], label: "Clean", value: this.cleaningTank ? "Cleaning" : `${formatNumber(Math.round(this.cleanliness))}%`, action: () => this.cleanTank() },
+      { icon: hudIconAssetPathByKey["ui-icon-clean-status"], label: "Clean", value: this.cleaningTank ? "Cleaning" : `${formatNumber(Math.round(this.cleanliness))}%`, action: () => this.cleanTank(), badge: this.isTankDirty() ? "!" : undefined },
       { icon: hudIconAssetPathByKey["ui-icon-happy-status"], label: "Happy", value: `${formatNumber(Math.round(this.calculateTankHappiness()))}%` }
     ];
     statusItems.forEach((item) => {
       const card = item.action
         ? this.htmlButton("", "aq-main-menu-status-card aq-main-menu-status-button", item.action)
         : htmlElement("div", "aq-main-menu-status-card");
+      const iconWrap = htmlElement("span", "aq-main-menu-status-icon-wrap", [
+        htmlImage(item.icon, "", "aq-main-menu-status-icon")
+      ]);
+      if (item.badge) {
+        iconWrap.append(htmlElement("span", "aq-main-menu-badge aq-main-menu-status-badge", [item.badge]));
+      }
       card.append(
-        htmlImage(item.icon, "", "aq-main-menu-status-icon"),
+        iconWrap,
         htmlElement("span", "aq-main-menu-status-label", [item.label]),
         htmlElement("strong", "aq-main-menu-status-value", [item.value])
       );
@@ -5801,31 +5814,98 @@ export class AquariumScene extends Phaser.Scene {
     this.saveNow();
   }
 
-  private buyFish(fishType: FishType): void {
+  private showFishBuyQuantityModal(fishType: FishType): void {
     if (!this.developerGodMode && fishType.tankLevel > this.tankDisplayLevel()) {
       this.floatText(`Needs tank L${formatNumber(fishType.tankLevel)}`, toastX, toastY, "#ffb0a8");
       return;
     }
 
-    if (!this.developerGodMode && !this.canBuyAnotherFishThisHour()) {
+    const remainingHourlyBuys = this.developerGodMode
+      ? maxFishBuyQuantity
+      : Math.max(0, this.hourlyFishPurchaseLimit() - this.recentFishPurchaseCount());
+    if (remainingHourlyBuys <= 0) {
       this.floatText(`Fish shop ${this.fishPurchaseRestockLabel().toLowerCase()}`, toastX, toastY, "#ffdd8a");
       return;
     }
 
-    if (!this.developerGodMode && !canAfford(this.wallet, fishType.price)) {
-      this.floatText(`Need ${formatPrice(fishType.price)}`, toastX, toastY, "#ffb0a8");
+    const maxQuantity = Math.max(1, Math.min(maxFishBuyQuantity, remainingHourlyBuys));
+    let selectedQuantity = 1;
+    const quantityText = htmlElement("strong", "aq-sell-qty-value", [formatNumber(selectedQuantity)]);
+    const totalText = htmlElement("p", "aq-modal-line aq-sell-qty-total", [
+      `Total ${formatPrice(this.quantityPrice(fishType.price, selectedQuantity))}`
+    ]);
+    const update = () => {
+      selectedQuantity = Phaser.Math.Clamp(Math.floor(selectedQuantity), 1, maxQuantity);
+      quantityText.textContent = formatNumber(selectedQuantity);
+      totalText.textContent = `Total ${formatPrice(this.quantityPrice(fishType.price, selectedQuantity))}`;
+    };
+    const setQuantity = (quantity: number) => {
+      selectedQuantity = quantity;
+      update();
+    };
+    const quantityPicker = htmlElement("div", "aq-sell-qty-picker", [
+      createHtmlButton("-", "aq-sell-qty-step", () => setQuantity(selectedQuantity - 1), {
+        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+      }),
+      htmlElement("div", "aq-sell-qty-display", [
+        htmlElement("span", "aq-sell-qty-label", ["Fish"]),
+        quantityText,
+        htmlElement("span", "aq-sell-qty-max", [`/ ${formatNumber(maxQuantity)}`])
+      ]),
+      createHtmlButton("+", "aq-sell-qty-step", () => setQuantity(selectedQuantity + 1), {
+        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+      })
+    ]);
+
+    this.showModal(
+      "Buy Fish",
+      [],
+      [
+        { label: "BUY NOW", fill: 0x356a35, action: () => this.buyFish(fishType, selectedQuantity) },
+        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
+      ],
+      [
+        htmlElement("p", "aq-modal-line", [`${fishType.name} will be added to your dock inventory.`]),
+        htmlElement("p", "aq-modal-line", [`Owned: x${formatNumber(this.getFishInventory(fishType.id))} | Rarity: ${this.rarityLabel(fishType.rarity)}`]),
+        quantityPicker,
+        totalText
+      ]
+    );
+  }
+
+  private buyFish(fishType: FishType, quantity = 1): void {
+    if (!this.developerGodMode && fishType.tankLevel > this.tankDisplayLevel()) {
+      this.floatText(`Needs tank L${formatNumber(fishType.tankLevel)}`, toastX, toastY, "#ffb0a8");
       return;
     }
 
-    if (!this.spendPrice(fishType.price)) {
+    const remainingHourlyBuys = this.developerGodMode
+      ? maxFishBuyQuantity
+      : Math.max(0, this.hourlyFishPurchaseLimit() - this.recentFishPurchaseCount());
+    if (remainingHourlyBuys <= 0) {
+      this.floatText(`Fish shop ${this.fishPurchaseRestockLabel().toLowerCase()}`, toastX, toastY, "#ffdd8a");
       return;
     }
 
-    this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
-    this.recordFishPurchase(fishType);
+    const buyQuantity = Phaser.Math.Clamp(Math.floor(quantity), 1, Math.min(maxFishBuyQuantity, remainingHourlyBuys));
+    const totalPrice = this.quantityPrice(fishType.price, buyQuantity);
+    if (!this.developerGodMode && !canAfford(this.wallet, totalPrice)) {
+      this.floatText(`Need ${formatPrice(totalPrice)}`, toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    if (!this.spendPrice(totalPrice)) {
+      return;
+    }
+
+    this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + buyQuantity);
+    for (let index = 0; index < buyQuantity; index += 1) {
+      this.recordFishPurchase(fishType);
+    }
     this.recentInventoryDockItemKey = `fish:${fishType.id}`;
     this.placementMode = { kind: "none" };
-    this.floatText(`${fishType.name} docked`, toastX, toastY, "#a8ffb0");
+    this.floatText(`${fishType.name} x${formatNumber(buyQuantity)} docked`, toastX, toastY, "#a8ffb0");
+    this.closeModal();
     this.storeOverlay?.refresh();
     this.refreshUi();
     this.createFoodDock();
@@ -8238,6 +8318,10 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.cleanliness = Phaser.Math.Clamp(this.cleanliness - this.tankDirtRatePerSecond(activeFishCount) * deltaSeconds, 0, 100);
+  }
+
+  private isTankDirty(): boolean {
+    return Math.round(this.cleanliness) < 100;
   }
 
   private finishTankCleaning(): void {
