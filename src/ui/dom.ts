@@ -30,6 +30,32 @@ export function shouldSuppressHtmlClick(): boolean {
   return performance.now() < suppressSyntheticClickUntil;
 }
 
+export function installHtmlInputShield(root: HTMLElement, durationMs = 380): void {
+  root.querySelectorAll(".aq-html-input-shield").forEach((shield) => shield.remove());
+  const shield = document.createElement("div");
+  shield.className = "aq-html-input-shield";
+  const stop = (event: Event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  shield.addEventListener("pointerdown", stop);
+  shield.addEventListener("pointerup", stop);
+  shield.addEventListener("click", stop);
+  root.append(shield);
+  window.setTimeout(() => shield.remove(), durationMs);
+}
+
+export function playHtmlPageTransition(root: HTMLElement, reducedMotion = false): void {
+  if (reducedMotion) {
+    return;
+  }
+
+  root.classList.remove("aq-html-page-enter");
+  void root.offsetWidth;
+  root.classList.add("aq-html-page-enter");
+  window.setTimeout(() => root.classList.remove("aq-html-page-enter"), 260);
+}
+
 export function createHtmlButton(
   label: string,
   className: string,

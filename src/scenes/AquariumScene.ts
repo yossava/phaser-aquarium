@@ -158,7 +158,7 @@ import { createQuestList } from "../ui/QuestPage";
 import { createRewardedAdsPage } from "../ui/RewardedAdsPage";
 import { createDeveloperSettingsCard, createSettingsMusicCard, createSettingsToggleCard } from "../ui/SettingsPage";
 import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
-import { createHtmlButton, htmlElement, htmlImage, shouldSuppressHtmlClick } from "../ui/dom";
+import { createHtmlButton, htmlElement, htmlImage, installHtmlInputShield, playHtmlPageTransition, shouldSuppressHtmlClick } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
@@ -2683,6 +2683,7 @@ export class AquariumScene extends Phaser.Scene {
         selectTankDecoration: (decorationId, size) => this.selectDecoration(decorationId, size),
         buyTankUtility: (utilityId) => this.buyTankUtility(utilityId)
       },
+      this.settings.reducedMotion,
       this.htmlPageOverlay
     );
     this.storeOverlay.show();
@@ -2861,6 +2862,10 @@ export class AquariumScene extends Phaser.Scene {
     this.htmlPageOverlay.className = "aq-page-shell";
     this.htmlPageOverlay.classList.remove("hidden");
     this.htmlPageOverlay.replaceChildren(this.createHtmlPage());
+    if (previousKey !== nextKey) {
+      playHtmlPageTransition(this.htmlPageOverlay, this.settings.reducedMotion);
+    }
+    installHtmlInputShield(this.htmlPageOverlay);
     if (previousKey === nextKey && this.htmlPageOverlayScrollTop > 0) {
       restorePageScrollTop(this.htmlPageOverlay, this.htmlPageOverlayScrollTop);
     }

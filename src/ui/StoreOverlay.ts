@@ -2,7 +2,7 @@ import { foodAssetPath } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
 import { foodCssFilterFor } from "../game/visuals";
 import type { FishType, FoodType, HelperCreatureType, Price, StoreTab } from "../types/mechanics";
-import { createHtmlButton, htmlElement } from "./dom";
+import { createHtmlButton, htmlElement, installHtmlInputShield, playHtmlPageTransition } from "./dom";
 import { currentStoreItems, storeItemTier } from "./store/StoreCatalogItems";
 import { createStoreBaseCard, createStorePreview, createStorePriceBadge, helperRole, storeRarityLabel } from "./store/StoreCardParts";
 import {
@@ -64,6 +64,7 @@ export class StoreOverlay {
   constructor(
     private readonly getState: () => StoreOverlayState,
     private readonly actions: StoreOverlayActions,
+    private readonly reducedMotion = false,
     root?: HTMLDivElement
   ) {
     this.root = root ?? document.createElement("div");
@@ -130,6 +131,10 @@ export class StoreOverlay {
     this.lastRenderKey = nextKey;
     this.lastStateSignature = nextSignature;
     this.root.replaceChildren(this.createStore(state));
+    if (previousKey !== nextKey) {
+      playHtmlPageTransition(this.root, this.reducedMotion);
+    }
+    installHtmlInputShield(this.root);
     const nextScrollTop = previousKey === nextKey ? this.scrollPositions.get(nextKey) ?? 0 : 0;
     const nextScroll = this.root.querySelector(".aq-store-list-scroll");
     if (nextScroll instanceof HTMLElement && nextScrollTop > 0) {
