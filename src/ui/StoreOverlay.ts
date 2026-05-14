@@ -303,7 +303,8 @@ export class StoreOverlay {
 
   private foodCard(food: FoodType, state: StoreOverlayState): HTMLElement {
     const isAgeBoost = food.id === "ageBoost";
-    const quantity = isAgeBoost ? 1 : this.quantities.get(food.id) ?? 1;
+    const isProductionBoost = food.id === "productionBoost";
+    const quantity = isAgeBoost || isProductionBoost ? 1 : this.quantities.get(food.id) ?? 1;
     const totalPrice: Price = {
       coinType: food.price.coinType,
       amount: food.price.amount * quantity,
@@ -316,7 +317,7 @@ export class StoreOverlay {
     const metaText = owned > 0
       ? `Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`
       : `${formatNumber(food.calories)} cal each`;
-    const buyLabel = this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
+    const buyLabel = isProductionBoost ? "Select Fish" : this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
     const card = createStoreBaseCard(food.rarity);
     const controls = div("aq-food-qty-row", [
       this.quantityHoldButton("-", food.id, -1, quantity <= 1 || isAgeBoost),
@@ -339,10 +340,10 @@ export class StoreOverlay {
       div("flex min-w-0 flex-1 flex-col aq-food-card-body", [
         div("flex items-start justify-between gap-1.5", [
           div("min-w-0 truncate text-sm font-black leading-tight", [food.name]),
-          createStorePriceBadge(totalPrice)
+          isProductionBoost ? div("aq-store-price-badge", ["By fish"]) : createStorePriceBadge(totalPrice)
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [metaText]),
-        controls,
+        ...(isProductionBoost ? [] : [controls]),
         button(buttonLabel, "aq-buy w-full", () => this.actions.buyFood(food, quantity), !affordable || blockedByCooldown)
       ])
     );

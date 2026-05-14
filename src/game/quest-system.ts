@@ -20,6 +20,7 @@ export type RewardedAdKind = "common" | "food" | "fish" | "helper";
 export type RewardedAdState = {
   kind: RewardedAdKind;
   readyAt: number;
+  cooldown?: boolean;
 };
 
 export type RewardedAdOption = {
@@ -64,6 +65,7 @@ export type BuildDailyQuestItemsInput = {
 export const fishPurchaseWindowMs = 60 * 60 * 1000;
 export const growthTonicPurchaseWindowMs = 60 * 60 * 1000;
 export const rewardedAdDurationMs = 30_000;
+export const rewardedAdCooldownMs = 10 * 60 * 1000;
 
 const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
@@ -211,14 +213,18 @@ export function superRareQuestReward(wallet: Wallet): Price {
 
 export function rewardedAdCoinReward(coinType: CoinType, level: number, wallet: Wallet, totalWealth: number): Price {
   if (coinType === "rare") {
-    return rareQuestReward(wallet);
+    void level;
+    void totalWealth;
+    return { coinType: "rare", amount: clamp(Math.round(Math.max(1, wallet.rare * 0.02)), 1, 5) };
   }
   if (coinType === "superRare") {
-    return superRareQuestReward(wallet);
+    void level;
+    void totalWealth;
+    return { coinType: "superRare", amount: clamp(Math.round(Math.max(1, wallet.superRare * 0.02)), 1, 2) };
   }
   void level;
   void wallet;
-  return commonQuestReward(totalWealth);
+  return { coinType: "common", amount: clamp(Math.round(Math.max(25, totalWealth * 0.012)), 25, 1000) };
 }
 
 export function rewardedAdOptions(input: RewardedAdCatalogInput): RewardedAdOption[] {

@@ -31,7 +31,11 @@ const fishFoodSizeVariants = [
 const foodEconomy: Partial<Record<FoodType["id"], { calories: number; price: Price; densityLevel: number; rarity?: Rarity }>> = {
   medicine: { calories: 10, price: { coinType: "common", amount: 10 }, densityLevel: 1 },
   ageBoost: { calories: 1, price: { coinType: "common", amount: 1000 }, densityLevel: 1 },
+  productionBoost: { calories: 1, price: { coinType: "common", amount: 250 }, densityLevel: 1 },
   creature: { calories: 58, price: { coinType: "common", amount: 12 }, densityLevel: 1 }
+};
+const supplyFoodAssetIdById: Partial<Record<FoodType["id"], string>> = {
+  productionBoost: "medicine"
 };
 const supplyFoodIds = new Set<string>(Object.keys(foodEconomy));
 const foodAssetIdById = new Map<string, string>();
@@ -97,6 +101,10 @@ function normalizeFishTypes(source: FishType[]): FishType[] {
 function normalizeSupplyFoodTypes(source: FoodType[]): FoodType[] {
   return source.filter((foodType) => supplyFoodIds.has(foodType.id)).map((foodType) => {
     const economy = foodEconomy[foodType.id];
+    const assetId = supplyFoodAssetIdById[foodType.id];
+    if (assetId) {
+      foodAssetIdById.set(foodType.id, assetId);
+    }
     if (!economy) {
       return foodType;
     }

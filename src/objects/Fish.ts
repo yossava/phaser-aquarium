@@ -86,6 +86,8 @@ const severeHungerDamageThreshold = 94;
 const sickAfterContinuousHungerSeconds = 5 * 60;
 const fishResaleBaseRate = 0.7;
 export const fatalCareSeconds = 24 * 60 * 60;
+const productionBoostMultiplier = 5;
+const productionBoostTint = 0xff6ad5;
 
 type OffscreenVisitState = "none" | "leaving" | "hidden" | "returning";
 
@@ -100,6 +102,7 @@ export class Fish {
   public nextCoinDropAt = 0;
   public facing = 1;
   public medicatedUntil = 0;
+  public productionBoostUntil = 0;
   public fatalCareSeconds = 0;
   public continuousHungrySeconds = 0;
   public gender: FishGender;
@@ -354,6 +357,28 @@ export class Fish {
     this.updateStatusBars(true);
   }
 
+  public applyProductionBoost(now: number, durationMs: number): void {
+    this.productionBoostUntil = Math.max(this.productionBoostUntil, now) + Math.max(0, durationMs);
+    this.nextCoinDropAt = Math.min(
+      this.nextCoinDropAt > 0 ? this.nextCoinDropAt : Number.POSITIVE_INFINITY,
+      now + Phaser.Math.Between(
+        Math.ceil(fishCoinProductionMinDelayMs / productionBoostMultiplier),
+        Math.ceil(fishCoinProductionMaxDelayMs / productionBoostMultiplier)
+      )
+    );
+    if (!Number.isFinite(this.nextCoinDropAt)) {
+      this.scheduleNextCoinProduction(now);
+    }
+    this.happyEmojiUntil = now + happyEmojiDurationMs;
+    this.cancelOffscreenVisit();
+    this.setStateTint();
+    this.updateStatusBars(true);
+  }
+
+  public hasActiveProductionBoost(now = this.scene.time.now): boolean {
+    return this.productionBoostUntil > now;
+  }
+
   public showMissedFoodEmoji(now = this.scene.time.now): void {
     this.missedFoodEmojiUntil = now + missedFoodEmojiDurationMs;
     this.updateStatusBars(true);
@@ -371,8 +396,16 @@ export class Fish {
   }
 
   public canChaseFood(food: FoodPellet): boolean {
+    if (food.targetFish && food.targetFish !== this) {
+      return false;
+    }
+
     if (food.foodType.id === "ageBoost") {
       return true;
+    }
+
+    if (food.foodType.id === "productionBoost") {
+      return food.targetFish === this;
     }
 
     const willingToEat = this.state === "hungry" || this.state === "ill" || this.hunger > minimumHungerToEatMore;
@@ -823,7 +856,11 @@ export class Fish {
   }
 
   private scheduleNextCoinProduction(now: number): void {
-    this.nextCoinDropAt = now + Phaser.Math.Between(fishCoinProductionMinDelayMs, fishCoinProductionMaxDelayMs);
+    const multiplier = this.hasActiveProductionBoost(now) ? productionBoostMultiplier : 1;
+    this.nextCoinDropAt = now + Phaser.Math.Between(
+      Math.ceil(fishCoinProductionMinDelayMs / multiplier),
+      Math.ceil(fishCoinProductionMaxDelayMs / multiplier)
+    );
   }
 
   private desiredAgeScale(): number {
@@ -1082,7 +1119,7 @@ export class Fish {
 
     const edibleFoods = foods.filter((food) => this.willChaseFood(food));
     const willingToEat = this.state === "hungry" || this.state === "ill" || this.hunger > minimumHungerToEatMore;
-    const hasCareBooster = edibleFoods.some((food) => food.foodType.id === "ageBoost");
+    const hasCareBooster = edibleFoods.some((food) => food.foodType.id === "ageBoost" || food.foodType.id === "productionBoost");
     if (edibleFoods.length === 0 || (!willingToEat && !hasCareBooster)) {
       return undefined;
     }
@@ -1095,6 +1132,10 @@ export class Fish {
   }
 
   private acceptsFood(food: FoodPellet): boolean {
+    if (food.targetFish && food.targetFish !== this) {
+      return false;
+    }
+
     return this.acceptsFoodType(food.foodType);
   }
 
@@ -1113,6 +1154,10 @@ export class Fish {
 
     if (food.foodType.id === "ageBoost") {
       return true;
+    }
+
+    if (food.foodType.id === "productionBoost") {
+      return food.targetFish === this;
     }
 
     if (food.foodType.id === "medicine") {
@@ -1147,7 +1192,7 @@ export class Fish {
   }
 
   private foodPickupRadius(food: FoodPellet): number {
-    return food.foodType.id === "medicine" || food.foodType.id === "ageBoost" ? medicinePickupRadius : foodPickupRadius;
+    return food.foodType.id === "medicine" || food.foodType.id === "ageBoost" || food.foodType.id === "productionBoost" ? medicinePickupRadius : foodPickupRadius;
   }
 
   private moveTowardTarget(deltaSeconds: number, speed: number): void {
@@ -1229,7 +1274,7 @@ export class Fish {
 
   private updateOffscreenVisit(foods: FoodPellet[], escapingFromDrag: boolean): OffscreenVisitState {
     const now = this.scene.time.now;
-    if (escapingFromDrag || this.state === "ill" || this.manuallyDragging) {
+    if (escapingFromDrag || this.state === "ill" || this.manuallyDragging || this.hasActiveProductionBoost(now)) {
       this.cancelOffscreenVisit();
       return "none";
     }
@@ -1402,6 +1447,16 @@ export class Fish {
     }
 
     this.sprite.setAlpha(1);
+    if (this.hasActiveProductionBoost()) {
+      this.sprite.setTint(this.usesCustomTexture ? productionBoostTint : Phaser.Display.Color.Interpolate.ColorWithColor(
+        Phaser.Display.Color.ValueToColor(this.bodyTint()),
+        Phaser.Display.Color.ValueToColor(productionBoostTint),
+        100,
+        48
+      ).color);
+      return;
+    }
+
     if (this.usesCustomTexture) {
       this.sprite.clearTint();
       return;

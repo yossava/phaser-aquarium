@@ -13,6 +13,7 @@ export const foodVisualsByType: Record<string, { tint: number; label: string }> 
   coral: { tint: 0x35d6d0, label: "Coral" },
   medicine: { tint: 0x43d66f, label: "Medicine" },
   ageBoost: { tint: 0x9d6bff, label: "Growth" },
+  productionBoost: { tint: 0xff6ad5, label: "Boost" },
   creature: { tint: 0x76e68a, label: "Creature" },
   event: { tint: 0xf39cff, label: "Event" }
 };
@@ -28,6 +29,7 @@ const foodCssFilterByType: Record<string, string> = {
   event: "drop-shadow(0 6px 6px rgba(0, 0, 0, 0.32)) hue-rotate(238deg) saturate(1.45) brightness(1.08)",
   medicine: "drop-shadow(0 6px 6px rgba(0, 0, 0, 0.32)) hue-rotate(76deg) saturate(1.2) brightness(1.05)",
   ageBoost: "drop-shadow(0 6px 6px rgba(0, 0, 0, 0.32)) hue-rotate(238deg) saturate(1.45) brightness(1.08)",
+  productionBoost: "drop-shadow(0 6px 6px rgba(0, 0, 0, 0.32)) hue-rotate(292deg) saturate(1.7) brightness(1.08)",
   creature: "drop-shadow(0 6px 6px rgba(0, 0, 0, 0.32)) hue-rotate(74deg) saturate(1.2) brightness(1.04)"
 };
 
@@ -49,6 +51,10 @@ export const rarityVisualsByType: Record<Rarity, { stars: number; tint: number; 
 };
 
 export function foodTintFor(foodTypeId: FoodTypeId): number {
+  const directTint = foodVisualsByType[foodTypeId]?.tint;
+  if (directTint !== undefined) {
+    return directTint;
+  }
   const assetId = foodAssetId(foodTypeId);
   const baseTint = foodVisualsByType[assetId]?.tint ?? 0xffb13b;
   const sizeTint = foodSizeTintBySuffix.find(([suffix]) => foodTypeId.endsWith(suffix))?.[1];
@@ -56,6 +62,10 @@ export function foodTintFor(foodTypeId: FoodTypeId): number {
 }
 
 export function foodCssFilterFor(foodTypeId: FoodTypeId): string {
+  const directFilter = foodCssFilterByType[foodTypeId];
+  if (directFilter) {
+    return directFilter;
+  }
   const assetId = foodAssetId(foodTypeId);
   const sizeFilter = foodSizeCssFilterBySuffix.find(([suffix]) => foodTypeId.endsWith(suffix))?.[1];
   return sizeFilter ?? foodCssFilterByType[assetId] ?? baseFoodCssFilter;

@@ -143,6 +143,19 @@
     "densityLevel": 1
   },
   {
+    "id": "productionBoost",
+    "name": "Production Boost",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 250
+    },
+    "nutrition": 1,
+    "acceptedByDefault": true,
+    "calories": 1,
+    "densityLevel": 1
+  },
+  {
     "id": "creature",
     "name": "Creature Food",
     "rarity": "common",

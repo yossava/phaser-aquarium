@@ -17,7 +17,7 @@ import {
   legacyFoodDispenserPositionStorageKey
 } from "../game/dispenser-system";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, priceComponents, spend } from "../game/economy";
-import { fishCoinProductionMaxDelayMs, fishCoinProductionMinDelayMs } from "../game/economy-model";
+import { fishCoinProductionMaxDelayMs, fishCoinProductionMinDelayMs, fishCommonPrice } from "../game/economy-model";
 import { gameFontFamily } from "../game/fonts";
 import {
   bestCalorieFoodForTarget,
@@ -36,6 +36,7 @@ import {
   hiddenFoodTypeIds,
   isCalorieTrackedFood as isCalorieTrackedFoodModel,
   isDroppableFood as isDroppableFoodModel,
+  productionBoostFoodTypeId,
   recommendedFoodName,
   setFoodBuyQuantityValue,
   supplyFoodTypeIds,
@@ -104,6 +105,7 @@ import {
   recordFishPurchase as recordFishPurchaseModel,
   recordGrowthTonicPurchase as recordGrowthTonicPurchaseModel,
   rewardedAdCoinReward as questRewardedAdCoinReward,
+  rewardedAdCooldownMs,
   rewardedAdDurationMs,
   rewardedAdOptions as buildRewardedAdOptions,
   rewardedAdRemainingSeconds,
@@ -346,6 +348,7 @@ const coinMagnetPrice: Price = { coinType: "common", amount: 720 };
 const coinMagnetIconPath = "/assets/ui/coin-magnet.png";
 const coinMagnetDurationMs = 30 * 60 * 1000;
 const autoFoodBuyerDurationMs = 30 * 60 * 1000;
+const productionBoostDurationMs = 3 * 60 * 1000;
 const autoFoodBuyerPurchaseCooldownMs = 3500;
 const autoFoodBuyerPurchaseQuantity = 10;
 const coinMagnetAttractDurationMs = 260;
@@ -875,10 +878,11 @@ export class AquariumScene extends Phaser.Scene {
       if (eatenFood) {
         const ateMedicine = eatenFood.accepted && eatenFood.food.foodType.id === "medicine";
         const ateAgeBoost = eatenFood.accepted && eatenFood.food.foodType.id === "ageBoost";
+        const ateProductionBoost = eatenFood.accepted && eatenFood.food.foodType.id === productionBoostFoodTypeId;
         if (eatenFood.accepted) {
           this.playSfx(fishEatSoundKey, { volume: 0.18 });
         }
-        if (eatenFood.accepted && !ateMedicine && !ateAgeBoost) {
+        if (eatenFood.accepted && !ateMedicine && !ateAgeBoost && !ateProductionBoost) {
           this.recordDailyQuestAction("feed");
           this.showMissedFoodEmotes(eatenFood.food, currentFish);
           if (currentFish.nextCoinDropAt <= this.time.now) {
@@ -895,6 +899,10 @@ export class AquariumScene extends Phaser.Scene {
           currentFish.applyAgeBoost(3);
           this.recordDailyQuestAction("use-growth-tonic");
           this.floatTankText("+3 months", currentFish.sprite.x, currentFish.sprite.y - 26, "#d9c2ff");
+        } else if (ateProductionBoost) {
+          currentFish.applyProductionBoost(this.time.now, productionBoostDurationMs);
+          this.recordDailyQuestAction("use-production-boost");
+          this.floatTankText("5x Production", currentFish.sprite.x, currentFish.sprite.y - 26, "#ffd34d");
         } else {
           if (eatenFood.reason === "tooSmall") {
             currentFish.showFoodNeedMessage(this.foodNeedMessage(eatenFood.neededMealCalories));
@@ -5347,6 +5355,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private rewardedAdOptions(): RewardedAdOption[] {
+    this.clearExpiredRewardedAdCooldown();
     const commonReward = this.rewardedAdCoinReward("common");
     const foodReward = this.rewardedAdFoodReward();
     const fishReward = this.rewardedAdFishReward();
@@ -5914,6 +5923,11 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyFood(foodType = this.getSelectedFoodType(), quantity = this.getFoodBuyQuantity(foodType.id)): void {
+    if (foodType.id === productionBoostFoodTypeId) {
+      this.showProductionBoostFishModal(foodType);
+      return;
+    }
+
     if (!this.developerGodMode && foodType.id === "ageBoost" && !this.canBuyGrowthTonicThisHour()) {
       this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
       this.storeOverlay?.refresh();
@@ -5946,6 +5960,123 @@ export class AquariumScene extends Phaser.Scene {
     }
     this.refreshUi();
     this.createFoodDock();
+    this.saveNow();
+    this.closeStoreAfterPurchase();
+  }
+
+  private showProductionBoostFishModal(foodType: FoodType): void {
+    const candidates = this.activeFish();
+    if (candidates.length === 0) {
+      this.floatText("No fish to boost", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    const availableFish = candidates.filter((fish) => fish.productionBoostUntil <= this.time.now);
+    if (availableFish.length === 0) {
+      this.floatText("All fish already boosted", toastX, toastY, "#d7f4ff");
+      return;
+    }
+
+    let selectedFish = availableFish[0];
+    const selectedName = htmlElement("strong", "aq-production-boost-selected", [selectedFish.type.name]);
+    const selectedAge = htmlElement("strong", "aq-production-boost-selected", [selectedFish.ageLabel()]);
+    const priceText = htmlElement("p", "aq-modal-line aq-sell-qty-total", [
+      `Price ${formatPrice(this.productionBoostPriceForFish(selectedFish))}`
+    ]);
+    let buyButton: HTMLButtonElement;
+    const grid = htmlElement("div", "aq-production-boost-fish-grid");
+    const updateSelection = () => {
+      selectedName.textContent = selectedFish.type.name;
+      selectedAge.textContent = selectedFish.ageLabel();
+      priceText.textContent = `Price ${formatPrice(this.productionBoostPriceForFish(selectedFish))}`;
+      buyButton.disabled = !this.developerGodMode && !canAfford(this.wallet, this.productionBoostPriceForFish(selectedFish));
+      grid.querySelectorAll("[data-fish-index]").forEach((element) => {
+        element.classList.toggle("selected", Number((element as HTMLElement).dataset.fishIndex) === this.fish.indexOf(selectedFish));
+      });
+    };
+
+    candidates.forEach((fish) => {
+      const active = fish.productionBoostUntil > this.time.now;
+      const button = createHtmlButton("", `aq-production-boost-fish ${fish === selectedFish ? "selected" : ""}`, () => {
+        selectedFish = fish;
+        updateSelection();
+      }, {
+        disabled: active,
+        attachTouchFeedback: (targetButton) => this.attachTouchFeedback(targetButton)
+      });
+      button.dataset.fishIndex = String(this.fish.indexOf(fish));
+      button.append(
+        htmlImage(`/assets/fish/${fish.type.id}.png`, "", "aq-production-boost-fish-image"),
+        htmlElement("span", "aq-production-boost-fish-name", [fish.type.name]),
+        htmlElement("span", "aq-production-boost-fish-age", [`Age ${fish.ageLabel()}`]),
+        htmlElement("span", "aq-production-boost-fish-price", [
+          active ? "Active" : formatPrice(this.productionBoostPriceForFish(fish))
+        ])
+      );
+      grid.append(button);
+    });
+
+    buyButton = this.htmlButton("BUY", "aq-modal-button good", () => this.buyProductionBoostForFish(foodType, selectedFish));
+    updateSelection();
+
+    this.showModal(
+      "Production Boost",
+      [],
+      [],
+      [
+        htmlElement("p", "aq-modal-line", ["Select which fish gets the boost. Only that fish will eat the pill."]),
+        htmlElement("p", "aq-modal-line", ["Effect: 5x production speed and 5x fullness use for 3m."]),
+        grid,
+        htmlElement("p", "aq-modal-line", ["Selected: ", selectedName, " | Age ", selectedAge]),
+        priceText,
+        htmlElement("div", "aq-modal-actions single", [buyButton, this.htmlButton("Cancel", "aq-modal-button muted", () => this.closeModal())])
+      ]
+    );
+  }
+
+  private productionBoostPriceForFish(fish: Fish): Price {
+    return {
+      coinType: "common",
+      amount: Phaser.Math.Clamp(Math.round(fishCommonPrice(fish.type) * 0.08), 25, 5000)
+    };
+  }
+
+  private buyProductionBoostForFish(foodType: FoodType, fish: Fish): void {
+    if (!this.activeFish().includes(fish)) {
+      this.floatText("Fish not found", toastX, toastY, "#ffb0a8");
+      return;
+    }
+    if (fish.productionBoostUntil > this.time.now) {
+      this.floatText("Already boosted", toastX, toastY, "#d7f4ff");
+      return;
+    }
+
+    const price = this.productionBoostPriceForFish(fish);
+    if (!this.spendPrice(price)) {
+      return;
+    }
+
+    const pellet = new FoodPellet(
+      this,
+      Phaser.Math.Clamp(fish.sprite.x, tankBounds.left + 18, tankBounds.right - 18),
+      tankBounds.top + 24,
+      foodType,
+      {
+        reservedCalories: 0,
+        targetFish: fish,
+        velocityX: Phaser.Math.Between(-20, 20),
+        velocityY: Phaser.Math.Between(10, 24)
+      }
+    );
+    pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
+    pellet.addToContainer(this.tankLayer);
+    this.foods.push(pellet);
+    this.recordDailyQuestAction("buy-production-boost");
+    this.placementMode = { kind: "none" };
+    this.floatText(`Boost for ${fish.type.name}`, toastX, toastY, "#ffd34d");
+    this.closeModal();
+    this.storeOverlay?.refresh();
+    this.refreshUi();
     this.saveNow();
     this.closeStoreAfterPurchase();
   }
@@ -7319,7 +7450,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    if (this.coinDrops.length >= maxCoinDrops) {
+    if (this.coinDrops.length >= maxCoinDrops && !fish.hasActiveProductionBoost(now)) {
       fish.postponeCoinProduction(now);
       return;
     }
@@ -7329,12 +7460,15 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const boostedDrop = fish.hasActiveProductionBoost(now);
+    const dropX = fish.sprite.x + (boostedDrop ? 0 : Phaser.Math.Between(-18, 18));
     this.createCoinDrop(
-      fish.sprite.x + Phaser.Math.Between(-18, 18),
+      dropX,
       fish.sprite.y + Phaser.Math.Between(-28, -14),
       value,
       "common",
-      false
+      false,
+      boostedDrop ? { landingX: dropX } : {}
     );
   }
 
@@ -8405,11 +8539,10 @@ export class AquariumScene extends Phaser.Scene {
     if (reservedCalories <= 0) {
       return;
     }
-    const throwAngle = Phaser.Math.FloatBetween(-Math.PI * 0.82, -Math.PI * 0.18);
-    const throwPower = Phaser.Math.Between(130, 270);
+    const throwVelocity = this.foodDispenserThrowVelocity(outlet);
     const pellet = new FoodPellet(this, outlet.x, outlet.y, foodType, {
-      velocityX: Math.cos(throwAngle) * throwPower,
-      velocityY: Math.sin(throwAngle) * throwPower,
+      velocityX: throwVelocity.x,
+      velocityY: throwVelocity.y,
       displayScale: foodDispenserPelletScale,
       reservedCalories,
       source: "dispenser"
@@ -8441,6 +8574,18 @@ export class AquariumScene extends Phaser.Scene {
       Phaser.Math.Clamp(tankBounds.left + 58, tankBounds.left + 12, tankBounds.right - 12),
       Phaser.Math.Clamp(this.foodDispenserY + 34, tankBounds.top + 24, tankBounds.bottom - 18)
     );
+  }
+
+  private foodDispenserThrowVelocity(outlet: Phaser.Math.Vector2): Phaser.Math.Vector2 {
+    const target = new Phaser.Math.Vector2((tankBounds.left + tankBounds.right) / 2, (tankBounds.top + tankBounds.bottom) / 2);
+    const direction = target.subtract(outlet);
+    if (direction.lengthSq() <= 1) {
+      return new Phaser.Math.Vector2(0, 18);
+    }
+
+    const distance = direction.length();
+    const power = Phaser.Math.Clamp(distance * 1.35, 150, 280);
+    return direction.normalize().scale(power);
   }
 
   private updateHelperCreatures(deltaSeconds: number, tankFish = this.activeFish(), activeHelpers = this.activeHelperCreatures()): void {
@@ -8621,8 +8766,19 @@ export class AquariumScene extends Phaser.Scene {
     return questRewardedAdCoinReward(coinType, this.tankDisplayLevel(), this.wallet, this.calculateTotalWealth());
   }
 
+  private clearExpiredRewardedAdCooldown(): void {
+    if (this.rewardedAd?.cooldown === true && isRewardedAdReady(this.rewardedAd)) {
+      this.rewardedAd = undefined;
+    }
+  }
+
   private startRewardedAd(kind: RewardedAdKind): void {
+    this.clearExpiredRewardedAdCooldown();
     if (this.rewardedAd) {
+      if (this.rewardedAd.cooldown === true) {
+        const remainingSeconds = rewardedAdRemainingSeconds(this.rewardedAd);
+        this.floatText(`Ad cooldown ${formatNumber(remainingSeconds)}s`, toastX, toastY, "#d7f4ff");
+      }
       return;
     }
 
@@ -8651,6 +8807,12 @@ export class AquariumScene extends Phaser.Scene {
           this.syncHtmlPageOverlay();
         }
         if (isRewardedAdReady(this.rewardedAd)) {
+          if (this.rewardedAd.cooldown === true) {
+            this.rewardedAd = undefined;
+            if (this.activeScreen === "goals") {
+              this.syncHtmlPageOverlay();
+            }
+          }
           this.rewardedAdRefreshTimer?.remove(false);
           this.rewardedAdRefreshTimer = undefined;
         }
@@ -8683,6 +8845,11 @@ export class AquariumScene extends Phaser.Scene {
 
     const remainingSeconds = rewardedAdRemainingSeconds(this.rewardedAd);
     this.rewardedAdCountdownText.textContent = formatNumber(remainingSeconds);
+    if (this.rewardedAd.cooldown === true) {
+      this.rewardedAdModalButton.disabled = true;
+      this.rewardedAdModalButton.textContent = `Cooldown ${formatNumber(remainingSeconds)}s`;
+      return;
+    }
     if (remainingSeconds <= 0) {
       this.rewardedAdCountdownText.textContent = "Ready";
       this.rewardedAdModalButton.disabled = false;
@@ -8695,7 +8862,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private claimRewardedAd(kind: RewardedAdKind): void {
-    if (!this.rewardedAd || this.rewardedAd.kind !== kind || !isRewardedAdReady(this.rewardedAd)) {
+    if (!this.rewardedAd || this.rewardedAd.kind !== kind || this.rewardedAd.cooldown === true || !isRewardedAdReady(this.rewardedAd)) {
       return;
     }
 
@@ -8726,9 +8893,8 @@ export class AquariumScene extends Phaser.Scene {
 
     this.recordDailyQuestAction("claim-ad");
     this.recordDailyQuestAction(kind === "common" ? "claim-coin-ad" : `claim-${kind}-ad`);
-    this.rewardedAd = undefined;
-    this.rewardedAdRefreshTimer?.remove(false);
-    this.rewardedAdRefreshTimer = undefined;
+    this.rewardedAd = { kind, readyAt: Date.now() + rewardedAdCooldownMs, cooldown: true };
+    this.ensureRewardedAdRefreshTimer();
     this.closeModal();
     this.refreshUi();
     this.createFoodDock();

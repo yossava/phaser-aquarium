@@ -32,11 +32,13 @@ export function createModalShell(options: {
     htmlElement("div", "aq-modal-body", options.bodyElements ?? options.lines.map((line) => htmlElement("p", "aq-modal-line", [line])))
   );
 
-  const actionRow = htmlElement("div", `aq-modal-actions ${options.actions.length === 1 ? "single" : ""}`);
-  options.actions.forEach((action) => {
-    actionRow.append(createModalButton(action, options.attachTouchFeedback, options.afterAction));
-  });
-  panel.append(actionRow);
+  if (options.actions.length > 0) {
+    const actionRow = htmlElement("div", `aq-modal-actions ${options.actions.length === 1 ? "single" : ""}`);
+    options.actions.forEach((action) => {
+      actionRow.append(createModalButton(action, options.attachTouchFeedback, options.afterAction));
+    });
+    panel.append(actionRow);
+  }
 
   shell.append(panel);
   return shell;

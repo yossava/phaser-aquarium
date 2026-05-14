@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { gameWidth, tankBounds } from "../game/constants";
 import { foodTintFor } from "../game/visuals";
 import type { FoodType } from "../types/mechanics";
+import type { Fish } from "./Fish";
 
 const screenSizedPellet = (ratio: number): number => Math.round(gameWidth * ratio);
 const defaultPelletDisplaySize = screenSizedPellet(0.06);
@@ -31,7 +32,7 @@ export class FoodPellet {
     x: number,
     y: number,
     public readonly foodType: FoodType,
-    options: { velocityX?: number; velocityY?: number; displayScale?: number; reservedCalories?: number; source?: "manual" | "dispenser" } = {}
+    options: { velocityX?: number; velocityY?: number; displayScale?: number; reservedCalories?: number; source?: "manual" | "dispenser"; targetFish?: Fish } = {}
   ) {
     const textureKey = this.textureKey(scene);
     this.sprite = scene.add.image(x, y, textureKey);
@@ -39,12 +40,13 @@ export class FoodPellet {
     this.velocityY = options.velocityY ?? this.sinkSpeed;
     this.reservedCalories = Phaser.Math.Clamp(options.reservedCalories ?? foodType.calories, 0, foodType.calories);
     this.source = options.source ?? "manual";
+    this.targetFish = options.targetFish;
     if (foodType.id !== "medicine") {
       this.sprite.setTint(this.tintForFood());
     }
     const displayScale = options.displayScale ?? 1;
     this.baseDisplaySize =
-      (foodType.id === "medicine" || foodType.id === "ageBoost"
+      (foodType.id === "medicine" || foodType.id === "ageBoost" || foodType.id === "productionBoost"
         ? pillPelletDisplaySize
         : foodPelletSizeByDensity[foodType.densityLevel] ?? defaultPelletDisplaySize) * displayScale;
     this.setWorldScaleCompensation(1);
@@ -52,6 +54,7 @@ export class FoodPellet {
   }
 
   public readonly source: "manual" | "dispenser";
+  public readonly targetFish?: Fish;
 
   public get nutrition(): number {
     return this.reservedCalories;
@@ -109,7 +112,7 @@ export class FoodPellet {
       return customTextureKey;
     }
 
-    return this.foodType.id === "medicine" || this.foodType.id === "ageBoost" ? "medicine-pill" : "food";
+    return this.foodType.id === "medicine" || this.foodType.id === "ageBoost" || this.foodType.id === "productionBoost" ? "medicine-pill" : "food";
   }
 
   private tintForFood(): number {

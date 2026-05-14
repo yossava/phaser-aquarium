@@ -4,7 +4,8 @@ import { formatNumber } from "./economy";
 export const creatureFoodTypeId: FoodTypeId = "creature";
 export const medicineFoodTypeId: FoodTypeId = "medicine";
 export const ageBoostFoodTypeId: FoodTypeId = "ageBoost";
-export const supplyFoodTypeIds = new Set<FoodTypeId>([medicineFoodTypeId, ageBoostFoodTypeId]);
+export const productionBoostFoodTypeId: FoodTypeId = "productionBoost";
+export const supplyFoodTypeIds = new Set<FoodTypeId>([medicineFoodTypeId, ageBoostFoodTypeId, productionBoostFoodTypeId]);
 export const hiddenFoodTypeIds = new Set<FoodTypeId>([creatureFoodTypeId]);
 
 type DispenserTarget = {
@@ -22,7 +23,7 @@ export function isDroppableFood(foodTypeId: FoodTypeId): boolean {
 }
 
 export function isCalorieTrackedFood(foodTypeId: FoodTypeId): boolean {
-  return foodTypeId !== medicineFoodTypeId && foodTypeId !== ageBoostFoodTypeId && foodTypeId !== creatureFoodTypeId && !hiddenFoodTypeIds.has(foodTypeId);
+  return foodTypeId !== medicineFoodTypeId && foodTypeId !== ageBoostFoodTypeId && foodTypeId !== productionBoostFoodTypeId && foodTypeId !== creatureFoodTypeId && !hiddenFoodTypeIds.has(foodTypeId);
 }
 
 export function foodInventoryDisplayCount(foodType: FoodType, storedCount: number): number {

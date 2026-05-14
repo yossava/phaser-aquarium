@@ -17,7 +17,7 @@ export function createRewardedAdsPage(
   const section = htmlElement("section", "aq-rewarded-ad-section");
   section.append(
     htmlElement("h2", "aq-page-section-title", ["Rewarded Ads"]),
-    htmlElement("p", "aq-rewarded-ad-copy", ["Watch a 30s simulated ad, then claim one selected reward."])
+    htmlElement("p", "aq-rewarded-ad-copy", ["Watch a 30s simulated ad, then claim one selected reward. Cooldown applies after claiming."])
   );
 
   const list = htmlElement("div", "aq-rewarded-ad-list");
@@ -35,9 +35,10 @@ function createRewardedAdCard(
   const active = activeAd?.kind === option.kind;
   const blocked = activeAd !== undefined && !active;
   const remainingSeconds = active && activeAd ? rewardedAdRemainingSeconds(activeAd) : 0;
-  const ready = active && remainingSeconds <= 0;
+  const coolingDown = active && activeAd?.cooldown === true;
+  const ready = active && !coolingDown && remainingSeconds <= 0;
   const card = htmlElement("article", `aq-rewarded-ad-card ${ready ? "is-ready" : ""}`);
-  const buttonLabel = active ? `Ad ${formatNumber(remainingSeconds)}s` : blocked ? "Wait" : "Watch Ad";
+  const buttonLabel = coolingDown ? `Cooldown ${formatNumber(remainingSeconds)}s` : active ? `Ad ${formatNumber(remainingSeconds)}s` : blocked ? "Wait" : "Watch Ad";
   const buttonClass = `aq-page-button ${active || blocked ? "aq-page-button-muted" : ""} aq-rewarded-ad-button`;
   card.append(
     htmlImage(option.icon, "", "aq-rewarded-ad-icon"),
