@@ -2174,7 +2174,7 @@ canvas {
   .aq-food-dispenser {
     left: var(--food-dispenser-left, 0px);
     top: var(--food-dispenser-top, 70%);
-    width: clamp(66px, 18vw, 84px);
+    width: clamp(54px, 14vw, 68px);
     transform: translate(-24%, -50%);
     touch-action: none;
     cursor: ns-resize;
@@ -2189,14 +2189,29 @@ canvas {
     cursor: ns-resize;
   }
 
+  .aq-auto-food-buyer-tool {
+    left: var(--tank-side-tool-left, 0px);
+    top: var(--tank-side-tool-top, 52%);
+    width: clamp(70px, 18vw, 88px);
+    transform: translate(-32%, -50%);
+    touch-action: none;
+    cursor: ns-resize;
+  }
+
   .aq-food-dispenser.is-dragging,
-  .aq-coin-magnet-tool.is-dragging {
+  .aq-coin-magnet-tool.is-dragging,
+  .aq-auto-food-buyer-tool.is-dragging {
     transform: translate(-24%, -50%) scale(1.04);
     filter: brightness(1.12) drop-shadow(0 5px 7px rgba(0, 28, 44, 0.48));
   }
 
-  .aq-coin-magnet-tool.is-dragging {
+  .aq-coin-magnet-tool.is-dragging,
+  .aq-auto-food-buyer-tool.is-dragging {
     transform: translate(-22%, -50%) scale(1.04);
+  }
+
+  .aq-auto-food-buyer-tool.is-dragging {
+    transform: translate(-32%, -50%) scale(1.04);
   }
 
   .aq-tank-side-tool img {
@@ -2213,6 +2228,10 @@ canvas {
 
   .aq-coin-magnet-count {
     @apply bg-sky-500;
+  }
+
+  .aq-auto-food-buyer-count {
+    @apply bg-amber-500;
   }
 
   .aq-food-dock {

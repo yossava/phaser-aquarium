@@ -2,6 +2,10 @@ import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../data/content";
 import { gameHeight, gameWidth, maxRenderScale, setTankWorldScale, shouldUseLowPowerMode, tankBounds, tankViewportBounds, toastX, toastY } from "../game/constants";
 import {
+  autoFoodBuyerAssetPath,
+  autoFoodBuyerInventoryKey,
+  autoFoodBuyerPositionStorageKey,
+  autoFoodBuyerPrice,
   coinMagnetPositionStorageKey,
   foodDispenserAssetPath,
   foodDispenserInventoryKey,
@@ -318,8 +322,12 @@ const coinMagnetInventoryKey = "utility:coin-magnet";
 const coinMagnetPrice: Price = { coinType: "common", amount: 720 };
 const coinMagnetIconPath = "/assets/ui/coin-magnet.png";
 const coinMagnetDurationMs = 30 * 60 * 1000;
+const autoFoodBuyerDurationMs = 30 * 60 * 1000;
+const autoFoodBuyerPurchaseCooldownMs = 3500;
+const autoFoodBuyerPurchaseQuantity = 10;
 const coinMagnetAttractDurationMs = 260;
 const coinMagnetAttractScale = 0.44;
+const coinMagnetRayYOffset = -30;
 const coinWealthValue: Record<CoinType, number> = {
   common: 1,
   rare: 1000,
@@ -630,6 +638,7 @@ export class AquariumScene extends Phaser.Scene {
   private tankBackgroundBlueTintOverlay?: Phaser.GameObjects.Rectangle;
   private tankSand?: Phaser.GameObjects.Image;
   private dirtyTankOverlay?: Phaser.GameObjects.Rectangle;
+  private coinMagnetRay?: Phaser.GameObjects.Graphics;
   private decorationTrashTarget!: Phaser.GameObjects.Container;
   private decorationTrashBackground!: Phaser.GameObjects.Rectangle;
   private decorationTrashText!: Phaser.GameObjects.Text;
@@ -651,9 +660,13 @@ export class AquariumScene extends Phaser.Scene {
   private foodDispenserElement?: HTMLDivElement;
   private coinMagnetText?: HTMLSpanElement;
   private coinMagnetElement?: HTMLDivElement;
+  private autoFoodBuyerText?: HTMLSpanElement;
+  private autoFoodBuyerElement?: HTMLDivElement;
   private foodDispenserY = tankBounds.bottom - 74;
   private coinMagnetY = tankBounds.bottom - 160;
+  private autoFoodBuyerY = tankBounds.bottom - 246;
   private nextFoodDispenseAt = 0;
+  private nextAutoFoodBuyerPurchaseAt = 0;
   private htmlFoodDock?: HTMLDivElement;
   private htmlFoodDragGhost?: HTMLDivElement;
   private htmlFoodDragCleanup?: () => void;
@@ -662,6 +675,8 @@ export class AquariumScene extends Phaser.Scene {
   private coinMagnetPreviousCoinY = new Map<CoinDrop, number>();
   private coinMagnetWasActive = false;
   private coinMagnetDisplayedMinutes = 0;
+  private autoFoodBuyerWasActive = false;
+  private autoFoodBuyerDisplayedMinutes = 0;
   private gameHudLevelBadge?: HTMLDivElement;
   private tankMenuOverlay?: HTMLDivElement;
   private tankMenuCollapsed = false;
@@ -745,6 +760,7 @@ export class AquariumScene extends Phaser.Scene {
     this.createFishAnimations();
     this.loadFoodDispenserY();
     this.loadCoinMagnetY();
+    this.loadAutoFoodBuyerY();
     this.createWorld();
     this.createUi();
     this.restoreSavedGame();
@@ -805,6 +821,7 @@ export class AquariumScene extends Phaser.Scene {
     this.foods.forEach((food) => food.update(deltaSeconds));
     this.removeExpiredFood();
     this.coinDrops.forEach((coin) => coin.update(deltaSeconds));
+    this.updateCoinMagnetRayPulse();
     this.updateCoinMagnet();
     if (this.coinComboCount > 0 && now - this.coinComboLastClaimedAt >= coinComboIdleTimeoutMs) {
       this.resolveCoinCombo();
@@ -813,6 +830,7 @@ export class AquariumScene extends Phaser.Scene {
     const activeDecorations = this.activeDecorations();
     const activeHelpers = this.activeHelperCreatures();
     this.updateAirStoneBubbles(deltaSeconds, activeDecorations);
+    this.updateAutoFoodBuyer(tankFish);
     this.updateFoodDispenser(tankFish);
     this.updatePendingHelperCreatureDrops(deltaSeconds);
     this.updateHelperCreatures(deltaSeconds, tankFish, activeHelpers);
@@ -948,6 +966,8 @@ export class AquariumScene extends Phaser.Scene {
     this.tankLayer.add(this.tankSand);
     this.layoutTankFloor();
     this.dirtyTankOverlay = this.createDirtyTankOverlay();
+    this.coinMagnetRay = this.add.graphics().setDepth(11).setVisible(false);
+    this.tankLayer.add(this.coinMagnetRay);
 
     const ambientBubbleCount = shouldUseLowPowerMode() ? 8 : 18;
     for (let i = 0; i < ambientBubbleCount; i += 1) {
@@ -1661,9 +1681,11 @@ export class AquariumScene extends Phaser.Scene {
     this.tankLayer?.setVisible(visible);
     if (!visible) {
       this.dirtyTankOverlay?.setVisible(false);
+      this.coinMagnetRay?.setVisible(false);
       this.showDecorationTrashTarget(false);
     } else if (this.activeScreen === "tank") {
       this.updateDirtyTankOverlay();
+      this.syncCoinMagnetRay();
     }
   }
 
@@ -1693,6 +1715,10 @@ export class AquariumScene extends Phaser.Scene {
     if (this.coinMagnetText) {
       this.coinMagnetText.textContent = `${formatNumber(this.coinMagnetRemainingMinutes())}m`;
     }
+    if (this.autoFoodBuyerText) {
+      this.autoFoodBuyerText.textContent = `${formatNumber(this.autoFoodBuyerRemainingMinutes())}m`;
+    }
+    this.syncAutoFoodBuyerPosition();
     this.syncCoinMagnetPosition();
     this.syncFoodDispenserPosition();
     this.syncFoodDockPosition();
@@ -1763,6 +1789,19 @@ export class AquariumScene extends Phaser.Scene {
     coinMagnet.append(coinMagnetIcon, coinMagnetBadge);
     this.bindCoinMagnetDrag(coinMagnet);
 
+    const autoFoodBuyer = document.createElement("div");
+    autoFoodBuyer.className = "aq-tank-side-tool aq-auto-food-buyer-tool";
+    this.autoFoodBuyerElement = autoFoodBuyer;
+    const autoFoodBuyerIcon = document.createElement("img");
+    autoFoodBuyerIcon.src = autoFoodBuyerAssetPath;
+    autoFoodBuyerIcon.alt = "Auto food buyer";
+    autoFoodBuyerIcon.draggable = false;
+    const autoFoodBuyerBadge = document.createElement("span");
+    autoFoodBuyerBadge.className = "aq-tank-side-tool-count aq-auto-food-buyer-count";
+    this.autoFoodBuyerText = autoFoodBuyerBadge;
+    autoFoodBuyer.append(autoFoodBuyerIcon, autoFoodBuyerBadge);
+    this.bindAutoFoodBuyerDrag(autoFoodBuyer);
+
     const foodDispenser = document.createElement("div");
     foodDispenser.className = "aq-tank-side-tool aq-food-dispenser";
     this.foodDispenserElement = foodDispenser;
@@ -1776,7 +1815,7 @@ export class AquariumScene extends Phaser.Scene {
     foodDispenser.append(foodDispenserIcon, foodDispenserBadge);
     this.bindFoodDispenserDrag(foodDispenser);
 
-    overlay.append(panel, coinMagnet, foodDispenser);
+    overlay.append(panel, autoFoodBuyer, coinMagnet, foodDispenser);
     document.body.appendChild(overlay);
     return overlay;
   }
@@ -1788,6 +1827,7 @@ export class AquariumScene extends Phaser.Scene {
 
     if (!this.hasCoinMagnet()) {
       this.coinMagnetElement.classList.add("hidden");
+      this.syncCoinMagnetRay();
       return;
     }
 
@@ -1797,6 +1837,65 @@ export class AquariumScene extends Phaser.Scene {
     const screenPosition = this.tankToScreenPoint(position.x, position.y);
     this.coinMagnetElement.style.setProperty("--tank-side-tool-left", `${Math.round(screenPosition.x)}px`);
     this.coinMagnetElement.style.setProperty("--tank-side-tool-top", `${Math.round(screenPosition.y)}px`);
+    this.syncCoinMagnetRay();
+  }
+
+  private syncCoinMagnetRay(): void {
+    if (!this.coinMagnetRay) {
+      return;
+    }
+
+    this.coinMagnetRay.clear();
+    if (!this.hasCoinMagnet() || !this.shouldShowTankScene()) {
+      this.coinMagnetRay.setVisible(false);
+      return;
+    }
+
+    const y = this.coinMagnetRayY();
+    this.coinMagnetRay.setVisible(true);
+    this.coinMagnetRay.lineStyle(16, 0x55ff8a, 0.04);
+    this.coinMagnetRay.beginPath();
+    this.coinMagnetRay.moveTo(tankBounds.left + 4, y);
+    this.coinMagnetRay.lineTo(tankBounds.right - 4, y);
+    this.coinMagnetRay.strokePath();
+    this.coinMagnetRay.lineStyle(7, 0x77ff99, 0.12);
+    this.coinMagnetRay.beginPath();
+    this.coinMagnetRay.moveTo(tankBounds.left + 4, y);
+    this.coinMagnetRay.lineTo(tankBounds.right - 4, y);
+    this.coinMagnetRay.strokePath();
+    this.coinMagnetRay.lineStyle(2, 0xd9ffe5, 0.22);
+    this.coinMagnetRay.beginPath();
+    this.coinMagnetRay.moveTo(tankBounds.left + 4, y);
+    this.coinMagnetRay.lineTo(tankBounds.right - 4, y);
+    this.coinMagnetRay.strokePath();
+    this.updateCoinMagnetRayPulse();
+  }
+
+  private updateCoinMagnetRayPulse(): void {
+    if (!this.coinMagnetRay?.visible) {
+      return;
+    }
+
+    const pulse = 0.72 + Math.sin(this.time.now * 0.006) * 0.28;
+    this.coinMagnetRay.setAlpha(pulse);
+  }
+
+  private syncAutoFoodBuyerPosition(): void {
+    if (!this.autoFoodBuyerElement) {
+      return;
+    }
+
+    if (!this.hasAutoFoodBuyer()) {
+      this.autoFoodBuyerElement.classList.add("hidden");
+      return;
+    }
+
+    this.autoFoodBuyerElement.classList.remove("hidden");
+    this.autoFoodBuyerY = Phaser.Math.Clamp(this.autoFoodBuyerY, this.foodDispenserMinY(), this.foodDispenserMaxY());
+    const position = this.autoFoodBuyerTankPosition();
+    const screenPosition = this.tankToScreenPoint(position.x, position.y);
+    this.autoFoodBuyerElement.style.setProperty("--tank-side-tool-left", `${Math.round(screenPosition.x)}px`);
+    this.autoFoodBuyerElement.style.setProperty("--tank-side-tool-top", `${Math.round(screenPosition.y)}px`);
   }
 
   private syncFoodDispenserPosition(): void {
@@ -1942,6 +2041,68 @@ export class AquariumScene extends Phaser.Scene {
     element.addEventListener("lostpointercapture", () => cleanup());
   }
 
+  private bindAutoFoodBuyerDrag(element: HTMLElement): void {
+    let pressed = false;
+    let dragging = false;
+    let startClientY = 0;
+    let startBuyerY = this.autoFoodBuyerY;
+    const dragThresholdPx = 8;
+    const cleanup = (pointerId?: number) => {
+      pressed = false;
+      dragging = false;
+      element.classList.remove("is-dragging");
+      if (pointerId !== undefined) {
+        this.releasePointerSafely(element, pointerId);
+      }
+    };
+    const move = (event: PointerEvent) => {
+      if (!pressed) {
+        return;
+      }
+
+      event.preventDefault();
+      const clientDeltaY = event.clientY - startClientY;
+      if (!dragging && Math.abs(clientDeltaY) < dragThresholdPx) {
+        return;
+      }
+
+      dragging = true;
+      element.classList.add("is-dragging");
+      const rect = this.game.canvas.getBoundingClientRect();
+      const designDeltaY = rect.height > 0 ? (clientDeltaY / rect.height) * gameHeight : 0;
+      this.autoFoodBuyerY = Phaser.Math.Clamp(startBuyerY + designDeltaY, this.foodDispenserMinY(), this.foodDispenserMaxY());
+      this.syncAutoFoodBuyerPosition();
+    };
+    const end = (event: PointerEvent) => {
+      if (!pressed) {
+        return;
+      }
+      event.preventDefault();
+      const shouldSave = dragging;
+      cleanup(event.pointerId);
+      if (shouldSave) {
+        this.saveAutoFoodBuyerY();
+      }
+    };
+
+    element.addEventListener("pointerdown", (event) => {
+      if (this.activeScreen !== "tank") {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      pressed = true;
+      dragging = false;
+      startClientY = event.clientY;
+      startBuyerY = this.autoFoodBuyerY;
+      this.capturePointerSafely(element, event.pointerId);
+    });
+    element.addEventListener("pointermove", move);
+    element.addEventListener("pointerup", end);
+    element.addEventListener("pointercancel", end);
+    element.addEventListener("lostpointercapture", () => cleanup());
+  }
+
   private loadFoodDispenserY(): void {
     try {
       const stored =
@@ -1986,6 +2147,29 @@ export class AquariumScene extends Phaser.Scene {
   private saveCoinMagnetY(): void {
     try {
       localStorage.setItem(coinMagnetPositionStorageKey, String(Math.round(this.coinMagnetY)));
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  private loadAutoFoodBuyerY(): void {
+    try {
+      const stored = localStorage.getItem(autoFoodBuyerPositionStorageKey);
+      if (!stored) {
+        return;
+      }
+      const parsed = Number(stored);
+      if (Number.isFinite(parsed)) {
+        this.autoFoodBuyerY = Phaser.Math.Clamp(parsed, this.foodDispenserMinY(), this.foodDispenserMaxY());
+      }
+    } catch {
+      // Optional UI position persistence should not block game startup.
+    }
+  }
+
+  private saveAutoFoodBuyerY(): void {
+    try {
+      localStorage.setItem(autoFoodBuyerPositionStorageKey, String(Math.round(this.autoFoodBuyerY)));
     } catch {
       // Ignore storage failures.
     }
@@ -2608,7 +2792,14 @@ export class AquariumScene extends Phaser.Scene {
   private updateTimedUtilities(): void {
     const coinMagnetActive = this.hasCoinMagnet();
     const remainingMinutes = coinMagnetActive ? this.coinMagnetRemainingMinutes() : 0;
-    if (coinMagnetActive === this.coinMagnetWasActive && remainingMinutes === this.coinMagnetDisplayedMinutes) {
+    const autoFoodBuyerActive = this.hasAutoFoodBuyer();
+    const autoFoodBuyerRemainingMinutes = autoFoodBuyerActive ? this.autoFoodBuyerRemainingMinutes() : 0;
+    if (
+      coinMagnetActive === this.coinMagnetWasActive &&
+      remainingMinutes === this.coinMagnetDisplayedMinutes &&
+      autoFoodBuyerActive === this.autoFoodBuyerWasActive &&
+      autoFoodBuyerRemainingMinutes === this.autoFoodBuyerDisplayedMinutes
+    ) {
       return;
     }
 
@@ -2619,6 +2810,14 @@ export class AquariumScene extends Phaser.Scene {
       this.decorationInventory.delete(coinMagnetInventoryKey);
       this.magnetCollectingCoins.clear();
       this.floatText("Coin Magnet expired", toastX, toastY, "#d7f4ff");
+      this.saveNow();
+    }
+    const autoBuyerWasActive = this.autoFoodBuyerWasActive;
+    this.autoFoodBuyerWasActive = autoFoodBuyerActive;
+    this.autoFoodBuyerDisplayedMinutes = autoFoodBuyerRemainingMinutes;
+    if (autoBuyerWasActive && !autoFoodBuyerActive) {
+      this.decorationInventory.delete(autoFoodBuyerInventoryKey);
+      this.floatText("Auto Buyer expired", toastX, toastY, "#d7f4ff");
       this.saveNow();
     }
     this.createFoodDock();
@@ -2683,10 +2882,18 @@ export class AquariumScene extends Phaser.Scene {
         {
           id: "coin-magnet",
           name: "Coin Magnet",
-          description: "Drag from the dock and release near coins to pull nearby drops into your wallet.",
+          description: "Mounts on the tank edge and pulls coins that fall through its invisible line.",
           icon: coinMagnetIconPath,
           owned: this.hasCoinMagnet(),
           price: coinMagnetPrice
+        },
+        {
+          id: "auto-food-buyer",
+          name: "Auto Food Buyer",
+          description: "Runs for 30m and buys a needed food serving when the dispenser is out.",
+          icon: autoFoodBuyerAssetPath,
+          owned: this.hasAutoFoodBuyer(),
+          price: autoFoodBuyerPrice
         }
       ]
     });
@@ -5277,7 +5484,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyTankUtility(utilityId: string): void {
-    if (utilityId !== "food-dispenser" && utilityId !== "coin-magnet") {
+    if (utilityId !== "food-dispenser" && utilityId !== "coin-magnet" && utilityId !== "auto-food-buyer") {
       return;
     }
 
@@ -5291,7 +5498,16 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const utilityPrice = utilityId === "food-dispenser" ? foodDispenserPrice : coinMagnetPrice;
+    if (utilityId === "auto-food-buyer" && this.hasAutoFoodBuyer()) {
+      this.floatText("Already owned", toastX, toastY, "#d7f4ff");
+      return;
+    }
+
+    const utilityPrice = utilityId === "food-dispenser"
+      ? foodDispenserPrice
+      : utilityId === "coin-magnet"
+        ? coinMagnetPrice
+        : autoFoodBuyerPrice;
     if (!this.spendPrice(utilityPrice)) {
       return;
     }
@@ -5301,11 +5517,15 @@ export class AquariumScene extends Phaser.Scene {
       this.recordDailyQuestAction("buy-dispenser");
       this.floatText("Food Dispenser installed", toastX, toastY, "#a8ffb0");
     } else {
-      this.decorationInventory.set(coinMagnetInventoryKey, Date.now() + coinMagnetDurationMs);
-      this.coinMagnetWasActive = true;
-      this.recentInventoryDockItemKey = "utility:coin-magnet";
-      this.floatText("Coin Magnet active 30m", toastX, toastY, "#a8ffb0");
-      this.createFoodDock();
+      if (utilityId === "coin-magnet") {
+        this.decorationInventory.set(coinMagnetInventoryKey, Date.now() + coinMagnetDurationMs);
+        this.coinMagnetWasActive = true;
+        this.floatText("Coin Magnet active 30m", toastX, toastY, "#a8ffb0");
+      } else {
+        this.decorationInventory.set(autoFoodBuyerInventoryKey, Date.now() + autoFoodBuyerDurationMs);
+        this.autoFoodBuyerWasActive = true;
+        this.floatText("Auto Buyer active 30m", toastX, toastY, "#a8ffb0");
+      }
     }
     this.storeOverlay?.refresh();
     this.refreshUi(false);
@@ -6567,7 +6787,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const position = this.coinMagnetTankPosition();
+    const position = new Phaser.Math.Vector2(tankBounds.left, this.coinMagnetRayY());
     for (const coin of this.coinDrops) {
       const previousY = this.coinMagnetPreviousCoinY.get(coin) ?? coin.sprite.y;
       this.coinMagnetPreviousCoinY.set(coin, coin.sprite.y);
@@ -6640,6 +6860,17 @@ export class AquariumScene extends Phaser.Scene {
     return new Phaser.Math.Vector2(
       tankBounds.left,
       Phaser.Math.Clamp(this.coinMagnetY, this.foodDispenserMinY(), this.foodDispenserMaxY())
+    );
+  }
+
+  private coinMagnetRayY(): number {
+    return Phaser.Math.Clamp(this.coinMagnetTankPosition().y + coinMagnetRayYOffset, this.foodDispenserMinY(), this.foodDispenserMaxY());
+  }
+
+  private autoFoodBuyerTankPosition(): Phaser.Math.Vector2 {
+    return new Phaser.Math.Vector2(
+      tankBounds.left,
+      Phaser.Math.Clamp(this.autoFoodBuyerY, this.foodDispenserMinY(), this.foodDispenserMaxY())
     );
   }
 
@@ -7132,12 +7363,24 @@ export class AquariumScene extends Phaser.Scene {
     return this.coinMagnetExpiresAt() > Date.now();
   }
 
+  private hasAutoFoodBuyer(): boolean {
+    return this.autoFoodBuyerExpiresAt() > Date.now();
+  }
+
   private coinMagnetExpiresAt(): number {
     return Math.max(0, this.decorationInventory.get(coinMagnetInventoryKey) ?? 0);
   }
 
+  private autoFoodBuyerExpiresAt(): number {
+    return Math.max(0, this.decorationInventory.get(autoFoodBuyerInventoryKey) ?? 0);
+  }
+
   private coinMagnetRemainingMinutes(): number {
     return Math.max(1, Math.ceil(Math.max(0, this.coinMagnetExpiresAt() - Date.now()) / 60_000));
+  }
+
+  private autoFoodBuyerRemainingMinutes(): number {
+    return Math.max(1, Math.ceil(Math.max(0, this.autoFoodBuyerExpiresAt() - Date.now()) / 60_000));
   }
 
   private getCreatureInventory(creatureTypeId: string): number {
@@ -7551,6 +7794,68 @@ export class AquariumScene extends Phaser.Scene {
 
   private chooseBestCalorieFood(targetFish: Fish, candidates: FoodType[]): FoodType | undefined {
     return bestCalorieFoodForTarget(candidates, targetFish.mealCaloriesNeeded(), (foodTypeId) => this.getFoodInventory(foodTypeId));
+  }
+
+  private updateAutoFoodBuyer(tankFish = this.activeFish()): void {
+    if (!this.hasAutoFoodBuyer() || this.time.now < this.nextAutoFoodBuyerPurchaseAt || this.foods.length >= maxFoodDrops) {
+      return;
+    }
+
+    if (this.getTotalFeedableFoodInventory() > 0) {
+      return;
+    }
+
+    const foodType = this.chooseAutoPurchasableFood(tankFish);
+    if (!foodType) {
+      return;
+    }
+
+    const totalPrice = this.quantityPrice(foodType.price, autoFoodBuyerPurchaseQuantity);
+    if (!this.developerGodMode && !spend(this.wallet, totalPrice)) {
+      this.nextAutoFoodBuyerPurchaseAt = this.time.now + autoFoodBuyerPurchaseCooldownMs;
+      return;
+    }
+
+    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + foodType.calories * autoFoodBuyerPurchaseQuantity);
+    this.nextAutoFoodBuyerPurchaseAt = this.time.now + autoFoodBuyerPurchaseCooldownMs;
+    this.recordDailyQuestAction("buy-food");
+    const position = this.autoFoodBuyerTankPosition();
+    this.floatTankText(`Bought ${foodType.name} x${formatNumber(autoFoodBuyerPurchaseQuantity)}`, position.x + 22, position.y - 10, "#a8ffb0");
+    this.createFoodDock();
+    this.refreshUi(false);
+    this.saveNow();
+  }
+
+  private chooseAutoPurchasableFood(tankFish = this.activeFish()): FoodType | undefined {
+    const candidates = foodTypes.filter(
+      (foodType) =>
+        this.isCalorieTrackedFood(foodType.id) &&
+        this.isDroppableFood(foodType.id) &&
+        (this.developerGodMode || canAfford(this.wallet, foodType.price))
+    );
+
+    const medianMealCalories = this.medianMealCaloriesNeeded(tankFish);
+    if (medianMealCalories > 0) {
+      return bestCalorieFoodForTarget(candidates, medianMealCalories, (foodTypeId) => {
+        const foodType = foodTypes.find((item) => item.id === foodTypeId);
+        return foodType?.calories ?? 0;
+      });
+    }
+
+    return candidates.sort((first, second) => this.priceWealth(first.price) - this.priceWealth(second.price) || first.calories - second.calories)[0];
+  }
+
+  private medianMealCaloriesNeeded(tankFish = this.activeFish()): number {
+    const needs = tankFish
+      .map((fish) => fish.mealCaloriesNeeded())
+      .filter((need) => Number.isFinite(need) && need > 0)
+      .sort((first, second) => first - second);
+    if (needs.length === 0) {
+      return 0;
+    }
+
+    const middle = Math.floor(needs.length / 2);
+    return needs.length % 2 === 1 ? needs[middle]! : (needs[middle - 1]! + needs[middle]!) / 2;
   }
 
   private foodNeedMessage(targetCalories: number): string {

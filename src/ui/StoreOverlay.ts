@@ -491,7 +491,7 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", ["Tank Utility"]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [utility.description]),
-        button(utility.owned ? utility.id === "coin-magnet" ? "In Dock" : "Installed" : affordable ? "Buy Utility" : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
+        button(utility.owned ? utility.id === "food-dispenser" ? "Installed" : "Active" : affordable ? "Buy Utility" : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
           if (!utility.owned) {
             this.actions.buyTankUtility(utility.id);
           }
