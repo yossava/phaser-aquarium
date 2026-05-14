@@ -1,5 +1,5 @@
 import { foodDispenserAssetPath } from "../../game/dispenser-system";
-import type { CoinType, StoreTab } from "../../types/mechanics";
+import type { StoreTab } from "../../types/mechanics";
 import { createHtmlButton, htmlElement, htmlImage } from "../dom";
 
 export type TankStoreCategory = "tank" | "background" | "seabed" | "tools" | "decorations";
@@ -7,13 +7,13 @@ export type StoreBrowseLevel = "categories" | "tankCategories" | "products";
 
 export function createStoreCategoryMenu(onSelect: (tab: StoreTab) => void): HTMLElement {
   const tabs: Array<{ tab: StoreTab; label: string; icon: string }> = [
-    { tab: "fish", label: "Fish", icon: "/assets/ui/shop/icon_category_fish.png" },
+    { tab: "fish", label: "Fish", icon: "/assets/ui/shop/empty_state_fish_silhouette.png" },
     { tab: "food", label: "Food", icon: "/assets/food/basic.png" },
     { tab: "supply", label: "Medicine", icon: "/assets/food/medicine.png" },
     { tab: "tank", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
     { tab: "creature", label: "Helpers", icon: "/assets/helpers/feeder-snail.png" }
   ];
-  const panel = htmlElement("main", "aq-panel aq-store-list-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2");
+  const panel = htmlElement("main", "aq-panel aq-store-menu-grid aq-store-list-scroll min-h-0 flex-1 overflow-y-auto p-2");
   tabs.forEach((item) => {
     panel.append(createCategoryCard(item.icon, item.label, storeCategoryDescription(item.tab), () => onSelect(item.tab)));
   });
@@ -23,31 +23,16 @@ export function createStoreCategoryMenu(onSelect: (tab: StoreTab) => void): HTML
 export function createTankCategoryMenu(onSelect: (category: TankStoreCategory) => void): HTMLElement {
   const categories: Array<{ category: TankStoreCategory; label: string; icon: string }> = [
     { category: "tank", label: "Tank", icon: "/assets/ui/shop/icon_category_tanks.png" },
-    { category: "background", label: "Background", icon: "/assets/ui/shop/rare_star_badge.png" },
-    { category: "seabed", label: "Seabed", icon: "/assets/ui/shop/common_star_badge.png" },
+    { category: "background", label: "Background", icon: "/assets/ui/menu/menu_background_icon.png" },
+    { category: "seabed", label: "Seabed", icon: "/assets/ui/menu/menu_seabed_icon.png" },
     { category: "tools", label: "Tools", icon: foodDispenserAssetPath },
     { category: "decorations", label: "Decor", icon: "/assets/decorations/rock.png" }
   ];
-  const panel = htmlElement("main", "aq-panel aq-store-list-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2");
+  const panel = htmlElement("main", "aq-panel aq-store-menu-grid aq-store-list-scroll min-h-0 flex-1 overflow-y-auto p-2");
   categories.forEach((item) => {
     panel.append(createCategoryCard(item.icon, item.label, tankCategoryDescription(item.category), () => onSelect(item.category)));
   });
   return panel;
-}
-
-export function createStoreRarityFilters(activeFilter: CoinType, onSelect: (coinType: CoinType) => void): HTMLElement {
-  const filters: Array<{ coin: CoinType; label: string; icon: string; className: string }> = [
-    { coin: "common", label: "Common", icon: "/assets/ui/shop/common_star_badge.png", className: "border-amber-300/70 text-amber-200" },
-    { coin: "rare", label: "Rare", icon: "/assets/ui/shop/rare_star_badge.png", className: "border-cyan-300/70 text-cyan-200" },
-    { coin: "superRare", label: "Super", icon: "/assets/ui/shop/super_rare_star_badge.png", className: "border-fuchsia-300/70 text-fuchsia-200" }
-  ];
-  const row = htmlElement("div", "mb-1.5 flex shrink-0 gap-1.5");
-  filters.forEach((filter) => {
-    const filterButton = button("", `aq-rarity ${filter.className} ${activeFilter === filter.coin ? "bg-white/15" : "bg-sky-950/55 opacity-75"}`, () => onSelect(filter.coin));
-    filterButton.append(image(filter.icon, "", "h-5 w-5 object-contain drop-shadow"), document.createTextNode(filter.label));
-    row.append(filterButton);
-  });
-  return row;
 }
 
 export function createStoreDrillHeader(title: string, subtitle: string, onBack: () => void): HTMLElement {

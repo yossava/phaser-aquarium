@@ -147,7 +147,6 @@ import {
   createPageOverlayRoot,
   createPagePager,
   createPageShell,
-  createPageTabRow,
   pageScreenMeta as buildPageScreenMeta,
   restorePageScrollTop,
   type PageButtonFactory,
@@ -163,7 +162,7 @@ import { createHtmlButton, htmlElement, htmlImage } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
-type AppScreen = "tank" | "store" | "album" | "tanks" | "goals" | "prize" | "makeup" | "settings";
+type AppScreen = "tank" | "menu" | "store" | "album" | "tanks" | "goals" | "prize" | "makeup" | "settings";
 
 type PreparedPrizeMachineReward =
   | { kind: "rare"; amount: number; segmentIndex: number }
@@ -345,6 +344,7 @@ const coinAssetPathByType: Record<CoinType, string> = {
   superRare: "/assets/ui/icon-super-rare-coin.png"
 };
 const menuIconAssetPathByKey: Record<string, string> = {
+  "ui-menu": "/assets/ui/menu/menu_tank_hub_icon.png",
   "ui-shop": "/assets/ui/shop.png",
   "ui-game": "/assets/ui/menu/menu_game_shell.png",
   "ui-book": "/assets/ui/menu/menu_inventory_book.png",
@@ -373,7 +373,7 @@ const dirtyTankOverlayMaxAlpha = 0.38;
 const dirtyTankTintColor = 0x4f8f44;
 const cleanBubbleTintColor = 0xd7f4ff;
 const algaeParticleTintColor = 0x174f22;
-const tankMenuVersion = "right-dock-up-v1";
+const tankMenuVersion = "single-menu-v3";
 
 type AquariumTestSnapshot = {
   coins: number;
@@ -629,8 +629,10 @@ export class AquariumScene extends Phaser.Scene {
   private tankNames = new Map<number, string>([[1, "Home Reef"]]);
   private tankStates = new Map<number, TankRuntimeState>();
   private tankMenuTab: TankMenuTab = "tanks";
+  private tankMenuDrillOpen = false;
   private tankMenuPage = 1;
   private inventoryTab: InventoryTab = "fish";
+  private inventoryDrillOpen = false;
   private fishCatalogLevel = 1;
   private selectedFishIndex?: number;
   private tankLayer!: Phaser.GameObjects.Container;
@@ -653,9 +655,6 @@ export class AquariumScene extends Phaser.Scene {
   private gameHudCommonText?: HTMLSpanElement;
   private gameHudRareText?: HTMLSpanElement;
   private gameHudSuperRareText?: HTMLSpanElement;
-  private gameHudWealthText?: HTMLSpanElement;
-  private gameHudCleanText?: HTMLSpanElement;
-  private gameHudHappyText?: HTMLSpanElement;
   private foodDispenserText?: HTMLSpanElement;
   private foodDispenserElement?: HTMLDivElement;
   private coinMagnetText?: HTMLSpanElement;
@@ -677,9 +676,7 @@ export class AquariumScene extends Phaser.Scene {
   private coinMagnetDisplayedMinutes = 0;
   private autoFoodBuyerWasActive = false;
   private autoFoodBuyerDisplayedMinutes = 0;
-  private gameHudLevelBadge?: HTMLDivElement;
   private tankMenuOverlay?: HTMLDivElement;
-  private tankMenuCollapsed = false;
   private htmlPageOverlay?: HTMLDivElement;
   private htmlPageOverlayScrollTop = 0;
   private htmlPageOverlayRenderKey = "";
@@ -708,6 +705,7 @@ export class AquariumScene extends Phaser.Scene {
   private rewardedAdCountdownText?: HTMLSpanElement;
   private rewardedAdModalButton?: HTMLButtonElement;
   private prizeMachine: PrizeMachineState = createDefaultPrizeMachineState();
+  private prizeMachineSelectedBetIndex?: number;
   private prizeSpinContainer?: Phaser.GameObjects.Container;
   private prizeSpinInProgress = false;
   private prizeCommonFish = this.nextPrizeFish("common");
@@ -1548,8 +1546,6 @@ export class AquariumScene extends Phaser.Scene {
     }
     this.tankMenuOverlay ??= this.createTankMenuOverlay();
     this.tankMenuOverlay.classList.remove("hidden");
-    this.syncTankMenuCollapsedState();
-    this.syncGoalMenuBadge();
   }
 
   private createTankMenuOverlay(): HTMLDivElement {
@@ -1557,25 +1553,18 @@ export class AquariumScene extends Phaser.Scene {
     overlay.className = "aq-tank-menu";
     overlay.dataset.version = tankMenuVersion;
 
-    const menuDockLowerOffset = 12;
-    const shopY = 212 + menuDockLowerOffset;
-    const menuSpacing = 72;
-    const toggleY = shopY + menuSpacing;
-    const gameY = toggleY + menuSpacing;
+    const menuY = 214;
     const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
-      { id: "shop", label: "Shop", y: shopY, icon: "/assets/ui/shop.png", action: () => this.openScreen("store") },
-      { id: "game", label: "Game", y: gameY, icon: menuIconAssetPathByKey["ui-game"], action: () => this.openPrizeMachineArcade() },
-      { id: "book", label: "Inventory", y: gameY + menuSpacing, icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
-      { id: "tanks", label: "Tanks", y: gameY + menuSpacing * 2, icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openScreen("tanks") },
-      { id: "quest", label: "Quest", y: gameY + menuSpacing * 3, icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals") },
-      { id: "settings", label: "Set", y: gameY + menuSpacing * 4, icon: menuIconAssetPathByKey["ui-settings"], action: () => this.openScreen("settings") }
+      { id: "menu", label: "Menu", y: menuY, icon: menuIconAssetPathByKey["ui-menu"], action: () => this.openScreen("menu") }
     ];
 
     for (const item of screens) {
       const button = document.createElement("button");
       button.type = "button";
-      const fixed = item.id === "shop";
-      button.className = `aq-tank-menu-button ${fixed ? "aq-tank-menu-button-fixed" : "aq-tank-menu-button-collapsible"}`;
+      button.className = "aq-tank-menu-button";
+      if (item.id === "menu") {
+        button.classList.add("aq-tank-menu-button-plain");
+      }
       button.dataset.menu = item.id;
       button.style.top = `${(item.y / gameHeight) * 100}%`;
       button.setAttribute("aria-label", item.label);
@@ -1588,82 +1577,23 @@ export class AquariumScene extends Phaser.Scene {
 
       const bubble = document.createElement("span");
       bubble.className = "aq-tank-menu-bubble";
+      if (item.id === "menu") {
+        bubble.classList.add("aq-tank-menu-bubble-plain");
+      }
       const icon = document.createElement("img");
       icon.src = item.icon;
       icon.alt = "";
       icon.draggable = false;
-      bubble.append(icon);
-      if (item.id === "quest") {
-        const badge = document.createElement("span");
-        badge.className = "aq-tank-menu-badge hidden";
-        badge.setAttribute("aria-hidden", "true");
-        bubble.append(badge);
+      if (item.id === "menu") {
+        icon.classList.add("aq-tank-menu-icon-small");
       }
-
-      const label = document.createElement("span");
-      label.className = "aq-tank-menu-label";
-      label.textContent = item.label;
-
-      button.append(bubble, label);
+      bubble.append(icon);
+      button.append(bubble);
       overlay.append(button);
     }
 
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "aq-tank-menu-toggle";
-    toggle.style.top = `${(toggleY / gameHeight) * 100}%`;
-    toggle.setAttribute("aria-label", "Toggle menu");
-    this.attachTouchFeedback(toggle, true);
-    toggle.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.tankMenuCollapsed = !this.tankMenuCollapsed;
-      this.syncTankMenuCollapsedState();
-    });
-
-    const toggleBubble = document.createElement("span");
-    toggleBubble.className = "aq-tank-menu-bubble aq-tank-menu-toggle-bubble";
-    const toggleIcon = document.createElement("span");
-    toggleIcon.className = "aq-tank-menu-toggle-icon";
-    toggleIcon.setAttribute("aria-hidden", "true");
-    toggleBubble.append(toggleIcon);
-    toggle.append(toggleBubble);
-    overlay.append(toggle);
-
     document.body.appendChild(overlay);
-    this.syncTankMenuCollapsedState();
     return overlay;
-  }
-
-  private syncTankMenuCollapsedState(): void {
-    if (!this.tankMenuOverlay) {
-      return;
-    }
-
-    this.tankMenuOverlay.classList.toggle("is-collapsed", this.tankMenuCollapsed);
-    const toggle = this.tankMenuOverlay.querySelector(".aq-tank-menu-toggle");
-    const icon = toggle?.querySelector(".aq-tank-menu-toggle-icon");
-    if (toggle instanceof HTMLElement) {
-      toggle.setAttribute("aria-expanded", String(!this.tankMenuCollapsed));
-    }
-    if (icon instanceof HTMLElement) {
-      icon.textContent = this.tankMenuCollapsed ? "<" : ">";
-    }
-  }
-
-  private syncGoalMenuBadge(): void {
-    if (!this.tankMenuOverlay) {
-      return;
-    }
-
-    const badge = this.tankMenuOverlay.querySelector(".aq-tank-menu-badge");
-    if (!(badge instanceof HTMLElement)) {
-      return;
-    }
-
-    const count = this.dailyGoalUnfinishedCount();
-    badge.textContent = this.foodBadgeLabel(count);
-    badge.classList.toggle("hidden", count <= 0);
   }
 
   private syncHtmlGameInterface(): void {
@@ -1701,15 +1631,9 @@ export class AquariumScene extends Phaser.Scene {
 
     const displayLevel = this.tankDisplayLevel();
     this.gameHudLevelText!.textContent = formatNumber(displayLevel);
-    this.gameHudLevelBadge!.style.setProperty("--level-badge-hue", `${this.tankLevelHueDegrees(displayLevel)}deg`);
     this.gameHudCommonText!.textContent = formatNumber(this.wallet.common);
     this.gameHudRareText!.textContent = formatNumber(this.wallet.rare);
     this.gameHudSuperRareText!.textContent = formatNumber(this.wallet.superRare);
-    this.gameHudWealthText!.textContent = formatNumber(this.calculateTankNetWorth());
-    this.gameHudCleanText!.textContent = `Clean ${formatNumber(Math.round(this.cleanliness))}%`;
-    this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-warning", this.cleanliness > 0 && this.cleanliness < 72);
-    this.gameHudCleanText!.parentElement?.classList.toggle("is-clean-danger", this.cleanliness <= 0);
-    this.gameHudHappyText!.textContent = `Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
     if (this.foodDispenserText) {
       this.foodDispenserText.textContent = this.foodBadgeLabel(this.getTotalDispenserInventory());
     }
@@ -1740,7 +1664,6 @@ export class AquariumScene extends Phaser.Scene {
       "Your tank level is based on the total value of this tank.",
       "Higher level unlocks better fish and gives the tank more room to grow."
     ]);
-    this.gameHudLevelBadge = badge;
     this.gameHudLevelText = document.createElement("span");
     badge.append(this.gameHudLevelText);
     summary.prepend(badge);
@@ -1760,23 +1683,7 @@ export class AquariumScene extends Phaser.Scene {
       "They come from special quests, ads, events, and late progression rewards."
     ]);
 
-    const care = document.createElement("div");
-    care.className = "aq-game-care-row";
-    this.gameHudWealthText = this.createHudChip(care, "/assets/ui/shop/wealth_icon_treasure.png", "Wealth", "aq-game-wealth-chip", [
-      "Wealth is the estimated total value of this tank.",
-      "It includes wallet, fish, inventory, decorations, owned cosmetics, helpers, and waiting coin drops."
-    ]);
-    this.gameHudCleanText = this.appendHudText(care, "/assets/ui/icon-clean-status.png");
-    const cleanChip = this.gameHudCleanText.parentElement;
-    if (cleanChip) {
-      this.prepareHudActionTarget(cleanChip, "Clean tank", () => this.cleanTank());
-    }
-    this.gameHudHappyText = this.appendHudText(care, "/assets/ui/icon-happy-status.png", "Happy", [
-      "Happy is the overall mood of the tank.",
-      "Fed, healthy fish and decorations improve the tank feeling."
-    ]);
-
-    panel.append(summary, wallet, care);
+    panel.append(summary, wallet);
     const coinMagnet = document.createElement("div");
     coinMagnet.className = "aq-tank-side-tool aq-coin-magnet-tool";
     this.coinMagnetElement = coinMagnet;
@@ -2706,6 +2613,13 @@ export class AquariumScene extends Phaser.Scene {
   private openScreen(screen: Exclude<AppScreen, "tank">): void {
     this.activeScreen = screen;
     this.placementMode = { kind: "none" };
+    if (screen === "album") {
+      this.inventoryDrillOpen = false;
+    }
+    if (screen === "tanks") {
+      this.tankMenuDrillOpen = false;
+      this.tankMenuPage = 1;
+    }
     this.closeModal();
     this.syncCoinDropVisibilityAndInput();
     this.createScreenNav();
@@ -2931,7 +2845,7 @@ export class AquariumScene extends Phaser.Scene {
     this.htmlPageOverlay ??= this.createHtmlPageOverlay();
     const previousKey = this.htmlPageOverlayRenderKey;
     this.htmlPageOverlayScrollTop = capturePageScrollTop(this.htmlPageOverlay);
-    const nextKey = `${this.activeScreen}:${this.tankMenuTab}:${this.tankMenuPage}:${this.inventoryTab}`;
+    const nextKey = `${this.activeScreen}:${this.tankMenuTab}:${this.tankMenuDrillOpen}:${this.tankMenuPage}:${this.inventoryTab}:${this.inventoryDrillOpen}`;
     this.htmlPageOverlayRenderKey = nextKey;
     this.htmlPageOverlay.classList.remove("hidden");
     this.htmlPageOverlay.replaceChildren(this.createHtmlPage());
@@ -2943,7 +2857,10 @@ export class AquariumScene extends Phaser.Scene {
   private createHtmlPage(): HTMLElement {
     const meta = this.pageScreenMeta();
     const { page, content } = createPageShell(meta, this.htmlButton("X CLOSE", "aq-page-close", () => this.closePage()));
-    if (this.activeScreen === "tanks") {
+    if (this.activeScreen === "menu") {
+      content.classList.add("aq-page-content-main-menu");
+      this.appendMainMenuPage(content);
+    } else if (this.activeScreen === "tanks") {
       this.appendTanksPage(content);
     } else if (this.activeScreen === "album") {
       this.appendAlbumPage(content);
@@ -2954,6 +2871,82 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     return page;
+  }
+
+  private appendMainMenuPage(content: HTMLElement): void {
+    content.append(this.createMainMenuStatusGrid());
+    const items: Array<{ id: string; label: string; icon: string; action: () => void; badge?: string }> = [
+      { id: "shop", label: "Shop", icon: menuIconAssetPathByKey["ui-shop"], action: () => this.openScreen("store") },
+      { id: "game", label: "Game", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openPrizeMachineArcade() },
+      { id: "album", label: "Inventory", icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
+      { id: "tanks", label: "Tanks", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openScreen("tanks") },
+      { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnfinishedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnfinishedCount()) : undefined },
+      { id: "settings", label: "Settings", icon: menuIconAssetPathByKey["ui-settings"], action: () => this.openScreen("settings") }
+    ];
+    const grid = htmlElement("div", "aq-main-menu-grid");
+    for (const item of items) {
+      const button = this.htmlButton("", "aq-main-menu-card aq-kids-card-groove", item.action);
+      button.dataset.menu = item.id;
+      const iconWrap = htmlElement("span", "aq-main-menu-icon-wrap", [
+        htmlImage(item.icon, "", "aq-main-menu-icon")
+      ]);
+      if (item.badge) {
+        iconWrap.append(htmlElement("span", "aq-main-menu-badge", [item.badge]));
+      }
+      button.append(iconWrap, htmlElement("span", "aq-main-menu-label", [item.label]));
+      grid.append(button);
+    }
+    content.append(grid);
+  }
+
+  private createMainMenuStatusGrid(): HTMLElement {
+    const grid = htmlElement("div", "aq-main-menu-status-grid");
+    const statusItems: Array<{ icon: string; label: string; value: string; action?: () => void }> = [
+      { icon: "/assets/ui/shop/icon_category_tanks.png", label: "Level", value: formatNumber(this.tankDisplayLevel()) },
+      { icon: hudIconAssetPathByKey["ui-icon-total-wealth"], label: "Wealth", value: formatNumber(this.calculateTankNetWorth()) },
+      { icon: hudIconAssetPathByKey["ui-icon-food-status"], label: "Food", value: formatNumber(this.getTotalFoodInventory()) },
+      { icon: hudIconAssetPathByKey["ui-icon-clean-status"], label: "Clean", value: this.cleaningTank ? "Cleaning" : `${formatNumber(Math.round(this.cleanliness))}%`, action: () => this.cleanTank() },
+      { icon: hudIconAssetPathByKey["ui-icon-happy-status"], label: "Happy", value: `${formatNumber(Math.round(this.calculateTankHappiness()))}%` }
+    ];
+    statusItems.forEach((item) => {
+      const card = item.action
+        ? this.htmlButton("", "aq-main-menu-status-card aq-main-menu-status-button", item.action)
+        : htmlElement("div", "aq-main-menu-status-card");
+      card.append(
+        htmlImage(item.icon, "", "aq-main-menu-status-icon"),
+        htmlElement("span", "aq-main-menu-status-label", [item.label]),
+        htmlElement("strong", "aq-main-menu-status-value", [item.value])
+      );
+      grid.append(
+        card
+      );
+    });
+    return grid;
+  }
+
+  private createDrillMenuCard(icon: string, label: string, description: string, action: () => void): HTMLButtonElement {
+    const button = this.htmlButton("", "aq-main-menu-card aq-kids-card-groove", action);
+    const iconWrap = htmlElement("span", "aq-main-menu-icon-wrap", [
+      htmlImage(icon, "", "aq-main-menu-icon")
+    ]);
+    button.append(
+      iconWrap,
+      htmlElement("span", "aq-main-menu-label", [label]),
+      htmlElement("span", "aq-drill-menu-description", [description])
+    );
+    return button;
+  }
+
+  private createPageDrillHeader(title: string, onBack: () => void): HTMLElement {
+    const row = htmlElement("div", "aq-page-drill-header");
+    row.append(
+      this.htmlButton("< BACK", "aq-store-back-button", onBack),
+      htmlElement("div", "min-w-0 flex-1", [
+        htmlElement("div", "truncate text-sm font-black leading-tight text-white", [title]),
+        htmlElement("div", "truncate text-[10px] font-bold text-cyan-100/70", ["Choose an item"])
+      ])
+    );
+    return row;
   }
 
   private pageScreenMeta(): PageScreenMeta {
@@ -2969,8 +2962,18 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private appendTanksPage(content: HTMLElement): void {
+    if (!this.tankMenuDrillOpen) {
+      content.classList.add("aq-page-content-main-menu");
+      content.append(this.createTankCategoryGrid());
+      return;
+    }
+
     const shell = htmlElement("div", "flex h-full min-h-0 flex-col");
-    shell.append(this.createTankMenuTabs());
+    shell.append(this.createPageDrillHeader(this.tankMenuTitle(this.tankMenuTab), () => {
+      this.tankMenuDrillOpen = false;
+      this.tankMenuPage = 1;
+      this.syncHtmlPageOverlay();
+    }));
 
     const items = this.tankMenuItems();
     const pageSize = 4;
@@ -2997,19 +3000,35 @@ export class AquariumScene extends Phaser.Scene {
     content.append(shell);
   }
 
-  private createTankMenuTabs(): HTMLElement {
-    const tabs: Array<{ tab: TankMenuTab; label: string; icon: string }> = [
-      { tab: "tanks", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
-      { tab: "background", label: "BG", icon: "/assets/ui/shop/rare_star_badge.png" },
-      { tab: "seabed", label: "Sand", icon: "/assets/ui/shop/common_star_badge.png" },
-      { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png" },
-      { tab: "utility", label: "Util", icon: foodDispenserAssetPath }
+  private createTankCategoryGrid(): HTMLElement {
+    const items: Array<{ tab: TankMenuTab; label: string; icon: string; description: string }> = [
+      { tab: "tanks", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png", description: `${formatNumber(this.sortedOwnedTankLevels().length)} owned` },
+      { tab: "background", label: "Background", icon: "/assets/ui/menu/menu_background_icon.png", description: "Owned tank scenes" },
+      { tab: "seabed", label: "Seabed", icon: "/assets/ui/menu/menu_seabed_icon.png", description: "Owned floor styles" },
+      { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png", description: "Move and place decor" },
+      { tab: "utility", label: "Tools", icon: foodDispenserAssetPath, description: "Tank utilities" }
     ];
-    return createPageTabRow(tabs, this.tankMenuTab, this.pageButtonFactory(), (tab) => {
-      this.tankMenuTab = tab;
-      this.tankMenuPage = 1;
-      this.syncHtmlPageOverlay();
+    const grid = htmlElement("div", "aq-main-menu-grid");
+    items.forEach((item) => {
+      grid.append(this.createDrillMenuCard(item.icon, item.label, item.description, () => {
+        this.tankMenuTab = item.tab;
+        this.tankMenuDrillOpen = true;
+        this.tankMenuPage = 1;
+        this.syncHtmlPageOverlay();
+      }));
     });
+    return grid;
+  }
+
+  private tankMenuTitle(tab: TankMenuTab): string {
+    const titles: Record<TankMenuTab, string> = {
+      tanks: "Tanks",
+      background: "Background",
+      seabed: "Seabed",
+      decor: "Decor",
+      utility: "Tools"
+    };
+    return titles[tab];
   }
 
   private tankMenuItems(): HTMLElement[] {
@@ -3746,7 +3765,16 @@ export class AquariumScene extends Phaser.Scene {
 
   private appendAlbumPage(content: HTMLElement): void {
     content.classList.add("aq-page-content-scroll");
-    content.append(this.createInventoryTabs());
+    if (!this.inventoryDrillOpen) {
+      content.classList.add("aq-page-content-main-menu");
+      content.append(this.createInventoryCategoryGrid());
+      return;
+    }
+
+    content.append(this.createPageDrillHeader(this.inventoryTitle(this.inventoryTab), () => {
+      this.inventoryDrillOpen = false;
+      this.syncHtmlPageOverlay();
+    }));
     if (this.inventoryTab === "fish") {
       this.appendInventoryFishTab(content);
       return;
@@ -3766,18 +3794,39 @@ export class AquariumScene extends Phaser.Scene {
     this.appendInventoryCoinsTab(content);
   }
 
-  private createInventoryTabs(): HTMLElement {
-    const tabs: Array<{ tab: InventoryTab; label: string; icon: string }> = [
-      { tab: "fish", label: "Fish", icon: "/assets/ui/shop/icon_category_fish.png" },
-      { tab: "fusion", label: "Fusion", icon: "/assets/ui/shop/icon_category_fish.png" },
-      { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png" },
-      { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png" },
-      { tab: "coins", label: "Coins", icon: "/assets/ui/shop/coin_icon_rare.png" }
+  private createInventoryCategoryGrid(): HTMLElement {
+    const storedFishCount = fishTypes.reduce((total, fishType) => total + this.getFishInventory(fishType.id), 0);
+    const foodCount = foodTypes.reduce((total, foodType) => total + this.getFoodInventory(foodType.id), 0);
+    const decorCount = decorationTypes.reduce((total, decorationType) => {
+      return total + decorationSizeOrder.reduce((sizeTotal, size) => sizeTotal + this.getOwnedDecorationCount(decorationType.id, size), 0);
+    }, 0);
+    const items: Array<{ tab: InventoryTab; label: string; icon: string; description: string }> = [
+      { tab: "fish", label: "Fish", icon: "/assets/ui/shop/empty_state_fish_silhouette.png", description: `${formatNumber(this.activeFish().length)} tank | ${formatNumber(storedFishCount)} stored` },
+      { tab: "fusion", label: "Fusion", icon: "/assets/ui/shop/empty_state_fish_silhouette.png", description: "Combine owned fish" },
+      { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png", description: `${formatNumber(foodCount)} owned` },
+      { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png", description: `${formatNumber(decorCount)} owned` },
+      { tab: "coins", label: "Coins", icon: "/assets/ui/shop/coin_icon_rare.png", description: "Rare coin storage" }
     ];
-    return createPageTabRow(tabs, this.inventoryTab, this.pageButtonFactory(), (tab) => {
-      this.inventoryTab = tab;
-      this.syncHtmlPageOverlay();
+    const grid = htmlElement("div", "aq-main-menu-grid");
+    items.forEach((item) => {
+      grid.append(this.createDrillMenuCard(item.icon, item.label, item.description, () => {
+        this.inventoryTab = item.tab;
+        this.inventoryDrillOpen = true;
+        this.syncHtmlPageOverlay();
+      }));
     });
+    return grid;
+  }
+
+  private inventoryTitle(tab: InventoryTab): string {
+    const titles: Record<InventoryTab, string> = {
+      fish: "Fish",
+      fusion: "Fusion",
+      food: "Food",
+      decor: "Decor",
+      coins: "Coins"
+    };
+    return titles[tab];
   }
 
   private appendInventoryFishTab(content: HTMLElement): void {
@@ -3822,7 +3871,7 @@ export class AquariumScene extends Phaser.Scene {
     fusionList.append(
       htmlElement("section", "aq-fusion-hero", [
         htmlElement("div", "aq-fusion-hero-art", [
-          htmlImage("/assets/ui/shop/icon_category_fish.png", "", "aq-fusion-hero-fish"),
+          htmlImage("/assets/ui/shop/empty_state_fish_silhouette.png", "", "aq-fusion-hero-fish"),
           htmlElement("span", "aq-fusion-hero-glow")
         ]),
         htmlElement("div", "aq-fusion-hero-copy", [
@@ -4266,7 +4315,7 @@ export class AquariumScene extends Phaser.Scene {
     this.destroyPrizeSpinContainer();
     this.prizeSpinInProgress = false;
     const betAmounts = this.currentPrizeBetAmounts();
-    const selectedBetAmount = this.currentPrizeBetAmount(betAmounts);
+    const selectedBetAmount = this.syncCurrentPrizeBetAmount(betAmounts);
     this.prizeSpinContainer = createPrizeMachineSpinner(
       this,
       this.currentPrizeMachineConfig(),
@@ -4289,6 +4338,11 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    const betAmounts = this.currentPrizeBetAmounts();
+    const selectedIndex = betAmounts.indexOf(betAmount);
+    if (selectedIndex >= 0) {
+      this.prizeMachineSelectedBetIndex = selectedIndex;
+    }
     this.prizeMachine = setPrizeMachineBet(this.prizeMachine, betAmount);
     this.ensurePrizeWheelFishTexturesLoaded();
     this.showPrizeMachineSpinner();
@@ -4357,8 +4411,34 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private currentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {
+    return betAmounts[this.currentPrizeBetIndex(betAmounts)] ?? betAmounts[0] ?? 1;
+  }
+
+  private currentPrizeBetIndex(betAmounts = this.currentPrizeBetAmounts()): number {
+    if (betAmounts.length === 0) {
+      return 0;
+    }
+
+    if (this.prizeMachineSelectedBetIndex !== undefined) {
+      return Phaser.Math.Clamp(this.prizeMachineSelectedBetIndex, 0, betAmounts.length - 1);
+    }
+
     const selected = Math.max(1, Math.floor(this.prizeMachine.selectedBetAmount));
-    return betAmounts.reduce((closest, bet) => Math.abs(bet - selected) < Math.abs(closest - selected) ? bet : closest, betAmounts[0] ?? 1);
+    return betAmounts.reduce((closestIndex, bet, index) => {
+      const closest = betAmounts[closestIndex] ?? bet;
+      return Math.abs(bet - selected) < Math.abs(closest - selected) ? index : closestIndex;
+    }, 0);
+  }
+
+  private syncCurrentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {
+    const selectedBetAmount = this.currentPrizeBetAmount(betAmounts);
+    if (this.prizeMachine.selectedBetAmount !== selectedBetAmount) {
+      this.prizeMachine = {
+        ...this.prizeMachine,
+        selectedBetAmount
+      };
+    }
+    return selectedBetAmount;
   }
 
   private roundPrizeBet(value: number): PrizeMachineBetAmount {
@@ -4374,8 +4454,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const selectedBetAmount = this.currentPrizeBetAmount();
-    this.prizeMachine = setPrizeMachineBet(this.prizeMachine, selectedBetAmount);
+    const selectedBetAmount = this.syncCurrentPrizeBetAmount();
     const config = prizeMachineConfigForBet(selectedBetAmount);
     if (!this.spendPrice(config.spinCost)) {
       this.floatText(`Need ${formatPrice(config.spinCost)}`, toastX, toastY, "#ffb0a8");
@@ -4424,6 +4503,7 @@ export class AquariumScene extends Phaser.Scene {
       },
       onSpinAgain: () => {
         applyPrizeReward();
+        this.syncCurrentPrizeBetAmount();
         const nextConfig = this.currentPrizeMachineConfig();
         if (!this.developerGodMode && !canAfford(this.wallet, nextConfig.spinCost)) {
           this.floatText(`Need ${formatPrice(nextConfig.spinCost)}`, toastX, toastY, "#ffb0a8");
@@ -4437,6 +4517,8 @@ export class AquariumScene extends Phaser.Scene {
         this.closePage();
       },
       getCommonCoins: () => this.wallet.common,
+      getBetAmounts: () => this.currentPrizeBetAmounts(),
+      getSelectedBetAmount: (betAmounts) => this.syncCurrentPrizeBetAmount([...betAmounts]),
       onHighlight: () => this.playSfx(prizeHighlightSoundKey, { volume: 0.12 }),
       onStop: () => this.playSfx(prizeRewardSoundKey, { volume: 0.18 })
     });
@@ -7722,6 +7804,16 @@ export class AquariumScene extends Phaser.Scene {
     this.cleanliness = Phaser.Math.Clamp(this.cleanliness - this.tankDirtRatePerSecond(activeFishCount) * deltaSeconds, 0, 100);
   }
 
+  private finishTankCleaning(): void {
+    this.cleanliness = 100;
+    this.cleaningTank = false;
+    this.cleanedAt = Date.now();
+    this.updateDirtyTankOverlay();
+    this.syncCleanlinessUi();
+    this.refreshUi(false);
+    this.saveNow();
+  }
+
   private tankDirtRatePerSecond(activeFishCount: number): number {
     return Math.min(
       maxTankDirtPerSecond,
@@ -7731,17 +7823,30 @@ export class AquariumScene extends Phaser.Scene {
 
   private cleanTank(): void {
     if (this.cleanliness >= 100) {
+      this.cleaningTank = false;
       this.floatText("Already clean", toastX, toastY, "#d7f4ff");
+      this.refreshUi(false);
       return;
     }
 
     if (this.cleaningTank) {
+      if (!this.shouldRunTankActivity()) {
+        this.finishTankCleaning();
+        this.floatText("Tank cleaned", toastX, toastY, "#a8ffb0");
+        return;
+      }
       this.floatText("Cleaning...", toastX, toastY, "#d7f4ff");
       return;
     }
 
-    this.cleaningTank = true;
     this.recordDailyQuestAction("clean");
+    if (!this.shouldRunTankActivity()) {
+      this.finishTankCleaning();
+      this.floatText("Tank cleaned", toastX, toastY, "#a8ffb0");
+      return;
+    }
+
+    this.cleaningTank = true;
     this.floatText("Cleaning...", toastX, toastY, "#a8ffb0");
     this.refreshUi(false);
     this.saveNow();

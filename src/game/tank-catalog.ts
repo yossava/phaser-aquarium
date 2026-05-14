@@ -119,6 +119,27 @@ export const generatedTankSeabedTexturePairs = generatedTankSeabeds.map(([themeI
   path: `/assets/backgrounds/generated-seabed/tank-seabed-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
 }));
 
+const imagegenTankBackgroundTexturePairs = [
+  {
+    id: "imagegen-bg-51-toy-reef-wall",
+    name: "Toy Reef Wall",
+    textureKey: "tank-imagegen-bg-51",
+    path: "/assets/backgrounds/generated-bg/tank-bg-51-toy_reef_wall.png"
+  }
+] as const;
+
+const imagegenTankSeabedTexturePairs = [] as const;
+
+const allTankBackgroundTexturePairs = [
+  ...generatedTankBackgroundTexturePairs,
+  ...imagegenTankBackgroundTexturePairs
+];
+
+const allTankSeabedTexturePairs = [
+  ...generatedTankSeabedTexturePairs,
+  ...imagegenTankSeabedTexturePairs
+];
+
 export const tankTextureAssetPathByKey = new Map<string, string>([
   [aquariumBackgroundTextureKey, aquariumBackgroundAssetPath],
   [aquariumFloorTextureKey, aquariumFloorAssetPath],
@@ -126,8 +147,8 @@ export const tankTextureAssetPathByKey = new Map<string, string>([
     [theme.backgroundKey, theme.backgroundPath] as const,
     [theme.floorKey, theme.floorPath] as const
   ]),
-  ...generatedTankBackgroundTexturePairs.map((theme) => [theme.textureKey, theme.path] as const),
-  ...generatedTankSeabedTexturePairs.map((theme) => [theme.textureKey, theme.path] as const)
+  ...allTankBackgroundTexturePairs.map((theme) => [theme.textureKey, theme.path] as const),
+  ...allTankSeabedTexturePairs.map((theme) => [theme.textureKey, theme.path] as const)
 ]);
 
 const generatedSeabedCropTops = [
@@ -160,7 +181,7 @@ function tankCosmeticPrice(index: number, baseCommon: number): Price {
 
 export const tankBackgroundCosmetics: TankCosmetic[] = [
   { id: "home", name: "Home Reef", category: "background", textureKey: aquariumBackgroundTextureKey, price: { coinType: "common", amount: 0 }, tint: 0xffffff },
-  ...generatedTankBackgroundTexturePairs.map((theme, index): TankCosmetic => ({
+  ...allTankBackgroundTexturePairs.map((theme, index): TankCosmetic => ({
     id: theme.id,
     name: theme.name,
     category: "background",
@@ -180,7 +201,7 @@ export const tankBackgroundCosmetics: TankCosmetic[] = [
 
 export const tankSeabedCosmetics: TankCosmetic[] = [
   { id: "home", name: "Home Sand", category: "seabed", textureKey: aquariumFloorTextureKey, price: { coinType: "common", amount: 0 }, tint: 0xffffff },
-  ...generatedTankSeabedTexturePairs.map((theme, index): TankCosmetic => ({
+  ...allTankSeabedTexturePairs.map((theme, index): TankCosmetic => ({
     id: theme.id,
     name: theme.name,
     category: "seabed",
@@ -219,11 +240,11 @@ export function tankCosmeticImageUrl(asset: TankCosmetic): string | undefined {
   if (asset.textureKey === aquariumFloorTextureKey) {
     return aquariumFloorAssetPath;
   }
-  const generatedBackground = generatedTankBackgroundTexturePairs.find((theme) => theme.textureKey === asset.textureKey);
+  const generatedBackground = allTankBackgroundTexturePairs.find((theme) => theme.textureKey === asset.textureKey);
   if (generatedBackground) {
     return generatedBackground.path;
   }
-  const generatedSeabed = generatedTankSeabedTexturePairs.find((theme) => theme.textureKey === asset.textureKey);
+  const generatedSeabed = allTankSeabedTexturePairs.find((theme) => theme.textureKey === asset.textureKey);
   if (generatedSeabed) {
     return generatedSeabed.path;
   }

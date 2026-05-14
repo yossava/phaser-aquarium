@@ -1,7 +1,7 @@
 {
   "generatedAt": "2026-05-12T00:00:00.000Z",
-  "count": 50,
-  "uniqueCount": 50,
+  "count": 51,
+  "uniqueCount": 51,
   "assets": [
     {
       "id": "tank-bg-01-lagoon_depth",
@@ -552,6 +552,18 @@
       },
       "sha256": "e61a1cbdd5cb3ea0910b27385b643d60423e90da0c366c4c5b7aa192c653379b",
       "use": "tank background"
+    },
+    {
+      "id": "tank-bg-51-toy_reef_wall",
+      "filename": "tank-bg-51-toy_reef_wall.png",
+      "theme": "toy_reef_wall",
+      "dimensions": {
+        "width": 430,
+        "height": 844
+      },
+      "sha256": "63b0323729770f5cbec75fe898c86282a85546b1f25cd6bdba50cf5f40e8965f",
+      "use": "tank background",
+      "processing": "create-assets imagegen raster PNG, resized from source"
     }
   ]
 }

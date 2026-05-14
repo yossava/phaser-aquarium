@@ -22,7 +22,7 @@ export function createStoreHeader(state: StoreHeaderState, onClose: () => void):
         `${state.activeTankName} L${formatNumber(state.activeTankLevel)} · ${formatNumber(state.fishCount)}/${formatNumber(state.fishCapacity)} fish`
       ])
     ]),
-    createHtmlButton("X CLOSE", "min-h-9 rounded-xl border border-white/50 bg-red-600 px-2.5 text-xs font-black text-white shadow-lg shadow-red-950/40", onClose)
+    createHtmlButton("X CLOSE", "aq-page-close", onClose)
   );
 
   const stats = htmlElement("div", "mt-1.5 grid grid-cols-4 gap-1.5");

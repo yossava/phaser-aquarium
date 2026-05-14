@@ -18,7 +18,7 @@ export const prizeWheelIconAssetPaths: Record<keyof typeof prizeWheelIconTexture
   common: "/assets/ui/shop/coin_icon_common.png",
   rare: "/assets/ui/shop/coin_icon_rare.png",
   superRare: "/assets/ui/shop/coin_icon_super_rare.png",
-  fish: "/assets/ui/shop/icon_category_fish.png"
+  fish: "/assets/ui/shop/empty_state_fish_silhouette.png"
 };
 
 export type PrizeMachineSpinnerActions = {
@@ -33,6 +33,8 @@ export type PrizeMachineSpinActions = {
   onClose: () => void;
   onSelectBet?: (betAmount: PrizeMachineBetAmount) => void;
   getCommonCoins?: () => number;
+  getBetAmounts?: () => readonly PrizeMachineBetAmount[];
+  getSelectedBetAmount?: (betAmounts: readonly PrizeMachineBetAmount[]) => PrizeMachineBetAmount;
   onHighlight?: () => void;
   onStop?: () => void;
 };
@@ -125,8 +127,12 @@ export function playPrizeMachineSpin(
         if (actions.getCommonCoins) {
           balanceText.setText(commonCoinLabel(actions.getCommonCoins()));
         }
-        const betButtons = hud.betAmounts && actions.onSelectBet
-          ? [createBetSelector(scene, centerX, gameHeight - 198, hud.betAmounts, hud.selectedBetAmount ?? 100, actions.onSelectBet)]
+        const refreshedBetAmounts = actions.getBetAmounts?.() ?? hud.betAmounts;
+        const refreshedSelectedBetAmount = refreshedBetAmounts
+          ? actions.getSelectedBetAmount?.(refreshedBetAmounts) ?? hud.selectedBetAmount ?? refreshedBetAmounts[0] ?? 100
+          : hud.selectedBetAmount ?? 100;
+        const betButtons = refreshedBetAmounts && actions.onSelectBet
+          ? [createBetSelector(scene, centerX, gameHeight - 198, refreshedBetAmounts, refreshedSelectedBetAmount, actions.onSelectBet)]
           : [];
         container.add([
           ...betButtons,

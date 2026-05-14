@@ -18,6 +18,22 @@
   --aq-hud-min-width: 370px;
   --aq-dock-scale: 1;
   --aq-menu-scale: 1;
+  --aq-kids-panel-blue: #39a9ee;
+  --aq-kids-panel-blue-dark: #1688d1;
+  --aq-kids-page-blue-dark: #0f6fb3;
+  --aq-kids-menu-card-blue: #0f77bf;
+  --aq-kids-panel-border: #13c4dc;
+  --aq-kids-button-orange: #ff9f1c;
+  --aq-kids-button-orange-dark: #ff7a00;
+  --aq-kids-button-green: #39c735;
+  --aq-kids-button-green-dark: #168f2a;
+  --aq-kids-button-red: #f33d32;
+  --aq-kids-button-red-dark: #c91f1a;
+  --aq-kids-button-pink: #d83bbd;
+  --aq-kids-button-yellow: #ffd94f;
+  --aq-kids-button-cyan: #21c8f6;
+  --aq-kids-text-light: #ffffff;
+  --aq-kids-text-blue: #e8fbff;
   font-family: var(--aq-game-font);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -63,6 +79,10 @@ body {
   background: #000000;
 }
 
+body:has(.aq-store-shell:not(.hidden)) {
+  background: #000000;
+}
+
 canvas {
   display: block;
   touch-action: none;
@@ -78,17 +98,13 @@ canvas {
 
   .aq-store {
     @apply relative flex h-dvh w-full flex-col overflow-hidden px-3 pb-3 pt-[max(8px,env(safe-area-inset-top))];
-    background:
-      radial-gradient(circle at 50% 0%, rgba(75, 211, 255, 0.28), transparent 36%),
-      linear-gradient(180deg, rgb(7, 43, 72), rgb(1, 18, 33));
+    background: var(--aq-kids-page-blue-dark);
   }
 
   .aq-panel {
-    @apply rounded-2xl border border-cyan-300/30 bg-sky-950/90 shadow-2xl;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.22),
-      inset 0 -18px 48px rgba(3, 20, 38, 0.55),
-      0 0 24px rgba(20, 181, 255, 0.16);
+    @apply rounded-2xl border border-cyan-200/25 shadow-none;
+    background: var(--aq-kids-panel-blue-dark);
+    box-shadow: none;
   }
 
   .aq-chip {
@@ -96,20 +112,12 @@ canvas {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
-  .aq-tab {
-    @apply flex min-h-8 flex-1 items-center justify-center gap-1 rounded-xl border border-cyan-200/25 bg-sky-950/70 px-1 text-[10px] font-extrabold text-cyan-100/75 shadow;
-  }
-
-  .aq-tab-active {
-    @apply border-cyan-100 bg-cyan-500 text-white;
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 0 18px rgba(34, 211, 238, 0.35);
-  }
-
   .aq-store-category-card {
-    @apply flex min-h-[74px] w-full items-center gap-3 rounded-2xl border border-cyan-300/35 bg-sky-950/70 px-3 py-2 text-left shadow-lg;
+    @apply flex min-h-[112px] w-full flex-col items-center justify-center gap-1.5 rounded-2xl border-0 px-2 py-2 text-center shadow-none;
+    background: var(--aq-kids-menu-card-blue);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
-      inset 0 -14px 32px rgba(2, 20, 39, 0.45);
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-store-category-card:active {
@@ -122,32 +130,34 @@ canvas {
   }
 
   .aq-store-category-copy {
-    @apply min-w-0 flex-1;
+    @apply min-w-0;
   }
 
   .aq-store-category-title {
-    @apply truncate text-lg font-black leading-tight text-white;
+    @apply truncate text-base font-black leading-tight text-white;
   }
 
   .aq-store-category-description {
-    @apply mt-0.5 truncate text-xs font-bold leading-tight text-cyan-100/75;
+    @apply mt-0.5 line-clamp-2 text-[10px] font-bold leading-tight text-cyan-100/75;
   }
 
   .aq-store-category-arrow {
-    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-500/20 text-xl font-black text-white;
+    @apply hidden;
+  }
+
+  .aq-page-close,
+  .aq-store-back-button {
+    @apply flex h-10 w-[78px] shrink-0 items-center justify-center rounded-xl border px-2 text-center text-xs font-black uppercase leading-none text-white shadow-lg;
+    white-space: nowrap;
   }
 
   .aq-store-back-button {
-    @apply flex min-h-9 shrink-0 items-center justify-center rounded-xl border border-orange-100/75 px-3 text-xs font-black uppercase text-white shadow-lg;
+    @apply border-orange-100/75;
     background: #f97316;
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.36),
       0 3px 0 rgba(124, 45, 18, 0.9);
     text-shadow: 0 2px 1px rgba(103, 37, 12, 0.62);
-  }
-
-  .aq-rarity {
-    @apply flex min-h-8 flex-1 items-center justify-center gap-1 rounded-xl border px-2 py-1 text-center text-xs font-extrabold;
   }
 
   .aq-store-list-scroll {
@@ -159,20 +169,44 @@ canvas {
     display: none;
   }
 
+  .aq-store-menu-grid {
+    @apply grid grid-cols-2 content-start gap-2;
+  }
+
   .aq-store-catalog-list {
-    @apply flex min-h-full flex-col gap-2;
+    @apply grid min-h-full grid-cols-2 content-start gap-2;
     padding-bottom: max(96px, calc(env(safe-area-inset-bottom) + 72px));
   }
 
   .aq-card {
-    @apply flex min-h-[132px] flex-row items-stretch gap-2 rounded-2xl border bg-sky-950/70 p-2 shadow-lg;
+    @apply relative flex min-h-[188px] flex-col items-stretch gap-2 rounded-2xl border-0 p-2 shadow-none;
+    background: var(--aq-kids-menu-card-blue);
     container-type: inline-size;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  .aq-card-rarity-badge {
+    @apply absolute left-1.5 top-1.5 z-[3] flex h-7 w-7 items-center justify-center rounded-full border-2 border-white/85 p-0.5 shadow;
+    background: #2fb446;
+  }
+
+  .aq-card-rarity-badge.is-rare {
+    background: #159bd8;
+  }
+
+  .aq-card-rarity-badge.is-superRare {
+    background: #c13bd6;
+  }
+
+  .aq-card-rarity-icon {
+    @apply h-full w-full object-contain;
   }
 
   .aq-card-preview {
-    @apply relative flex h-full w-[34%] max-w-[132px] shrink-0 items-center justify-center overflow-hidden rounded-xl;
-    min-height: 88px;
+    @apply relative flex h-20 w-full max-w-none shrink-0 items-center justify-center overflow-hidden rounded-xl;
+    min-height: 80px;
   }
 
   .aq-card-preview img {
@@ -188,7 +222,7 @@ canvas {
   .aq-card-body {
     @apply grid min-h-0 flex-1;
     grid-template-rows: auto auto minmax(0, auto) auto;
-    gap: 0.25rem;
+    gap: 0.3rem;
     padding-bottom: 2px;
   }
 
@@ -254,9 +288,32 @@ canvas {
 
   .aq-page {
     @apply relative flex h-dvh w-full flex-col overflow-hidden px-3 pb-3 pt-[max(8px,env(safe-area-inset-top))];
-    background:
-      radial-gradient(circle at 50% 0%, rgba(112, 224, 255, 0.28), transparent 35%),
-      linear-gradient(180deg, rgb(8, 47, 79), rgb(1, 18, 33));
+    background: var(--aq-kids-page-blue-dark);
+  }
+
+  .aq-kids-page-surface {
+    background: var(--aq-kids-page-blue-dark);
+  }
+
+  .aq-kids-panel-groove {
+    background: var(--aq-kids-panel-blue-dark);
+    box-shadow: none;
+  }
+
+  .aq-kids-card-groove {
+    background: var(--aq-kids-menu-card-blue);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  .aq-kids-card-groove:active,
+  .aq-kids-card-groove.is-touching {
+    filter: brightness(0.98);
+    transform: scale(0.98);
+    box-shadow:
+      inset 0 3px 7px rgba(0, 50, 98, 0.38),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .aq-page-header {
@@ -280,17 +337,20 @@ canvas {
   }
 
   .aq-page-close {
-    @apply min-h-11 shrink-0 rounded-xl border border-red-100/70 px-3 py-2 text-sm font-black text-white shadow-lg;
+    @apply border-red-100/70;
     background: linear-gradient(#ff6f75, #b91326);
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 3px 0 rgba(82, 8, 15, 0.8);
+    text-shadow: 0 2px 1px rgba(82, 8, 15, 0.62);
   }
 
   .aq-page-content {
-    @apply mt-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-cyan-200/25 bg-sky-950/78 p-3;
+    @apply mt-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-cyan-200/25 p-3;
     scrollbar-width: none;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      inset 0 -28px 58px rgba(3, 20, 38, 0.5);
+  }
+
+  .aq-page-content-main-menu {
+    @apply flex-none overflow-visible;
+    min-height: auto;
   }
 
   .aq-page-content::-webkit-scrollbar {
@@ -313,8 +373,11 @@ canvas {
   }
 
   .aq-page-stat {
-    @apply min-w-0 rounded-xl border border-cyan-200/25 bg-sky-900/65 px-3 py-2 shadow;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    @apply min-w-0 rounded-xl border-0 px-3 py-2 shadow-none;
+    background: var(--aq-kids-menu-card-blue);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-page-stat-label,
@@ -329,12 +392,16 @@ canvas {
   }
 
   .aq-page-card {
-    @apply min-w-0 rounded-2xl border border-cyan-200/25 bg-sky-900/70 p-2.5 shadow-lg;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    @apply min-w-0 rounded-2xl border-0 p-2.5 shadow-none;
+    background: var(--aq-kids-menu-card-blue);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-page-card.is-active {
-    @apply border-lime-200/75 bg-cyan-700/50;
+    @apply border border-lime-200/75;
+    background: #1384bf;
   }
 
   .aq-page-card.is-muted {
@@ -427,20 +494,18 @@ canvas {
   }
 
   .aq-tank-grid-card {
-    @apply relative min-h-0 overflow-hidden rounded-2xl border border-cyan-200/30 bg-sky-900/70 shadow-lg;
-    background:
-      radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--tank-accent, #5ed6e8) 45%, transparent), transparent 38%),
-      linear-gradient(180deg, rgba(47, 205, 230, 0.5), rgba(7, 75, 113, 0.86));
+    @apply relative min-h-0 overflow-hidden rounded-2xl border-0 shadow-none;
+    background: var(--aq-kids-menu-card-blue);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.16),
-      inset 0 -42px 64px rgba(2, 20, 36, 0.42);
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-tank-grid-card.is-active {
     @apply border-lime-200/80;
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.2),
-      inset 0 -42px 64px rgba(2, 20, 36, 0.42),
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14),
       0 0 0 2px rgba(163, 230, 53, 0.22);
   }
 
@@ -723,16 +788,19 @@ canvas {
   }
 
   .aq-album-list {
-    @apply flex flex-col gap-2;
+    @apply grid grid-cols-2 gap-2;
   }
 
   .aq-album-row {
-    @apply grid min-h-[82px] grid-cols-[58px_minmax(0,1fr)_62px] items-center gap-2 rounded-2xl border border-cyan-200/25 bg-sky-900/70 p-2 shadow-lg;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    @apply grid min-h-[150px] grid-cols-1 grid-rows-[58px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-2xl border-0 p-2 text-center shadow-none;
+    background: var(--aq-kids-menu-card-blue);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-album-row-image {
-    @apply h-14 w-14 object-contain drop-shadow-lg;
+    @apply mx-auto h-14 w-14 object-contain drop-shadow-lg;
   }
 
   .aq-album-row-image.fish {
@@ -756,7 +824,7 @@ canvas {
   }
 
   .aq-album-row-body {
-    @apply min-w-0;
+    @apply min-w-0 self-start;
   }
 
   .aq-album-row-title {
@@ -769,7 +837,7 @@ canvas {
   }
 
   .aq-album-row-copy {
-    @apply mt-0.5 truncate text-[11px] font-bold leading-tight text-cyan-50/82;
+    @apply mt-0.5 line-clamp-2 text-[11px] font-bold leading-tight text-cyan-50/82;
   }
 
   .aq-album-stat-grid {
@@ -816,7 +884,7 @@ canvas {
   }
 
   .aq-album-row-button {
-    @apply min-h-9 px-2 py-1 text-xs;
+    @apply min-h-9 w-full px-1.5 py-1 text-[11px];
   }
 
   .aq-fusion-page {
@@ -1061,16 +1129,94 @@ canvas {
   }
 
   .aq-quest-list {
-    @apply flex flex-col gap-2;
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .aq-main-menu-grid {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .aq-main-menu-status-grid {
+    @apply mb-3 grid grid-cols-5 gap-1.5;
+  }
+
+  .aq-main-menu-status-card {
+    @apply flex min-w-0 flex-col items-center justify-center rounded-xl px-1.5 py-2 text-center text-white;
+    background: var(--aq-kids-menu-card-blue);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  .aq-main-menu-status-button {
+    touch-action: manipulation;
+  }
+
+  .aq-main-menu-status-button:active,
+  .aq-main-menu-status-button.is-touching {
+    filter: brightness(1.05);
+    transform: scale(0.98);
+  }
+
+  .aq-main-menu-status-icon {
+    @apply h-7 w-7 object-contain drop-shadow;
+  }
+
+  .aq-main-menu-status-label {
+    @apply mt-0.5 max-w-full truncate text-[9px] font-extrabold leading-none text-cyan-100/78;
+  }
+
+  .aq-main-menu-status-value {
+    @apply mt-0.5 max-w-full truncate text-[12px] font-black leading-none text-white;
+    text-shadow: 0 2px 0 rgba(0, 31, 53, 0.58);
+  }
+
+  .aq-main-menu-card {
+    @apply relative flex min-h-[118px] flex-col items-center justify-center gap-2 rounded-2xl border-0 px-3 py-3 text-white;
+    touch-action: manipulation;
+  }
+
+  .aq-main-menu-icon-wrap {
+    @apply relative flex h-16 w-16 items-center justify-center rounded-2xl bg-transparent;
+    box-shadow: none;
+  }
+
+  .aq-main-menu-icon {
+    @apply h-[76%] w-[76%] object-contain;
+    filter: none;
+  }
+
+  .aq-main-menu-badge {
+    @apply absolute -right-1 -top-1 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-black leading-none text-white;
+    box-shadow: none;
+    text-shadow: none;
+  }
+
+  .aq-main-menu-label {
+    @apply max-w-full truncate text-center text-base font-black leading-tight;
+    color: var(--aq-kids-text-light);
+    text-shadow: none;
+  }
+
+  .aq-drill-menu-description {
+    @apply max-w-full line-clamp-2 text-center text-[11px] font-bold leading-tight text-cyan-100/78;
+  }
+
+  .aq-page-drill-header {
+    @apply mb-2 flex shrink-0 items-center gap-2;
   }
 
   .aq-quest-row {
-    @apply grid min-h-[58px] grid-cols-[54px_minmax(0,1fr)_76px] items-center gap-2 rounded-2xl border border-cyan-200/25 bg-sky-900/70 px-2.5 py-2 shadow-lg;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    @apply grid min-h-[132px] grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto] items-center gap-1.5 rounded-2xl border-0 px-2.5 py-2 text-center shadow-none;
+    background: var(--aq-kids-menu-card-blue);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-quest-row.is-ready {
-    @apply border-lime-200/60 bg-cyan-700/55;
+    @apply border border-lime-200/60;
+    background: #1384bf;
   }
 
   .aq-quest-row.is-muted {
@@ -1078,7 +1224,7 @@ canvas {
   }
 
   .aq-quest-status {
-    @apply rounded-full border border-cyan-100/25 bg-sky-950/55 px-1.5 py-1 text-center text-[10px] font-black leading-none text-cyan-50;
+    @apply mx-auto rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-1 text-center text-[10px] font-black leading-none text-cyan-50;
   }
 
   .aq-quest-row.is-ready .aq-quest-status {
@@ -1086,7 +1232,7 @@ canvas {
   }
 
   .aq-quest-body {
-    @apply min-w-0;
+    @apply min-w-0 self-start;
   }
 
   .aq-quest-title {
@@ -1095,11 +1241,11 @@ canvas {
   }
 
   .aq-quest-reward {
-    @apply mt-0.5 truncate text-xs font-extrabold leading-tight text-cyan-100/78;
+    @apply mt-0.5 line-clamp-2 text-xs font-extrabold leading-tight text-cyan-100/78;
   }
 
   .aq-quest-button {
-    @apply min-h-9 px-2 py-1 text-xs;
+    @apply min-h-9 w-full px-2 py-1 text-xs;
   }
 
   .aq-quest-claimed {
@@ -1119,24 +1265,28 @@ canvas {
   }
 
   .aq-rewarded-ad-list {
-    @apply flex flex-col gap-2;
+    @apply grid grid-cols-2 gap-2;
   }
 
   .aq-rewarded-ad-card {
-    @apply grid min-h-[62px] grid-cols-[44px_minmax(0,1fr)_92px] items-center gap-2 rounded-2xl border border-cyan-200/25 bg-sky-900/70 px-2.5 py-2 shadow-lg;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    @apply grid min-h-[138px] grid-cols-1 grid-rows-[44px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-2xl border-0 px-2.5 py-2 text-center shadow-none;
+    background: var(--aq-kids-menu-card-blue);
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-rewarded-ad-card.is-ready {
-    @apply border-lime-200/65 bg-cyan-700/55;
+    @apply border border-lime-200/65;
+    background: #1384bf;
   }
 
   .aq-rewarded-ad-icon {
-    @apply h-10 w-10 object-contain drop-shadow-lg;
+    @apply mx-auto h-10 w-10 object-contain drop-shadow-lg;
   }
 
   .aq-rewarded-ad-body {
-    @apply min-w-0;
+    @apply min-w-0 self-start;
   }
 
   .aq-rewarded-ad-title {
@@ -1145,11 +1295,11 @@ canvas {
   }
 
   .aq-rewarded-ad-reward {
-    @apply mt-0.5 truncate text-xs font-extrabold leading-tight text-cyan-100/78;
+    @apply mt-0.5 line-clamp-2 text-xs font-extrabold leading-tight text-cyan-100/78;
   }
 
   .aq-rewarded-ad-button {
-    @apply min-h-9 px-2 py-1 text-xs;
+    @apply min-h-9 w-full px-1.5 py-1 text-[11px];
   }
 
   .aq-page-icon-button,
@@ -1661,29 +1811,6 @@ canvas {
     transition: opacity 150ms ease, transform 170ms ease, visibility 170ms ease;
   }
 
-  .aq-tank-menu.is-collapsed .aq-tank-menu-button-collapsible {
-    opacity: 0;
-    pointer-events: none;
-    visibility: hidden;
-    transform: translate(80%, -50%) scale(calc(var(--aq-menu-scale) * 0.78));
-  }
-
-  .aq-tank-menu-toggle {
-    @apply pointer-events-auto absolute flex -translate-y-1/2 flex-col items-center border-0 bg-transparent p-0 text-white;
-    right: var(--aq-hud-edge-inset);
-    width: clamp(58px, 16.5%, 76px);
-    touch-action: manipulation;
-    transform: translateY(-50%) scale(var(--aq-menu-scale));
-    transform-origin: center right;
-  }
-
-  .aq-tank-menu-toggle-icon {
-    @apply grid h-full w-full place-items-center text-xl font-black leading-none text-white;
-    text-shadow:
-      0 2px 2px rgba(0, 0, 0, 0.7),
-      0 0 7px rgba(82, 226, 255, 0.85);
-  }
-
   .aq-tank-menu-bubble {
     @apply relative flex aspect-square w-[86%] items-center justify-center rounded-full;
     transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
@@ -1695,8 +1822,26 @@ canvas {
       0 2px 8px rgba(0, 25, 42, 0.35);
   }
 
-  .aq-tank-menu-toggle-bubble {
-    @apply w-[86%];
+  .aq-tank-menu-bubble-plain {
+    @apply rounded-full;
+    width: 86%;
+    background:
+      radial-gradient(circle at 40% 32%, rgba(255, 255, 255, 0.5), rgba(198, 246, 255, 0.2) 35%, rgba(61, 194, 235, 0.28) 72%, rgba(0, 92, 143, 0.32));
+    box-shadow:
+      inset 0 0 0 2px rgba(222, 252, 255, 0.48),
+      inset 0 0 15px rgba(129, 233, 255, 0.34),
+      0 3px 8px rgba(0, 24, 42, 0.32);
+    filter: none;
+  }
+
+  .aq-tank-menu-button-plain:active .aq-tank-menu-bubble,
+  .aq-tank-menu-button-plain.is-touching .aq-tank-menu-bubble {
+    transform: scale(0.94);
+    filter: brightness(1.08);
+    box-shadow:
+      inset 0 0 0 2px rgba(238, 253, 255, 0.56),
+      inset 0 0 12px rgba(129, 233, 255, 0.38),
+      0 2px 5px rgba(0, 24, 42, 0.28);
   }
 
   .aq-tank-menu-button:active .aq-tank-menu-bubble,
@@ -1712,6 +1857,19 @@ canvas {
   .aq-tank-menu-bubble img {
     @apply h-[76%] w-[76%] object-contain drop-shadow-lg;
     transition: transform 90ms ease;
+  }
+
+  .aq-tank-menu-bubble img.aq-tank-menu-icon-small {
+    @apply h-[78%] w-[78%];
+  }
+
+  .aq-tank-menu-button-plain .aq-tank-menu-bubble img {
+    filter: drop-shadow(0 3px 4px rgba(0, 24, 42, 0.36));
+  }
+
+  .aq-tank-menu-button-plain:active .aq-tank-menu-bubble img,
+  .aq-tank-menu-button-plain.is-touching .aq-tank-menu-bubble img {
+    transform: none;
   }
 
   .aq-tank-menu-badge {
@@ -1737,7 +1895,6 @@ canvas {
     width: var(--aq-stage-width);
     height: 100dvh;
     transform: translateX(-50%);
-    padding: max(7px, env(safe-area-inset-top)) var(--aq-hud-edge-inset) 0;
   }
 
   .aq-coin-combo {
@@ -1789,38 +1946,19 @@ canvas {
   }
 
   .aq-game-level-badge {
-    @apply relative isolate flex h-[clamp(72px,18vw,88px)] w-[clamp(62px,17vw,84px)] shrink-0 items-start justify-center overflow-hidden text-[clamp(22px,6vw,34px)] font-black text-cyan-50;
-    grid-column: 1;
-    grid-row: 1 / span 2;
-    align-self: start;
-    justify-self: center;
-    margin: 1px 0 0 -1px;
+    @apply pointer-events-auto absolute left-0 top-0 flex items-center gap-1 text-[clamp(18px,5vw,26px)] font-black leading-none text-cyan-50;
+    padding: max(7px, env(safe-area-inset-top)) 0 0 var(--aq-hud-edge-inset);
     text-shadow:
       0 3px 0 rgba(0, 52, 104, 0.74),
       0 5px 4px rgba(0, 0, 0, 0.42);
-    --level-badge-hue: 0deg;
   }
 
   .aq-game-level-badge::before {
-    @apply absolute left-1/2 top-0 -z-10 aspect-square h-[calc(100%-18px)] -translate-x-1/2 bg-contain bg-center bg-no-repeat content-[''];
-    background-image: url("/assets/ui/hud-level-medallion.png");
-    filter: hue-rotate(var(--level-badge-hue)) saturate(1.28) brightness(1.08) drop-shadow(0 4px 3px rgba(0, 36, 60, 0.38));
-  }
-
-  .aq-game-level-badge::after {
-    @apply absolute bottom-0 left-1/2 -z-10 -translate-x-1/2 rounded-[4px] border border-[#d7b879]/80 bg-[#f1d9a4] px-2 py-0.5 text-[clamp(10px,2.6vw,13px)] font-black leading-none text-[#5d3b1d] content-['Level'];
-    min-width: clamp(50px, 13vw, 64px);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.72),
-      0 -1px 0 rgba(112, 78, 37, 0.32),
-      0 3px 4px rgba(0, 33, 47, 0.3);
-    text-align: center;
-    text-shadow: 0 1px 0 rgba(255, 248, 216, 0.9);
+    @apply text-[0.62em] uppercase tracking-normal text-cyan-100/85 content-['Lv'];
   }
 
   .aq-game-level-badge span {
     @apply relative z-10;
-    margin-top: clamp(9px, 2.6vw, 14px);
   }
 
   .aq-hud-info-target {
@@ -1834,20 +1972,11 @@ canvas {
   }
 
   .aq-game-stat-panel {
-    @apply grid min-w-0 rounded-[16px] border-2 border-[#d6b875]/80 bg-cyan-950/20 px-2 py-1.5;
+    @apply relative min-w-0;
     width: 100%;
-    grid-template-columns: clamp(62px, 17vw, 84px) minmax(0, 1fr);
-    grid-template-rows: clamp(50px, 13vw, 62px) auto auto;
-    column-gap: clamp(5px, 1.4vw, 8px);
-    row-gap: 3px;
+    min-height: clamp(112px, 29vw, 146px);
     transform: scale(var(--aq-hud-scale));
     transform-origin: top left;
-    box-shadow:
-      inset 0 0 0 2px rgba(205, 249, 255, 0.38),
-      inset 0 18px 36px rgba(255, 255, 255, 0.16),
-      inset 0 -18px 30px rgba(10, 87, 116, 0.24),
-      0 3px 10px rgba(0, 0, 0, 0.24);
-    backdrop-filter: blur(1.5px);
   }
 
   .aq-game-tank-summary {
@@ -1855,34 +1984,16 @@ canvas {
   }
 
   .aq-game-wallet-grid {
-    @apply relative z-[2] grid grid-cols-3 gap-1.5 overflow-visible;
-    grid-column: 2;
-    grid-row: 1;
-    align-self: center;
-    margin-left: 0;
-    height: clamp(38px, 10vw, 48px);
+    @apply pointer-events-auto absolute right-0 top-0 z-[2] grid grid-cols-3 gap-2 overflow-visible;
+    padding: max(16px, calc(env(safe-area-inset-top) + 10px)) var(--aq-hud-edge-inset) 0 0;
+    width: clamp(210px, 55vw, 292px);
     min-width: 0;
-    padding: clamp(4px, 1vw, 6px) clamp(7px, 1.9vw, 10px);
-    border: 2px solid rgba(207, 249, 255, 0.42);
-    border-radius: 999px;
-    background:
-      radial-gradient(circle at 10% 16%, rgba(255, 255, 255, 0.6) 0 8%, transparent 9%),
-      linear-gradient(180deg, rgba(218, 250, 255, 0.34), rgba(50, 155, 189, 0.26) 42%, rgba(9, 65, 102, 0.48));
-    box-shadow:
-      inset 0 5px 0 rgba(255, 255, 255, 0.24),
-      inset 0 -10px 20px rgba(0, 41, 78, 0.34),
-      0 0 0 1px rgba(208, 180, 99, 0.42),
-      0 3px 8px rgba(0, 32, 58, 0.28);
-    backdrop-filter: blur(3px);
   }
 
   .aq-game-wallet-chip,
   .aq-game-wealth-chip {
-    @apply relative flex min-w-0 items-center justify-center gap-1 rounded-[16px] border border-white/18 bg-sky-950/35 py-1 pr-1.5 text-[clamp(13px,3.4vw,18px)] font-black leading-none text-white;
-    padding-left: clamp(20px, 5.4vw, 28px);
-    box-shadow:
-      inset 0 2px 0 rgba(255, 255, 255, 0.22),
-      inset 0 -7px 13px rgba(0, 38, 73, 0.28);
+    @apply relative flex min-w-0 items-center justify-start gap-1 border-0 bg-transparent py-0 pr-0 text-left text-[clamp(15px,4vw,21px)] font-black leading-none text-white;
+    padding-left: clamp(24px, 6vw, 32px);
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.6);
   }
 
@@ -1898,7 +2009,7 @@ canvas {
 
   .aq-game-wallet-chip img,
   .aq-game-wealth-chip img {
-    @apply absolute left-[-5px] top-1/2 h-[1.85em] w-[1.85em] shrink-0 -translate-y-1/2 object-contain;
+    @apply absolute left-0 top-1/2 h-[1.5em] w-[1.5em] shrink-0 -translate-y-1/2 object-contain;
     filter: drop-shadow(0 3px 3px rgba(0, 35, 61, 0.42));
   }
 
@@ -1948,7 +2059,7 @@ canvas {
   }
 
   .aq-game-hud-pill span {
-    @apply relative z-10 whitespace-nowrap;
+    @apply relative z-10 whitespace-nowrap text-left;
   }
 
   .aq-game-hud-pill.is-clean-warning {
@@ -1984,8 +2095,8 @@ canvas {
     }
 
     .aq-card-preview {
-      width: 32%;
-      min-height: 78px;
+      width: 100%;
+      min-height: 72px;
     }
 
     .aq-card-meta {
@@ -2031,8 +2142,8 @@ canvas {
     }
 
     .aq-card-preview {
-      width: 32%;
-      min-height: 76px;
+      width: 100%;
+      min-height: 70px;
     }
 
     .aq-card-meta {
@@ -2060,38 +2171,23 @@ canvas {
       --aq-menu-scale: 0.9;
     }
 
-    .aq-game-hud {
-      padding-top: max(5px, env(safe-area-inset-top));
-    }
-
     .aq-game-stat-panel {
-      grid-template-columns: clamp(56px, 15.5vw, 74px) minmax(0, 1fr);
-      grid-template-rows: clamp(44px, 11.8vw, 54px) auto auto;
-      column-gap: 5px;
-      row-gap: 2px;
-      border-radius: 14px;
-      padding: 4px 6px;
+      min-height: clamp(100px, 27vw, 128px);
     }
 
     .aq-game-level-badge {
-      height: clamp(64px, 17vw, 78px);
-      width: clamp(56px, 15.5vw, 74px);
-      margin-top: 0;
-      font-size: clamp(20px, 5.4vw, 30px);
+      font-size: clamp(17px, 4.7vw, 24px);
     }
 
     .aq-game-wallet-grid {
       gap: 4px;
-      height: clamp(34px, 9vw, 42px);
-      padding: 3px 6px;
+      width: clamp(76px, 20vw, 104px);
     }
 
     .aq-game-wallet-chip,
     .aq-game-wealth-chip {
-      border-radius: 14px;
-      font-size: clamp(11px, 3vw, 15px);
-      padding-left: clamp(17px, 4.5vw, 23px);
-      padding-right: 5px;
+      font-size: clamp(12px, 3.3vw, 17px);
+      padding-left: clamp(15px, 3.8vw, 20px);
     }
 
     .aq-game-care-row {
@@ -2106,7 +2202,6 @@ canvas {
     }
 
     .aq-tank-menu-button,
-    .aq-tank-menu-toggle,
     .aq-food-button {
       width: clamp(50px, 14%, 64px);
     }
@@ -2131,27 +2226,16 @@ canvas {
     }
 
     .aq-game-stat-panel {
-      grid-template-columns: 54px minmax(0, 1fr);
-      grid-template-rows: 40px auto auto;
-      column-gap: 5px;
-      row-gap: 2px;
-      padding: 4px 5px;
+      min-height: 96px;
     }
 
     .aq-game-level-badge {
-      height: 62px;
-      width: 54px;
       font-size: 24px;
     }
 
-    .aq-game-level-badge span {
-      margin-top: 8px;
-    }
-
     .aq-game-wallet-grid {
-      height: 34px;
-      gap: 4px;
-      padding: 3px 5px;
+      gap: 6px;
+      width: clamp(190px, 53vw, 260px);
     }
 
     .aq-game-care-row {

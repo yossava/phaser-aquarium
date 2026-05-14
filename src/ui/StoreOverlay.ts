@@ -1,14 +1,13 @@
 import { foodAssetPath } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
 import { foodCssFilterFor } from "../game/visuals";
-import type { CoinType, FishType, FoodType, HelperCreatureType, Price, StoreTab } from "../types/mechanics";
+import type { FishType, FoodType, HelperCreatureType, Price, StoreTab } from "../types/mechanics";
 import { createHtmlButton, htmlElement } from "./dom";
 import { currentStoreItems, storeItemTier } from "./store/StoreCatalogItems";
 import { createStoreBaseCard, createStorePreview, createStorePriceBadge, helperRole, storeRarityLabel } from "./store/StoreCardParts";
 import {
   createStoreCategoryMenu,
   createStoreDrillHeader,
-  createStoreRarityFilters,
   createTankCategoryMenu,
   storeProductTitle,
   type StoreBrowseLevel,
@@ -53,7 +52,6 @@ export class StoreOverlay {
   private activeTab: StoreTab = "fish";
   private tankCategory: TankStoreCategory = "tank";
   private browseLevel: StoreBrowseLevel = "categories";
-  private coinFilter: CoinType = "common";
   private page = 1;
   private quantities = new Map<string, number>();
   private readonly quantityHoldState: QuantityHoldState = createQuantityHoldState();
@@ -144,7 +142,7 @@ export class StoreOverlay {
   }
 
   private renderKey(): string {
-    return `${this.browseLevel}:${this.activeTab}:${this.tankCategory}:${this.coinFilter}`;
+    return `${this.browseLevel}:${this.activeTab}:${this.tankCategory}`;
   }
 
   private stateSignature(state: StoreOverlayState): string {
@@ -202,8 +200,7 @@ export class StoreOverlay {
       const productSections = this.activeTab === "food"
         ? [this.storeDrillHeader(this.productTitle(), "Choose food size, then pick an item."), this.catalog(state)]
         : [
-          this.storeDrillHeader(this.productTitle(), "Choose rarity, then pick an item."),
-          createStoreRarityFilters(this.coinFilter, (coinFilter) => this.setCoinFilter(coinFilter)),
+          this.storeDrillHeader(this.productTitle(), "Pick an item."),
           this.catalog(state)
         ];
       shell.append(...productSections);
@@ -225,12 +222,6 @@ export class StoreOverlay {
     this.render();
   }
 
-  private setCoinFilter(coinFilter: CoinType): void {
-    this.coinFilter = coinFilter;
-    this.page = 1;
-    this.render();
-  }
-
   private storeDrillHeader(title: string, subtitle: string): HTMLElement {
     const backTarget: StoreBrowseLevel = this.browseLevel === "products" && this.activeTab === "tank" ? "tankCategories" : "categories";
     return createStoreDrillHeader(title, subtitle, () => {
@@ -247,7 +238,7 @@ export class StoreOverlay {
   private catalog(state: StoreOverlayState): HTMLElement {
     const panel = el("main", "aq-panel flex min-h-0 flex-1 flex-col overflow-hidden p-2");
     const content = el("div", "min-h-0 flex-1 overflow-y-auto pr-1 aq-store-list-scroll");
-    const items = currentStoreItems(state, this.activeTab, this.tankCategory, this.coinFilter);
+    const items = currentStoreItems(state, this.activeTab, this.tankCategory);
 
     const list = el("div", "aq-store-catalog-list");
     if (items.length === 0) {

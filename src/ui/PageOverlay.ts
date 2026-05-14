@@ -6,7 +6,7 @@ export type PageScreenMeta = {
   icon: string;
 };
 
-export type PageOverlayScreen = "album" | "tanks" | "goals" | "settings";
+export type PageOverlayScreen = "menu" | "album" | "tanks" | "goals" | "settings";
 
 export type PageScreenMetaInput = {
   screen: PageOverlayScreen;
@@ -18,16 +18,15 @@ export type PageScreenMetaInput = {
   dailyGoalsDate: string;
 };
 
-export type PageTabDefinition<T extends string> = {
-  tab: T;
-  label: string;
-  icon: string;
-};
-
 export type PageButtonFactory = (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
 
 export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
   const meta: Record<PageOverlayScreen, PageScreenMeta> = {
+    menu: {
+      title: "Menu",
+      subtitle: "Choose where to go",
+      icon: "/assets/ui/menu/menu_tank_hub_icon.png"
+    },
     album: {
       title: "Inventory",
       subtitle: `${input.fishCount} fish | food, coins, and stored prizes`,
@@ -72,21 +71,6 @@ export function createPageEmptyCard(title: string, detail: string): HTMLElement 
   return card;
 }
 
-export function createPageTabRow<T extends string>(
-  tabs: PageTabDefinition<T>[],
-  activeTab: T,
-  createButton: PageButtonFactory,
-  onSelect: (tab: T) => void
-): HTMLElement {
-  const row = htmlElement("nav", "mb-2 flex shrink-0 gap-1.5");
-  tabs.forEach((item) => {
-    const tabButton = createButton("", `aq-tab ${activeTab === item.tab ? "aq-tab-active" : ""}`, () => onSelect(item.tab));
-    tabButton.append(htmlImage(item.icon, "", "h-5 w-5 object-contain"), document.createTextNode(item.label));
-    row.append(tabButton);
-  });
-  return row;
-}
-
 export function createPagePager(
   currentPage: number,
   maxPage: number,
@@ -107,7 +91,7 @@ export function createPagePager(
 }
 
 export function createPageShell(meta: PageScreenMeta, closeButton: HTMLButtonElement): { page: HTMLElement; content: HTMLDivElement } {
-  const page = htmlElement("section", "aq-page");
+  const page = htmlElement("section", "aq-page aq-kids-page-surface");
   const header = htmlElement("header", "aq-page-header");
   const icon = htmlImage(meta.icon, "", "aq-page-header-icon");
   const titleWrap = htmlElement("div", "min-w-0 flex-1");
@@ -117,7 +101,7 @@ export function createPageShell(meta: PageScreenMeta, closeButton: HTMLButtonEle
   );
   header.append(icon, titleWrap, closeButton);
 
-  const content = htmlElement("div", "aq-page-content");
+  const content = htmlElement("div", "aq-page-content aq-kids-panel-groove");
   page.append(header, content);
   return { page, content };
 }

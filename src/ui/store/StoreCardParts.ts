@@ -9,7 +9,9 @@ export function createStoreBaseCard(rarity: Rarity): HTMLElement {
     rare: "border-cyan-300/55",
     superRare: "border-fuchsia-300/65"
   };
-  return htmlElement("article", `aq-card ${classByRarity[rarity]}`);
+  const card = htmlElement("article", `aq-card ${classByRarity[rarity]}`);
+  card.append(createStoreRarityBadge(rarity));
+  return card;
 }
 
 export function createStorePreview(src: string, alt: string, className = ""): HTMLElement {
@@ -36,6 +38,17 @@ export function createStorePriceBadge(price: Price): HTMLElement {
 
 export function storeRarityLabel(rarity: Rarity | CoinType): string {
   return rarity === "superRare" ? "Super Rare" : rarity === "rare" ? "Rare" : "Common";
+}
+
+function createStoreRarityBadge(rarity: Rarity): HTMLElement {
+  const iconByRarity: Record<Rarity, string> = {
+    common: "/assets/ui/shop/common_star_badge.png",
+    rare: "/assets/ui/shop/rare_star_badge.png",
+    superRare: "/assets/ui/shop/super_rare_star_badge.png"
+  };
+  return htmlElement("span", `aq-card-rarity-badge is-${rarity}`, [
+    htmlImage(iconByRarity[rarity], storeRarityLabel(rarity), "aq-card-rarity-icon")
+  ]);
 }
 
 export function helperRole(creature: HelperCreatureType): string {

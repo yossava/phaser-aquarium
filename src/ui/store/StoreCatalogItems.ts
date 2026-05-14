@@ -7,11 +7,10 @@ import type { TankStoreCategory } from "./StoreNavigation";
 export function currentStoreItems(
   state: StoreOverlayState,
   activeTab: StoreTab,
-  tankCategory: TankStoreCategory,
-  coinFilter: CoinType
+  tankCategory: TankStoreCategory
 ): StoreCatalogItem[] {
   if (activeTab === "fish") {
-    return fishTypes.filter((fish) => storeItemTier(fish.rarity, fish.price) === coinFilter);
+    return [...fishTypes].sort((first, second) => tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)));
   }
   if (activeTab === "food") {
     return foodTypes
@@ -19,10 +18,12 @@ export function currentStoreItems(
       .sort((first, second) => first.calories - second.calories);
   }
   if (activeTab === "supply") {
-    return foodTypes.filter((food) => !hiddenFoodTypeIds.has(food.id) && supplyFoodTypeIds.has(food.id) && storeItemTier(food.rarity, food.price) === coinFilter);
+    return foodTypes
+      .filter((food) => !hiddenFoodTypeIds.has(food.id) && supplyFoodTypeIds.has(food.id))
+      .sort((first, second) => tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)));
   }
   if (activeTab === "creature") {
-    return helperCreatureTypes.filter((creature) => storeItemTier(creature.rarity, creature.price) === coinFilter);
+    return [...helperCreatureTypes].sort((first, second) => tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)));
   }
 
   const tankItemsByCategory: Record<TankStoreCategory, Array<StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard>> = {
@@ -36,9 +37,11 @@ export function currentStoreItems(
     return state.tankCards.filter((tank) => !tank.owned);
   }
   if (tankCategory === "background" || tankCategory === "seabed") {
-    return tankItemsByCategory[tankCategory].filter((item) => !item.owned && storeItemTier("common", item.price) === coinFilter);
+    return tankItemsByCategory[tankCategory]
+      .filter((item) => !item.owned)
+      .sort((first, second) => tierOrder(storeItemTier("common", first.price)) - tierOrder(storeItemTier("common", second.price)));
   }
-  return tankItemsByCategory[tankCategory].filter((item) => item.owned || storeItemTier("common", item.price) === coinFilter);
+  return tankItemsByCategory[tankCategory];
 }
 
 export function storeItemTier(rarity: Rarity, price: Price): CoinType {
@@ -49,4 +52,8 @@ export function storeItemTier(rarity: Rarity, price: Price): CoinType {
     return "rare";
   }
   return rarity === "superRare" ? "superRare" : rarity === "rare" ? "rare" : "common";
+}
+
+function tierOrder(tier: CoinType): number {
+  return tier === "common" ? 0 : tier === "rare" ? 1 : 2;
 }
