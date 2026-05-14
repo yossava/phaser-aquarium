@@ -37,6 +37,7 @@ export type StoreTankUtilityCard = {
   id: string;
   name: string;
   description: string;
+  durationLabel?: string;
   icon: string;
   owned: boolean;
   price: Price;

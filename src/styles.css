@@ -402,6 +402,14 @@ canvas {
     @apply grid grid-cols-2 gap-2;
   }
 
+  .aq-inventory-tank-grid {
+    @apply mb-4 grid grid-cols-2 gap-2 last:mb-0;
+  }
+
+  .aq-inventory-tank-grid .aq-tank-grid-card {
+    @apply min-h-[190px];
+  }
+
   .aq-page-stat {
     @apply min-w-0 rounded-xl border-0 px-3 py-2 shadow-none;
     background: var(--aq-kids-menu-card-blue);
@@ -1448,6 +1456,10 @@ canvas {
     @apply border-lime-200/50 bg-cyan-700;
   }
 
+  .aq-page-size-button.danger {
+    @apply border-red-100/60 bg-red-600;
+  }
+
   .aq-page-stepper {
     @apply mt-3 grid grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-2;
   }
@@ -1536,6 +1548,34 @@ canvas {
     @apply flex flex-wrap items-center gap-1.5;
   }
 
+  .aq-sell-qty-picker {
+    @apply mt-3 grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-2;
+  }
+
+  .aq-sell-qty-step {
+    @apply flex h-11 items-center justify-center rounded-xl border border-cyan-100/45 bg-sky-700 text-xl font-black text-white shadow-lg;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.24), 0 3px 0 rgba(5, 42, 66, 0.8);
+  }
+
+  .aq-sell-qty-display {
+    @apply flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-sky-950/70 px-2 text-white;
+    box-shadow: inset 0 2px 5px rgba(0, 14, 28, 0.65);
+  }
+
+  .aq-sell-qty-label,
+  .aq-sell-qty-max {
+    @apply text-xs font-black text-cyan-100/75;
+  }
+
+  .aq-sell-qty-value {
+    @apply text-2xl font-black leading-none text-yellow-200;
+    text-shadow: 0 2px 0 rgba(83, 32, 0, 0.68);
+  }
+
+  .aq-sell-qty-total {
+    @apply mt-2 text-center text-yellow-100;
+  }
+
   .aq-modal-actions {
     @apply mt-4 grid grid-cols-2 gap-2;
   }
@@ -1570,6 +1610,24 @@ canvas {
     filter: grayscale(0.35);
     background: linear-gradient(#6b8794, #39515e);
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.16), 0 3px 0 rgba(15, 38, 48, 0.75);
+  }
+
+  .aq-prize-bet-grid {
+    @apply grid grid-cols-3 gap-2;
+  }
+
+  .aq-prize-bet-option {
+    @apply min-h-11 rounded-xl border border-cyan-100/45 px-2 py-2 text-center text-sm font-black text-white shadow-lg;
+    background: linear-gradient(#2fb9f3, #087bbd);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 3px 0 rgba(6, 50, 73, 0.8);
+  }
+
+  .aq-prize-bet-option.selected,
+  .aq-prize-bet-option:disabled {
+    @apply border-yellow-100 text-white;
+    filter: none;
+    background: linear-gradient(#ffd862, #f08d1d);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.38), 0 3px 0 rgba(112, 55, 4, 0.82);
   }
 
   .aq-fusion-modal {

@@ -23,7 +23,7 @@ export const prizeWheelIconAssetPaths: Record<keyof typeof prizeWheelIconTexture
 
 export type PrizeMachineSpinnerActions = {
   onSpin: () => void;
-  onSelectBet: (betAmount: PrizeMachineBetAmount) => void;
+  onOpenBetPicker: () => void;
   onClose: () => void;
 };
 
@@ -31,10 +31,9 @@ export type PrizeMachineSpinActions = {
   onRewardReady: () => void;
   onSpinAgain: () => void;
   onClose: () => void;
-  onSelectBet?: (betAmount: PrizeMachineBetAmount) => void;
+  onOpenBetPicker?: () => void;
   getCommonCoins?: () => number;
-  getBetAmounts?: () => readonly PrizeMachineBetAmount[];
-  getSelectedBetAmount?: (betAmounts: readonly PrizeMachineBetAmount[]) => PrizeMachineBetAmount;
+  getSelectedBetAmount?: () => PrizeMachineBetAmount;
   onHighlight?: () => void;
   onStop?: () => void;
 };
@@ -59,7 +58,6 @@ export type PrizeWheelSegment = {
 export type PrizeWheelHud = {
   commonCoins: number;
   selectedBetAmount?: PrizeMachineBetAmount;
-  betAmounts?: readonly PrizeMachineBetAmount[];
 };
 
 export function createPrizeMachineSpinner(
@@ -69,11 +67,8 @@ export function createPrizeMachineSpinner(
   hud: PrizeWheelHud,
   actions: PrizeMachineSpinnerActions
 ): Phaser.GameObjects.Container {
-  const betButtons = hud.betAmounts
-    ? [createBetSelector(scene, gameWidth / 2, gameHeight - 198, hud.betAmounts, hud.selectedBetAmount ?? 100, actions.onSelectBet)]
-    : [];
   return createPrizeSpinnerShell(scene, config, segments, [createBalanceText(scene, gameWidth / 2, hud.commonCoins)], [
-    ...betButtons,
+    createBetButton(scene, gameWidth / 2, gameHeight - 198, hud.selectedBetAmount ?? 100, actions.onOpenBetPicker),
     createButton(scene, gameWidth / 2, gameHeight - 132, 230, 52, `SPIN ${formatPrice(config.spinCost)}`, 0x31a81f, actions.onSpin),
     createButton(scene, gameWidth / 2, gameHeight - 72, 170, 46, "CLOSE", 0xb91c1c, actions.onClose)
   ]);
@@ -127,15 +122,9 @@ export function playPrizeMachineSpin(
         if (actions.getCommonCoins) {
           balanceText.setText(commonCoinLabel(actions.getCommonCoins()));
         }
-        const refreshedBetAmounts = actions.getBetAmounts?.() ?? hud.betAmounts;
-        const refreshedSelectedBetAmount = refreshedBetAmounts
-          ? actions.getSelectedBetAmount?.(refreshedBetAmounts) ?? hud.selectedBetAmount ?? refreshedBetAmounts[0] ?? 100
-          : hud.selectedBetAmount ?? 100;
-        const betButtons = refreshedBetAmounts && actions.onSelectBet
-          ? [createBetSelector(scene, centerX, gameHeight - 198, refreshedBetAmounts, refreshedSelectedBetAmount, actions.onSelectBet)]
-          : [];
+        const refreshedSelectedBetAmount = actions.getSelectedBetAmount?.() ?? hud.selectedBetAmount ?? 100;
         container.add([
-          ...betButtons,
+          createBetButton(scene, centerX, gameHeight - 198, refreshedSelectedBetAmount, actions.onOpenBetPicker),
           createButton(scene, centerX, gameHeight - 132, 230, 52, "SPIN AGAIN", 0x31a81f, actions.onSpinAgain),
           createButton(scene, centerX, gameHeight - 72, 170, 46, "CLOSE", 0xb91c1c, actions.onClose)
         ]);
@@ -156,7 +145,7 @@ function createPrizeSpinnerShell(
 ): Phaser.GameObjects.Container {
   const centerX = gameWidth / 2;
   return scene.add.container(0, 0, [
-    scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x78c7ee, 1),
+    scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x9b7ae8, 1),
     createTitle(scene, centerX, 58, config.title, "31px", "#ffffff"),
     ...headerChildren,
     wheel.container,
@@ -490,31 +479,23 @@ function parseFontSize(fontSize: string): number {
   return Number.isFinite(parsed) ? parsed : 16;
 }
 
-function createBetSelector(
+function createBetButton(
   scene: Phaser.Scene,
   x: number,
   y: number,
-  betAmounts: readonly PrizeMachineBetAmount[],
   selectedBetAmount: PrizeMachineBetAmount,
-  onSelectBet: (betAmount: PrizeMachineBetAmount) => void
+  onOpenBetPicker?: () => void
 ): Phaser.GameObjects.Container {
-  const container = scene.add.container(x, y);
-  const spacing = betAmounts.length > 4 ? 50 : 74;
-  const startX = -((betAmounts.length - 1) * spacing) / 2;
-  betAmounts.forEach((betAmount, index) => {
-    const selected = betAmount === selectedBetAmount;
-    const button = scene.add.container(startX + index * spacing, 0).setAlpha(0);
-    const background = createRoundedPrizeButton(scene, 0, 0, betAmounts.length > 4 ? 46 : 64, 34, selected ? 0x0ea5e9 : 0x073047, {
-      stroke: selected ? 0xfff3a3 : 0x8eeeff,
-      strokeAlpha: selected ? 0.92 : 0.34,
-      radius: 11
-    });
-    background.on("pointerdown", () => onSelectBet(betAmount));
-    button.add([background, createTitle(scene, 0, 0, `C${formatNumber(betAmount)}`, "12px", "#ffffff")]);
-    scene.tweens.add({ targets: button, alpha: 1, duration: 180, delay: index * 20, ease: "Sine.easeOut" });
-    container.add(button);
+  const button = scene.add.container(x, y).setAlpha(0);
+  const background = createRoundedPrizeButton(scene, 0, 0, 156, 38, 0x0ea5e9, {
+    stroke: 0xfff3a3,
+    strokeAlpha: 0.92,
+    radius: 12
   });
-  return container;
+  background.on("pointerdown", () => onOpenBetPicker?.());
+  button.add([background, createTitle(scene, 0, 0, `BET C${formatNumber(selectedBetAmount)}`, "14px", "#ffffff")]);
+  scene.tweens.add({ targets: button, alpha: 1, duration: 180, ease: "Sine.easeOut" });
+  return button;
 }
 
 function createButton(scene: Phaser.Scene, x: number, y: number, width: number, height: number, label: string, fill: number, onClick: () => void): Phaser.GameObjects.Container {

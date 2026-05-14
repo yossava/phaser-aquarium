@@ -447,6 +447,11 @@ export class StoreOverlay {
 
   private tankUtilityCard(utility: StoreTankUtilityCard, state: StoreOverlayState): HTMLElement {
     const affordable = state.developerGodMode || canAfford(state.wallet, utility.price);
+    const timed = Boolean(utility.durationLabel);
+    const description = timed
+      ? `${utility.description} Duration: ${utility.durationLabel}.`
+      : utility.description;
+    const purchaseLabel = timed ? "Rent Utility" : "Buy Utility";
     const card = createStoreBaseCard(storeItemTier("common", utility.price));
     card.append(
       createStorePreview(utility.icon, utility.name),
@@ -456,8 +461,8 @@ export class StoreOverlay {
           utility.owned ? div("aq-chip text-xs", ["Owned"]) : createStorePriceBadge(utility.price)
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", ["Tank Utility"]),
-        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [utility.description]),
-        button(utility.owned ? utility.id === "food-dispenser" ? "Installed" : "Active" : affordable ? "Buy Utility" : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
+        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [description]),
+        button(utility.owned ? utility.id === "food-dispenser" ? "Installed" : "Active" : affordable ? purchaseLabel : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
           if (!utility.owned) {
             this.actions.buyTankUtility(utility.id);
           }
