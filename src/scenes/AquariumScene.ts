@@ -162,7 +162,7 @@ import { createHtmlButton, htmlElement, htmlImage, installHtmlInputShield, playH
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 
-type AppScreen = "tank" | "menu" | "store" | "album" | "tanks" | "goals" | "prize" | "makeup" | "settings";
+type AppScreen = "tank" | "menu" | "store" | "album" | "goals" | "prize" | "makeup" | "settings";
 
 type PreparedPrizeMachineReward =
   | { kind: "rare"; amount: number; segmentIndex: number }
@@ -186,7 +186,7 @@ type PlacementMode =
   | { kind: "decoration"; decorationTypeId: string; size: DecorationSize };
 
 type TankMenuTab = "background" | "seabed" | "decor" | "utility";
-type InventoryTab = "fish" | "fusion" | "food" | "decor" | "coins";
+type InventoryTab = "fish" | "fusion" | "food" | "decor" | "coins" | "tank";
 type FishFusionSource =
   | { key: string; kind: "active"; type: FishType; ageSeconds: number; activeIndex: number; label: string }
   | { key: string; kind: "stored"; type: FishType; ageSeconds: number; storedAgeIndex?: number; label: string };
@@ -2619,8 +2619,6 @@ export class AquariumScene extends Phaser.Scene {
     this.placementMode = { kind: "none" };
     if (screen === "album") {
       this.inventoryDrillOpen = false;
-    }
-    if (screen === "tanks") {
       this.tankMenuDrillOpen = false;
       this.tankMenuPage = 1;
     }
@@ -2859,8 +2857,6 @@ export class AquariumScene extends Phaser.Scene {
     if (this.activeScreen === "menu") {
       content.classList.add("aq-page-content-main-menu");
       this.appendMainMenuPage(content);
-    } else if (this.activeScreen === "tanks") {
-      this.appendTanksPage(content);
     } else if (this.activeScreen === "album") {
       this.appendAlbumPage(content);
     } else if (this.activeScreen === "goals") {
@@ -2878,7 +2874,7 @@ export class AquariumScene extends Phaser.Scene {
       { id: "shop", label: "Shop", icon: menuIconAssetPathByKey["ui-shop"], action: () => this.openScreen("store") },
       { id: "game", label: "Game", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openPrizeMachineArcade() },
       { id: "album", label: "Inventory", icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
-      { id: "tanks", label: "Tank", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openScreen("tanks") },
+      { id: "tanks", label: "Customize Tank", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openMakeupMode() },
       { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnfinishedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnfinishedCount()) : undefined },
       { id: "settings", label: "Settings", icon: menuIconAssetPathByKey["ui-settings"], action: () => this.openScreen("settings") }
     ];
@@ -2967,26 +2963,16 @@ export class AquariumScene extends Phaser.Scene {
       screen: this.activeScreen as PageOverlayScreen,
       fishCount: formatNumber(this.activeFish().length),
       helperCount: formatNumber(this.activeHelperCreatures().length),
-      ownedTankCount: formatNumber(this.sortedOwnedTankLevels().length),
-      maxTankCount: formatNumber(maxOwnedTanks),
-      activeTankName: this.getTankName(this.tankLevel),
       dailyGoalsDate: this.dailyGoals.date
     });
   }
 
-  private appendTanksPage(content: HTMLElement): void {
+  private appendInventoryTankTab(content: HTMLElement): void {
     if (!this.tankMenuDrillOpen) {
       content.classList.add("aq-page-content-main-menu");
       content.append(this.createTankCategoryGrid());
       return;
     }
-
-    const shell = htmlElement("div", "flex h-full min-h-0 flex-col");
-    shell.append(this.createPageDrillHeader(this.tankMenuTitle(this.tankMenuTab), () => {
-      this.tankMenuDrillOpen = false;
-      this.tankMenuPage = 1;
-      this.syncHtmlPageOverlay();
-    }));
 
     const items = this.tankMenuItems();
     const pageSize = 4;
@@ -3009,8 +2995,7 @@ export class AquariumScene extends Phaser.Scene {
       (direction) => this.changeTankMenuPage(direction)
     );
 
-    shell.append(grid, pager);
-    content.append(shell);
+    content.append(grid, pager);
   }
 
   private createTankCategoryGrid(): HTMLElement {
@@ -3788,8 +3773,17 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    content.append(this.createPageDrillHeader(this.inventoryTitle(this.inventoryTab), () => {
-      this.inventoryDrillOpen = false;
+    const title = this.inventoryTab === "tank" && this.tankMenuDrillOpen
+      ? this.tankMenuTitle(this.tankMenuTab)
+      : this.inventoryTitle(this.inventoryTab);
+    content.append(this.createPageDrillHeader(title, () => {
+      if (this.inventoryTab === "tank" && this.tankMenuDrillOpen) {
+        this.tankMenuDrillOpen = false;
+        this.tankMenuPage = 1;
+      } else {
+        this.inventoryDrillOpen = false;
+        this.tankMenuDrillOpen = false;
+      }
       this.syncHtmlPageOverlay();
     }));
     if (this.inventoryTab === "fish") {
@@ -3808,6 +3802,10 @@ export class AquariumScene extends Phaser.Scene {
       this.appendInventoryDecorTab(content);
       return;
     }
+    if (this.inventoryTab === "tank") {
+      this.appendInventoryTankTab(content);
+      return;
+    }
     this.appendInventoryCoinsTab(content);
   }
 
@@ -3822,6 +3820,7 @@ export class AquariumScene extends Phaser.Scene {
       { tab: "fusion", label: "Fusion", icon: "/assets/fish/goldfish.png", description: "Combine owned fish" },
       { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png", description: `${formatNumber(foodCount)} owned` },
       { tab: "decor", label: "Decor", icon: "/assets/decorations/amethyst-cluster.png", description: `${formatNumber(decorCount)} owned` },
+      { tab: "tank", label: "Tank", icon: menuIconAssetPathByKey["ui-tanks"], description: "Background, seabed, decor, tools" },
       { tab: "coins", label: "Coins", icon: "/assets/ui/shop/coin_icon_super_rare.png", description: "Rare coin storage" }
     ];
     const grid = htmlElement("div", "aq-main-menu-grid");
@@ -3829,6 +3828,8 @@ export class AquariumScene extends Phaser.Scene {
       const action = () => {
         this.inventoryTab = item.tab;
         this.inventoryDrillOpen = true;
+        this.tankMenuDrillOpen = false;
+        this.tankMenuPage = 1;
         this.syncHtmlPageOverlay();
       };
       grid.append(item.tab === "fusion"
@@ -3844,7 +3845,8 @@ export class AquariumScene extends Phaser.Scene {
       fusion: "Fusion",
       food: "Food",
       decor: "Decor",
-      coins: "Coins"
+      coins: "Coins",
+      tank: "Tank"
     };
     return titles[tab];
   }

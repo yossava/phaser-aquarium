@@ -6,15 +6,12 @@ export type PageScreenMeta = {
   icon: string;
 };
 
-export type PageOverlayScreen = "menu" | "album" | "tanks" | "goals" | "settings";
+export type PageOverlayScreen = "menu" | "album" | "goals" | "settings";
 
 export type PageScreenMetaInput = {
   screen: PageOverlayScreen;
   fishCount: string;
   helperCount: string;
-  ownedTankCount: string;
-  maxTankCount: string;
-  activeTankName: string;
   dailyGoalsDate: string;
 };
 
@@ -31,11 +28,6 @@ export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
       title: "Inventory",
       subtitle: `${input.fishCount} fish | food, coins, and stored prizes`,
       icon: "/assets/ui/book.png"
-    },
-    tanks: {
-      title: "Tank",
-      subtitle: input.activeTankName,
-      icon: "/assets/ui/shop/icon_category_tanks.png"
     },
     goals: {
       title: "Quest",
