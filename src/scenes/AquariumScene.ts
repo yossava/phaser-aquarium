@@ -273,6 +273,8 @@ const maxOwnedTanks = 5;
 const decorationTrashZone = new Phaser.Geom.Rectangle(gameWidth / 2 - 48, gameHeight - 88, 96, 60);
 const maxFoodBuyQuantity = 99_999;
 const inventoryDockPageSize = 8;
+const tankMenuButtonY = 214;
+const foodDockTopBelowMenu = tankMenuButtonY + 72;
 const overfullHungerFloor = -10000;
 const tankCleaningRatePerSecond = 50;
 const maxTankDirtPerSecond = 28 / (60 * 60);
@@ -1553,7 +1555,7 @@ export class AquariumScene extends Phaser.Scene {
     overlay.className = "aq-tank-menu";
     overlay.dataset.version = tankMenuVersion;
 
-    const menuY = 214;
+    const menuY = tankMenuButtonY;
     const screens: { id: string; label: string; y: number; icon: string; action: () => void }[] = [
       { id: "menu", label: "Menu", y: menuY, icon: menuIconAssetPathByKey["ui-menu"], action: () => this.openScreen("menu") }
     ];
@@ -2250,14 +2252,11 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private syncFoodDockPosition(): void {
-    if (!this.htmlFoodDock || !this.gameHudOverlay || this.activeScreen !== "tank") {
+    if (!this.htmlFoodDock || this.activeScreen !== "tank") {
       return;
     }
 
-    const hudPanel = this.gameHudOverlay.querySelector(".aq-game-stat-panel");
-    const hudBottom = hudPanel instanceof HTMLElement ? hudPanel.getBoundingClientRect().bottom : 0;
-    const top = Math.max(140, Math.round(hudBottom + 30));
-    this.htmlFoodDock.style.setProperty("--food-dock-top", `${top}px`);
+    this.htmlFoodDock.style.setProperty("--food-dock-top", `${foodDockTopBelowMenu}px`);
   }
 
   private createHtmlFoodDock(): HTMLDivElement {
@@ -2954,6 +2953,20 @@ export class AquariumScene extends Phaser.Scene {
     return button;
   }
 
+  private createFusionDrillMenuCard(description: string, action: () => void): HTMLButtonElement {
+    const button = this.htmlButton("", "aq-main-menu-card aq-kids-card-groove", action);
+    const iconWrap = htmlElement("span", "aq-main-menu-icon-wrap aq-fusion-menu-icon-wrap", [
+      htmlImage("/assets/fish/goldfish.png", "", "aq-main-menu-icon aq-fusion-menu-fish left"),
+      htmlImage("/assets/fish/guppy.png", "", "aq-main-menu-icon aq-fusion-menu-fish right")
+    ]);
+    button.append(
+      iconWrap,
+      htmlElement("span", "aq-main-menu-label", ["Fusion"]),
+      htmlElement("span", "aq-drill-menu-description", [description])
+    );
+    return button;
+  }
+
   private createPageDrillHeader(title: string, onBack: () => void): HTMLElement {
     const row = htmlElement("div", "aq-page-drill-header");
     row.append(
@@ -3022,7 +3035,7 @@ export class AquariumScene extends Phaser.Scene {
       { tab: "tanks", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png", description: `${formatNumber(this.sortedOwnedTankLevels().length)} owned` },
       { tab: "background", label: "Background", icon: "/assets/ui/menu/menu_background_icon.png", description: "Owned tank scenes" },
       { tab: "seabed", label: "Seabed", icon: "/assets/ui/menu/menu_seabed_icon.png", description: "Owned floor styles" },
-      { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png", description: "Move and place decor" },
+      { tab: "decor", label: "Decor", icon: "/assets/decorations/amethyst-cluster.png", description: "Move and place decor" },
       { tab: "utility", label: "Tools", icon: foodDispenserAssetPath, description: "Tank utilities" }
     ];
     const grid = htmlElement("div", "aq-main-menu-grid");
@@ -3828,19 +3841,22 @@ export class AquariumScene extends Phaser.Scene {
       return total + decorationSizeOrder.reduce((sizeTotal, size) => sizeTotal + this.getOwnedDecorationCount(decorationType.id, size), 0);
     }, 0);
     const items: Array<{ tab: InventoryTab; label: string; icon: string; description: string }> = [
-      { tab: "fish", label: "Fish", icon: "/assets/ui/shop/empty_state_fish_silhouette.png", description: `${formatNumber(this.activeFish().length)} tank | ${formatNumber(storedFishCount)} stored` },
-      { tab: "fusion", label: "Fusion", icon: "/assets/ui/shop/empty_state_fish_silhouette.png", description: "Combine owned fish" },
+      { tab: "fish", label: "Fish", icon: "/assets/fish/goldfish.png", description: `${formatNumber(this.activeFish().length)} tank | ${formatNumber(storedFishCount)} stored` },
+      { tab: "fusion", label: "Fusion", icon: "/assets/fish/goldfish.png", description: "Combine owned fish" },
       { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png", description: `${formatNumber(foodCount)} owned` },
-      { tab: "decor", label: "Decor", icon: "/assets/decorations/rock.png", description: `${formatNumber(decorCount)} owned` },
-      { tab: "coins", label: "Coins", icon: "/assets/ui/shop/coin_icon_rare.png", description: "Rare coin storage" }
+      { tab: "decor", label: "Decor", icon: "/assets/decorations/amethyst-cluster.png", description: `${formatNumber(decorCount)} owned` },
+      { tab: "coins", label: "Coins", icon: "/assets/ui/shop/coin_icon_super_rare.png", description: "Rare coin storage" }
     ];
     const grid = htmlElement("div", "aq-main-menu-grid");
     items.forEach((item) => {
-      grid.append(this.createDrillMenuCard(item.icon, item.label, item.description, () => {
+      const action = () => {
         this.inventoryTab = item.tab;
         this.inventoryDrillOpen = true;
         this.syncHtmlPageOverlay();
-      }));
+      };
+      grid.append(item.tab === "fusion"
+        ? this.createFusionDrillMenuCard(item.description, action)
+        : this.createDrillMenuCard(item.icon, item.label, item.description, action));
     });
     return grid;
   }
@@ -3898,7 +3914,8 @@ export class AquariumScene extends Phaser.Scene {
     fusionList.append(
       htmlElement("section", "aq-fusion-hero", [
         htmlElement("div", "aq-fusion-hero-art", [
-          htmlImage("/assets/ui/shop/empty_state_fish_silhouette.png", "", "aq-fusion-hero-fish"),
+          htmlImage("/assets/fish/goldfish.png", "", "aq-fusion-hero-fish left"),
+          htmlImage("/assets/fish/guppy.png", "", "aq-fusion-hero-fish right"),
           htmlElement("span", "aq-fusion-hero-glow")
         ]),
         htmlElement("div", "aq-fusion-hero-copy", [
@@ -4946,7 +4963,7 @@ export class AquariumScene extends Phaser.Scene {
   private awardPrizeMachineRareFish(fishType: FishType): void {
     this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
     this.recentInventoryDockItemKey = `fish:${fishType.id}`;
-    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is waiting in your left dock.");
+    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is waiting in your right dock.");
     this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is waiting in your dock.");
     if (fishType.rarity === "common") {
       this.prizeCommonFish = this.nextPrizeFish("common");

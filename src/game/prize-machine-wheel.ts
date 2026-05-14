@@ -156,7 +156,7 @@ function createPrizeSpinnerShell(
 ): Phaser.GameObjects.Container {
   const centerX = gameWidth / 2;
   return scene.add.container(0, 0, [
-    scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x011827, 0.86),
+    scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x78c7ee, 1),
     createTitle(scene, centerX, 58, config.title, "31px", "#ffffff"),
     ...headerChildren,
     wheel.container,
@@ -504,9 +504,11 @@ function createBetSelector(
   betAmounts.forEach((betAmount, index) => {
     const selected = betAmount === selectedBetAmount;
     const button = scene.add.container(startX + index * spacing, 0).setAlpha(0);
-    const background = scene.add.rectangle(0, 0, betAmounts.length > 4 ? 46 : 64, 34, selected ? 0x0ea5e9 : 0x073047, 0.96)
-      .setStrokeStyle(2, selected ? 0xfff3a3 : 0x8eeeff, selected ? 0.92 : 0.34)
-      .setInteractive({ useHandCursor: true });
+    const background = createRoundedPrizeButton(scene, 0, 0, betAmounts.length > 4 ? 46 : 64, 34, selected ? 0x0ea5e9 : 0x073047, {
+      stroke: selected ? 0xfff3a3 : 0x8eeeff,
+      strokeAlpha: selected ? 0.92 : 0.34,
+      radius: 11
+    });
     background.on("pointerdown", () => onSelectBet(betAmount));
     button.add([background, createTitle(scene, 0, 0, `C${formatNumber(betAmount)}`, "12px", "#ffffff")]);
     scene.tweens.add({ targets: button, alpha: 1, duration: 180, delay: index * 20, ease: "Sine.easeOut" });
@@ -517,11 +519,38 @@ function createBetSelector(
 
 function createButton(scene: Phaser.Scene, x: number, y: number, width: number, height: number, label: string, fill: number, onClick: () => void): Phaser.GameObjects.Container {
   const button = scene.add.container(x, y).setAlpha(0);
-  const background = scene.add.rectangle(0, 0, width, height, fill, 1)
-    .setStrokeStyle(3, 0xffffff, 0.4)
-    .setInteractive({ useHandCursor: true });
+  const background = createRoundedPrizeButton(scene, 0, 0, width, height, fill, {
+    stroke: 0xffffff,
+    strokeAlpha: 0.42,
+    radius: 15
+  });
   background.on("pointerdown", onClick);
   button.add([background, createTitle(scene, 0, 0, label, "19px", "#ffffff")]);
   scene.tweens.add({ targets: button, alpha: 1, duration: 180, ease: "Sine.easeOut" });
   return button;
+}
+
+function createRoundedPrizeButton(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  fill: number,
+  options: { stroke: number; strokeAlpha: number; radius: number }
+): Phaser.GameObjects.Container {
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x5b3a24, 0.34);
+  shadow.fillRoundedRect(-width / 2, -height / 2 + 5, width, height, options.radius);
+
+  const face = scene.add.graphics();
+  face.fillStyle(fill, 1);
+  face.fillRoundedRect(-width / 2, -height / 2, width, height, options.radius);
+  face.lineStyle(3, options.stroke, options.strokeAlpha);
+  face.strokeRoundedRect(-width / 2, -height / 2, width, height, options.radius);
+  face.lineStyle(2, 0xffffff, 0.24);
+  face.lineBetween(-width / 2 + options.radius, -height / 2 + 6, width / 2 - options.radius, -height / 2 + 6);
+  face.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height), Phaser.Geom.Rectangle.Contains);
+
+  return scene.add.container(x, y, [shadow, face]);
 }

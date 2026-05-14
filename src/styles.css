@@ -937,7 +937,15 @@ canvas {
   }
 
   .aq-fusion-hero-fish {
-    @apply relative z-10 h-11 w-16 object-contain;
+    @apply absolute z-10 h-10 w-14 object-contain;
+  }
+
+  .aq-fusion-hero-fish.left {
+    transform: translateX(-16px) rotate(-4deg);
+  }
+
+  .aq-fusion-hero-fish.right {
+    transform: translateX(16px) scaleX(-1) rotate(-4deg);
   }
 
   .aq-fusion-hero-glow {
@@ -1214,6 +1222,22 @@ canvas {
   .aq-main-menu-icon {
     @apply h-[76%] w-[76%] object-contain;
     filter: none;
+  }
+
+  .aq-fusion-menu-icon-wrap {
+    @apply w-20;
+  }
+
+  .aq-fusion-menu-fish {
+    @apply absolute h-10 w-14;
+  }
+
+  .aq-fusion-menu-fish.left {
+    transform: translateX(-16px) rotate(-4deg);
+  }
+
+  .aq-fusion-menu-fish.right {
+    transform: translateX(16px) scaleX(-1) rotate(-4deg);
   }
 
   .aq-main-menu-badge {
@@ -2342,6 +2366,8 @@ canvas {
 
   .aq-coin-magnet-count {
     @apply bg-sky-500;
+    top: -8px;
+    right: -2px;
   }
 
   .aq-auto-food-buyer-count {
@@ -2349,13 +2375,13 @@ canvas {
   }
 
   .aq-food-dock {
-    @apply pointer-events-none fixed top-0 z-40 flex flex-col gap-[10px] overflow-y-auto pb-4 pr-2 pt-1;
-    --food-dock-top: 160px;
+    @apply pointer-events-none fixed top-0 z-40 flex flex-col items-end gap-[10px] overflow-y-auto pb-4 pl-2 pt-1;
+    --food-dock-top: 286px;
     width: min(24vw, 100px);
     max-height: calc(100dvh - var(--food-dock-top) - 8px);
-    left: calc((100vw - var(--aq-stage-width)) / 2);
-    transform: translate(var(--aq-hud-edge-inset), var(--food-dock-top)) scale(var(--aq-dock-scale));
-    transform-origin: top left;
+    right: calc((100vw - var(--aq-stage-width)) / 2);
+    transform: translate(calc(-1 * var(--aq-hud-edge-inset)), var(--food-dock-top)) scale(var(--aq-dock-scale));
+    transform-origin: top right;
     scrollbar-width: none;
   }
 

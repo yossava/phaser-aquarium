@@ -7,7 +7,7 @@ export type StoreBrowseLevel = "categories" | "tankCategories" | "products";
 
 export function createStoreCategoryMenu(onSelect: (tab: StoreTab) => void): HTMLElement {
   const tabs: Array<{ tab: StoreTab; label: string; icon: string }> = [
-    { tab: "fish", label: "Fish", icon: "/assets/ui/shop/empty_state_fish_silhouette.png" },
+    { tab: "fish", label: "Fish", icon: "/assets/fish/goldfish.png" },
     { tab: "food", label: "Food", icon: "/assets/food/basic.png" },
     { tab: "supply", label: "Medicine", icon: "/assets/food/medicine.png" },
     { tab: "tank", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
@@ -26,7 +26,7 @@ export function createTankCategoryMenu(onSelect: (category: TankStoreCategory) =
     { category: "background", label: "Background", icon: "/assets/ui/menu/menu_background_icon.png" },
     { category: "seabed", label: "Seabed", icon: "/assets/ui/menu/menu_seabed_icon.png" },
     { category: "tools", label: "Tools", icon: foodDispenserAssetPath },
-    { category: "decorations", label: "Decor", icon: "/assets/decorations/rock.png" }
+    { category: "decorations", label: "Decor", icon: "/assets/decorations/amethyst-cluster.png" }
   ];
   const panel = htmlElement("main", "aq-panel aq-store-menu-grid aq-store-list-scroll min-h-0 flex-1 overflow-y-auto p-2");
   categories.forEach((item) => {
