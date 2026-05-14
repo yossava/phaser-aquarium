@@ -119,7 +119,6 @@ import {
   beginPrizeMachineSession,
   createDefaultPrizeMachineState,
   normalizePrizeMachineState,
-  prizeMachineBetAmounts,
   prizeMachineConfigForBet,
   recordPrizeMachineSpin,
   recordPrizeMachineWin,
@@ -4264,14 +4263,16 @@ export class AquariumScene extends Phaser.Scene {
   private showPrizeMachineSpinner(): void {
     this.destroyPrizeSpinContainer();
     this.prizeSpinInProgress = false;
+    const betAmounts = this.currentPrizeBetAmounts();
+    const selectedBetAmount = this.currentPrizeBetAmount(betAmounts);
     this.prizeSpinContainer = createPrizeMachineSpinner(
       this,
       this.currentPrizeMachineConfig(),
       this.createPrizeWheelSegments(),
       {
         commonCoins: this.wallet.common,
-        selectedBetAmount: this.prizeMachine.selectedBetAmount,
-        betAmounts: prizeMachineBetAmounts
+        selectedBetAmount,
+        betAmounts
       },
       {
         onSpin: () => this.spinPrizeMachine(),
@@ -4328,7 +4329,7 @@ export class AquariumScene extends Phaser.Scene {
       return undefined;
     }
 
-    const betAmounts = prizeMachineBetAmounts;
+    const betAmounts = this.currentPrizeBetAmounts();
     const spacing = betAmounts.length > 4 ? 50 : 74;
     const buttonWidth = betAmounts.length > 4 ? 46 : 64;
     const startX = gameWidth / 2 - ((betAmounts.length - 1) * spacing) / 2;
@@ -4339,7 +4340,31 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private currentPrizeMachineConfig(): PrizeMachineConfig {
-    return prizeMachineConfigForBet(this.prizeMachine.selectedBetAmount);
+    return prizeMachineConfigForBet(this.currentPrizeBetAmount());
+  }
+
+  private currentPrizeBetAmounts(): PrizeMachineBetAmount[] {
+    const commonCoins = Math.max(0, Math.floor(this.wallet.common));
+    const maxBet = Math.max(1, Math.floor(commonCoins / 5));
+    const ratios = [1 / 100, 1 / 50, 1 / 25, 1 / 10, 1 / 5];
+    const bets = ratios
+      .map((ratio) => this.roundPrizeBet(commonCoins * ratio))
+      .map((bet) => Phaser.Math.Clamp(bet, 1, maxBet))
+      .filter((bet, index, source) => source.indexOf(bet) === index);
+    return bets.length > 0 ? bets : [1];
+  }
+
+  private currentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {
+    const selected = Math.max(1, Math.floor(this.prizeMachine.selectedBetAmount));
+    return betAmounts.reduce((closest, bet) => Math.abs(bet - selected) < Math.abs(closest - selected) ? bet : closest, betAmounts[0] ?? 1);
+  }
+
+  private roundPrizeBet(value: number): PrizeMachineBetAmount {
+    const normalized = Math.max(1, value);
+    const magnitude = 10 ** Math.floor(Math.log10(normalized));
+    const scaled = normalized / magnitude;
+    const step = scaled <= 1.5 ? 1 : scaled <= 3.5 ? 2 : 5;
+    return Math.max(1, Math.round(step * magnitude));
   }
 
   private spinPrizeMachine(): void {
@@ -4347,7 +4372,9 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const config = this.currentPrizeMachineConfig();
+    const selectedBetAmount = this.currentPrizeBetAmount();
+    this.prizeMachine = setPrizeMachineBet(this.prizeMachine, selectedBetAmount);
+    const config = prizeMachineConfigForBet(selectedBetAmount);
     if (!this.spendPrice(config.spinCost)) {
       this.floatText(`Need ${formatPrice(config.spinCost)}`, toastX, toastY, "#ffb0a8");
       if (!this.prizeSpinContainer) {
@@ -4381,8 +4408,18 @@ export class AquariumScene extends Phaser.Scene {
       this.createFoodDock();
       this.saveNow();
     };
-    this.prizeSpinContainer = playPrizeMachineSpin(this, config, segments, preparedReward.segmentIndex, { commonCoins: this.wallet.common }, {
+    const resultBetAmounts = this.currentPrizeBetAmounts();
+    const resultSelectedBetAmount = this.currentPrizeBetAmount(resultBetAmounts);
+    this.prizeSpinContainer = playPrizeMachineSpin(this, config, segments, preparedReward.segmentIndex, {
+      commonCoins: this.wallet.common,
+      selectedBetAmount: resultSelectedBetAmount,
+      betAmounts: resultBetAmounts
+    }, {
       onRewardReady: applyPrizeReward,
+      onSelectBet: (betAmount) => {
+        applyPrizeReward();
+        this.selectPrizeMachineBet(betAmount);
+      },
       onSpinAgain: () => {
         applyPrizeReward();
         const nextConfig = this.currentPrizeMachineConfig();

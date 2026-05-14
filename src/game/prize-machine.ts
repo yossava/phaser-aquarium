@@ -39,8 +39,7 @@ export const prizeMachineConfig: PrizeMachineConfig = {
   rewardLabel: "Rare Prizes",
   spinCost: { coinType: "common", amount: 100 }
 };
-export const prizeMachineBetAmounts = [5, 10, 100, 500, 1000, 10000] as const;
-export type PrizeMachineBetAmount = typeof prizeMachineBetAmounts[number];
+export type PrizeMachineBetAmount = number;
 
 export function prizeMachineConfigForBet(betAmount: number): PrizeMachineConfig {
   return {
@@ -241,10 +240,7 @@ function normalizePremiumPrize(source: unknown): PrizeSpinPrize | undefined {
 
 function normalizeBetAmount(source: unknown): PrizeMachineBetAmount {
   const numeric = Number(source);
-  if (numeric === 1) {
-    return 5;
-  }
-  return prizeMachineBetAmounts.includes(numeric as PrizeMachineBetAmount) ? numeric as PrizeMachineBetAmount : 100;
+  return Number.isFinite(numeric) ? Math.max(1, Math.floor(numeric)) : 100;
 }
 
 function sanitizeRecentPrizeKeys(source: unknown): string[] {

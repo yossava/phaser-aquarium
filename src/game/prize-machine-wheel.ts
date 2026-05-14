@@ -31,6 +31,7 @@ export type PrizeMachineSpinActions = {
   onRewardReady: () => void;
   onSpinAgain: () => void;
   onClose: () => void;
+  onSelectBet?: (betAmount: PrizeMachineBetAmount) => void;
   getCommonCoins?: () => number;
   onHighlight?: () => void;
   onStop?: () => void;
@@ -124,7 +125,11 @@ export function playPrizeMachineSpin(
         if (actions.getCommonCoins) {
           balanceText.setText(commonCoinLabel(actions.getCommonCoins()));
         }
+        const betButtons = hud.betAmounts && actions.onSelectBet
+          ? [createBetSelector(scene, centerX, gameHeight - 198, hud.betAmounts, hud.selectedBetAmount ?? 100, actions.onSelectBet)]
+          : [];
         container.add([
+          ...betButtons,
           createButton(scene, centerX, gameHeight - 132, 230, 52, "SPIN AGAIN", 0x31a81f, actions.onSpinAgain),
           createButton(scene, centerX, gameHeight - 72, 170, 46, "CLOSE", 0xb91c1c, actions.onClose)
         ]);
@@ -248,16 +253,29 @@ function drawWheelSlice(
   const stepDeg = 360 / segmentCount;
   const startDeg = index * stepDeg - 90 - stepDeg / 2;
   const endDeg = startDeg + stepDeg;
-  const points = [new Phaser.Math.Vector2(0, 0)];
   const pointCount = Math.max(4, Math.ceil(stepDeg / 5));
+
+  graphics.fillStyle(fill, alpha);
+  graphics.beginPath();
+  graphics.moveTo(0, 0);
   for (let pointIndex = 0; pointIndex <= pointCount; pointIndex += 1) {
     const angle = Phaser.Math.DegToRad(Phaser.Math.Linear(startDeg, endDeg, pointIndex / pointCount));
-    points.push(new Phaser.Math.Vector2(Math.cos(angle) * radius, Math.sin(angle) * radius));
+    graphics.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
   }
-  graphics.fillStyle(fill, alpha);
-  graphics.fillPoints(points, true, true);
+  graphics.closePath();
+  graphics.fillPath();
+
   graphics.lineStyle(stroke === 0xfff3a3 ? 5 : 2, stroke, strokeAlpha);
-  graphics.strokePoints(points, true, true);
+  graphics.beginPath();
+  graphics.moveTo(0, 0);
+  const startAngle = Phaser.Math.DegToRad(startDeg);
+  graphics.lineTo(Math.cos(startAngle) * radius, Math.sin(startAngle) * radius);
+  for (let pointIndex = 1; pointIndex <= pointCount; pointIndex += 1) {
+    const angle = Phaser.Math.DegToRad(Phaser.Math.Linear(startDeg, endDeg, pointIndex / pointCount));
+    graphics.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+  }
+  graphics.closePath();
+  graphics.strokePath();
 }
 
 function drawWheelSeparator(graphics: Phaser.GameObjects.Graphics, index: number, segmentCount: number, radius: number): void {
