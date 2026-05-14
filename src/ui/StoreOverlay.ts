@@ -25,7 +25,6 @@ import type {
   StoreCatalogItem,
   StoreDecorationSize,
   StoreOverlayState,
-  StoreTankCard,
   StoreTankCosmeticCard,
   StoreTankDecorationCard,
   StoreTankUtilityCard
@@ -38,8 +37,6 @@ type StoreOverlayActions = {
   buyFish: (fishType: FishType) => void;
   buyFood: (foodType: FoodType, quantity: number) => void;
   buyHelper: (creatureType: HelperCreatureType) => void;
-  buyTank: (level: number) => void;
-  switchTank: (level: number) => void;
   buyTankCosmetic: (category: StoreTankCosmeticCard["category"], id: string) => void;
   switchTankCosmetic: (category: StoreTankCosmeticCard["category"], id: string) => void;
   buyTankDecoration: (decorationId: string, size: StoreDecorationSize) => void;
@@ -51,7 +48,7 @@ export class StoreOverlay {
   private readonly root: HTMLDivElement;
   private readonly ownsRoot: boolean;
   private activeTab: StoreTab = "fish";
-  private tankCategory: TankStoreCategory = "tank";
+  private tankCategory: TankStoreCategory = "background";
   private browseLevel: StoreBrowseLevel = "categories";
   private page = 1;
   private quantities = new Map<string, number>();
@@ -173,15 +170,6 @@ export class StoreOverlay {
       fishOwned: recordEntries(state.fishOwned),
       foodOwned: recordEntries(state.foodOwned),
       helperOwned: recordEntries(state.helperOwned),
-      tankCards: state.tankCards.map((tank) => [
-        tank.level,
-        tank.owned,
-        tank.active,
-        tank.fishCount,
-        tank.fishCapacity,
-        tank.helperCount,
-        tank.worth
-      ]),
       tankCosmeticCards: state.tankCosmeticCards.map((cosmetic) => [
         cosmetic.id,
         cosmetic.category,
@@ -265,9 +253,6 @@ export class StoreOverlay {
   }
 
   private cardForItem(item: StoreCatalogItem, state: StoreOverlayState): HTMLElement {
-    if ("displayLevel" in item) {
-      return this.tankCard(item, state);
-    }
     if ("kind" in item && item.kind === "tankCosmetic") {
       return this.tankCosmeticCard(item, state);
     }
@@ -398,28 +383,6 @@ export class StoreOverlay {
         div("aq-card-meta", [`Owned ${formatNumber(owned)} · ${helperRole(creature)}`]),
         div("aq-card-copy", [creature.description]),
         button(affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy w-full", () => this.actions.buyHelper(creature), !affordable)
-      ])
-    );
-    return card;
-  }
-
-  private tankCard(tank: StoreTankCard, state: StoreOverlayState): HTMLElement {
-    const owned = tank.owned;
-    const affordable = state.developerGodMode || canAfford(state.wallet, tank.price);
-    const card = createStoreBaseCard(owned ? "rare" : "common");
-    card.append(
-      div("mx-auto flex h-14 w-20 items-center justify-center rounded-2xl border border-cyan-200/30 bg-cyan-400/15 px-2 text-center text-sm font-black leading-tight", [tank.name]),
-      div("flex min-w-0 flex-1 flex-col overflow-hidden", [
-        div("flex items-start justify-between gap-1.5", [
-          div("min-w-0 truncate text-sm font-black leading-tight", [tank.name]),
-          owned ? div("aq-chip text-xs", [tank.active ? "Active" : "Owned"]) : createStorePriceBadge(tank.price)
-        ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-amber-200", [`Worth ${formatNumber(tank.worth)}`]),
-        !owned ? div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [`Includes C${formatNumber(tank.includedWallet.common)} R${formatNumber(tank.includedWallet.rare)} SR${formatNumber(tank.includedWallet.superRare)}`]) : "",
-        div("mt-0.5 text-[10px] leading-tight text-cyan-50/90", [`${formatNumber(tank.fishCount)}/${formatNumber(tank.fishCapacity)} fish · ${formatNumber(tank.helperCount)} helpers`]),
-        button(tank.active ? "Current Tank" : owned ? "Switch Tank" : affordable ? `Buy ${tank.name}` : `Need ${formatPrice(tank.price)}`, "aq-buy mt-auto w-full", () => {
-          owned ? this.actions.switchTank(tank.level) : this.actions.buyTank(tank.level);
-        }, !owned && !affordable)
       ])
     );
     return card;

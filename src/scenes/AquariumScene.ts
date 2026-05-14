@@ -185,7 +185,7 @@ type PlacementMode =
   | { kind: "food"; foodTypeId: FoodTypeId }
   | { kind: "decoration"; decorationTypeId: string; size: DecorationSize };
 
-type TankMenuTab = "tanks" | "background" | "seabed" | "decor" | "utility";
+type TankMenuTab = "background" | "seabed" | "decor" | "utility";
 type InventoryTab = "fish" | "fusion" | "food" | "decor" | "coins";
 type FishFusionSource =
   | { key: string; kind: "active"; type: FishType; ageSeconds: number; activeIndex: number; label: string }
@@ -269,7 +269,7 @@ const upgradedTankFishCapacity = 10;
 const maxDecorations = 8;
 const maxHelperCreatures = 5;
 const maxFishCatalogLevel = 5;
-const maxOwnedTanks = 5;
+const maxOwnedTanks = 1;
 const decorationTrashZone = new Phaser.Geom.Rectangle(gameWidth / 2 - 48, gameHeight - 88, 96, 60);
 const maxFoodBuyQuantity = 99_999;
 const inventoryDockPageSize = 8;
@@ -297,7 +297,6 @@ const helperCreatureDropDisplayWidths: Record<string, number> = {
   "helper-feeder-snail": 62,
   "helper-auto-cleaner": 56
 };
-const maxPurchasableTankLevel = 4;
 const storeTankNames: Record<number, string> = {
   1: "Normal Tank",
   2: "Fish Bowl",
@@ -554,9 +553,6 @@ declare global {
       setStoreTab: (tab: StoreTab) => void;
       setStoreCoinFilter: (coinType: CoinType) => void;
       setFishCatalogLevel: (level: number) => void;
-      upgradeTank: () => void;
-      switchTank: (level: number) => void;
-      buyTank: (level: number) => void;
       buyFish: (fishTypeId: string) => void;
       placeFishFromInventory: (fishTypeId: string, x: number, y: number) => void;
       buyFood: (foodTypeId?: FoodTypeId) => void;
@@ -630,7 +626,7 @@ export class AquariumScene extends Phaser.Scene {
   private ownedTankLevels = new Set<number>([1]);
   private tankNames = new Map<number, string>([[1, "Home Reef"]]);
   private tankStates = new Map<number, TankRuntimeState>();
-  private tankMenuTab: TankMenuTab = "tanks";
+  private tankMenuTab: TankMenuTab = "background";
   private tankMenuDrillOpen = false;
   private tankMenuPage = 1;
   private inventoryTab: InventoryTab = "fish";
@@ -2674,8 +2670,6 @@ export class AquariumScene extends Phaser.Scene {
         buyFish: (fishType) => this.buyFish(fishType),
         buyFood: (foodType, quantity) => this.buyFood(foodType, quantity),
         buyHelper: (creatureType) => this.buyHelperCreature(creatureType),
-        buyTank: (level) => this.buyTank(level),
-        switchTank: (level) => this.switchTank(level),
         buyTankCosmetic: (category, id) => this.buyTankCosmeticFromStore(category, id),
         switchTankCosmetic: (category, id) => this.useTankCosmeticFromStore(category, id),
         buyTankDecoration: (decorationId, size) => this.buyDecorationFromStore(decorationId, size),
@@ -2765,9 +2759,6 @@ export class AquariumScene extends Phaser.Scene {
       ageBoostRestockLabel: this.growthTonicPurchaseRestockLabel(),
       fishCount: this.activeFish().length,
       fishCapacity: this.maxFishCapacityForLevel(),
-      maxOwnedTanks,
-      maxPurchasableTankLevel,
-      tankStarterWallets: storeTankStarterWallets,
       getFishOwned: (fishTypeId) =>
         this.fish.filter((currentFish) => currentFish.type.id === fishTypeId).length +
         this.getFishInventory(fishTypeId),
@@ -2775,14 +2766,6 @@ export class AquariumScene extends Phaser.Scene {
       getHelperOwned: (helperTypeId) =>
         this.helperCreatures.filter((helper) => helper.type.id === helperTypeId).length +
         this.getCreatureInventory(helperTypeId),
-      getTankName: (level) => storeTankNames[level] ?? this.getTankName(level),
-      tankDisplayLevel: (level) => this.tankDisplayLevel(level),
-      hasTankLevel: (level) => this.hasTankLevel(level),
-      fishInTankCount: (level) => this.fishInTank(level).length,
-      helpersInTankCount: (level) => this.helpersInTank(level).length,
-      maxFishCapacityForLevel: (level) => this.maxFishCapacityForLevel(level),
-      calculateTankNetWorth: (level) => this.calculateTankNetWorth(level),
-      tankPriceForLevel: (level) => this.tankPriceForLevel(level),
       tankCosmetics: {
         background: this.tankCosmetics("background"),
         seabed: this.tankCosmetics("seabed")
@@ -2895,7 +2878,7 @@ export class AquariumScene extends Phaser.Scene {
       { id: "shop", label: "Shop", icon: menuIconAssetPathByKey["ui-shop"], action: () => this.openScreen("store") },
       { id: "game", label: "Game", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openPrizeMachineArcade() },
       { id: "album", label: "Inventory", icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
-      { id: "tanks", label: "Tanks", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openScreen("tanks") },
+      { id: "tanks", label: "Tank", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openScreen("tanks") },
       { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnfinishedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnfinishedCount()) : undefined },
       { id: "settings", label: "Settings", icon: menuIconAssetPathByKey["ui-settings"], action: () => this.openScreen("settings") }
     ];
@@ -3032,7 +3015,6 @@ export class AquariumScene extends Phaser.Scene {
 
   private createTankCategoryGrid(): HTMLElement {
     const items: Array<{ tab: TankMenuTab; label: string; icon: string; description: string }> = [
-      { tab: "tanks", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png", description: `${formatNumber(this.sortedOwnedTankLevels().length)} owned` },
       { tab: "background", label: "Background", icon: "/assets/ui/menu/menu_background_icon.png", description: "Owned tank scenes" },
       { tab: "seabed", label: "Seabed", icon: "/assets/ui/menu/menu_seabed_icon.png", description: "Owned floor styles" },
       { tab: "decor", label: "Decor", icon: "/assets/decorations/amethyst-cluster.png", description: "Move and place decor" },
@@ -3052,7 +3034,6 @@ export class AquariumScene extends Phaser.Scene {
 
   private tankMenuTitle(tab: TankMenuTab): string {
     const titles: Record<TankMenuTab, string> = {
-      tanks: "Tanks",
       background: "Background",
       seabed: "Seabed",
       decor: "Decor",
@@ -3062,9 +3043,6 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private tankMenuItems(): HTMLElement[] {
-    if (this.tankMenuTab === "tanks") {
-      return this.sortedOwnedTankLevels().map((level) => this.createTankHtmlCard(level));
-    }
     if (this.tankMenuTab === "background" || this.tankMenuTab === "seabed") {
       return this.tankCosmetics(this.tankMenuTab)
         .filter((asset) => this.ownsTankCosmetic(asset))
@@ -3085,7 +3063,6 @@ export class AquariumScene extends Phaser.Scene {
 
   private tankMenuEmptyCard(): HTMLElement {
     const copyByTab: Record<TankMenuTab, [string, string]> = {
-      tanks: ["No tanks owned", "Buy tank types from Shop."],
       background: ["No backgrounds owned", "Buy tank backgrounds from Shop."],
       seabed: ["No seabeds owned", "Buy tank seabeds from Shop."],
       decor: ["No decorations owned", "Buy tank decorations from Shop."],
@@ -5374,7 +5351,6 @@ export class AquariumScene extends Phaser.Scene {
 
     this.captureActiveTankState();
     this.cleaningTank = false;
-    const previousLevel = this.tankLevel;
     this.tankLevel = Math.max(1, Math.floor(level));
     this.applyTankState(this.tankLevel);
     this.clearTankDrops();
@@ -5389,16 +5365,13 @@ export class AquariumScene extends Phaser.Scene {
       this.renderTabControls();
     }
     this.refreshUi(false);
-    if (previousLevel !== this.tankLevel) {
-      this.recordDailyQuestAction("switch-tank");
-    }
     this.saveNow();
   }
 
   private buyTank(level: number): void {
     const targetLevel = Math.max(1, Math.floor(level));
     if (this.ownedTankLevels.size >= maxOwnedTanks || targetLevel > maxOwnedTanks) {
-      this.floatText(`Max ${formatNumber(maxOwnedTanks)} tanks`, toastX, toastY, "#ffb0a8");
+      this.floatText("Only one tank available", toastX, toastY, "#ffb0a8");
       return;
     }
 
@@ -5413,7 +5386,6 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.ownedTankLevels.add(targetLevel);
-    this.recordDailyQuestAction("buy-tank");
     this.tankNames.set(targetLevel, storeTankNames[targetLevel] ?? `Tank ${formatNumber(targetLevel)}`);
     const tankState = this.ensureTankState(targetLevel);
     const starterWallet = storeTankStarterWallets[targetLevel] ?? createEmptyWallet();
@@ -6649,14 +6621,12 @@ export class AquariumScene extends Phaser.Scene {
     for (const savedDecoration of savedDecorations) {
       const decoration = decorationTypes.find((item) => item.id === savedDecoration.typeId);
       if (decoration) {
-        const savedTankLevel = Math.max(1, Math.floor(savedDecoration.tankLevel ?? 1));
-        const decorationTankLevel = this.hasTankLevel(savedTankLevel) ? savedTankLevel : this.tankLevel;
         this.addDecorationToTank(
           decoration,
           savedDecoration.x,
           savedDecoration.y,
           this.sanitizeDecorationSize(savedDecoration.size),
-          decorationTankLevel,
+          1,
           savedDecoration.depth
         );
       }
@@ -6665,7 +6635,7 @@ export class AquariumScene extends Phaser.Scene {
     for (const savedCreature of saved.helperCreatures) {
       const creatureType = helperCreatureTypes.find((item) => item.id === savedCreature.typeId);
       if (creatureType) {
-        this.addHelperCreatureToTank(creatureType, savedCreature.x, savedCreature.y, savedCreature.targetX, savedCreature.tankLevel ?? 1);
+        this.addHelperCreatureToTank(creatureType, savedCreature.x, savedCreature.y, savedCreature.targetX, 1);
       }
     }
 
@@ -6677,7 +6647,7 @@ export class AquariumScene extends Phaser.Scene {
 
       const restoredFish = this.addFishToTank(type, savedFish.x, savedFish.y, {
         gender: savedFish.gender,
-        tankLevel: savedFish.tankLevel ?? 1
+        tankLevel: 1
       });
       restoredFish.restoreProgress(
         savedFish.ageSeconds,
@@ -7758,14 +7728,6 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private getTankNeedIndicator(): string {
-    const nextTankLevel = this.nextUnownedTankLevel();
-    const nextTankPrice = this.tankPriceForLevel(nextTankLevel);
-    const canBuyTankType = nextTankLevel <= maxPurchasableTankLevel;
-
-    if (canBuyTankType && canAfford(this.wallet, nextTankPrice)) {
-      return `Ready: buy ${storeTankNames[nextTankLevel] ?? "tank"} (${formatPriceLong(nextTankPrice)})`;
-    }
-
     if (this.activeFish().length === 0) {
       return `Tank Lv${formatNumber(this.tankDisplayLevel())} | Worth ${formatNumber(this.calculateTankNetWorth())}`;
     }
@@ -7778,22 +7740,10 @@ export class AquariumScene extends Phaser.Scene {
       return "Tank needs coin collection";
     }
 
-    if (!canBuyTankType) {
-      return `Tank Lv${formatNumber(this.tankDisplayLevel())} | Worth ${formatNumber(this.calculateTankNetWorth())}`;
-    }
-
-    return `${storeTankNames[nextTankLevel] ?? "Next tank"}: ${formatPriceLong(nextTankPrice)}`;
+    return `Tank Lv${formatNumber(this.tankDisplayLevel())} | Worth ${formatNumber(this.calculateTankNetWorth())}`;
   }
 
   private getCompactTankNeedIndicator(): string {
-    const nextTankLevel = this.nextUnownedTankLevel();
-    const nextTankPrice = this.tankPriceForLevel(nextTankLevel);
-    const canBuyTankType = nextTankLevel <= maxPurchasableTankLevel;
-
-    if (canBuyTankType && canAfford(this.wallet, nextTankPrice)) {
-      return `Buy ${storeTankNames[nextTankLevel] ?? "Tank"}: ${formatPriceLong(nextTankPrice)}`;
-    }
-
     if (this.getTotalFoodInventory() === 0 && this.fish.some((currentFish) => currentFish.hunger >= 45)) {
       return "Need food";
     }
@@ -7802,11 +7752,7 @@ export class AquariumScene extends Phaser.Scene {
       return "Collect coins";
     }
 
-    if (!canBuyTankType) {
-      return `Lv${formatNumber(this.tankDisplayLevel())} Worth ${formatNumber(this.calculateTankNetWorth())}`;
-    }
-
-    return `${storeTankNames[nextTankLevel] ?? "Next Tank"}: ${formatPriceLong(nextTankPrice)}`;
+    return `Lv${formatNumber(this.tankDisplayLevel())} Worth ${formatNumber(this.calculateTankNetWorth())}`;
   }
 
   private calculateTankHappiness(): number {
@@ -8087,14 +8033,9 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private dailyQuestItems(): DailyQuestItem[] {
-    const nextTankLevel = this.nextUnownedTankLevel();
-    const nextTankPrice = nextTankLevel <= maxOwnedTanks ? this.tankPriceForLevel(nextTankLevel) : undefined;
     const activeFish = this.activeFish();
     return buildDailyQuestItems({
       affordableCommonFish: fishTypes.some((fishType) => fishType.rarity === "common" && canAfford(this.wallet, fishType.price)),
-      nextTankName: storeTankNames[nextTankLevel] ?? "new tank",
-      nextTankPrice,
-      maxOwnedTanksReached: this.ownedTankLevels.size >= maxOwnedTanks,
       activeFishCount: activeFish.length,
       activeDecorationCount: this.activeDecorations().length,
       activeHelperCount: this.activeHelperCreatures().length,
@@ -9483,15 +9424,6 @@ export class AquariumScene extends Phaser.Scene {
         this.fishCatalogLevel = Phaser.Math.Clamp(Math.floor(level), 1, maxFishCatalogLevel);
         this.renderTabControls();
         this.refreshUi(false);
-      },
-      upgradeTank: () => {
-        this.buyTank(maxPurchasableTankLevel);
-      },
-      switchTank: (level: number) => {
-        this.switchTank(level);
-      },
-      buyTank: (level: number) => {
-        this.buyTank(level);
       },
       buyFish: (fishTypeId: string) => {
         const fishType = fishTypes.find((item) => item.id === fishTypeId);

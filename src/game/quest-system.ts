@@ -38,9 +38,6 @@ export type RewardedAdCatalogInput = {
 
 export type BuildDailyQuestItemsInput = {
   affordableCommonFish: boolean;
-  nextTankName?: string;
-  nextTankPrice?: Price;
-  maxOwnedTanksReached: boolean;
   activeFishCount: number;
   activeDecorationCount: number;
   activeHelperCount: number;
@@ -154,15 +151,7 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
     { id: "buy-seabed", label: "Buy a seabed", complete: actionCount("buy-seabed") > 0, reward, priority: 25 },
     { id: "use-seabed", label: "Change tank seabed", complete: actionCount("use-seabed") > 0, reward, priority: 18 },
     { id: "tint-cosmetic", label: "Adjust tank cosmetic tint", complete: actionCount("tint-cosmetic") > 0, reward, priority: 14 },
-    { id: "switch-tank", label: "Switch tanks", complete: actionCount("switch-tank") > 0, reward, priority: 18 },
     { id: "rename-tank", label: "Rename a tank", complete: actionCount("rename-tank") > 0, reward, priority: 10 },
-    {
-      id: "buy-tank",
-      label: input.nextTankPrice ? `Buy ${input.nextTankName ?? "new tank"} (${formatPrice(input.nextTankPrice)})` : "Own every tank",
-      complete: actionCount("buy-tank") > 0 || input.maxOwnedTanksReached,
-      reward,
-      priority: input.maxOwnedTanksReached ? 8 : 28
-    },
     { id: "prize-game", label: "Play Treasure Spin", complete: actionCount("prize-game") > 0, reward, priority: 24 },
     { id: "watch-ad", label: "Watch a rewarded ad", complete: actionCount("watch-ad") > 0, reward, priority: 21 },
     { id: "claim-ad", label: "Claim an ad reward", complete: actionCount("claim-ad") > 0, reward, priority: 20 },

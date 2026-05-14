@@ -33,8 +33,8 @@ export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
       icon: "/assets/ui/book.png"
     },
     tanks: {
-      title: "Tanks",
-      subtitle: `${input.ownedTankCount}/${input.maxTankCount} owned | active ${input.activeTankName}`,
+      title: "Tank",
+      subtitle: input.activeTankName,
       icon: "/assets/ui/shop/icon_category_tanks.png"
     },
     goals: {

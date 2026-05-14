@@ -2,20 +2,6 @@ import type { FishType, FoodType, HelperCreatureType, Price, Rarity, Wallet } fr
 
 export type StoreDecorationSize = "xs" | "s" | "m" | "l" | "xl";
 
-export type StoreTankCard = {
-  level: number;
-  name: string;
-  displayLevel: number;
-  owned: boolean;
-  active: boolean;
-  fishCount: number;
-  fishCapacity: number;
-  helperCount: number;
-  worth: number;
-  price: Price;
-  includedWallet: Wallet;
-};
-
 export type StoreTankCosmeticCard = {
   kind: "tankCosmetic";
   id: string;
@@ -72,7 +58,6 @@ export type StoreOverlayState = {
   fishOwned: Record<string, number>;
   foodOwned: Record<string, number>;
   helperOwned: Record<string, number>;
-  tankCards: StoreTankCard[];
   tankCosmeticCards: StoreTankCosmeticCard[];
   tankDecorationCards: StoreTankDecorationCard[];
   tankUtilityCards: StoreTankUtilityCard[];
@@ -82,7 +67,6 @@ export type StoreCatalogItem =
   | FishType
   | FoodType
   | HelperCreatureType
-  | StoreTankCard
   | StoreTankCosmeticCard
   | StoreTankDecorationCard
   | StoreTankUtilityCard;

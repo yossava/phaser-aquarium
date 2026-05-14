@@ -1,7 +1,7 @@
 import { fishTypes, foodTypes, helperCreatureTypes } from "../../data/content";
 import { hiddenFoodTypeIds, supplyFoodTypeIds } from "../../game/food-system";
 import type { CoinType, Price, Rarity, StoreTab } from "../../types/mechanics";
-import type { StoreCatalogItem, StoreOverlayState, StoreTankCard, StoreTankCosmeticCard, StoreTankDecorationCard, StoreTankUtilityCard } from "./StoreTypes";
+import type { StoreCatalogItem, StoreOverlayState, StoreTankCosmeticCard, StoreTankDecorationCard, StoreTankUtilityCard } from "./StoreTypes";
 import type { TankStoreCategory } from "./StoreNavigation";
 
 export function currentStoreItems(
@@ -26,16 +26,12 @@ export function currentStoreItems(
     return [...helperCreatureTypes].sort((first, second) => tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)));
   }
 
-  const tankItemsByCategory: Record<TankStoreCategory, Array<StoreTankCard | StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard>> = {
-    tank: state.tankCards,
+  const tankItemsByCategory: Record<TankStoreCategory, Array<StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard>> = {
     background: state.tankCosmeticCards.filter((item) => item.category === "background"),
     seabed: state.tankCosmeticCards.filter((item) => item.category === "seabed"),
     tools: state.tankUtilityCards,
     decorations: state.tankDecorationCards
   };
-  if (tankCategory === "tank") {
-    return state.tankCards.filter((tank) => !tank.owned);
-  }
   if (tankCategory === "background" || tankCategory === "seabed") {
     return tankItemsByCategory[tankCategory]
       .filter((item) => !item.owned)

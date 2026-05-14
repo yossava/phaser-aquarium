@@ -29,20 +29,9 @@ export type BuildStoreOverlayStateInput = {
   ageBoostRestockLabel: string;
   fishCount: number;
   fishCapacity: number;
-  maxOwnedTanks: number;
-  maxPurchasableTankLevel: number;
-  tankStarterWallets: Record<number, Wallet>;
   getFishOwned: (fishTypeId: string) => number;
   getFoodOwned: (foodType: FoodType) => number;
   getHelperOwned: (helperTypeId: string) => number;
-  getTankName: (level: number) => string;
-  tankDisplayLevel: (level?: number) => number;
-  hasTankLevel: (level: number) => boolean;
-  fishInTankCount: (level: number) => number;
-  helpersInTankCount: (level: number) => number;
-  maxFishCapacityForLevel: (level?: number) => number;
-  calculateTankNetWorth: (level?: number) => number;
-  tankPriceForLevel: (level: number) => Price;
   tankCosmetics: Record<StoreTankCosmeticCard["category"], TankCosmeticAsset[]>;
   ownsTankCosmetic: (asset: TankCosmeticAsset) => boolean;
   selectedTankCosmeticId: (category: StoreTankCosmeticCard["category"]) => string;
@@ -55,8 +44,6 @@ export type BuildStoreOverlayStateInput = {
   decorationVariantPrice: (decorationType: DecorationType, size: StoreDecorationSize) => Price;
   utilityDefinitions: StoreUtilityDefinition[];
 };
-
-const emptyWallet = (): Wallet => ({ common: 0, rare: 0, superRare: 0 });
 
 export function buildStoreOverlayState(input: BuildStoreOverlayStateInput): StoreOverlayState {
   return {
@@ -75,29 +62,9 @@ export function buildStoreOverlayState(input: BuildStoreOverlayStateInput): Stor
     fishOwned: Object.fromEntries(fishTypes.map((fishType) => [fishType.id, input.getFishOwned(fishType.id)])),
     foodOwned: Object.fromEntries(foodTypes.map((foodType) => [foodType.id, input.getFoodOwned(foodType)])),
     helperOwned: Object.fromEntries(helperCreatureTypes.map((creatureType) => [creatureType.id, input.getHelperOwned(creatureType.id)])),
-    tankCards: Array.from(
-      { length: input.developerGodMode ? input.maxOwnedTanks : input.maxPurchasableTankLevel },
-      (_unused, index) => buildTankCard(input, index + 1)
-    ),
     tankCosmeticCards: buildStoreTankCosmeticCards(input),
     tankDecorationCards: buildStoreTankDecorationCards(input),
     tankUtilityCards: buildStoreTankUtilityCards(input.utilityDefinitions)
-  };
-}
-
-function buildTankCard(input: BuildStoreOverlayStateInput, level: number): StoreOverlayState["tankCards"][number] {
-  return {
-    level,
-    name: input.getTankName(level),
-    displayLevel: input.tankDisplayLevel(level),
-    owned: input.hasTankLevel(level),
-    active: level === input.activeTankSlot,
-    fishCount: input.fishInTankCount(level),
-    fishCapacity: input.maxFishCapacityForLevel(level),
-    helperCount: input.helpersInTankCount(level),
-    worth: input.calculateTankNetWorth(level),
-    price: input.tankPriceForLevel(level),
-    includedWallet: input.tankStarterWallets[level] ?? emptyWallet()
   };
 }
 

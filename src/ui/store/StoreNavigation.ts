@@ -2,7 +2,7 @@ import { foodDispenserAssetPath } from "../../game/dispenser-system";
 import type { StoreTab } from "../../types/mechanics";
 import { createHtmlButton, htmlElement, htmlImage } from "../dom";
 
-export type TankStoreCategory = "tank" | "background" | "seabed" | "tools" | "decorations";
+export type TankStoreCategory = "background" | "seabed" | "tools" | "decorations";
 export type StoreBrowseLevel = "categories" | "tankCategories" | "products";
 
 export function createStoreCategoryMenu(onSelect: (tab: StoreTab) => void): HTMLElement {
@@ -10,7 +10,7 @@ export function createStoreCategoryMenu(onSelect: (tab: StoreTab) => void): HTML
     { tab: "fish", label: "Fish", icon: "/assets/fish/goldfish.png" },
     { tab: "food", label: "Food", icon: "/assets/food/basic.png" },
     { tab: "supply", label: "Medicine", icon: "/assets/food/medicine.png" },
-    { tab: "tank", label: "Tanks", icon: "/assets/ui/shop/icon_category_tanks.png" },
+    { tab: "tank", label: "Tank", icon: "/assets/ui/shop/icon_category_tanks.png" },
     { tab: "creature", label: "Helpers", icon: "/assets/helpers/feeder-snail.png" }
   ];
   const panel = htmlElement("main", "aq-panel aq-store-menu-grid aq-store-list-scroll min-h-0 flex-1 overflow-y-auto p-2");
@@ -22,7 +22,6 @@ export function createStoreCategoryMenu(onSelect: (tab: StoreTab) => void): HTML
 
 export function createTankCategoryMenu(onSelect: (category: TankStoreCategory) => void): HTMLElement {
   const categories: Array<{ category: TankStoreCategory; label: string; icon: string }> = [
-    { category: "tank", label: "Tank", icon: "/assets/ui/shop/icon_category_tanks.png" },
     { category: "background", label: "Background", icon: "/assets/ui/menu/menu_background_icon.png" },
     { category: "seabed", label: "Seabed", icon: "/assets/ui/menu/menu_seabed_icon.png" },
     { category: "tools", label: "Tools", icon: foodDispenserAssetPath },
@@ -53,7 +52,7 @@ export function storeProductTitle(activeTab: StoreTab, tankCategory: TankStoreCa
       fish: "Fish",
       food: "Food",
       supply: "Medicine",
-      tank: "Tanks",
+      tank: "Tank",
       decor: "Decor",
       creature: "Helpers"
     };
@@ -61,7 +60,6 @@ export function storeProductTitle(activeTab: StoreTab, tankCategory: TankStoreCa
   }
 
   const labels: Record<TankStoreCategory, string> = {
-    tank: "Tank",
     background: "Background",
     seabed: "Seabed",
     tools: "Tools",
@@ -75,7 +73,7 @@ function storeCategoryDescription(tab: StoreTab): string {
     fish: "Collect fish for this tank",
     food: "Food for each fish size",
     supply: "Medicine and growth tonic",
-    tank: "Tanks, themes, tools, and decor",
+    tank: "Themes, tools, and decor for your tank",
     decor: "Tank decorations",
     creature: "Helper pets and cleaners"
   };
@@ -84,7 +82,6 @@ function storeCategoryDescription(tab: StoreTab): string {
 
 function tankCategoryDescription(category: TankStoreCategory): string {
   const descriptions: Record<TankStoreCategory, string> = {
-    tank: "Buy another tank slot",
     background: "Change the rear aquarium scene",
     seabed: "Change the sand and floor",
     tools: "Functional aquarium utilities",
