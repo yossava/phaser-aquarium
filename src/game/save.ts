@@ -80,6 +80,7 @@ export type SavedGame = {
   dailyGoals: {
     date: string;
     claimed: string[];
+    activeQuestIds?: string[];
   };
   prizeMachine: PrizeMachineState;
 };
@@ -203,7 +204,10 @@ export function loadGame(): SavedGame | undefined {
         date: typeof migrated.dailyGoals?.date === "string" ? migrated.dailyGoals.date : localDateKey(),
         claimed: Array.isArray(migrated.dailyGoals?.claimed)
           ? migrated.dailyGoals.claimed.filter((id): id is string => typeof id === "string")
-          : []
+          : [],
+        activeQuestIds: Array.isArray(migrated.dailyGoals?.activeQuestIds)
+          ? migrated.dailyGoals.activeQuestIds.filter((id): id is string => typeof id === "string")
+          : undefined
       },
       prizeMachine: normalizePrizeMachineState(migrated.prizeMachine)
     };
