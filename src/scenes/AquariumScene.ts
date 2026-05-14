@@ -187,6 +187,7 @@ type PlacementMode =
 
 type TankMenuTab = "background" | "seabed" | "decor" | "utility";
 type InventoryTab = "fish" | "fusion" | "food" | "decor" | "coins" | "tank";
+type MakeupSection = "background" | "seabed" | "decor";
 type FishFusionSource =
   | { key: string; kind: "active"; type: FishType; ageSeconds: number; activeIndex: number; label: string }
   | { key: string; kind: "stored"; type: FishType; ageSeconds: number; storedAgeIndex?: number; label: string };
@@ -201,6 +202,8 @@ type FishFusionPageResult = {
 };
 type MakeupDecorationDraft = {
   typeId: string;
+  originalTypeId?: string;
+  originalSize?: DecorationSize;
   size: DecorationSize;
   x: number;
   y: number;
@@ -208,6 +211,7 @@ type MakeupDecorationDraft = {
   image: Phaser.GameObjects.Image;
 };
 type MakeupDraft = {
+  section?: MakeupSection;
   backgroundIndex: number;
   seabedIndex: number;
   backgroundTintById: Map<string, number>;
@@ -274,7 +278,7 @@ const decorationTrashZone = new Phaser.Geom.Rectangle(gameWidth / 2 - 48, gameHe
 const maxFoodBuyQuantity = 99_999;
 const inventoryDockPageSize = 8;
 const tankMenuButtonY = 214;
-const foodDockTopBelowMenu = tankMenuButtonY + 72;
+const foodDockTopBelowMenu = tankMenuButtonY + 36;
 const overfullHungerFloor = -10000;
 const tankCleaningRatePerSecond = 50;
 const maxTankDirtPerSecond = 28 / (60 * 60);
@@ -684,6 +688,9 @@ export class AquariumScene extends Phaser.Scene {
   private makeupOverlay?: HTMLDivElement;
   private makeupDraft?: MakeupDraft;
   private makeupDraggedDecoration?: MakeupDecorationDraft;
+  private makeupDecorationSettingsElement?: HTMLElement;
+  private makeupBackgroundScrollLeft = 0;
+  private makeupDecorScrollLeft = 0;
   private draggedFish?: Fish;
   private nativeCanvasInputCleanup?: () => void;
   private nativeDraggedFish?: Fish;
@@ -766,6 +773,7 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi();
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      this.handleMakeupOutsidePointerDown();
       this.handleTankPointer(pointer);
     });
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.updatePhaserDecorationDrag(pointer));
@@ -3126,6 +3134,7 @@ export class AquariumScene extends Phaser.Scene {
     const backgroundIndex = Math.max(0, this.tankCosmetics("background").findIndex((asset) => asset.id === this.selectedTankCosmeticId("background")));
     const seabedIndex = Math.max(0, this.tankCosmetics("seabed").findIndex((asset) => asset.id === this.selectedTankCosmeticId("seabed")));
     const draft: MakeupDraft = {
+      section: undefined,
       backgroundIndex,
       seabedIndex,
       backgroundTintById: new Map(this.tankCosmeticBlueTintInventory("background")),
@@ -3146,7 +3155,11 @@ export class AquariumScene extends Phaser.Scene {
           this.sanitizeDecorationSize(placedDecoration.size),
           placedDecoration.image.x,
           placedDecoration.image.y,
-          index
+          index,
+          {
+            originalTypeId: placedDecoration.typeId,
+            originalSize: this.sanitizeDecorationSize(placedDecoration.size)
+          }
         )
       );
     }
@@ -3168,16 +3181,14 @@ export class AquariumScene extends Phaser.Scene {
   private createMakeupOverlay(): HTMLDivElement {
     const overlay = document.createElement("div");
     overlay.className = "aq-makeup-overlay";
+    overlay.addEventListener("pointerdown", () => this.handleMakeupOutsidePointerDown());
     document.body.appendChild(overlay);
     return overlay;
   }
 
   private createMakeupPanel(): HTMLElement {
     const draft = this.makeupDraft!;
-    const decorationType = decorationTypes[draft.selectedDecorationTypeIndex] ?? decorationTypes[0];
     const cost = this.makeupTotalCost();
-    const selectedDecorationIndex = draft.selectedDecorationIndex;
-    const selectedDecoration = selectedDecorationIndex !== undefined ? draft.decorations[selectedDecorationIndex] : undefined;
     const panel = htmlElement("section", "aq-makeup-panel");
     panel.append(
       htmlElement("div", "aq-makeup-header", [
@@ -3185,39 +3196,192 @@ export class AquariumScene extends Phaser.Scene {
           htmlElement("h2", "aq-makeup-title", ["Makeup"]),
           this.makeupCostElement(cost)
         ]),
-        this.makeupButton("Apply", "good", () => this.applyMakeupLook()),
+        this.makeupButton("Apply", "good", () => this.showMakeupApplyConfirmation()),
         this.makeupButton("Close", "danger", () => this.closeMakeupMode(false))
-      ]),
-      this.makeupPickerRow("Background", "background", () => this.cycleMakeupCosmetic("background", -1), () => this.cycleMakeupCosmetic("background", 1)),
-      this.makeupPickerRow("Sand", "seabed", () => this.cycleMakeupCosmetic("seabed", -1), () => this.cycleMakeupCosmetic("seabed", 1)),
-      htmlElement("div", `aq-makeup-decor-tools ${selectedDecoration ? "has-selection" : ""}`, [
-        htmlElement("div", "aq-makeup-decor-row", [
-          this.makeupButton("<", "muted", () => this.cycleMakeupDecoration(-1)),
-          htmlImage(`/assets/decorations/${decorationType?.id ?? "plant"}.png`, "", "aq-makeup-decor-preview"),
-          htmlElement("div", "aq-makeup-decor-name", [
-            htmlElement("span", "aq-makeup-row-label", ["Decor"]),
-            htmlElement("strong", "", [decorationType?.name ?? "Decor"])
-          ]),
-          this.makeupButton(">", "muted", () => this.cycleMakeupDecoration(1))
-        ]),
-        this.makeupButton("Add", "good", () => this.addMakeupDecoration()),
-        htmlElement("div", "aq-makeup-size-row", [
-          ...decorationSizeOrder.map((size) =>
-            this.makeupButton(
-              decorationSizes[size].label,
-              draft.selectedSize === size ? "selected" : "muted",
-              () => this.setMakeupDecorationSize(size)
-            )
-          )
-        ]),
-        htmlElement("div", "aq-makeup-depth-row", [
-          this.makeupButton("Back", "muted", () => this.moveSelectedMakeupDecorationDepth(-1), !selectedDecoration || selectedDecorationIndex === 0),
-          this.makeupButton("Front", "muted", () => this.moveSelectedMakeupDecorationDepth(1), !selectedDecoration || selectedDecorationIndex === draft.decorations.length - 1),
-          this.makeupButton("Remove", "danger", () => this.removeSelectedMakeupDecoration(), !selectedDecoration)
-        ])
       ])
     );
+
+    if (!draft.section) {
+      panel.append(this.createMakeupSectionPicker());
+      return panel;
+    }
+
+    panel.append(
+      this.makeupButton("< Back", "muted aq-makeup-section-back", () => this.setMakeupSection(undefined))
+    );
+
+    if (draft.section === "background") {
+      panel.append(this.createMakeupCosmeticCardPicker("background"));
+    } else if (draft.section === "seabed") {
+      panel.append(this.createMakeupCosmeticCardPicker("seabed"));
+    } else {
+      panel.append(this.createMakeupDecorTools());
+      const decorationSettings = this.createMakeupSelectedDecorationSettings();
+      if (decorationSettings) {
+        panel.append(decorationSettings);
+      }
+    }
+
     return panel;
+  }
+
+  private createMakeupSectionPicker(): HTMLElement {
+    return htmlElement("div", "aq-makeup-section-picker", [
+      this.createMakeupSectionCard("Background", "/assets/ui/menu/menu_background_icon.png", () => this.setMakeupSection("background")),
+      this.createMakeupSectionCard("Bed", "/assets/ui/menu/menu_seabed_icon.png", () => this.setMakeupSection("seabed")),
+      this.createMakeupSectionCard("Decor", "/assets/decorations/amethyst-cluster.png", () => this.setMakeupSection("decor"))
+    ]);
+  }
+
+  private createMakeupSectionCard(label: string, icon: string, action: () => void): HTMLButtonElement {
+    const button = this.makeupButton("", "section-card", action);
+    button.append(
+      htmlImage(icon, "", "aq-makeup-section-icon"),
+      htmlElement("span", "", [label])
+    );
+    return button;
+  }
+
+  private setMakeupSection(section: MakeupSection | undefined): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    this.makeupDraft.section = section;
+    this.syncMakeupOverlay();
+  }
+
+  private createMakeupDecorTools(): HTMLElement {
+    const draft = this.makeupDraft!;
+    const strip = htmlElement("div", "aq-makeup-cosmetic-strip aq-makeup-decor-strip");
+    strip.scrollLeft = this.makeupDecorScrollLeft;
+    strip.addEventListener("scroll", () => {
+      this.makeupDecorScrollLeft = strip.scrollLeft;
+    }, { passive: true });
+    window.requestAnimationFrame(() => {
+      strip.scrollLeft = this.makeupDecorScrollLeft;
+    });
+    decorationTypes.forEach((decorationType, index) => {
+      strip.append(this.createMakeupDecorCard(decorationType, index, index === draft.selectedDecorationTypeIndex));
+    });
+    return htmlElement("div", "aq-makeup-decor-tools", [
+        strip,
+        this.makeupButton("Add", "good", () => this.addMakeupDecoration())
+      ]);
+  }
+
+  private createMakeupSelectedDecorationSettings(): HTMLElement | undefined {
+    const draft = this.makeupDraft;
+    const selectedDecorationIndex = draft?.selectedDecorationIndex;
+    const selectedDecoration = selectedDecorationIndex !== undefined ? draft?.decorations[selectedDecorationIndex] : undefined;
+    if (!draft || selectedDecorationIndex === undefined || !selectedDecoration) {
+      this.makeupDecorationSettingsElement = undefined;
+      return undefined;
+    }
+
+    const settings = htmlElement("div", "aq-makeup-decoration-settings", [
+      htmlElement("div", "aq-makeup-size-row", [
+        ...decorationSizeOrder.map((size) =>
+          this.makeupButton(
+            decorationSizes[size].label,
+            selectedDecoration.size === size ? "selected" : "muted",
+            () => this.setMakeupDecorationSize(size)
+          )
+        )
+      ]),
+      htmlElement("div", "aq-makeup-depth-row", [
+        this.makeupButton("Back", "muted", () => this.moveSelectedMakeupDecorationDepth(-1), selectedDecorationIndex === 0),
+        this.makeupButton("Front", "muted", () => this.moveSelectedMakeupDecorationDepth(1), selectedDecorationIndex === draft.decorations.length - 1),
+        this.makeupButton("Remove", "danger", () => this.removeSelectedMakeupDecoration())
+      ])
+    ]);
+    this.makeupDecorationSettingsElement = settings;
+    window.requestAnimationFrame(() => this.updateMakeupDecorationSettingsPosition());
+    return settings;
+  }
+
+  private updateMakeupDecorationSettingsPosition(): void {
+    const settings = this.makeupDecorationSettingsElement;
+    const draft = this.makeupDraft;
+    const selectedDecorationIndex = draft?.selectedDecorationIndex;
+    const selectedDecoration = selectedDecorationIndex !== undefined ? draft?.decorations[selectedDecorationIndex] : undefined;
+    if (!settings || !selectedDecoration) {
+      return;
+    }
+
+    const position = this.tankToScreenPoint(selectedDecoration.x, selectedDecoration.y);
+    const leftPercent = Phaser.Math.Clamp((position.x / gameWidth) * 100, 14, 86);
+    const topPercent = Phaser.Math.Clamp(((position.y - 88) / gameHeight) * 100, 14, 82);
+    settings.style.left = `${leftPercent}%`;
+    settings.style.top = `${topPercent}%`;
+  }
+
+  private handleMakeupOutsidePointerDown(): void {
+    if (this.activeScreen !== "makeup" || this.makeupDraggedDecoration || this.makeupDraft?.section !== "decor" || this.makeupDraft.selectedDecorationIndex === undefined) {
+      return;
+    }
+
+    this.makeupDraft.selectedDecorationIndex = undefined;
+    this.makeupDecorationSettingsElement = undefined;
+    this.syncMakeupOverlay();
+  }
+
+  private createMakeupDecorCard(decorationType: DecorationType, index: number, selected: boolean): HTMLButtonElement {
+    const button = this.makeupButton("", `photo-card ${selected ? "selected" : ""}`, () => this.setMakeupDecorationTypeIndex(index, this.makeupDecorScrollLeft));
+    const preview = htmlElement("span", "aq-makeup-cosmetic-photo");
+    preview.append(
+      htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-makeup-cosmetic-image contain"),
+      htmlImage(this.rarityIconPath(decorationType.rarity), "", "aq-makeup-cosmetic-rarity")
+    );
+    button.append(
+      preview,
+      htmlElement("span", "aq-makeup-cosmetic-name", [decorationType.name]),
+      this.makeupPriceStatusElement(this.decorationVariantPrice(decorationType, this.makeupDraft?.selectedSize ?? "m"))
+    );
+    return button;
+  }
+
+  private createMakeupCosmeticCardPicker(category: TankCosmeticCategory): HTMLElement {
+    const cosmetics = this.tankCosmetics(category);
+    const selectedAsset = this.makeupSelectedCosmetic(category);
+    const strip = htmlElement("div", "aq-makeup-cosmetic-strip");
+    const restoreScrollLeft = category === "background" ? this.makeupBackgroundScrollLeft : 0;
+    strip.scrollLeft = restoreScrollLeft;
+    strip.addEventListener("scroll", () => {
+      if (category === "background") {
+        this.makeupBackgroundScrollLeft = strip.scrollLeft;
+      }
+    }, { passive: true });
+    window.requestAnimationFrame(() => {
+      strip.scrollLeft = category === "background" ? this.makeupBackgroundScrollLeft : restoreScrollLeft;
+    });
+    cosmetics.forEach((asset, index) => {
+      strip.append(this.createMakeupCosmeticCard(category, asset, index, asset.id === selectedAsset.id));
+    });
+
+    return htmlElement("div", "aq-makeup-cosmetic-card-tools", [
+      strip,
+      this.makeupTintControl(category, "vertical")
+    ]);
+  }
+
+  private createMakeupCosmeticCard(category: TankCosmeticCategory, asset: TankCosmetic, index: number, selected: boolean): HTMLButtonElement {
+    const button = this.makeupButton("", `photo-card ${selected ? "selected" : ""}`, () => this.setMakeupCosmeticIndex(category, index, category === "background" ? this.makeupBackgroundScrollLeft : undefined));
+    const imageUrl = this.tankCosmeticImageUrl(asset);
+    const preview = htmlElement("span", "aq-makeup-cosmetic-photo");
+    if (imageUrl) {
+      preview.append(htmlImage(imageUrl, "", "aq-makeup-cosmetic-image"));
+    } else {
+      preview.style.backgroundColor = this.hexColor(asset.tint);
+    }
+    preview.append(this.createBlueTintPreviewOverlay(this.renderTankCosmeticBlueTintIntensity(category, asset.id)));
+    preview.append(htmlImage(this.rarityIconPath(this.rarityForPrice(asset.price)), "", "aq-makeup-cosmetic-rarity"));
+    button.append(
+      preview,
+      htmlElement("span", "aq-makeup-cosmetic-name", [asset.name]),
+      this.makeupCosmeticStatusElement(asset)
+    );
+    return button;
   }
 
   private makeupPickerRow(label: string, category: TankCosmeticCategory, previous: () => void, next: () => void): HTMLElement {
@@ -3241,8 +3405,12 @@ export class AquariumScene extends Phaser.Scene {
       return htmlElement("span", "aq-makeup-cosmetic-status owned", ["Owned"]);
     }
 
+    return this.makeupPriceStatusElement(asset.price);
+  }
+
+  private makeupPriceStatusElement(price: Price): HTMLElement {
     const status = htmlElement("span", "aq-makeup-cosmetic-status price");
-    for (const [coinType, amount] of priceComponents(asset.price)) {
+    for (const [coinType, amount] of priceComponents(price)) {
       status.append(
         htmlElement("span", "aq-makeup-cost-chip", [
           htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
@@ -3253,12 +3421,12 @@ export class AquariumScene extends Phaser.Scene {
     return status;
   }
 
-  private makeupTintControl(category: TankCosmeticCategory): HTMLElement {
+  private makeupTintControl(category: TankCosmeticCategory, orientation: "horizontal" | "vertical" = "horizontal"): HTMLElement {
     const selectedAsset = this.makeupSelectedCosmetic(category);
     const value = Math.round(this.renderTankCosmeticBlueTintIntensity(category, selectedAsset.id));
     const valueText = htmlElement("span", "", [`${formatNumber(value)}%`]);
     const input = document.createElement("input");
-    input.className = "aq-makeup-tint-range";
+    input.className = `aq-makeup-tint-range ${orientation}`;
     input.type = "range";
     input.min = "0";
     input.max = "100";
@@ -3272,7 +3440,7 @@ export class AquariumScene extends Phaser.Scene {
       valueText.textContent = `${formatNumber(nextValue)}%`;
       this.setMakeupBlueTint(category, nextValue);
     });
-    return htmlElement("label", "aq-makeup-tint-control", [
+    return htmlElement("label", `aq-makeup-tint-control ${orientation}`, [
       htmlElement("span", "", ["Tint"]),
       input,
       valueText
@@ -3286,6 +3454,9 @@ export class AquariumScene extends Phaser.Scene {
     button.disabled = disabled;
     button.textContent = label;
     this.attachTouchFeedback(button, true);
+    button.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+    });
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -3303,6 +3474,27 @@ export class AquariumScene extends Phaser.Scene {
     const cosmetics = this.tankCosmetics(category);
     const index = category === "background" ? this.makeupDraft?.backgroundIndex ?? 0 : this.makeupDraft?.seabedIndex ?? 0;
     return cosmetics[index] ?? cosmetics[0]!;
+  }
+
+  private setMakeupCosmeticIndex(category: TankCosmeticCategory, index: number, restoreScrollLeft?: number): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    const cosmetics = this.tankCosmetics(category);
+    if (!cosmetics[index]) {
+      return;
+    }
+
+    if (category === "background") {
+      this.makeupBackgroundScrollLeft = restoreScrollLeft ?? this.makeupBackgroundScrollLeft;
+      this.makeupDraft.backgroundIndex = index;
+      this.layoutTankBackground();
+    } else {
+      this.makeupDraft.seabedIndex = index;
+      this.layoutTankFloor();
+    }
+    this.syncMakeupOverlay();
   }
 
   private cycleMakeupCosmetic(category: TankCosmeticCategory, direction: number): void {
@@ -3355,6 +3547,16 @@ export class AquariumScene extends Phaser.Scene {
     this.syncMakeupOverlay();
   }
 
+  private setMakeupDecorationTypeIndex(index: number, restoreScrollLeft = this.makeupDecorScrollLeft): void {
+    if (!this.makeupDraft || !decorationTypes[index]) {
+      return;
+    }
+
+    this.makeupDecorScrollLeft = restoreScrollLeft;
+    this.makeupDraft.selectedDecorationTypeIndex = index;
+    this.syncMakeupOverlay();
+  }
+
   private setMakeupDecorationSize(size: DecorationSize): void {
     if (!this.makeupDraft) {
       return;
@@ -3394,12 +3596,12 @@ export class AquariumScene extends Phaser.Scene {
     this.syncMakeupOverlay();
   }
 
-  private createMakeupDecorationDraft(decoration: DecorationType, size: DecorationSize, x: number, y: number, depth = 0): MakeupDecorationDraft {
+  private createMakeupDecorationDraft(decoration: DecorationType, size: DecorationSize, x: number, y: number, depth = 0, original?: { originalTypeId: string; originalSize: DecorationSize }): MakeupDecorationDraft {
     const image = this.add.image(x, y, decoration.texture).setDepth(this.makeupDecorationDisplayDepth(depth)).setAlpha(0.9);
     this.fitDecorationDisplay(image, decoration, size);
     image.setInteractive({ useHandCursor: true });
     this.tankLayer.add(image);
-    const draft: MakeupDecorationDraft = { typeId: decoration.id, size, x, y, depth, image };
+    const draft: MakeupDecorationDraft = { typeId: decoration.id, size, x, y, depth, image, ...original };
     image.on("pointerdown", (pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       this.selectMakeupDecoration(draft);
@@ -3418,6 +3620,7 @@ export class AquariumScene extends Phaser.Scene {
 
     const index = this.makeupDraft.decorations.indexOf(decoration);
     if (index >= 0) {
+      this.makeupDraft.section = "decor";
       this.makeupDraft.selectedDecorationIndex = index;
       this.makeupDraft.selectedSize = decoration.size;
       this.syncMakeupOverlay();
@@ -3435,6 +3638,7 @@ export class AquariumScene extends Phaser.Scene {
     decoration.x = Phaser.Math.Clamp(tankPoint.x, tankBounds.left + 24, tankBounds.right - 24);
     decoration.y = Phaser.Math.Clamp(tankPoint.y, tankBounds.top + 118, tankBounds.bottom - 30);
     decoration.image.setPosition(decoration.x, decoration.y);
+    this.updateMakeupDecorationSettingsPosition();
   }
 
   private endMakeupDecorationDrag(): void {
@@ -3513,27 +3717,102 @@ export class AquariumScene extends Phaser.Scene {
       this.addPriceToWallet(total, seabed.price);
     }
 
-    const decorationCounts = new Map<string, { type: DecorationType; size: DecorationSize; count: number }>();
+    for (const entry of this.makeupDecorationCostEntries()) {
+      this.addPriceToWallet(total, entry.price, entry.count);
+    }
+
+    return this.walletToPrice(total);
+  }
+
+  private makeupDecorationCostEntries(): Array<{ line: string; price: Price; count: number }> {
+    if (!this.makeupDraft) {
+      return [];
+    }
+
+    const entries: Array<{ line: string; price: Price; count: number }> = [];
+    const newDecorationCounts = new Map<string, { type: DecorationType; size: DecorationSize; count: number }>();
     for (const decoration of this.makeupDraft.decorations) {
       const decorationType = decorationTypes.find((item) => item.id === decoration.typeId);
       if (!decorationType) {
         continue;
       }
+
+      if (decoration.originalTypeId === decoration.typeId && decoration.originalSize) {
+        const upgradePrice = this.decorationSizeUpgradePrice(decorationType, decoration.originalSize, decoration.size);
+        if (this.priceWealth(upgradePrice) > 0) {
+          entries.push({
+            line: `Decor upgrade: ${decorationType.name} ${decorationSizes[decoration.originalSize].label} -> ${decorationSizes[decoration.size].label}`,
+            price: upgradePrice,
+            count: 1
+          });
+        }
+        continue;
+      }
+
       const key = this.decorationInventoryKey(decoration.typeId, decoration.size);
-      const current = decorationCounts.get(key) ?? { type: decorationType, size: decoration.size, count: 0 };
+      const current = newDecorationCounts.get(key) ?? { type: decorationType, size: decoration.size, count: 0 };
       current.count += 1;
-      decorationCounts.set(key, current);
+      newDecorationCounts.set(key, current);
     }
 
-    for (const entry of decorationCounts.values()) {
-      const ownedCount = this.getOwnedDecorationCount(entry.type.id, entry.size);
-      const purchaseCount = Math.max(0, entry.count - ownedCount);
+    for (const entry of newDecorationCounts.values()) {
+      const storedCount = this.getDecorationInventory(entry.type.id, entry.size);
+      const purchaseCount = Math.max(0, entry.count - storedCount);
       if (purchaseCount > 0) {
-        this.addPriceToWallet(total, this.decorationVariantPrice(entry.type, entry.size), purchaseCount);
+        entries.push({
+          line: `Decor: ${entry.type.name} ${decorationSizes[entry.size].label} x${formatNumber(purchaseCount)}`,
+          price: this.decorationVariantPrice(entry.type, entry.size),
+          count: purchaseCount
+        });
       }
     }
 
+    return entries;
+  }
+
+  private decorationSizeUpgradePrice(decorationType: DecorationType, fromSize: DecorationSize, toSize: DecorationSize): Price {
+    const fromPrice = this.decorationVariantPrice(decorationType, fromSize);
+    const toPrice = this.decorationVariantPrice(decorationType, toSize);
+    const total = createEmptyWallet();
+    for (const coinType of ["common", "rare", "superRare"] as const) {
+      const fromAmount = this.priceComponentAmount(fromPrice, coinType);
+      const toAmount = this.priceComponentAmount(toPrice, coinType);
+      total[coinType] = Math.max(0, toAmount - fromAmount);
+    }
     return this.walletToPrice(total);
+  }
+
+  private priceComponentAmount(price: Price, coinType: CoinType): number {
+    if (price.coinType === coinType) {
+      return price.amount;
+    }
+    if (coinType === "rare") {
+      return price.rareAmount ?? 0;
+    }
+    if (coinType === "superRare") {
+      return price.superRareAmount ?? 0;
+    }
+    return 0;
+  }
+
+  private makeupPurchaseLines(): string[] {
+    if (!this.makeupDraft) {
+      return [];
+    }
+
+    const purchases: string[] = [];
+    const background = this.makeupSelectedCosmetic("background");
+    const seabed = this.makeupSelectedCosmetic("seabed");
+    if (!this.ownsTankCosmetic(background)) {
+      purchases.push(`Background: ${background.name}`);
+    }
+    if (!this.ownsTankCosmetic(seabed)) {
+      purchases.push(`Bed: ${seabed.name}`);
+    }
+
+    purchases.push(...this.makeupDecorationCostEntries().map((entry) => entry.line));
+
+    return purchases;
   }
 
   private makeupCostElement(price: Price): HTMLElement {
@@ -3542,6 +3821,23 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     const row = htmlElement("div", "aq-makeup-cost aq-makeup-cost-icons", [htmlElement("span", "", ["Cost"])]);
+    for (const [coinType, amount] of priceComponents(price)) {
+      row.append(
+        htmlElement("span", "aq-makeup-cost-chip", [
+          htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
+          htmlElement("strong", "", [formatNumber(amount)])
+        ])
+      );
+    }
+    return row;
+  }
+
+  private priceIconRow(price: Price, label = "Total price"): HTMLElement {
+    if (this.priceWealth(price) <= 0) {
+      return htmlElement("p", "aq-modal-line", [`${label}: Free`]);
+    }
+
+    const row = htmlElement("p", "aq-modal-line aq-modal-price-line", [htmlElement("span", "", [`${label}:`])]);
     for (const [coinType, amount] of priceComponents(price)) {
       row.append(
         htmlElement("span", "aq-makeup-cost-chip", [
@@ -3568,6 +3864,36 @@ export class AquariumScene extends Phaser.Scene {
     };
   }
 
+  private showMakeupApplyConfirmation(): void {
+    if (!this.makeupDraft) {
+      return;
+    }
+
+    const cost = this.makeupTotalCost();
+    const purchaseLines = this.makeupPurchaseLines();
+    const bodyElements = [
+      this.priceIconRow(cost),
+      htmlElement("p", "aq-modal-line", [purchaseLines.length > 0 ? "Items purchased:" : "Items purchased: none"]),
+      ...(purchaseLines.length > 0 ? purchaseLines : ["Only owned items will be used."]).map((line) => htmlElement("p", "aq-modal-line", [line]))
+    ];
+    this.showModal(
+      "Apply Tank Look?",
+      [],
+      [
+        {
+          label: "Apply",
+          fill: 0x356a35,
+          action: () => {
+            this.closeModal();
+            this.applyMakeupLook();
+          }
+        },
+        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
+      ],
+      bodyElements
+    );
+  }
+
   private applyMakeupLook(): void {
     if (!this.makeupDraft) {
       return;
@@ -3577,6 +3903,7 @@ export class AquariumScene extends Phaser.Scene {
     if (this.priceWealth(cost) > 0 && !this.spendPrice(cost)) {
       return;
     }
+    const boughtDecorationCount = this.makeupDecorationCostEntries().length;
 
     const background = this.makeupSelectedCosmetic("background");
     const seabed = this.makeupSelectedCosmetic("seabed");
@@ -3595,12 +3922,6 @@ export class AquariumScene extends Phaser.Scene {
     this.applyTankCosmeticBlueTint("seabed", seabed.id, this.renderTankCosmeticBlueTintIntensity("seabed", seabed.id));
 
     const draftDecorations = [...this.makeupDraft.decorations];
-    const reusablePlacedCounts = new Map<string, number>();
-    for (const decoration of this.activeDecorations()) {
-      const size = this.sanitizeDecorationSize(decoration.size);
-      const key = this.decorationInventoryKey(decoration.typeId, size);
-      reusablePlacedCounts.set(key, (reusablePlacedCounts.get(key) ?? 0) + 1);
-    }
     this.removeAllPlacedDecorationsFromActiveTank();
     this.makeupDraft.decorations = [];
     for (const [index, decoration] of draftDecorations.entries()) {
@@ -3609,18 +3930,15 @@ export class AquariumScene extends Phaser.Scene {
       if (!decorationType) {
         continue;
       }
-      const key = this.decorationInventoryKey(decoration.typeId, decoration.size);
-      const reusablePlacedCount = reusablePlacedCounts.get(key) ?? 0;
-      if (reusablePlacedCount > 0) {
-        reusablePlacedCounts.set(key, reusablePlacedCount - 1);
-      } else if (this.getDecorationInventory(decoration.typeId, decoration.size) > 0) {
+      const isExistingPlacedDecoration = decoration.originalTypeId === decoration.typeId && Boolean(decoration.originalSize);
+      if (!isExistingPlacedDecoration && this.getDecorationInventory(decoration.typeId, decoration.size) > 0) {
         this.consumeStoredDecoration(decoration.typeId, decoration.size);
       }
       this.addDecorationToTank(decorationType, decoration.x, decoration.y, decoration.size, this.tankLevel, this.tankDecorationDepthFromOrder(index));
       this.recordDailyQuestAction("place-decoration");
     }
 
-    if (draftDecorations.length > 0) {
+    if (boughtDecorationCount > 0) {
       this.recordDailyQuestAction("buy-decoration");
     }
     this.floatText("Look applied", toastX, toastY, "#a8ffb0");
@@ -3632,6 +3950,8 @@ export class AquariumScene extends Phaser.Scene {
     this.destroyMakeupDraft();
     this.makeupOverlay?.classList.add("hidden");
     this.makeupDraggedDecoration = undefined;
+    this.makeupBackgroundScrollLeft = 0;
+    this.makeupDecorScrollLeft = 0;
     this.activeScreen = "tank";
     this.layoutTankBackground();
     this.layoutTankFloor();
@@ -8349,6 +8669,25 @@ export class AquariumScene extends Phaser.Scene {
     return "*".repeat(rarityStarCount(rarity));
   }
 
+  private rarityForPrice(price: Price): Rarity {
+    if ((price.superRareAmount ?? 0) > 0 || price.coinType === "superRare") {
+      return "superRare";
+    }
+    if ((price.rareAmount ?? 0) > 0 || price.coinType === "rare") {
+      return "rare";
+    }
+    return "common";
+  }
+
+  private rarityIconPath(rarity: Rarity): string {
+    const iconByRarity: Record<Rarity, string> = {
+      common: "/assets/ui/shop/common_star_badge.png",
+      rare: "/assets/ui/shop/rare_star_badge.png",
+      superRare: "/assets/ui/shop/super_rare_star_badge.png"
+    };
+    return iconByRarity[rarity];
+  }
+
   private showSellConfirmation(index: number): void {
     const targetFish = this.fish[index];
     if (!targetFish) {
@@ -8935,13 +9274,14 @@ export class AquariumScene extends Phaser.Scene {
     );
   }
 
-  private showModal(title: string, lines: string[], actions: ModalAction[]): void {
+  private showModal(title: string, lines: string[], actions: ModalAction[], bodyElements?: HTMLElement[]): void {
     this.closeModal();
     this.modalTitle = title;
 
     const shell = createModalShell({
       title,
       lines,
+      bodyElements,
       actions,
       attachTouchFeedback: (button) => this.attachTouchFeedback(button),
       afterAction: () => {

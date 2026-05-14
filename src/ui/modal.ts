@@ -9,6 +9,7 @@ export type ModalAction = {
 export function createModalShell(options: {
   title: string;
   lines: string[];
+  bodyElements?: HTMLElement[];
   actions: ModalAction[];
   attachTouchFeedback?: (button: HTMLButtonElement) => void;
   afterAction?: () => void;
@@ -28,7 +29,7 @@ export function createModalShell(options: {
   const panel = htmlElement("section", "aq-modal");
   panel.append(
     htmlElement("h2", "aq-modal-title", [options.title]),
-    htmlElement("div", "aq-modal-body", options.lines.map((line) => htmlElement("p", "aq-modal-line", [line])))
+    htmlElement("div", "aq-modal-body", options.bodyElements ?? options.lines.map((line) => htmlElement("p", "aq-modal-line", [line])))
   );
 
   const actionRow = htmlElement("div", `aq-modal-actions ${options.actions.length === 1 ? "single" : ""}`);

@@ -653,16 +653,73 @@ canvas {
     @apply h-4 w-4 shrink-0 object-contain drop-shadow;
   }
 
+  .aq-makeup-section-picker {
+    @apply pointer-events-auto absolute left-3 right-3 top-[max(112px,calc(env(safe-area-inset-top)_+_112px))] grid grid-cols-3 gap-2;
+  }
+
+  .aq-makeup-button.section-card {
+    @apply flex min-h-[104px] flex-col items-center justify-center gap-2 rounded-3xl border-cyan-100/35 bg-sky-800/82 px-2 py-3 text-base shadow-xl;
+    backdrop-filter: blur(8px);
+  }
+
+  .aq-makeup-section-icon {
+    @apply h-14 w-14 object-contain drop-shadow-lg;
+  }
+
+  .aq-makeup-section-back {
+    @apply absolute left-3 top-[max(76px,calc(env(safe-area-inset-top)_+_76px))] min-h-9 rounded-full px-3 text-xs;
+  }
+
   .aq-makeup-picker-row {
     @apply pointer-events-none absolute left-3 right-3 grid grid-cols-[46px_minmax(0,1fr)_46px] items-center gap-2;
   }
 
   .aq-makeup-picker-row.background {
-    top: max(100px, calc(env(safe-area-inset-top) + 100px));
+    top: max(126px, calc(env(safe-area-inset-top) + 126px));
   }
 
   .aq-makeup-picker-row.sand {
-    top: max(200px, calc(env(safe-area-inset-top) + 200px));
+    top: max(126px, calc(env(safe-area-inset-top) + 126px));
+  }
+
+  .aq-makeup-cosmetic-card-tools {
+    @apply pointer-events-none absolute left-3 right-3 top-[max(126px,calc(env(safe-area-inset-top)_+_126px))] grid grid-cols-1 gap-3;
+  }
+
+  .aq-makeup-cosmetic-strip {
+    @apply pointer-events-auto flex min-h-[190px] min-w-0 gap-2 overflow-x-auto p-0;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .aq-makeup-cosmetic-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aq-makeup-button.photo-card {
+    @apply min-h-[172px] shrink-0 rounded-2xl border-sky-300/35 bg-sky-950 p-1.5 text-xs text-white shadow-lg;
+    width: calc((100% - 1.25rem) / 3.5);
+  }
+
+  .aq-makeup-button.photo-card.selected {
+    @apply border-amber-300 bg-sky-950 text-white ring-4 ring-amber-300/85;
+  }
+
+  .aq-makeup-cosmetic-photo {
+    @apply relative block aspect-[3/4] w-full overflow-hidden rounded-xl border border-sky-300/25 bg-sky-900;
+  }
+
+  .aq-makeup-cosmetic-image {
+    @apply h-full w-full object-cover;
+  }
+
+  .aq-makeup-cosmetic-name {
+    @apply mt-1 block w-full truncate text-center text-xs font-black text-white;
+  }
+
+  .aq-makeup-cosmetic-rarity {
+    @apply absolute left-1 top-1 h-7 w-7 object-contain drop-shadow-lg;
   }
 
   .aq-makeup-decor-row {
@@ -670,7 +727,11 @@ canvas {
   }
 
   .aq-makeup-decor-tools {
-    @apply pointer-events-none absolute left-3 top-[58%] grid w-[min(440px,calc(100%_-_24px))] grid-cols-[minmax(0,360px)_64px] items-start gap-2;
+    @apply pointer-events-none absolute left-3 right-3 top-[max(126px,calc(env(safe-area-inset-top)_+_126px))] grid grid-cols-1 gap-3;
+  }
+
+  .aq-makeup-decor-strip .aq-makeup-cosmetic-image.contain {
+    @apply object-contain p-2;
   }
 
   .aq-makeup-decor-preview {
@@ -717,11 +778,16 @@ canvas {
   }
 
   .aq-makeup-cosmetic-status.price .aq-makeup-cost-chip {
-    @apply py-0 text-[10px];
+    @apply border-0 bg-transparent px-0 py-0 text-[10px] shadow-none;
   }
 
   .aq-makeup-tint-control {
     @apply mt-1 grid grid-cols-[34px_minmax(0,1fr)_42px] items-center gap-2 text-[10px] font-black uppercase text-cyan-50/82;
+  }
+
+  .aq-makeup-tint-control.vertical {
+    @apply pointer-events-auto mt-0 grid h-[224px] w-[72px] grid-cols-1 grid-rows-[20px_minmax(0,1fr)_20px] justify-items-center justify-self-end rounded-3xl border border-cyan-100/28 bg-sky-950/50 px-2 py-3 shadow-xl;
+    backdrop-filter: blur(6px);
   }
 
   .aq-makeup-tint-range {
@@ -729,13 +795,29 @@ canvas {
     touch-action: pan-x;
   }
 
+  .aq-makeup-tint-range.vertical {
+    @apply h-full w-8 px-0 py-1.5;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    touch-action: pan-y;
+  }
+
   .aq-makeup-tint-range::-webkit-slider-runnable-track {
     @apply h-2 rounded-full bg-cyan-950/80;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   }
 
+  .aq-makeup-tint-range.vertical::-webkit-slider-runnable-track {
+    @apply h-full w-2;
+  }
+
   .aq-makeup-tint-range::-webkit-slider-thumb {
     @apply mt-[-10px] h-7 w-7 appearance-none rounded-full border-[5px] border-white bg-sky-300 shadow-lg;
+  }
+
+  .aq-makeup-tint-range.vertical::-webkit-slider-thumb {
+    @apply mt-0;
+    margin-left: -10px;
   }
 
   .aq-makeup-tint-range::-moz-range-track {
@@ -747,16 +829,17 @@ canvas {
   }
 
   .aq-makeup-size-row {
-    @apply col-span-2 mt-1.5 hidden grid-cols-5 gap-1.5;
+    @apply grid grid-cols-1 gap-1.5;
   }
 
   .aq-makeup-depth-row {
-    @apply col-span-2 mt-1.5 hidden grid-cols-3 gap-1.5;
+    @apply mt-1.5 grid grid-cols-1 gap-1.5;
   }
 
-  .aq-makeup-decor-tools.has-selection .aq-makeup-size-row,
-  .aq-makeup-decor-tools.has-selection .aq-makeup-depth-row {
-    @apply grid;
+  .aq-makeup-decoration-settings {
+    @apply pointer-events-auto absolute z-[2] w-[86px] rounded-3xl border border-cyan-100/28 bg-sky-950/72 p-2 shadow-xl;
+    transform: translate(-50%, -100%);
+    backdrop-filter: blur(8px);
   }
 
   .aq-makeup-button {
@@ -783,7 +866,7 @@ canvas {
 
   .aq-makeup-size-row > .aq-makeup-button,
   .aq-makeup-depth-row > .aq-makeup-button {
-    @apply min-h-9 px-1 text-sm;
+    @apply min-h-8 px-1 text-xs;
   }
 
   .aq-makeup-button.good {
@@ -1449,6 +1532,10 @@ canvas {
     @apply text-sm font-bold leading-snug text-cyan-50/88;
   }
 
+  .aq-modal-price-line {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+
   .aq-modal-actions {
     @apply mt-4 grid grid-cols-2 gap-2;
   }
@@ -1909,12 +1996,12 @@ canvas {
   }
 
   .aq-tank-menu-bubble img {
-    @apply h-[76%] w-[76%] object-contain drop-shadow-lg;
+    @apply h-[84%] w-[84%] object-contain drop-shadow-lg;
     transition: transform 90ms ease;
   }
 
   .aq-tank-menu-bubble img.aq-tank-menu-icon-small {
-    @apply h-[78%] w-[78%];
+    @apply h-[86%] w-[86%];
   }
 
   .aq-tank-menu-button-plain .aq-tank-menu-bubble img {
