@@ -626,6 +626,7 @@ export class AquariumScene extends Phaser.Scene {
   private pendingFusionTimer?: number;
   private fusionRunToken = 0;
   private decorationInventory = new Map<string, number>();
+  private careFoodTargetFish = new Map<FoodTypeId, Fish>();
   private creatureInventory = new Map<string, number>();
   private fish: Fish[] = [];
   private foods: FoodPellet[] = [];
@@ -6336,6 +6337,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + 1);
+    this.careFoodTargetFish.set(foodType.id, fish);
     this.recordGrowthTonicPurchase();
     this.recordDailyQuestAction("buy-growth-tonic");
     this.recentInventoryDockItemKey = `food:${foodType.id}`;
@@ -6453,6 +6455,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + 1);
+    this.careFoodTargetFish.set(foodType.id, fish);
     this.recordProductionBoostPurchase();
     this.recordDailyQuestAction("buy-production-boost");
     this.recentInventoryDockItemKey = `food:${foodType.id}`;
@@ -6481,13 +6484,17 @@ export class AquariumScene extends Phaser.Scene {
     if (reservedCalories <= 0) {
       return;
     }
+    const targetFish = this.careFoodTargetForDrop(foodType.id);
     const pellet = new FoodPellet(
       this,
       Phaser.Math.Clamp(x, tankBounds.left + 18, tankBounds.right - 18),
       Phaser.Math.Clamp(y, tankBounds.top + 18, tankBounds.bottom - 18),
       foodType,
-      { reservedCalories }
+      { reservedCalories, targetFish }
     );
+    if (targetFish) {
+      this.careFoodTargetFish.delete(foodType.id);
+    }
     pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
     pellet.addToContainer(this.tankLayer);
     this.foods.push(pellet);
@@ -6497,6 +6504,15 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi();
     this.createFoodDock();
     this.saveNow();
+  }
+
+  private careFoodTargetForDrop(foodTypeId: FoodTypeId): Fish | undefined {
+    if (foodTypeId !== "ageBoost" && foodTypeId !== productionBoostFoodTypeId) {
+      return undefined;
+    }
+
+    const targetFish = this.careFoodTargetFish.get(foodTypeId);
+    return targetFish && this.activeFish().includes(targetFish) ? targetFish : undefined;
   }
 
   private reserveFoodForDrop(foodType: FoodType): number {
@@ -8191,46 +8207,21 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     for (const food of this.foods) {
-      const assignedFish = this.fishAssignedToFood(food, tankFish);
-      if (!assignedFish) {
-        continue;
-      }
+      for (const currentFish of tankFish) {
+        if (!currentFish.canChaseFood(food)) {
+          continue;
+        }
 
-      const fishFoods = assignments.get(assignedFish);
-      if (fishFoods) {
-        fishFoods.push(food);
-      } else {
-        assignments.set(assignedFish, [food]);
+        const fishFoods = assignments.get(currentFish);
+        if (fishFoods) {
+          fishFoods.push(food);
+        } else {
+          assignments.set(currentFish, [food]);
+        }
       }
     }
 
     return assignments;
-  }
-
-  private fishAssignedToFood(food: FoodPellet, tankFish: Fish[]): Fish | undefined {
-    let bestFish: Fish | undefined;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    for (const currentFish of tankFish) {
-      if (!currentFish.canChaseFood(food)) {
-        continue;
-      }
-
-      const distance = Phaser.Math.Distance.BetweenPoints(currentFish.sprite, food.sprite);
-      if (!bestFish) {
-        bestFish = currentFish;
-        bestDistance = distance;
-        continue;
-      }
-
-      const hungerGap = currentFish.hunger - bestFish.hunger;
-      if (hungerGap > 0.1 || (Math.abs(hungerGap) <= 0.1 && distance < bestDistance)) {
-        bestFish = currentFish;
-        bestDistance = distance;
-      }
-    }
-
-    return bestFish;
   }
 
   private removeExpiredFood(): void {
