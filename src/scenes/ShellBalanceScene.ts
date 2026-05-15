@@ -32,10 +32,18 @@ type StackPieceSource = {
 type StackPiece = {
   body: Phaser.Physics.Matter.Image;
   source: StackPieceSource;
-  level: number;
-  value: number;
-  settled: boolean;
   released: boolean;
+  resolved: boolean;
+};
+
+type MovingBrick = {
+  platform: Phaser.Physics.Matter.Image;
+  helper: Phaser.GameObjects.Image;
+  source: StackPieceSource;
+  minX: number;
+  maxX: number;
+  phase: number;
+  sweepSpeed: number;
 };
 
 const floorHeight = 44;
@@ -44,12 +52,15 @@ const floorY = gameHeight - floorHeight / 2;
 const topSafeOffset = 42;
 const spawnY = 140 + topSafeOffset;
 const dropGuideY = spawnY + 44;
-const settleSpeed = 0.48;
-const readyMoveSpeed = 150;
 const nextCrabDelayMs = 500;
 const readyFadeInMs = 220;
-const readyMinX = 42;
-const readyMaxX = gameWidth - 42;
+const brickTextureKey = "stack-target-brick";
+const brickWidth = 92;
+const brickHeight = 22;
+const brickLevels = [0.42, 0.58, 0.74];
+const brickSweepSpeed = 1.38;
+const brickCorrectFlashColor = 0x54ff76;
+const brickWrongFlashColor = 0xff4d55;
 const doneButtonWidth = 92;
 const doneButtonHeight = 38;
 const doneButtonX = gameWidth - 68;
@@ -57,7 +68,7 @@ const doneButtonY = 44 + topSafeOffset;
 const commonCoinIconPath = "/assets/ui/icon-common-coin.png";
 const coinCollectSoundKey = "sfx-coin-collect";
 const helperPieceScale = 1.28;
-const mergeGrowthScale = 0.24;
+const rewardPerHitMultiplier = 0.5;
 const gameDurationMs = 120000;
 const helperVisualOriginYById: Record<string, number> = {
   "auto-cleaner": 0.25,
@@ -71,6 +82,15 @@ const helperCollisionRatioById: Record<string, { width: number; height: number }
   "feeder-snail": { width: 0.76, height: 0.76 },
   shell: { width: 0.57, height: 0.48 }
 };
+const brickHelperScaleById: Record<string, number> = {
+  crab: 1.18,
+  shell: 1.42
+};
+const brickHelperYOffsetById: Record<string, number> = {
+  crab: -8,
+  shell: -14
+};
+const stackHelperTypes = helperCreatureTypes.filter((helperType) => helperType.id !== "shrimp");
 
 export class ShellBalanceScene extends Phaser.Scene {
   private onComplete?: (result: ShellBalanceResult) => void;
@@ -78,11 +98,10 @@ export class ShellBalanceScene extends Phaser.Scene {
   private pieces: StackPiece[] = [];
   private activePiece?: StackPiece;
   private pieceSources: StackPieceSource[] = [];
+  private movingBricks: MovingBrick[] = [];
   private nextPieceSourceIndex = 0;
-  private readyMoveDirection = 1;
   private scoreCount = 0;
   private mismatchCount = 0;
-  private settledCount = 0;
   private finished = false;
   private prizeText?: Phaser.GameObjects.Text;
   private timerText?: Phaser.GameObjects.Text;
@@ -117,7 +136,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   preload(): void {
-    helperCreatureTypes.forEach((helperType) => {
+    stackHelperTypes.forEach((helperType) => {
       this.load.image(this.stackHelperTextureKey(helperType.id), `/assets/helpers/${helperType.id}.png`);
     });
     this.load.image("stack-prize-common-coin", commonCoinIconPath);
@@ -139,11 +158,10 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.resultClaimBounds = undefined;
     this.pieces = [];
     this.activePiece = undefined;
+    this.movingBricks = [];
     this.nextPieceSourceIndex = 0;
-    this.readyMoveDirection = 1;
     this.scoreCount = 0;
     this.mismatchCount = 0;
-    this.settledCount = 0;
     this.gameEndsAt = this.time.now + gameDurationMs;
     this.disableSafariTouchGestures();
 
@@ -153,6 +171,8 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.createBounds();
     this.createDragBoundary();
     this.createFloor();
+    this.createBrickTexture();
+    this.createMovingBricks();
     this.createHud();
     this.scheduleNextPiece(nextCrabDelayMs);
 
@@ -177,9 +197,8 @@ export class ShellBalanceScene extends Phaser.Scene {
     }
 
     const remainingMs = Math.max(0, this.gameEndsAt - time);
+    this.updateMovingBricks(time);
     this.updateActivePiece(delta);
-    this.updateSettledPieces();
-    this.scoreCount = this.currentMergeCount();
     this.prizeText?.setText(formatNumber(this.currentPrizeAmount()));
     this.timerText?.setText(this.formatTimer(remainingMs));
     if (remainingMs <= 0) {
@@ -229,7 +248,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private createPieceSources(): void {
-    const helperSources: StackPieceSource[] = helperCreatureTypes
+    const helperSources: StackPieceSource[] = stackHelperTypes
       .map((helperType) => ({
         id: `helper-${helperType.id}`,
         name: helperType.name,
@@ -259,6 +278,65 @@ export class ShellBalanceScene extends Phaser.Scene {
       friction: 0.95,
       restitution: 0.12,
       label: "stack-floor"
+    });
+  }
+
+  private createBrickTexture(): void {
+    if (this.textures.exists(brickTextureKey)) {
+      return;
+    }
+
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x2eb6d1, 0.96);
+    graphics.fillRoundedRect(0, 0, brickWidth, brickHeight, 11);
+    graphics.fillStyle(0xd8fbff, 0.38);
+    graphics.fillRoundedRect(6, 4, brickWidth - 12, 7, 4);
+    graphics.lineStyle(2, 0x083b5c, 0.22);
+    graphics.strokeRoundedRect(1, 1, brickWidth - 2, brickHeight - 2, 10);
+    graphics.generateTexture(brickTextureKey, brickWidth, brickHeight);
+    graphics.destroy();
+  }
+
+  private createMovingBricks(): void {
+    const brickSources = this.pieceSources.slice(0, 3);
+    if (brickSources.length === 0) {
+      return;
+    }
+
+    this.movingBricks = brickSources.map((source, index) => {
+      const y = Math.round(gameHeight * brickLevels[index]);
+      const minX = brickWidth / 2 + 14;
+      const maxX = gameWidth - brickWidth / 2 - 14;
+      const startX = Phaser.Math.Linear(minX, maxX, (index + 1) / (brickSources.length + 1));
+      const platform = this.matter.add.image(startX, y, brickTextureKey, undefined, {
+        isStatic: true,
+        isSensor: true,
+        shape: { type: "rectangle", width: brickWidth, height: brickHeight },
+        friction: 0.72,
+        restitution: 0.08,
+        label: "stack-brick"
+      });
+      platform.setDisplaySize(brickWidth, brickHeight);
+      platform.setDepth(4);
+      platform.setIgnoreGravity(true);
+
+      const sourceId = source.id.replace("helper-", "");
+      const helperScale = 0.74 * (brickHelperScaleById[sourceId] ?? 1);
+      const helperOffsetY = brickHelperYOffsetById[sourceId] ?? 0;
+      const helper = this.add.image(startX, y - 16 + helperOffsetY, source.textureKey)
+        .setDisplaySize(source.width * helperScale, source.height * helperScale)
+        .setOrigin(0.5, source.visualOriginY)
+        .setDepth(5);
+
+      return {
+        platform,
+        helper,
+        source,
+        minX,
+        maxX,
+        phase: (Math.PI * 2 * index) / brickSources.length,
+        sweepSpeed: brickSweepSpeed
+      };
     });
   }
 
@@ -350,14 +428,15 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private spawnPiece(): void {
-    const source = this.pieceSources[this.nextPieceSourceIndex % this.pieceSources.length];
+    const spawnSources = this.movingBricks.length > 0 ? this.movingBricks.map((brick) => brick.source) : this.pieceSources;
+    const source = spawnSources[this.nextPieceSourceIndex % spawnSources.length];
     if (!source || !this.textures.exists(source.textureKey)) {
       this.time.delayedCall(120, () => this.spawnPiece());
       return;
     }
     this.nextPieceSourceIndex += 1;
 
-    const body = this.createPieceBody(source, gameWidth / 2, spawnY, 1, true);
+    const body = this.createPieceBody(source, gameWidth / 2, spawnY, true);
     body.setDepth(5);
     body.setAlpha(0);
     body.setVelocity(0, 0);
@@ -365,10 +444,8 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.activePiece = {
       body,
       source,
-      level: 1,
-      value: 1,
-      settled: false,
-      released: false
+      released: false,
+      resolved: false
     };
     this.pieces.push(this.activePiece);
     this.tweens.add({
@@ -386,34 +463,25 @@ export class ShellBalanceScene extends Phaser.Scene {
 
     const piece = this.activePiece.body;
     if (this.activePiece.released) {
+      if (piece.y >= floorTopY - 4) {
+        this.resolveMissedDrop();
+      }
       return;
     }
 
     piece.setVelocity(0, 0);
     piece.setAngularVelocity(0);
-      let nextX = piece.x + this.readyMoveDirection * readyMoveSpeed * (delta / 1000);
-    if (nextX <= readyMinX || nextX >= readyMaxX) {
-      this.readyMoveDirection *= -1;
-      nextX = Phaser.Math.Clamp(nextX, readyMinX, readyMaxX);
-    }
-    piece.setPosition(nextX, spawnY);
+    piece.setPosition(gameWidth / 2, spawnY);
   }
 
-  private updateSettledPieces(): void {
-    this.pieces.forEach((piece) => {
-      if (!piece.released || piece.settled || !piece.body.active) {
-        return;
-      }
-
-      const velocity = piece.body.body?.velocity;
-      const matterBody = piece.body.body as MatterJS.BodyType | undefined;
-      const angularSpeed = Math.abs(matterBody?.angularVelocity ?? 0);
-      const slow = Math.abs(velocity?.x ?? 0) < settleSpeed && Math.abs(velocity?.y ?? 0) < settleSpeed && angularSpeed < 0.035;
-      const lowEnough = piece.body.y > spawnY + 90;
-      if (slow && lowEnough) {
-        piece.settled = true;
-        this.settledCount += 1;
-      }
+  private updateMovingBricks(time: number): void {
+    this.movingBricks.forEach((brick) => {
+      const centerX = (brick.minX + brick.maxX) / 2;
+      const amplitude = (brick.maxX - brick.minX) / 2;
+      const nextX = centerX + Math.sin(time * 0.001 * brick.sweepSpeed + brick.phase) * amplitude;
+      brick.platform.setPosition(nextX, brick.platform.y);
+      brick.platform.setVelocity(0, 0);
+      brick.helper.setPosition(nextX, brick.platform.y - 16 + (brickHelperYOffsetById[brick.source.id.replace("helper-", "")] ?? 0));
     });
   }
 
@@ -423,17 +491,10 @@ export class ShellBalanceScene extends Phaser.Scene {
     }
 
     const releasedPiece = this.activePiece;
-    const slideVelocity = this.readyMoveDirection * readyMoveSpeed / 60;
     releasedPiece.released = true;
     releasedPiece.body.setIgnoreGravity(false);
-    releasedPiece.body.setVelocity(slideVelocity, 1.05);
-    releasedPiece.body.setAngularVelocity(Phaser.Math.FloatBetween(-0.045, 0.045));
-    this.activePiece = undefined;
-    this.scheduleNextPiece(nextCrabDelayMs);
-  }
-
-  private isDoneButtonPointer(pointer: Phaser.Input.Pointer): boolean {
-    return this.isDoneButtonPoint(this.pointerDesignPoint(pointer));
+    releasedPiece.body.setVelocity(0, 1.2);
+    releasedPiece.body.setAngularVelocity(Phaser.Math.FloatBetween(-0.018, 0.018));
   }
 
   private isDoneButtonPoint(point: Phaser.Math.Vector2): boolean {
@@ -488,14 +549,19 @@ export class ShellBalanceScene extends Phaser.Scene {
     }
 
     for (const pair of event.pairs) {
-      const first = this.pieceForBody(pair.bodyA);
-      const second = this.pieceForBody(pair.bodyB);
-      if (!first || !second || first === second || !first.released || !second.released) {
+      const piece = this.pieceForBody(pair.bodyA) ?? this.pieceForBody(pair.bodyB);
+      if (!piece || !piece.released || piece.resolved || piece !== this.activePiece) {
         continue;
       }
 
-      if (first.source.id === second.source.id) {
-        this.resolveCreatureMerge(first, second);
+      const hitBrick = this.brickForBody(pair.bodyA) ?? this.brickForBody(pair.bodyB);
+      if (hitBrick) {
+        this.resolveBrickHit(hitBrick);
+        break;
+      }
+
+      if (pair.bodyA.label === "stack-floor" || pair.bodyB.label === "stack-floor") {
+        this.resolveMissedDrop();
         break;
       }
     }
@@ -508,44 +574,64 @@ export class ShellBalanceScene extends Phaser.Scene {
     });
   }
 
-  private resolveCreatureMerge(first: StackPiece, second: StackPiece): void {
-    if (!this.pieces.includes(first) || !this.pieces.includes(second)) {
+  private brickForBody(body: MatterJS.BodyType): MovingBrick | undefined {
+    return this.movingBricks.find((brick) => {
+      const brickBody = brick.platform.body as MatterJS.BodyType | undefined;
+      return brick.platform.active && brickBody?.id === body.id;
+    });
+  }
+
+  private resolveBrickHit(brick: MovingBrick): void {
+    if (!this.activePiece || this.activePiece.resolved) {
       return;
     }
 
-    const source = first.source;
-    const nextLevel = Math.max(first.level, second.level) + 1;
-    const mergedValue = first.value + second.value;
-    const centerX = Phaser.Math.Clamp((first.body.x + second.body.x) / 2, readyMinX, readyMaxX);
-    const centerY = (first.body.y + second.body.y) / 2;
-    [first, second].forEach((piece) => {
-      if (piece.settled) {
-        this.settledCount = Math.max(0, this.settledCount - 1);
-      }
-      piece.body.destroy();
-    });
-    this.pieces = this.pieces.filter((piece) => piece !== first && piece !== second);
-
-    const mergedBody = this.createPieceBody(source, centerX, centerY, nextLevel, false);
-    mergedBody.setDepth(5 + nextLevel);
-    mergedBody.setVelocity(Phaser.Math.FloatBetween(-0.04, 0.04), 0.2);
-    mergedBody.setAngularVelocity(Phaser.Math.FloatBetween(-0.035, 0.035));
-    this.pieces.push({
-      body: mergedBody,
-      source,
-      level: nextLevel,
-      value: mergedValue,
-      settled: false,
-      released: true
-    });
-    this.playSfx(coinCollectSoundKey, { volume: 0.22 });
-    this.showMergePop(centerX, centerY, nextLevel);
+    const isMatch = this.activePiece.source.id === brick.source.id;
+    const hitX = this.activePiece.body.x;
+    const hitY = this.activePiece.body.y;
+    if (isMatch) {
+      this.scoreCount += 1;
+      this.playSfx(coinCollectSoundKey, { volume: 0.22 });
+      this.showScorePop(hitX, hitY);
+    }
+    this.flashBrick(brick, isMatch ? brickCorrectFlashColor : brickWrongFlashColor);
+    this.clearActivePiece();
+    this.scheduleNextPiece(nextCrabDelayMs);
   }
 
-  private createPieceBody(source: StackPieceSource, x: number, y: number, level: number, ignoreGravity: boolean): Phaser.Physics.Matter.Image {
-    const scale = this.pieceLevelScale(level);
-    const width = source.width * scale;
-    const height = source.height * scale;
+  private flashBrick(brick: MovingBrick, color: number): void {
+    brick.platform.setTint(color);
+    this.time.delayedCall(140, () => {
+      if (brick.platform.active) {
+        brick.platform.clearTint();
+      }
+    });
+  }
+
+  private resolveMissedDrop(): void {
+    if (!this.activePiece || this.activePiece.resolved) {
+      return;
+    }
+
+    this.clearActivePiece();
+    this.scheduleNextPiece(nextCrabDelayMs);
+  }
+
+  private clearActivePiece(): void {
+    if (!this.activePiece) {
+      return;
+    }
+
+    const piece = this.activePiece;
+    piece.resolved = true;
+    this.pieces = this.pieces.filter((candidate) => candidate !== piece);
+    piece.body.destroy();
+    this.activePiece = undefined;
+  }
+
+  private createPieceBody(source: StackPieceSource, x: number, y: number, ignoreGravity: boolean): Phaser.Physics.Matter.Image {
+    const width = source.width;
+    const height = source.height;
     const collisionWidth = width * source.collisionWidthRatio;
     const collisionHeight = height * source.collisionHeightRatio;
     const body = this.matter.add.image(x, y, source.textureKey, undefined, {
@@ -564,13 +650,12 @@ export class ShellBalanceScene extends Phaser.Scene {
     return body;
   }
 
-  private pieceLevelScale(level: number): number {
-    return 1 + Math.max(0, level - 1) * mergeGrowthScale;
-  }
-
-  private showMergePop(x: number, y: number, level: number): void {
+  private showScorePop(x: number, y: number): void {
     const burst = this.add.circle(x, y, 18, 0xfff5a8, 0.72).setDepth(18);
-    const text = this.add.text(x, y - 20, `L${formatNumber(level)}`, {
+    const coin = this.add.image(x - 17, y - 21, "stack-prize-common-coin")
+      .setDisplaySize(20, 20)
+      .setDepth(19);
+    const text = this.add.text(x + 1, y - 20, "+1", {
       fontFamily: gameFontFamily,
       fontSize: "22px",
       color: "#fff5a8",
@@ -593,6 +678,14 @@ export class ShellBalanceScene extends Phaser.Scene {
       ease: "Sine.easeOut",
       onComplete: () => text.destroy()
     });
+    this.tweens.add({
+      targets: coin,
+      y: coin.y - 24,
+      alpha: 0,
+      duration: 680,
+      ease: "Sine.easeOut",
+      onComplete: () => coin.destroy()
+    });
   }
 
   private playSfx(key: string, config?: Phaser.Types.Sound.SoundConfig): void {
@@ -614,7 +707,6 @@ export class ShellBalanceScene extends Phaser.Scene {
     }
     this.resultShown = true;
     this.finished = true;
-    this.scoreCount = this.currentMergeCount();
     const score = this.scoreCount;
     this.showResult(this.currentPrizeAmount(), () => {
       this.completeResult(score);
@@ -628,7 +720,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.resultCompleted = true;
     this.hideSceneImmediately();
     this.scene.stop();
-    this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
+    this.onComplete?.({ score, caughtCount: this.scoreCount * rewardPerHitMultiplier, mismatchCount: this.mismatchCount });
   }
 
   private hideSceneImmediately(): void {
@@ -647,6 +739,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.pieces = [];
     this.activePiece = undefined;
+    this.movingBricks = [];
     this.cameras.cameras.forEach((camera) => {
       camera.visible = false;
     });
@@ -655,16 +748,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private currentPrizeAmount(): number {
-    return Math.floor(this.currentMergeCount() * this.productionPerMinute);
-  }
-
-  private currentMergeCount(): number {
-    return this.pieces.reduce((total, piece) => {
-      if (!piece.settled || !piece.body.active) {
-        return total;
-      }
-      return total + Math.max(0, piece.value - 1);
-    }, 0);
+    return Math.floor(this.scoreCount * this.productionPerMinute * rewardPerHitMultiplier);
   }
 
   private scheduleNextPiece(delayMs: number): void {
