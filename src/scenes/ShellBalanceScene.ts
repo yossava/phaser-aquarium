@@ -41,7 +41,8 @@ type StackPiece = {
 const floorHeight = 44;
 const floorTopY = gameHeight - floorHeight;
 const floorY = gameHeight - floorHeight / 2;
-const spawnY = 140;
+const topSafeOffset = 42;
+const spawnY = 140 + topSafeOffset;
 const dropGuideY = spawnY + 44;
 const settleSpeed = 0.48;
 const readyMoveSpeed = 150;
@@ -52,7 +53,7 @@ const readyMaxX = gameWidth - 42;
 const doneButtonWidth = 92;
 const doneButtonHeight = 38;
 const doneButtonX = gameWidth - 68;
-const doneButtonY = 44;
+const doneButtonY = 44 + topSafeOffset;
 const commonCoinIconPath = "/assets/ui/icon-common-coin.png";
 const coinCollectSoundKey = "sfx-coin-collect";
 const helperPieceScale = 1.28;
@@ -91,8 +92,11 @@ export class ShellBalanceScene extends Phaser.Scene {
   private prizeCoinIcon?: Phaser.GameObjects.Image;
   private previousCanvasTouchAction = "";
   private resultShown = false;
+  private resultCompleted = false;
   private nextSpawnTimer?: Phaser.Time.TimerEvent;
   private gameEndsAt = 0;
+  private nativeTapCleanup?: () => void;
+  private resultClaimBounds?: Phaser.Geom.Rectangle;
 
   constructor() {
     super({
@@ -125,6 +129,8 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.matter.world.resume();
     this.finished = false;
     this.resultShown = false;
+    this.resultCompleted = false;
+    this.resultClaimBounds = undefined;
     this.pieces = [];
     this.activePiece = undefined;
     this.nextPieceSourceIndex = 0;
@@ -148,8 +154,11 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.input.on("pointerupoutside", (pointer: Phaser.Input.Pointer) => this.releaseActivePiece(pointer));
     this.input.keyboard?.on("keydown-ESC", () => this.cancelGame());
     this.matter.world.on("collisionstart", this.handleCollisionStart, this);
+    this.enableNativeTapFallback();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.restoreSafariTouchGestures();
+      this.nativeTapCleanup?.();
+      this.nativeTapCleanup = undefined;
       this.matter.world.off("collisionstart", this.handleCollisionStart, this);
       this.nextSpawnTimer?.remove(false);
       this.nextSpawnTimer = undefined;
@@ -206,6 +215,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   private disableSafariTouchGestures(): void {
     this.previousCanvasTouchAction = this.game.canvas.style.touchAction;
     this.game.canvas.style.touchAction = "none";
+    this.game.canvas.style.webkitUserSelect = "none";
   }
 
   private restoreSafariTouchGestures(): void {
@@ -292,7 +302,7 @@ export class ShellBalanceScene extends Phaser.Scene {
       stroke: "#062840",
       strokeThickness: 6
     };
-    this.add.text(22, 25, "Fish Stack", titleStyle);
+    this.add.text(22, 25 + topSafeOffset, "Fish Stack", titleStyle);
 
     const statStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: gameFontFamily,
@@ -301,12 +311,12 @@ export class ShellBalanceScene extends Phaser.Scene {
       stroke: "#062840",
       strokeThickness: 5
     };
-    this.add.text(22, 74, "Prize:", statStyle);
-    this.prizeCoinIcon = this.add.image(92, 85, "stack-prize-common-coin")
+    this.add.text(22, 74 + topSafeOffset, "Prize:", statStyle);
+    this.prizeCoinIcon = this.add.image(92, 85 + topSafeOffset, "stack-prize-common-coin")
       .setDisplaySize(22, 22)
       .setDepth(4);
-    this.prizeText = this.add.text(108, 74, "0", statStyle);
-    this.timerText = this.add.text(gameWidth / 2, 31, "2:00", {
+    this.prizeText = this.add.text(108, 74 + topSafeOffset, "0", statStyle);
+    this.timerText = this.add.text(gameWidth / 2, 31 + topSafeOffset, "2:00", {
       fontFamily: gameFontFamily,
       fontSize: "24px",
       color: "#fff5a8",
@@ -404,7 +414,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private releaseActivePiece(pointer?: Phaser.Input.Pointer): void {
-    if (this.finished || !this.activePiece || this.activePiece.released || (pointer && this.isDoneButtonPointer(pointer))) {
+    if (this.finished || !this.activePiece || this.activePiece.released || (pointer && this.isDoneButtonPoint(this.pointerDesignPoint(pointer)))) {
       return;
     }
 
@@ -419,8 +429,53 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private isDoneButtonPointer(pointer: Phaser.Input.Pointer): boolean {
-    const point = this.pointerDesignPoint(pointer);
+    return this.isDoneButtonPoint(this.pointerDesignPoint(pointer));
+  }
+
+  private isDoneButtonPoint(point: Phaser.Math.Vector2): boolean {
     return Math.abs(point.x - doneButtonX) <= doneButtonWidth / 2 && Math.abs(point.y - doneButtonY) <= doneButtonHeight / 2;
+  }
+
+  private enableNativeTapFallback(): void {
+    const canvas = this.game.canvas;
+    const releaseFromClientPoint = (clientX: number, clientY: number): void => {
+      const point = this.clientDesignPoint(clientX, clientY);
+      if (this.resultShown && this.resultClaimBounds?.contains(point.x, point.y)) {
+        this.completeResult();
+        return;
+      }
+      if (this.isDoneButtonPoint(point)) {
+        this.finishGame();
+        return;
+      }
+      this.releaseActivePiece();
+    };
+    const onTouchEnd = (event: TouchEvent): void => {
+      event.preventDefault();
+      const touch = event.changedTouches[0];
+      if (!touch) {
+        return;
+      }
+      releaseFromClientPoint(touch.clientX, touch.clientY);
+    };
+    const onClick = (event: MouseEvent): void => {
+      event.preventDefault();
+      releaseFromClientPoint(event.clientX, event.clientY);
+    };
+    canvas.addEventListener("touchend", onTouchEnd, { passive: false });
+    canvas.addEventListener("click", onClick, { passive: false });
+    this.nativeTapCleanup = () => {
+      canvas.removeEventListener("touchend", onTouchEnd);
+      canvas.removeEventListener("click", onClick);
+    };
+  }
+
+  private clientDesignPoint(clientX: number, clientY: number): Phaser.Math.Vector2 {
+    const rect = this.game.canvas.getBoundingClientRect();
+    return new Phaser.Math.Vector2(
+      (clientX - rect.left) * (gameWidth / rect.width),
+      (clientY - rect.top) * (gameHeight / rect.height)
+    );
   }
 
   private handleCollisionStart(event: Phaser.Physics.Matter.Events.CollisionStartEvent): void {
@@ -558,9 +613,17 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.scoreCount = this.currentMergeCount();
     const score = this.scoreCount;
     this.showResult(this.currentPrizeAmount(), () => {
-      this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
-      this.scene.stop();
+      this.completeResult(score);
     });
+  }
+
+  private completeResult(score = this.scoreCount): void {
+    if (this.resultCompleted) {
+      return;
+    }
+    this.resultCompleted = true;
+    this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
+    this.scene.stop();
   }
 
   private currentPrizeAmount(): number {
@@ -635,6 +698,12 @@ export class ShellBalanceScene extends Phaser.Scene {
     const buttonWidth = 168;
     const buttonHeight = 52;
     const buttonY = gameHeight / 2 + 66;
+    this.resultClaimBounds = new Phaser.Geom.Rectangle(
+      gameWidth / 2 - buttonWidth / 2,
+      buttonY - buttonHeight / 2,
+      buttonWidth,
+      buttonHeight
+    );
     const buttonBg = this.add.graphics().setDepth(40);
     buttonBg.fillStyle(0x2fb72f, 1);
     buttonBg.fillRoundedRect(gameWidth / 2 - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 16);
