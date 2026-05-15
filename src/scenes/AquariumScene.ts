@@ -4795,12 +4795,15 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private activeFishProductionPerMinute(): number {
+    const now = this.time.now;
     return this.activeFish().reduce((total, fish) => {
-      const fishProduction = fish.productionOptions().reduce((fishTotal, production) => {
-        const intervalSeconds = Math.max(1, production.intervalSeconds);
-        return fishTotal + production.amount * production.chance * (60 / intervalSeconds);
-      }, 0);
-      return total + fishProduction;
+      if (fish.state === "ill" || fish.currentFullnessCalories() <= 0) {
+        return total;
+      }
+
+      const intervalSeconds = Math.max(1, fish.type.coinDropSeconds);
+      const boostMultiplier = fish.hasActiveProductionBoost(now) ? 5 : 1;
+      return total + fish.type.coinValue * boostMultiplier * (60 / intervalSeconds);
     }, 0);
   }
 

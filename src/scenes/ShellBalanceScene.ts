@@ -248,9 +248,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private createBounds(): void {
-    this.matter.world.setBounds(0, 0, gameWidth, gameHeight, 36, false, false, false, false);
-    this.matter.add.rectangle(-24, gameHeight / 2, 20, gameHeight, { isStatic: true, label: "left-loss" });
-    this.matter.add.rectangle(gameWidth + 24, gameHeight / 2, 20, gameHeight, { isStatic: true, label: "right-loss" });
+    this.matter.world.setBounds(0, 0, gameWidth, gameHeight, 36, true, true, false, false);
   }
 
   private createFloor(): void {
