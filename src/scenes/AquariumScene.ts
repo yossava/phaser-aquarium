@@ -4797,7 +4797,11 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private returnFromShellBalanceGame(): void {
+    if (this.scene.isActive(ShellBalanceSceneKey) || this.scene.isPaused(ShellBalanceSceneKey)) {
+      this.scene.stop(ShellBalanceSceneKey);
+    }
     this.scene.resume("AquariumScene");
+    this.scene.bringToTop("AquariumScene");
     this.activeScreen = "menu";
     this.syncHtmlGameInterface();
     this.syncHtmlPageOverlay();

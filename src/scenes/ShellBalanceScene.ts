@@ -148,7 +148,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.createDragBoundary();
     this.createFloor();
     this.createHud();
-    this.spawnPiece();
+    this.scheduleNextPiece(nextCrabDelayMs);
 
     this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.releaseActivePiece(pointer));
     this.input.on("pointerupoutside", (pointer: Phaser.Input.Pointer) => this.releaseActivePiece(pointer));
@@ -622,8 +622,8 @@ export class ShellBalanceScene extends Phaser.Scene {
       return;
     }
     this.resultCompleted = true;
-    this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
     this.scene.stop();
+    this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
   }
 
   private currentPrizeAmount(): number {
