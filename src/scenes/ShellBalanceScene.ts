@@ -124,6 +124,12 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.sys.setVisible(true);
+    this.sys.setActive(true);
+    this.input.enabled = true;
+    this.cameras.cameras.forEach((camera) => {
+      camera.visible = true;
+    });
     this.input.removeAllListeners();
     this.input.keyboard?.removeAllListeners();
     this.matter.world.resume();
@@ -159,7 +165,7 @@ export class ShellBalanceScene extends Phaser.Scene {
       this.restoreSafariTouchGestures();
       this.nativeTapCleanup?.();
       this.nativeTapCleanup = undefined;
-      this.matter.world.off("collisionstart", this.handleCollisionStart, this);
+      this.matter.world?.off("collisionstart", this.handleCollisionStart, this);
       this.nextSpawnTimer?.remove(false);
       this.nextSpawnTimer = undefined;
     });
@@ -622,11 +628,32 @@ export class ShellBalanceScene extends Phaser.Scene {
       return;
     }
     this.resultCompleted = true;
-    this.sys.setVisible(false);
-    this.sys.setActive(false);
-    this.input.enabled = false;
+    this.hideSceneImmediately();
     this.scene.stop();
     this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
+  }
+
+  private hideSceneImmediately(): void {
+    this.nativeTapCleanup?.();
+    this.nativeTapCleanup = undefined;
+    this.nextSpawnTimer?.remove(false);
+    this.nextSpawnTimer = undefined;
+    this.input.enabled = false;
+    this.matter.world?.pause();
+    this.tweens.killAll();
+    this.time.removeAllEvents();
+    [...this.children.getChildren()].forEach((child) => {
+      (child as Phaser.GameObjects.GameObject & { setVisible?: (value: boolean) => unknown }).setVisible?.(false);
+      child.destroy();
+    });
+    this.children.removeAll(true);
+    this.pieces = [];
+    this.activePiece = undefined;
+    this.cameras.cameras.forEach((camera) => {
+      camera.visible = false;
+    });
+    this.sys.setVisible(false);
+    this.sys.setActive(false);
   }
 
   private currentPrizeAmount(): number {

@@ -166,7 +166,7 @@ import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
 import { createHtmlButton, htmlElement, htmlImage, installHtmlInputShield, playHtmlPageTransition, shouldSuppressHtmlClick } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
-import { ShellBalanceSceneKey, type ShellBalanceResult } from "./ShellBalanceScene";
+import { ShellBalanceScene, ShellBalanceSceneKey, type ShellBalanceResult } from "./ShellBalanceScene";
 
 type AppScreen = "tank" | "menu" | "store" | "album" | "goals" | "prize" | "makeup" | "settings";
 
@@ -2688,6 +2688,10 @@ export class AquariumScene extends Phaser.Scene {
 
   private closePage(): void {
     const closingScreen = this.activeScreen;
+    this.removeShellBalanceScene();
+    this.scene.resume("AquariumScene");
+    this.scene.setVisible(true, "AquariumScene");
+    this.scene.setActive(true, "AquariumScene");
     const returnToMainMenu = closingScreen !== "tank" && closingScreen !== "menu";
     this.cancelPendingFusion();
     this.prizeSpinInProgress = false;
@@ -2715,6 +2719,10 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private returnToTankScreen(): void {
+    this.removeShellBalanceScene();
+    this.scene.resume("AquariumScene");
+    this.scene.setVisible(true, "AquariumScene");
+    this.scene.setActive(true, "AquariumScene");
     this.activeScreen = "tank";
     this.storeOverlay?.hide();
     this.hideHtmlPageOverlay();
@@ -4764,9 +4772,9 @@ export class AquariumScene extends Phaser.Scene {
     this.gameHudOverlay?.classList.add("hidden");
     this.htmlFoodDock?.classList.add("hidden");
     this.destroyPrizeSpinContainer();
-    if (this.scene.isActive(ShellBalanceSceneKey)) {
-      this.scene.stop(ShellBalanceSceneKey);
-    }
+    this.hideShellBalanceSceneImmediately();
+    this.scene.remove(ShellBalanceSceneKey);
+    this.scene.add(ShellBalanceSceneKey, ShellBalanceScene, false);
     this.scene.launch(ShellBalanceSceneKey, {
       productionPerMinute: this.activeFishProductionPerMinute(),
       onComplete: (result: ShellBalanceResult) => this.completeShellBalanceGame(result),
@@ -4797,10 +4805,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private returnFromShellBalanceGame(): void {
-    this.hideShellBalanceSceneImmediately();
-    this.scene.setVisible(false, ShellBalanceSceneKey);
-    this.scene.setActive(false, ShellBalanceSceneKey);
-    this.scene.stop(ShellBalanceSceneKey);
+    this.removeShellBalanceScene();
     this.scene.resume("AquariumScene");
     this.scene.setVisible(true, "AquariumScene");
     this.scene.setActive(true, "AquariumScene");
@@ -4811,13 +4816,46 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private hideShellBalanceSceneImmediately(): void {
-    const shellScene = this.scene.get(ShellBalanceSceneKey);
+    let shellScene: Phaser.Scene;
+    try {
+      shellScene = this.scene.get(ShellBalanceSceneKey);
+    } catch {
+      return;
+    }
     if (!shellScene) {
       return;
     }
+    shellScene.input.enabled = false;
+    shellScene.tweens.killAll();
+    shellScene.time.removeAllEvents();
+    [...shellScene.children.getChildren()].forEach((child) => {
+      (child as Phaser.GameObjects.GameObject & { setVisible?: (value: boolean) => unknown }).setVisible?.(false);
+      child.destroy();
+    });
+    shellScene.children.removeAll(true);
+    shellScene.cameras.cameras.forEach((camera) => {
+      camera.visible = false;
+    });
     shellScene.sys.setVisible(false);
     shellScene.sys.setActive(false);
-    shellScene.input.enabled = false;
+  }
+
+  private removeShellBalanceScene(): void {
+    let shellScene: Phaser.Scene;
+    try {
+      shellScene = this.scene.get(ShellBalanceSceneKey);
+    } catch {
+      return;
+    }
+    if (!shellScene) {
+      return;
+    }
+    this.hideShellBalanceSceneImmediately();
+    this.scene.setVisible(false, ShellBalanceSceneKey);
+    this.scene.setActive(false, ShellBalanceSceneKey);
+    this.scene.sleep(ShellBalanceSceneKey);
+    this.scene.stop(ShellBalanceSceneKey);
+    this.scene.remove(ShellBalanceSceneKey);
   }
 
   private showPrizeMachineSpinner(): void {
