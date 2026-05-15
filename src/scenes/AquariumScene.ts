@@ -4797,6 +4797,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private returnFromShellBalanceGame(): void {
+    this.hideShellBalanceSceneImmediately();
     this.scene.setVisible(false, ShellBalanceSceneKey);
     this.scene.setActive(false, ShellBalanceSceneKey);
     this.scene.stop(ShellBalanceSceneKey);
@@ -4807,6 +4808,16 @@ export class AquariumScene extends Phaser.Scene {
     this.activeScreen = "menu";
     this.syncHtmlGameInterface();
     this.syncHtmlPageOverlay();
+  }
+
+  private hideShellBalanceSceneImmediately(): void {
+    const shellScene = this.scene.get(ShellBalanceSceneKey);
+    if (!shellScene) {
+      return;
+    }
+    shellScene.sys.setVisible(false);
+    shellScene.sys.setActive(false);
+    shellScene.input.enabled = false;
   }
 
   private showPrizeMachineSpinner(): void {

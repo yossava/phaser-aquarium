@@ -622,6 +622,9 @@ export class ShellBalanceScene extends Phaser.Scene {
       return;
     }
     this.resultCompleted = true;
+    this.sys.setVisible(false);
+    this.sys.setActive(false);
+    this.input.enabled = false;
     this.scene.stop();
     this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
   }
