@@ -26,7 +26,7 @@ export function createStorePriceBadge(price: Price): HTMLElement {
     rare: "/assets/ui/shop/coin_icon_rare.png",
     superRare: "/assets/ui/shop/coin_icon_super_rare.png"
   };
-  const badge = htmlElement("div", "flex shrink-0 items-center gap-0.5 rounded-full border border-cyan-200/25 bg-sky-950/80 px-1.5 py-0.5 text-xs font-black text-amber-200");
+  const badge = htmlElement("div", "aq-store-price-badge flex shrink-0 items-center gap-0.5 rounded-full border border-cyan-200/25 bg-sky-950/80 px-1.5 py-0.5 text-xs font-black text-amber-200");
   priceComponents(price).forEach(([coinType, amount], index) => {
     if (index > 0) {
       badge.append(document.createTextNode("+"));

@@ -27,6 +27,8 @@ export type BuildStoreOverlayStateInput = {
   fishPurchaseRestockLabel: string;
   ageBoostPurchaseAvailable: boolean;
   ageBoostRestockLabel: string;
+  productionBoostPurchaseAvailable: boolean;
+  productionBoostRestockLabel: string;
   fishCount: number;
   fishCapacity: number;
   getFishOwned: (fishTypeId: string) => number;
@@ -57,6 +59,8 @@ export function buildStoreOverlayState(input: BuildStoreOverlayStateInput): Stor
     fishPurchaseRestockLabel: input.fishPurchaseRestockLabel,
     ageBoostPurchaseAvailable: input.ageBoostPurchaseAvailable,
     ageBoostRestockLabel: input.ageBoostRestockLabel,
+    productionBoostPurchaseAvailable: input.productionBoostPurchaseAvailable,
+    productionBoostRestockLabel: input.productionBoostRestockLabel,
     fishCount: input.fishCount,
     fishCapacity: input.fishCapacity,
     fishOwned: Object.fromEntries(fishTypes.map((fishType) => [fishType.id, input.getFishOwned(fishType.id)])),

@@ -16,7 +16,7 @@ import {
   foodDispenserPrice,
   legacyFoodDispenserPositionStorageKey
 } from "../game/dispenser-system";
-import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, formatWallet, priceComponents, spend } from "../game/economy";
+import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, priceComponents, spend } from "../game/economy";
 import { fishCoinProductionMaxDelayMs, fishCoinProductionMinDelayMs, fishCommonPrice } from "../game/economy-model";
 import { gameFontFamily } from "../game/fonts";
 import {
@@ -98,12 +98,16 @@ import {
   normalizeDailyGoals as normalizeDailyGoalsModel,
   oldestRecentFishPurchase,
   oldestRecentGrowthTonicPurchase,
+  oldestRecentProductionBoostPurchase,
+  productionBoostPurchaseWindowMs,
   rareQuestReward as questRareReward,
   recentFishPurchaseCount as questRecentFishPurchaseCount,
   recentGrowthTonicPurchaseCount as questRecentGrowthTonicPurchaseCount,
+  recentProductionBoostPurchaseCount as questRecentProductionBoostPurchaseCount,
   recordDailyQuestAction as recordDailyQuestActionModel,
   recordFishPurchase as recordFishPurchaseModel,
   recordGrowthTonicPurchase as recordGrowthTonicPurchaseModel,
+  recordProductionBoostPurchase as recordProductionBoostPurchaseModel,
   rewardedAdCoinReward as questRewardedAdCoinReward,
   rewardedAdCooldownMs,
   rewardedAdDurationMs,
@@ -2682,14 +2686,34 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private closePage(): void {
+    const closingScreen = this.activeScreen;
+    const returnToMainMenu = closingScreen !== "tank" && closingScreen !== "menu";
     this.cancelPendingFusion();
     this.prizeSpinInProgress = false;
     this.destroyPrizeSpinContainer();
-    if (this.activeScreen === "makeup") {
+    if (closingScreen === "makeup") {
       this.destroyMakeupDraft();
       this.makeupOverlay?.classList.add("hidden");
       this.makeupDraggedDecoration = undefined;
     }
+    this.activeScreen = returnToMainMenu ? "menu" : "tank";
+    this.tankMenuDrillOpen = false;
+    this.inventoryDrillOpen = false;
+    this.tankMenuPage = 1;
+    this.storeOverlay?.hide();
+    if (this.activeScreen === "tank") {
+      this.hideHtmlPageOverlay();
+    } else {
+      this.syncHtmlPageOverlay();
+    }
+    this.syncCoinDropVisibilityAndInput();
+    this.createScreenNav();
+    this.createFoodDock();
+    this.syncMakeupPresentation();
+    this.refreshUi(false);
+  }
+
+  private returnToTankScreen(): void {
     this.activeScreen = "tank";
     this.storeOverlay?.hide();
     this.hideHtmlPageOverlay();
@@ -2708,7 +2732,7 @@ export class AquariumScene extends Phaser.Scene {
       {
         close: () => this.closePage(),
         buyFish: (fishType) => this.showFishBuyQuantityModal(fishType),
-        buyFood: (foodType, quantity) => this.buyFood(foodType, quantity),
+        buyFood: (foodType, quantity) => this.showFoodBuyQuantityModal(foodType, quantity),
         buyHelper: (creatureType) => this.buyHelperCreature(creatureType),
         buyTankCosmetic: (category, id) => this.buyTankCosmeticFromStore(category, id),
         switchTankCosmetic: (category, id) => this.useTankCosmeticFromStore(category, id),
@@ -2736,9 +2760,11 @@ export class AquariumScene extends Phaser.Scene {
     this.storeRefreshElapsed = 0;
 
     const ageBoostAvailable = this.canBuyGrowthTonicThisHour();
+    const productionBoostAvailable = this.canBuyProductionBoostNow();
     const fishAvailable = this.canBuyAnotherFishThisHour();
     const cooldownKey = [
       ageBoostAvailable,
+      productionBoostAvailable,
       fishAvailable,
       this.recentFishPurchaseCount(),
       this.hourlyFishPurchaseLimit()
@@ -2797,6 +2823,8 @@ export class AquariumScene extends Phaser.Scene {
       fishPurchaseRestockLabel: this.fishPurchaseRestockLabel(),
       ageBoostPurchaseAvailable: this.canBuyGrowthTonicThisHour(),
       ageBoostRestockLabel: this.growthTonicPurchaseRestockLabel(),
+      productionBoostPurchaseAvailable: this.canBuyProductionBoostNow(),
+      productionBoostRestockLabel: this.productionBoostPurchaseRestockLabel(),
       fishCount: this.activeFish().length,
       fishCapacity: this.maxFishCapacityForLevel(),
       getFishOwned: (fishTypeId) =>
@@ -3849,6 +3877,33 @@ export class AquariumScene extends Phaser.Scene {
     return row;
   }
 
+  private commonCoinValueRow(label: string, amount: number): HTMLElement {
+    return htmlElement("p", "aq-modal-line aq-modal-price-line aq-sell-qty-total", [
+      htmlElement("span", "", [label]),
+      htmlElement("span", "aq-makeup-cost-chip", [
+        htmlImage(coinAssetPathByType.common, "Common coins", "aq-makeup-cost-icon"),
+        htmlElement("strong", "", [formatNumber(amount)])
+      ])
+    ]);
+  }
+
+  private walletIconRow(label: string, wallet: Wallet): HTMLElement {
+    const row = htmlElement("p", "aq-modal-line aq-modal-price-line aq-sell-qty-total", [
+      htmlElement("span", "", [label])
+    ]);
+    const entries = (Object.entries(wallet) as Array<[CoinType, number]>).filter(([, amount]) => amount > 0);
+    const visibleEntries = entries.length > 0 ? entries : [["common", 0] as [CoinType, number]];
+    for (const [coinType, amount] of visibleEntries) {
+      row.append(
+        htmlElement("span", "aq-makeup-cost-chip", [
+          htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
+          htmlElement("strong", "", [formatNumber(amount)])
+        ])
+      );
+    }
+    return row;
+  }
+
   private addPriceToWallet(total: Wallet, price: Price, multiplier = 1): void {
     for (const [coinType, amount] of priceComponents(price)) {
       total[coinType] += Math.max(0, Math.floor(amount * multiplier));
@@ -3952,10 +4007,11 @@ export class AquariumScene extends Phaser.Scene {
     this.makeupDraggedDecoration = undefined;
     this.makeupBackgroundScrollLeft = 0;
     this.makeupDecorScrollLeft = 0;
-    this.activeScreen = "tank";
+    this.activeScreen = "menu";
     this.layoutTankBackground();
     this.layoutTankFloor();
     this.syncMakeupPresentation();
+    this.syncHtmlPageOverlay();
     this.refreshUi(false);
     if (!applied) {
       this.floatText("Makeup closed", toastX, toastY, "#d7f4ff");
@@ -5714,7 +5770,7 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshDecorationTankVisibility();
     this.updateDirtyTankOverlay();
     if (this.activeScreen !== "tank") {
-      this.closePage();
+      this.returnToTankScreen();
     } else {
       this.renderTabControls();
     }
@@ -5840,13 +5896,22 @@ export class AquariumScene extends Phaser.Scene {
     const maxQuantity = Math.max(1, Math.min(maxFishBuyQuantity, remainingHourlyBuys));
     let selectedQuantity = 1;
     const quantityText = htmlElement("strong", "aq-sell-qty-value", [formatNumber(selectedQuantity)]);
-    const totalText = htmlElement("p", "aq-modal-line aq-sell-qty-total", [
-      `Total ${formatPrice(this.quantityPrice(fishType.price, selectedQuantity))}`
-    ]);
+    const totalText = htmlElement("p", "aq-modal-line aq-modal-price-line aq-sell-qty-total");
+    const renderTotalPrice = () => {
+      totalText.replaceChildren(htmlElement("span", "", ["Total"]));
+      for (const [coinType, amount] of priceComponents(this.quantityPrice(fishType.price, selectedQuantity))) {
+        totalText.append(
+          htmlElement("span", "aq-makeup-cost-chip", [
+            htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
+            htmlElement("strong", "", [formatNumber(amount)])
+          ])
+        );
+      }
+    };
     const update = () => {
       selectedQuantity = Phaser.Math.Clamp(Math.floor(selectedQuantity), 1, maxQuantity);
       quantityText.textContent = formatNumber(selectedQuantity);
-      totalText.textContent = `Total ${formatPrice(this.quantityPrice(fishType.price, selectedQuantity))}`;
+      renderTotalPrice();
     };
     const setQuantity = (quantity: number) => {
       selectedQuantity = quantity;
@@ -5856,26 +5921,28 @@ export class AquariumScene extends Phaser.Scene {
       createHtmlButton("-", "aq-sell-qty-step", () => setQuantity(selectedQuantity - 1), {
         attachTouchFeedback: (button) => this.attachTouchFeedback(button)
       }),
-      htmlElement("div", "aq-sell-qty-display", [
-        htmlElement("span", "aq-sell-qty-label", ["Fish"]),
-        quantityText,
-        htmlElement("span", "aq-sell-qty-max", [`/ ${formatNumber(maxQuantity)}`])
-      ]),
+      htmlElement("div", "aq-sell-qty-display", [quantityText]),
       createHtmlButton("+", "aq-sell-qty-step", () => setQuantity(selectedQuantity + 1), {
         attachTouchFeedback: (button) => this.attachTouchFeedback(button)
       })
     ]);
+    const owned = this.fish.filter((fish) => fish.type.id === fishType.id).length + this.getFishInventory(fishType.id);
+    const previewImage = htmlImage(`/assets/fish/${fishType.id}.png`, fishType.name, "aq-modal-preview-image fish");
+    const preview = htmlElement("div", `aq-modal-preview ${owned > 0 ? "" : "aq-fish-preview-unpurchased"}`.trim(), [previewImage]);
+    if (owned <= 0) {
+      previewImage.classList.remove("drop-shadow-lg");
+    }
+    renderTotalPrice();
 
     this.showModal(
-      "Buy Fish",
+      fishType.name,
       [],
       [
         { label: "BUY NOW", fill: 0x356a35, action: () => this.buyFish(fishType, selectedQuantity) },
         { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
       ],
       [
-        htmlElement("p", "aq-modal-line", [`${fishType.name} will be added to your dock inventory.`]),
-        htmlElement("p", "aq-modal-line", [`Owned: x${formatNumber(this.getFishInventory(fishType.id))} | Rarity: ${this.rarityLabel(fishType.rarity)}`]),
+        preview,
         quantityPicker,
         totalText
       ]
@@ -5922,7 +5989,84 @@ export class AquariumScene extends Phaser.Scene {
     this.closeStoreAfterPurchase();
   }
 
+  private showFoodBuyQuantityModal(foodType: FoodType, initialQuantity = this.getFoodBuyQuantity(foodType.id)): void {
+    if (foodType.id === "ageBoost") {
+      this.showGrowthTonicFishModal(foodType);
+      return;
+    }
+
+    if (foodType.id === productionBoostFoodTypeId) {
+      this.showProductionBoostFishModal(foodType);
+      return;
+    }
+
+    if (!this.developerGodMode && foodType.id === "ageBoost" && !this.canBuyGrowthTonicThisHour()) {
+      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
+      this.storeOverlay?.refresh();
+      return;
+    }
+
+    const maxQuantity = foodType.id === "ageBoost" ? 1 : maxFoodBuyQuantity;
+    let selectedQuantity = Phaser.Math.Clamp(Math.floor(initialQuantity), 1, maxQuantity);
+    const quantityText = htmlElement("strong", "aq-sell-qty-value", [formatNumber(selectedQuantity)]);
+    const totalText = htmlElement("p", "aq-modal-line aq-modal-price-line aq-sell-qty-total");
+    const renderTotalPrice = () => {
+      totalText.replaceChildren(htmlElement("span", "", ["Total"]));
+      for (const [coinType, amount] of priceComponents(this.quantityPrice(foodType.price, selectedQuantity))) {
+        totalText.append(
+          htmlElement("span", "aq-makeup-cost-chip", [
+            htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
+            htmlElement("strong", "", [formatNumber(amount)])
+          ])
+        );
+      }
+    };
+    const update = () => {
+      selectedQuantity = Phaser.Math.Clamp(Math.floor(selectedQuantity), 1, maxQuantity);
+      quantityText.textContent = formatNumber(selectedQuantity);
+      renderTotalPrice();
+    };
+    const setQuantity = (quantity: number) => {
+      selectedQuantity = quantity;
+      update();
+    };
+    const quantityPicker = htmlElement("div", "aq-sell-qty-picker", [
+      createHtmlButton("-", "aq-sell-qty-step", () => setQuantity(selectedQuantity - 1), {
+        disabled: maxQuantity <= 1,
+        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+      }),
+      htmlElement("div", "aq-sell-qty-display", [quantityText]),
+      createHtmlButton("+", "aq-sell-qty-step", () => setQuantity(selectedQuantity + 1), {
+        disabled: maxQuantity <= 1,
+        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+      })
+    ]);
+    const previewImage = htmlImage(foodAssetPath(foodType.id), foodType.name, "aq-modal-preview-image food");
+    previewImage.style.filter = foodCssFilterFor(foodType.id);
+    const preview = htmlElement("div", "aq-modal-preview", [previewImage]);
+    update();
+
+    this.showModal(
+      foodType.name,
+      [],
+      [
+        { label: foodType.id === "medicine" ? "BUY MEDICINE" : "BUY NOW", fill: 0x356a35, action: () => this.buyFood(foodType, selectedQuantity) },
+        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
+      ],
+      [
+        preview,
+        quantityPicker,
+        totalText
+      ]
+    );
+  }
+
   private buyFood(foodType = this.getSelectedFoodType(), quantity = this.getFoodBuyQuantity(foodType.id)): void {
+    if (foodType.id === "ageBoost") {
+      this.showGrowthTonicFishModal(foodType);
+      return;
+    }
+
     if (foodType.id === productionBoostFoodTypeId) {
       this.showProductionBoostFishModal(foodType);
       return;
@@ -5964,7 +6108,118 @@ export class AquariumScene extends Phaser.Scene {
     this.closeStoreAfterPurchase();
   }
 
+  private showGrowthTonicFishModal(foodType: FoodType): void {
+    if (!this.developerGodMode && !this.canBuyGrowthTonicThisHour()) {
+      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
+      this.storeOverlay?.refresh();
+      return;
+    }
+
+    const candidates = this.activeFish();
+    if (candidates.length === 0) {
+      this.floatText("No fish to grow", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    let selectedFish = candidates[0];
+    const selectedName = htmlElement("strong", "aq-production-boost-selected", [selectedFish.type.name]);
+    const selectedAge = htmlElement("strong", "aq-production-boost-selected", [selectedFish.ageLabel()]);
+    const priceText = this.priceIconRow(this.growthTonicPriceForFish(selectedFish), "Price");
+    let buyButton: HTMLButtonElement;
+    const grid = htmlElement("div", "aq-production-boost-fish-grid");
+    const renderPrice = () => {
+      const nextPrice = this.priceIconRow(this.growthTonicPriceForFish(selectedFish), "Price");
+      priceText.replaceChildren(...Array.from(nextPrice.childNodes));
+    };
+    const updateSelection = () => {
+      selectedName.textContent = selectedFish.type.name;
+      selectedAge.textContent = selectedFish.ageLabel();
+      renderPrice();
+      buyButton.disabled = !this.developerGodMode && !canAfford(this.wallet, this.growthTonicPriceForFish(selectedFish));
+      grid.querySelectorAll("[data-fish-index]").forEach((element) => {
+        element.classList.toggle("selected", Number((element as HTMLElement).dataset.fishIndex) === this.fish.indexOf(selectedFish));
+      });
+    };
+
+    candidates.forEach((fish) => {
+      const button = createHtmlButton("", `aq-production-boost-fish ${fish === selectedFish ? "selected" : ""}`, () => {
+        selectedFish = fish;
+        updateSelection();
+      }, {
+        attachTouchFeedback: (targetButton) => this.attachTouchFeedback(targetButton)
+      });
+      button.dataset.fishIndex = String(this.fish.indexOf(fish));
+      button.append(
+        htmlImage(`/assets/fish/${fish.type.id}.png`, "", "aq-production-boost-fish-image"),
+        htmlElement("span", "aq-production-boost-fish-name", [fish.type.name]),
+        htmlElement("span", "aq-production-boost-fish-age", [`Age ${fish.ageLabel()}`]),
+        htmlElement("span", "aq-production-boost-fish-price", [formatPrice(this.growthTonicPriceForFish(fish))])
+      );
+      grid.append(button);
+    });
+
+    buyButton = this.htmlButton("BUY", "aq-modal-button good", () => this.buyGrowthTonicForFish(foodType, selectedFish));
+    updateSelection();
+
+    this.showModal(
+      "Growth Tonic",
+      [],
+      [],
+      [
+        htmlElement("p", "aq-modal-line", ["Select which fish gets +3 months of growth."]),
+        htmlElement("p", "aq-modal-line", ["Price is 15% of fish value, from C100 to C15K."]),
+        grid,
+        htmlElement("p", "aq-modal-line", ["Selected: ", selectedName, " | Age ", selectedAge]),
+        priceText,
+        htmlElement("div", "aq-modal-actions single", [buyButton, this.htmlButton("Cancel", "aq-modal-button muted", () => this.closeModal())])
+      ]
+    );
+  }
+
+  private growthTonicPriceForFish(fish: Fish): Price {
+    return {
+      coinType: "common",
+      amount: Phaser.Math.Clamp(Math.round(fishCommonPrice(fish.type) * 0.15), 100, 15000)
+    };
+  }
+
+  private buyGrowthTonicForFish(foodType: FoodType, fish: Fish): void {
+    if (!this.activeFish().includes(fish)) {
+      this.floatText("Fish not found", toastX, toastY, "#ffb0a8");
+      return;
+    }
+    if (!this.developerGodMode && !this.canBuyGrowthTonicThisHour()) {
+      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
+      this.storeOverlay?.refresh();
+      return;
+    }
+
+    const price = this.growthTonicPriceForFish(fish);
+    if (!this.spendPrice(price)) {
+      return;
+    }
+
+    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + 1);
+    this.recordGrowthTonicPurchase();
+    this.recordDailyQuestAction("buy-growth-tonic");
+    this.recentInventoryDockItemKey = `food:${foodType.id}`;
+    this.placementMode = { kind: "none" };
+    this.floatText(`Growth tonic docked`, toastX, toastY, "#d9c2ff");
+    this.closeModal();
+    this.storeOverlay?.refresh();
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
+    this.closeStoreAfterPurchase();
+  }
+
   private showProductionBoostFishModal(foodType: FoodType): void {
+    if (!this.developerGodMode && !this.canBuyProductionBoostNow()) {
+      this.floatText(this.productionBoostPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
+      this.storeOverlay?.refresh();
+      return;
+    }
+
     const candidates = this.activeFish();
     if (candidates.length === 0) {
       this.floatText("No fish to boost", toastX, toastY, "#ffb0a8");
@@ -6046,6 +6301,11 @@ export class AquariumScene extends Phaser.Scene {
       this.floatText("Fish not found", toastX, toastY, "#ffb0a8");
       return;
     }
+    if (!this.developerGodMode && !this.canBuyProductionBoostNow()) {
+      this.floatText(this.productionBoostPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
+      this.storeOverlay?.refresh();
+      return;
+    }
     if (fish.productionBoostUntil > this.time.now) {
       this.floatText("Already boosted", toastX, toastY, "#d7f4ff");
       return;
@@ -6056,27 +6316,16 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const pellet = new FoodPellet(
-      this,
-      Phaser.Math.Clamp(fish.sprite.x, tankBounds.left + 18, tankBounds.right - 18),
-      tankBounds.top + 24,
-      foodType,
-      {
-        reservedCalories: 0,
-        targetFish: fish,
-        velocityX: Phaser.Math.Between(-20, 20),
-        velocityY: Phaser.Math.Between(10, 24)
-      }
-    );
-    pellet.setWorldScaleCompensation(this.tankViewScaleForLevel());
-    pellet.addToContainer(this.tankLayer);
-    this.foods.push(pellet);
+    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + 1);
+    this.recordProductionBoostPurchase();
     this.recordDailyQuestAction("buy-production-boost");
+    this.recentInventoryDockItemKey = `food:${foodType.id}`;
     this.placementMode = { kind: "none" };
-    this.floatText(`Boost for ${fish.type.name}`, toastX, toastY, "#ffd34d");
+    this.floatText(`Production boost docked`, toastX, toastY, "#ffd34d");
     this.closeModal();
     this.storeOverlay?.refresh();
     this.refreshUi();
+    this.createFoodDock();
     this.saveNow();
     this.closeStoreAfterPurchase();
   }
@@ -6512,7 +6761,7 @@ export class AquariumScene extends Phaser.Scene {
 
     this.selectedFoodTypeId = foodTypeId;
     if (this.activeScreen !== "tank") {
-      this.closePage();
+      this.returnToTankScreen();
     }
     this.refreshUi();
     this.createFoodDock();
@@ -6526,7 +6775,7 @@ export class AquariumScene extends Phaser.Scene {
 
     this.placementMode = { kind: "decoration", decorationTypeId, size };
     if (this.activeScreen !== "tank") {
-      this.closePage();
+      this.returnToTankScreen();
     }
     this.refreshUi();
   }
@@ -8205,6 +8454,15 @@ export class AquariumScene extends Phaser.Scene {
     return utilities[utilityId];
   }
 
+  private tankUtilityIconPath(utilityId: TankUtilityId): string {
+    const icons: Record<TankUtilityId, string> = {
+      "food-dispenser": foodDispenserAssetPath,
+      "coin-magnet": coinMagnetIconPath,
+      "auto-food-buyer": autoFoodBuyerAssetPath
+    };
+    return icons[utilityId];
+  }
+
   private getCreatureInventory(creatureTypeId: string): number {
     return this.creatureInventory.get(creatureTypeId) ?? 0;
   }
@@ -8966,6 +9224,30 @@ export class AquariumScene extends Phaser.Scene {
     this.dailyGoals = recordGrowthTonicPurchaseModel(this.dailyGoals);
   }
 
+  private recentProductionBoostPurchaseCount(now = Date.now()): number {
+    return questRecentProductionBoostPurchaseCount(this.dailyGoals, now);
+  }
+
+  private canBuyProductionBoostNow(): boolean {
+    return this.recentProductionBoostPurchaseCount() === 0;
+  }
+
+  private productionBoostPurchaseRestockLabel(now = Date.now()): string {
+    const oldestRecentPurchase = oldestRecentProductionBoostPurchase(this.dailyGoals, now);
+
+    if (!oldestRecentPurchase) {
+      return "30m restock";
+    }
+
+    const remainingSeconds = Math.ceil((oldestRecentPurchase + productionBoostPurchaseWindowMs - now) / 1000);
+    return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+  }
+
+  private recordProductionBoostPurchase(): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
+    this.dailyGoals = recordProductionBoostPurchaseModel(this.dailyGoals);
+  }
+
   private recordFishPurchase(fishType: FishType): void {
     this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
     this.dailyGoals = recordFishPurchaseModel(this.dailyGoals, fishType.rarity);
@@ -9081,20 +9363,20 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const protectedRarity = targetFish.type.rarity !== "common" || targetFish.type.acquisitionSources.includes("event");
     const sellValue = this.activeFishSellValue(targetFish);
     this.showModal(
-      protectedRarity ? "Sell Rare Fish" : "Sell Fish",
+      targetFish.type.name,
+      [],
       [
-        `${targetFish.type.name} will leave this tank.`,
-        `Rarity: ${targetFish.type.rarity} | Age ${targetFish.ageLabel()}`,
-        `Length ${targetFish.lengthLabel()} | Weight ${targetFish.weightLabel()}`,
-        ...(protectedRarity ? ["Rare and event fish require extra care before selling."] : []),
-        `You receive C${formatNumber(sellValue)}.`
+        { label: "SELL NOW", fill: 0x76512d, action: () => this.sellFishByIndex(index) },
+        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
       ],
       [
-        { label: `SELL ${formatNumber(sellValue)}`, fill: 0x76512d, action: () => this.sellFishByIndex(index) },
-        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
+        htmlElement("div", "aq-modal-preview", [
+          htmlImage(`/assets/fish/${targetFish.type.id}.png`, targetFish.type.name, "aq-modal-preview-image fish")
+        ]),
+        htmlElement("p", "aq-modal-owned-line", ["Owned x1"]),
+        this.commonCoinValueRow("Receive", sellValue)
       ]
     );
   }
@@ -9108,16 +9390,14 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.showInventorySellQuantityModal({
-      title: "Sell Stored Fish",
-      lines: [
-        `${fishType.name} will be removed from your dock inventory.`,
-        `Stored: ${formatNumber(count)} | Rarity: ${fishType.rarity}`
-      ],
+      title: fishType.name,
+      preview: htmlElement("div", "aq-modal-preview", [
+        htmlImage(`/assets/fish/${fishType.id}.png`, fishType.name, "aq-modal-preview-image fish")
+      ]),
+      ownedLabel: `Owned x${formatNumber(count)}`,
       maxQuantity: count,
-      unitLabel: "Fish",
       valueForQuantity: (quantity) => this.storedFishSellValue(fishType) * quantity,
-      onSell: (quantity) => this.sellStoredFish(fishTypeId, quantity),
-      onSellAll: () => this.sellStoredFish(fishTypeId, count)
+      onSell: (quantity) => this.sellStoredFish(fishTypeId, quantity)
     });
   }
 
@@ -9518,56 +9798,56 @@ export class AquariumScene extends Phaser.Scene {
 
   private showInventorySellQuantityModal(options: {
     title: string;
-    lines: string[];
+    preview: HTMLElement;
+    ownedLabel: string;
     maxQuantity: number;
-    unitLabel?: string;
     valueForQuantity: (quantity: number) => number;
     onSell: (quantity: number) => void;
-    onSellAll: () => void;
   }): void {
     const maxQuantity = Math.max(1, Math.floor(options.maxQuantity));
     let selectedQuantity = 1;
-    const unitLabel = options.unitLabel ?? "Qty";
     const quantityText = htmlElement("strong", "aq-sell-qty-value", [formatNumber(selectedQuantity)]);
-    const valueText = htmlElement("p", "aq-modal-line aq-sell-qty-total", [
-      `Receive C${formatNumber(options.valueForQuantity(selectedQuantity))}`
-    ]);
+    const valueText = this.commonCoinValueRow("Receive", options.valueForQuantity(selectedQuantity));
     const update = () => {
       selectedQuantity = Phaser.Math.Clamp(Math.floor(selectedQuantity), 1, maxQuantity);
       quantityText.textContent = formatNumber(selectedQuantity);
-      valueText.textContent = `Receive C${formatNumber(options.valueForQuantity(selectedQuantity))}`;
+      const nextValueText = this.commonCoinValueRow("Receive", options.valueForQuantity(selectedQuantity));
+      valueText.replaceChildren(...Array.from(nextValueText.childNodes));
     };
     const setQuantity = (quantity: number) => {
       selectedQuantity = quantity;
       update();
     };
-    const quantityPicker = htmlElement("div", "aq-sell-qty-picker", [
+    const quantityPicker = htmlElement("div", "aq-sell-qty-picker aq-sell-qty-picker-with-max", [
       createHtmlButton("-", "aq-sell-qty-step", () => setQuantity(selectedQuantity - 1), {
+        disabled: maxQuantity <= 1,
         attachTouchFeedback: (button) => this.attachTouchFeedback(button)
       }),
-      htmlElement("div", "aq-sell-qty-display", [
-        htmlElement("span", "aq-sell-qty-label", [unitLabel]),
-        quantityText,
-        htmlElement("span", "aq-sell-qty-max", [`/ ${formatNumber(maxQuantity)}`])
-      ]),
+      htmlElement("div", "aq-sell-qty-display", [quantityText]),
       createHtmlButton("+", "aq-sell-qty-step", () => setQuantity(selectedQuantity + 1), {
+        disabled: maxQuantity <= 1,
+        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
+      }),
+      createHtmlButton("MAX", "aq-sell-qty-step aq-sell-qty-max-button", () => setQuantity(maxQuantity), {
+        disabled: maxQuantity <= 1,
         attachTouchFeedback: (button) => this.attachTouchFeedback(button)
       })
     ]);
     const bodyElements = [
-      ...options.lines.map((line) => htmlElement("p", "aq-modal-line", [line])),
+      options.preview,
+      htmlElement("p", "aq-modal-owned-line", [options.ownedLabel]),
       quantityPicker,
       valueText
+    ];
+    const actions: ModalAction[] = [
+      { label: "SELL NOW", fill: 0x76512d, action: () => options.onSell(selectedQuantity) },
+      { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
     ];
 
     this.showModal(
       options.title,
       [],
-      [
-        { label: "SELL", fill: 0x76512d, action: () => options.onSell(selectedQuantity) },
-        { label: "SELL ALL", fill: 0x9a5b16, action: options.onSellAll },
-        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
-      ],
+      actions,
       bodyElements
     );
   }
@@ -9580,36 +9860,27 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const countLabel = this.foodInventoryBadgeLabel(foodType);
     const maxQuantity = this.foodInventoryDisplayCount(foodType);
-    const servingCopy = this.isCalorieTrackedFood(foodType.id)
-      ? `${formatNumber(storedAmount)} calories stored.`
-      : `${formatNumber(storedAmount)} items stored.`;
+    const previewImage = htmlImage(foodAssetPath(foodType.id), foodType.name, "aq-modal-preview-image food");
+    previewImage.style.filter = foodCssFilterFor(foodType.id);
     this.showInventorySellQuantityModal({
-      title: "Sell Food",
-      lines: [
-        `${foodType.name} will be converted to common coins.`,
-        `Owned: x${countLabel}`,
-        servingCopy
-      ],
+      title: foodType.name,
+      preview: htmlElement("div", "aq-modal-preview", [previewImage]),
+      ownedLabel: `Owned x${this.foodInventoryBadgeLabel(foodType)}`,
       maxQuantity,
-      unitLabel: "Food",
       valueForQuantity: (quantity) => {
         const sellAmount = this.isCalorieTrackedFood(foodType.id)
           ? Math.min(storedAmount, quantity * Math.max(1, foodType.calories))
           : Math.min(storedAmount, quantity);
         return this.foodSellValue(foodType, sellAmount);
       },
-      onSell: (quantity) => this.sellFoodInventory(foodTypeId, quantity),
-      onSellAll: () => this.sellFoodInventory(foodTypeId)
+      onSell: (quantity) => this.sellFoodInventory(foodTypeId, quantity)
     });
   }
 
   private showDecorationSellConfirmation(decorationTypeId: string, size: DecorationSize): void {
     const decorationType = decorationTypes.find((item) => item.id === decorationTypeId);
-    const storedCount = this.getDecorationInventory(decorationTypeId, size);
-    const placedCount = this.getPlacedDecorationCount(decorationTypeId, size);
-    const count = storedCount + placedCount;
+    const count = this.getOwnedDecorationCount(decorationTypeId, size);
     if (!decorationType || count <= 0) {
       this.floatText("No decor to sell", toastX, toastY, "#ffb0a8");
       return;
@@ -9617,17 +9888,14 @@ export class AquariumScene extends Phaser.Scene {
 
     const sizeLabel = decorationSizes[size].label;
     this.showInventorySellQuantityModal({
-      title: "Sell Decoration",
-      lines: [
-        `${decorationType.name} ${sizeLabel} will be converted to common coins.`,
-        `Owned: x${formatNumber(count)}`,
-        `Stored: ${formatNumber(storedCount)} | In tank: ${formatNumber(placedCount)}`
-      ],
+      title: `${decorationType.name} ${sizeLabel}`,
+      preview: htmlElement("div", "aq-modal-preview", [
+        htmlImage(`/assets/decorations/${decorationType.id}.png`, decorationType.name, "aq-modal-preview-image")
+      ]),
+      ownedLabel: `Owned x${formatNumber(count)}`,
       maxQuantity: count,
-      unitLabel: "Decor",
       valueForQuantity: (quantity) => this.decorationSellValue(decorationType, size, quantity),
-      onSell: (quantity) => this.sellDecorationInventory(decorationTypeId, size, quantity),
-      onSellAll: () => this.sellDecorationInventory(decorationTypeId, size)
+      onSell: (quantity) => this.sellDecorationInventory(decorationTypeId, size, quantity)
     });
   }
 
@@ -9639,16 +9907,14 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.showInventorySellQuantityModal({
-      title: "Sell Tool",
-      lines: [
-        `${utility.name} will be converted to common coins.`,
-        "Owned: x1"
-      ],
+      title: utility.name,
+      preview: htmlElement("div", "aq-modal-preview", [
+        htmlImage(this.tankUtilityIconPath(utilityId), utility.name, "aq-modal-preview-image")
+      ]),
+      ownedLabel: "Owned x1",
       maxQuantity: 1,
-      unitLabel: "Tool",
       valueForQuantity: () => this.tankUtilitySellValue(utility.price),
-      onSell: () => this.sellTankUtility(utilityId),
-      onSellAll: () => this.sellTankUtility(utilityId)
+      onSell: () => this.sellTankUtility(utilityId)
     });
   }
 
@@ -9661,16 +9927,14 @@ export class AquariumScene extends Phaser.Scene {
 
     const label = coinType === "rare" ? "Rare Coin" : "Super Rare Diamond";
     this.showInventorySellQuantityModal({
-      title: "Convert Coin",
-      lines: [
-        `Convert owned ${label} to common coins.`,
-        `Owned: x${formatNumber(count)}`,
-      ],
+      title: label,
+      preview: htmlElement("div", "aq-modal-preview", [
+        htmlImage(coinAssetPathByType[coinType], label, "aq-modal-preview-image")
+      ]),
+      ownedLabel: `Owned x${formatNumber(count)}`,
       maxQuantity: count,
-      unitLabel: "Coins",
       valueForQuantity: (quantity) => this.coinSellValue(coinType, quantity),
-      onSell: (quantity) => this.sellCoinInventory(coinType, quantity),
-      onSellAll: () => this.sellCoinInventory(coinType)
+      onSell: (quantity) => this.sellCoinInventory(coinType, quantity)
     });
   }
 
@@ -9683,28 +9947,45 @@ export class AquariumScene extends Phaser.Scene {
 
     const sellPrice = this.helperSellPrice(targetHelper.type);
     this.showModal(
-      "Sell Helper",
+      targetHelper.type.name,
+      [],
       [
-        `${targetHelper.type.name} will leave this tank.`,
-        `Role: ${targetHelper.type.id === "feeder-snail" ? "Pet" : targetHelper.type.habitatTags.join(", ")}`,
-        `You receive ${formatPrice(sellPrice)}.`
+        { label: "SELL NOW", fill: 0x76512d, action: () => this.sellHelperCreatureByIndex(index) },
+        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
       ],
       [
-        { label: "Confirm", fill: 0x76512d, action: () => this.sellHelperCreatureByIndex(index) },
-        { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
+        htmlElement("div", "aq-modal-preview", [
+          htmlImage(
+            targetHelper.type.id === "feeder-snail" ? "/assets/helpers/feeder-snail.png" : `/assets/helpers/${targetHelper.type.id}.png`,
+            targetHelper.type.name,
+            "aq-modal-preview-image"
+          )
+        ]),
+        htmlElement("p", "aq-modal-owned-line", ["Owned x1"]),
+        this.priceIconRow(sellPrice, "Receive")
       ]
     );
   }
 
   private showOfflineSummary(): void {
+    const minutesAway = Math.floor(this.offlineProgress.elapsedSeconds / 60);
+    const earnedEntries = (Object.entries(this.offlineProgress.earned) as Array<[CoinType, number]>).filter(([, amount]) => amount > 0);
+    const previewCoins = earnedEntries.length > 0 ? earnedEntries : [["common", 0] as [CoinType, number]];
     this.showModal(
       "Offline Summary",
+      [],
+      [{ label: "Continue", fill: 0x356a35, action: () => this.closeModal() }],
       [
-        `${formatNumber(Math.floor(this.offlineProgress.elapsedSeconds / 60))} minutes away.`,
-        `Earned ${formatWallet(this.offlineProgress.earned)}.`,
-        `Cleanliness is ${formatNumber(Math.round(this.cleanliness))}%. Fish grew and got a little hungrier.`
-      ],
-      [{ label: "Continue", fill: 0x356a35, action: () => this.closeModal() }]
+        htmlElement("div", "aq-modal-preview aq-modal-coin-preview", previewCoins.map(([coinType, amount]) =>
+          htmlElement("span", "aq-modal-coin-preview-item", [
+            htmlImage(coinAssetPathByType[coinType], coinType, "aq-modal-preview-image coin"),
+            htmlElement("strong", "", [formatNumber(amount)])
+          ])
+        )),
+        this.walletIconRow("Earned", this.offlineProgress.earned),
+        htmlElement("p", "aq-modal-owned-line", [`Away ${formatNumber(minutesAway)} min`]),
+        htmlElement("p", "aq-modal-owned-line", [`Clean ${formatNumber(Math.round(this.cleanliness))}%`])
+      ]
     );
   }
 
@@ -10195,7 +10476,7 @@ export class AquariumScene extends Phaser.Scene {
       },
       setScreen: (screen: AppScreen) => {
         if (screen === "tank") {
-          this.closePage();
+          this.returnToTankScreen();
         } else {
           this.openScreen(screen);
         }

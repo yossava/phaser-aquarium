@@ -54,6 +54,8 @@ export type StoreOverlayState = {
   fishPurchaseRestockLabel: string;
   ageBoostPurchaseAvailable: boolean;
   ageBoostRestockLabel: string;
+  productionBoostPurchaseAvailable: boolean;
+  productionBoostRestockLabel: string;
   fishCount: number;
   fishCapacity: number;
   fishOwned: Record<string, number>;

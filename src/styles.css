@@ -204,6 +204,12 @@ canvas {
     @apply h-full w-full object-contain;
   }
 
+  .aq-store-price-badge {
+    @apply absolute right-1.5 top-1.5 z-[3];
+    max-width: calc(100% - 44px);
+    white-space: nowrap;
+  }
+
   .aq-card-preview {
     @apply relative flex h-20 w-full max-w-none shrink-0 items-center justify-center overflow-hidden rounded-xl;
     min-height: 80px;
@@ -211,6 +217,10 @@ canvas {
 
   .aq-card-preview img {
     @apply max-h-full max-w-[94%] object-contain drop-shadow-lg;
+  }
+
+  .aq-fish-preview-unpurchased img {
+    filter: brightness(0) saturate(0) opacity(0.72) drop-shadow(0 8px 0 rgba(7, 20, 34, 0.18));
   }
 
   .aq-blue-tint-preview {
@@ -231,7 +241,11 @@ canvas {
   }
 
   .aq-card-title {
-    @apply min-w-0 truncate text-sm font-black leading-tight;
+    @apply min-w-0 overflow-hidden text-sm font-black leading-tight;
+    display: -webkit-box;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .aq-card-meta {
@@ -253,6 +267,10 @@ canvas {
     gap: 0.5rem;
     padding-block: 0.25rem;
     overflow: visible;
+  }
+
+  .aq-food-cal-pill {
+    @apply w-fit rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-0.5 text-[10px] font-black leading-tight text-cyan-50/90;
   }
 
   .aq-decor-card {
@@ -1552,6 +1570,35 @@ canvas {
     @apply text-sm font-bold leading-snug text-cyan-50/88;
   }
 
+  .aq-modal-preview {
+    @apply flex min-h-24 items-center justify-center rounded-xl bg-sky-950/45 px-3 py-2;
+    box-shadow: inset 0 2px 5px rgba(0, 14, 28, 0.48);
+  }
+
+  .aq-modal-preview-image {
+    @apply max-h-20 max-w-full object-contain drop-shadow-lg;
+  }
+
+  .aq-modal-preview-image.fish {
+    @apply max-w-[82%];
+  }
+
+  .aq-modal-preview-image.coin {
+    @apply h-12 w-12;
+  }
+
+  .aq-modal-coin-preview {
+    @apply gap-3;
+  }
+
+  .aq-modal-coin-preview-item {
+    @apply flex flex-col items-center gap-1 text-sm font-black text-yellow-100;
+  }
+
+  .aq-modal-owned-line {
+    @apply text-center text-sm font-black leading-tight text-cyan-100/85;
+  }
+
   .aq-modal-price-line {
     @apply flex flex-wrap items-center gap-1.5;
   }
@@ -1560,9 +1607,17 @@ canvas {
     @apply mt-3 grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-2;
   }
 
+  .aq-sell-qty-picker-with-max {
+    @apply grid-cols-[48px_minmax(0,1fr)_48px_56px];
+  }
+
   .aq-sell-qty-step {
     @apply flex h-11 items-center justify-center rounded-xl border border-cyan-100/45 bg-sky-700 text-xl font-black text-white shadow-lg;
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.24), 0 3px 0 rgba(5, 42, 66, 0.8);
+  }
+
+  .aq-sell-qty-max-button {
+    @apply text-xs;
   }
 
   .aq-sell-qty-display {
@@ -1581,7 +1636,7 @@ canvas {
   }
 
   .aq-sell-qty-total {
-    @apply mt-2 text-center text-yellow-100;
+    @apply mt-2 justify-center text-center text-yellow-100;
   }
 
   .aq-production-boost-fish-grid {
@@ -2603,7 +2658,7 @@ canvas {
   }
 
   .aq-food-button-bubble {
-    @apply relative flex aspect-square w-[86%] items-center justify-center rounded-full;
+    @apply relative flex aspect-square w-[76%] items-center justify-center rounded-full;
     transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
       radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%, rgba(180, 244, 255, 0.35) 76%, rgba(255, 255, 255, 0.2));
@@ -2624,7 +2679,7 @@ canvas {
   }
 
   .aq-food-button-bubble img {
-    @apply h-[76%] w-[76%] object-contain drop-shadow-lg;
+    @apply h-[86%] w-[86%] object-contain drop-shadow-lg;
     transition: transform 90ms ease;
   }
 

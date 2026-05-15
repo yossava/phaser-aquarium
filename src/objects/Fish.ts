@@ -405,7 +405,7 @@ export class Fish {
     }
 
     if (food.foodType.id === "productionBoost") {
-      return food.targetFish === this;
+      return !food.targetFish || food.targetFish === this;
     }
 
     const willingToEat = this.state === "hungry" || this.state === "ill" || this.hunger > minimumHungerToEatMore;
@@ -1157,7 +1157,7 @@ export class Fish {
     }
 
     if (food.foodType.id === "productionBoost") {
-      return food.targetFish === this;
+      return !food.targetFish || food.targetFish === this;
     }
 
     if (food.foodType.id === "medicine") {

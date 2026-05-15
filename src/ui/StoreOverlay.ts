@@ -1,10 +1,10 @@
 import { foodAssetPath } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
 import { foodCssFilterFor } from "../game/visuals";
-import type { FishType, FoodType, HelperCreatureType, Price, StoreTab } from "../types/mechanics";
+import type { FishType, FoodType, HelperCreatureType, StoreTab } from "../types/mechanics";
 import { createHtmlButton, htmlElement, installHtmlInputShield, playHtmlPageTransition } from "./dom";
 import { currentStoreItems, storeItemTier } from "./store/StoreCatalogItems";
-import { createStoreBaseCard, createStorePreview, createStorePriceBadge, helperRole, storeRarityLabel } from "./store/StoreCardParts";
+import { createStoreBaseCard, createStorePreview, createStorePriceBadge, helperRole } from "./store/StoreCardParts";
 import {
   createStoreCategoryMenu,
   createStoreDrillHeader,
@@ -13,13 +13,6 @@ import {
   type StoreBrowseLevel,
   type TankStoreCategory
 } from "./store/StoreNavigation";
-import {
-  createQuantityHoldButton,
-  createQuantityHoldState,
-  createQuantityValue,
-  stopQuantityHold,
-  type QuantityHoldState
-} from "./store/StoreQuantityControl";
 import { createStoreHeader } from "./store/StoreHeader";
 import type {
   StoreCatalogItem,
@@ -51,8 +44,6 @@ export class StoreOverlay {
   private tankCategory: TankStoreCategory = "background";
   private browseLevel: StoreBrowseLevel = "categories";
   private page = 1;
-  private quantities = new Map<string, number>();
-  private readonly quantityHoldState: QuantityHoldState = createQuantityHoldState();
   private visible = false;
   private lastRenderKey = "";
   private lastStateSignature = "";
@@ -93,7 +84,6 @@ export class StoreOverlay {
 
   hide(): void {
     this.visible = false;
-    this.stopQuantityHold();
     this.root.classList.add("hidden");
     this.root.replaceChildren();
   }
@@ -281,15 +271,17 @@ export class StoreOverlay {
     if (levelLocked) {
       card.classList.add("opacity-70");
     }
+    const preview = createStorePreview(`/assets/fish/${fish.id}.png`, fish.name, owned > 0 ? "" : "aq-fish-preview-unpurchased");
+    if (owned <= 0) {
+      preview.querySelector("img")?.classList.remove("drop-shadow-lg");
+    }
     card.append(
-      createStorePreview(`/assets/fish/${fish.id}.png`, fish.name),
+      preview,
       div("aq-card-body", [
         div("aq-card-title-row", [
           div("aq-card-title", [fish.name]),
           createStorePriceBadge(fish.price)
         ]),
-        div("aq-card-meta", [`Owned ${formatNumber(owned)} · ${storeRarityLabel(fish.rarity)} · L${formatNumber(fish.tankLevel)}`]),
-        div("aq-card-copy", [this.productionHint(fish)]),
         button(
           levelLocked ? `Need Tank L${formatNumber(fish.tankLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy w-full",
@@ -304,31 +296,20 @@ export class StoreOverlay {
   private foodCard(food: FoodType, state: StoreOverlayState): HTMLElement {
     const isAgeBoost = food.id === "ageBoost";
     const isProductionBoost = food.id === "productionBoost";
-    const quantity = isAgeBoost || isProductionBoost ? 1 : this.quantities.get(food.id) ?? 1;
-    const totalPrice: Price = {
-      coinType: food.price.coinType,
-      amount: food.price.amount * quantity,
-      rareAmount: (food.price.rareAmount ?? 0) * quantity || undefined,
-      superRareAmount: (food.price.superRareAmount ?? 0) * quantity || undefined
-    };
-    const affordable = state.developerGodMode || canAfford(state.wallet, totalPrice);
+    const fishPricedSupply = isAgeBoost || isProductionBoost;
+    const affordable = state.developerGodMode || fishPricedSupply || canAfford(state.wallet, food.price);
     const blockedByCooldown = !state.developerGodMode && isAgeBoost && !state.ageBoostPurchaseAvailable;
-    const owned = state.foodOwned[food.id] ?? 0;
-    const metaText = owned > 0
-      ? `Owned ${formatNumber(owned)} · ${formatNumber(food.calories)} cal each`
-      : `${formatNumber(food.calories)} cal each`;
-    const buyLabel = isProductionBoost ? "Select Fish" : this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
+    const blockedByProductionBoostCooldown = !state.developerGodMode && isProductionBoost && !state.productionBoostPurchaseAvailable;
+    const buyLabel = fishPricedSupply ? "Select Fish" : this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
     const card = createStoreBaseCard(food.rarity);
-    const controls = div("aq-food-qty-row", [
-      this.quantityHoldButton("-", food.id, -1, quantity <= 1 || isAgeBoost),
-      createQuantityValue(formatNumber(quantity)),
-      this.quantityHoldButton("+", food.id, 1, isAgeBoost)
-    ]);
     const buttonLabel = blockedByCooldown
       ? state.ageBoostRestockLabel
+      : blockedByProductionBoostCooldown
+        ? state.productionBoostRestockLabel
       : affordable
         ? buyLabel
-        : `Need ${formatPrice(totalPrice)}`;
+        : `Need ${formatPrice(food.price)}`;
+    const supplyExplanation = this.foodSupplyExplanation(food.id);
     const preview = createStorePreview(foodAssetPath(food.id), food.name, "aq-food-preview");
     const previewImage = preview.querySelector("img");
     if (previewImage instanceof HTMLImageElement) {
@@ -339,34 +320,28 @@ export class StoreOverlay {
       preview,
       div("flex min-w-0 flex-1 flex-col aq-food-card-body", [
         div("flex items-start justify-between gap-1.5", [
-          div("min-w-0 truncate text-sm font-black leading-tight", [food.name]),
-          isProductionBoost ? div("aq-store-price-badge", ["By fish"]) : createStorePriceBadge(totalPrice)
+          div("aq-card-title", [food.name]),
+          fishPricedSupply ? div("aq-store-price-badge", ["By fish"]) : createStorePriceBadge(food.price)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [metaText]),
-        ...(isProductionBoost ? [] : [controls]),
-        button(buttonLabel, "aq-buy w-full", () => this.actions.buyFood(food, quantity), !affordable || blockedByCooldown)
+        div("aq-food-cal-pill", [`${formatNumber(food.calories)} cal`]),
+        ...(supplyExplanation ? [div("aq-card-copy", [supplyExplanation])] : []),
+        button(buttonLabel, "aq-buy w-full", () => this.actions.buyFood(food, 1), !affordable || blockedByCooldown || blockedByProductionBoostCooldown)
       ])
     );
     return card;
   }
 
-  private quantityHoldButton(label: string, foodId: string, delta: number, disabled = false): HTMLButtonElement {
-    return createQuantityHoldButton(label, disabled, this.quantityHoldState, () => this.changeQuantity(foodId, delta));
-  }
-
-  private changeQuantity(foodId: string, delta: number): void {
-    const current = this.quantities.get(foodId) ?? 1;
-    const next = Math.max(1, Math.min(9999, current + delta));
-    if (next === current) {
-      this.stopQuantityHold();
-      return;
+  private foodSupplyExplanation(foodId: string): string | undefined {
+    if (foodId === "medicine") {
+      return "Heals sick fish when dropped in the tank.";
     }
-    this.quantities.set(foodId, next);
-    this.render(true);
-  }
-
-  private stopQuantityHold(): void {
-    stopQuantityHold(this.quantityHoldState);
+    if (foodId === "ageBoost") {
+      return "Speeds up one fish's growth after it eats the tonic.";
+    }
+    if (foodId === "productionBoost") {
+      return "Pick a fish to boost coin production for 30s.";
+    }
+    return undefined;
   }
 
   private helperCard(creature: HelperCreatureType, state: StoreOverlayState): HTMLElement {
@@ -473,10 +448,6 @@ export class StoreOverlay {
     return card;
   }
 
-  private productionHint(fish: FishType): string {
-    const tokenHint = fish.rarity === "common" ? "" : " Rare tokens gate the purchase; production is still Common.";
-    return `Converts fullness into Common coins every 2-8s.${tokenHint}`;
-  }
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = ""): HTMLElementTagNameMap[K] {
