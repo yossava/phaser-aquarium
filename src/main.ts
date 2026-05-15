@@ -3,6 +3,7 @@ import "./styles.css";
 import { gameHeight, gameWidth, renderScaleForDevice, shouldUseLowPowerMode } from "./game/constants";
 import { loadGameFonts } from "./game/fonts";
 import { AquariumScene } from "./scenes/AquariumScene";
+import { ShellBalanceScene } from "./scenes/ShellBalanceScene";
 
 await loadGameFonts();
 
@@ -23,7 +24,13 @@ new Phaser.Game({
     target: lowPowerMode ? 45 : 60,
     min: 20
   },
-  scene: [AquariumScene],
+  scene: [AquariumScene, ShellBalanceScene],
+  physics: {
+    default: "arcade",
+    matter: {
+      debug: false
+    }
+  },
   scale: {
     mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_HORIZONTALLY

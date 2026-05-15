@@ -166,6 +166,7 @@ import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
 import { createHtmlButton, htmlElement, htmlImage, installHtmlInputShield, playHtmlPageTransition, shouldSuppressHtmlClick } from "../ui/dom";
 import { createModalShell, createRewardedAdModalShell, type ModalAction } from "../ui/modal";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
+import { ShellBalanceSceneKey, type ShellBalanceResult } from "./ShellBalanceScene";
 
 type AppScreen = "tank" | "menu" | "store" | "album" | "goals" | "prize" | "makeup" | "settings";
 
@@ -2945,6 +2946,7 @@ export class AquariumScene extends Phaser.Scene {
     const items: Array<{ id: string; label: string; icon: string; action: () => void; badge?: string }> = [
       { id: "shop", label: "Shop", icon: menuIconAssetPathByKey["ui-shop"], action: () => this.openScreen("store") },
       { id: "game", label: "Game", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openPrizeMachineArcade() },
+      { id: "shell-balance", label: "Fish Stack", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openShellBalanceGame() },
       { id: "album", label: "Inventory", icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
       { id: "tanks", label: "Customize Tank", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openMakeupMode() },
       { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnfinishedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnfinishedCount()) : undefined },
@@ -4751,6 +4753,61 @@ export class AquariumScene extends Phaser.Scene {
     this.showPrizeMachineSpinner();
   }
 
+  private openShellBalanceGame(): void {
+    this.placementMode = { kind: "none" };
+    this.activeScreen = "prize";
+    this.closeModal();
+    this.storeOverlay?.hide();
+    this.hideHtmlPageOverlay();
+    this.syncHtmlGameInterface();
+    this.tankMenuOverlay?.classList.add("hidden");
+    this.gameHudOverlay?.classList.add("hidden");
+    this.htmlFoodDock?.classList.add("hidden");
+    this.destroyPrizeSpinContainer();
+    if (this.scene.isActive(ShellBalanceSceneKey)) {
+      this.scene.stop(ShellBalanceSceneKey);
+    }
+    this.scene.launch(ShellBalanceSceneKey, {
+      productionPerMinute: this.activeFishProductionPerMinute(),
+      onComplete: (result: ShellBalanceResult) => this.completeShellBalanceGame(result),
+      onCancel: () => this.returnFromShellBalanceGame()
+    });
+    this.scene.bringToTop(ShellBalanceSceneKey);
+    this.time.delayedCall(0, () => this.scene.pause("AquariumScene"));
+  }
+
+  private completeShellBalanceGame(result: ShellBalanceResult): void {
+    const productionPerMinute = this.activeFishProductionPerMinute();
+    const fallPenalty = result.fallCount * 0.5 * productionPerMinute;
+    const rewardCommonCoins = Math.max(0, Math.floor(result.caughtCount * productionPerMinute - fallPenalty));
+    earn(this.wallet, "common", rewardCommonCoins);
+    this.recordDailyQuestAction("prize-game");
+    this.saveNow();
+    this.returnFromShellBalanceGame();
+    this.showPrizeCelebration(
+      "Shell Balance!",
+      "/assets/ui/shop/coin_icon_common.png",
+      `${formatNumber(result.caughtCount)} helpers - ${formatNumber(result.fallCount)} falls x 0.5, at C${formatNumber(productionPerMinute)}/min = C${formatNumber(rewardCommonCoins)}.`
+    );
+  }
+
+  private activeFishProductionPerMinute(): number {
+    return this.activeFish().reduce((total, fish) => {
+      const fishProduction = fish.productionOptions().reduce((fishTotal, production) => {
+        const intervalSeconds = Math.max(1, production.intervalSeconds);
+        return fishTotal + production.amount * production.chance * (60 / intervalSeconds);
+      }, 0);
+      return total + fishProduction;
+    }, 0);
+  }
+
+  private returnFromShellBalanceGame(): void {
+    this.scene.resume("AquariumScene");
+    this.activeScreen = "menu";
+    this.syncHtmlGameInterface();
+    this.syncHtmlPageOverlay();
+  }
+
   private showPrizeMachineSpinner(): void {
     this.destroyPrizeSpinContainer();
     this.prizeSpinInProgress = false;
@@ -5854,7 +5911,8 @@ export class AquariumScene extends Phaser.Scene {
 
   private closeStoreAfterPurchase(): void {
     if (this.activeScreen === "store") {
-      this.closePage();
+      this.closeModal();
+      this.returnToTankScreen();
     }
   }
 
