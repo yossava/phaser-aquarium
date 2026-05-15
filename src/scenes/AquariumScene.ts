@@ -715,6 +715,7 @@ export class AquariumScene extends Phaser.Scene {
   private makeupOverlay?: HTMLDivElement;
   private makeupDraft?: MakeupDraft;
   private makeupDraggedDecoration?: MakeupDecorationDraft;
+  private nativeMakeupDraggedDecoration?: MakeupDecorationDraft;
   private makeupDecorationSettingsElement?: HTMLElement;
   private makeupBackgroundScrollLeft = 0;
   private makeupDecorScrollLeft = 0;
@@ -3671,12 +3672,35 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     const pointerPoint = this.pointerDesignPoint(pointer);
+    this.updateMakeupDecorationDragAtDesignPoint(pointerPoint);
+  }
+
+  private updateMakeupDecorationDragAtDesignPoint(pointerPoint: Phaser.Math.Vector2): void {
+    if (this.activeScreen !== "makeup" || !this.makeupDraggedDecoration) {
+      return;
+    }
+
     const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
     const decoration = this.makeupDraggedDecoration;
     decoration.x = Phaser.Math.Clamp(tankPoint.x, tankBounds.left + 24, tankBounds.right - 24);
     decoration.y = Phaser.Math.Clamp(tankPoint.y, tankBounds.top + 118, tankBounds.bottom - 30);
     decoration.image.setPosition(decoration.x, decoration.y);
     this.updateMakeupDecorationSettingsPosition();
+  }
+
+  private makeupDecorationAtPointer(designX: number, designY: number): MakeupDecorationDraft | undefined {
+    if (this.activeScreen !== "makeup" || this.makeupDraft?.section !== "decor") {
+      return undefined;
+    }
+
+    const tankPoint = this.screenToTankPoint(designX, designY);
+    return this.makeupDraft.decorations
+      .filter((decoration) => {
+        const radiusX = Math.max(34, decoration.image.displayWidth * 0.58);
+        const radiusY = Math.max(34, decoration.image.displayHeight * 0.58);
+        return Math.abs(tankPoint.x - decoration.x) <= radiusX && Math.abs(tankPoint.y - decoration.y) <= radiusY;
+      })
+      .sort((first, second) => second.depth - first.depth || second.y - first.y)[0];
   }
 
   private endMakeupDecorationDrag(): void {
@@ -3686,6 +3710,7 @@ export class AquariumScene extends Phaser.Scene {
 
     this.makeupDraggedDecoration.image.setAlpha(0.9);
     this.makeupDraggedDecoration = undefined;
+    this.nativeMakeupDraggedDecoration = undefined;
     this.syncMakeupDecorationDepths();
   }
 
@@ -7009,6 +7034,14 @@ export class AquariumScene extends Phaser.Scene {
       decoration.image.setDepth(9);
       this.showDecorationTrashTarget(true);
     };
+    const beginNativeMakeupDecorationDrag = (decoration: MakeupDecorationDraft, point: Phaser.Math.Vector2) => {
+      this.selectMakeupDecoration(decoration);
+      this.nativeMakeupDraggedDecoration = decoration;
+      this.makeupDraggedDecoration = decoration;
+      decoration.image.setAlpha(0.72).setDepth(20);
+      this.tankLayer.bringToTop(decoration.image);
+      this.updateMakeupDecorationDragAtDesignPoint(point);
+    };
     const endNativeFishDrag = (event?: PointerEvent) => {
       if (!this.nativeDraggedFish) {
         return;
@@ -7052,6 +7085,18 @@ export class AquariumScene extends Phaser.Scene {
       this.phaserDraggedDecoration = undefined;
       activePointerId = undefined;
     };
+    const endNativeMakeupDecorationDrag = (event?: PointerEvent) => {
+      if (!this.nativeMakeupDraggedDecoration) {
+        return;
+      }
+
+      const point = event ? designPointFromEvent(event) : undefined;
+      if (point) {
+        this.updateMakeupDecorationDragAtDesignPoint(point);
+      }
+      this.endMakeupDecorationDrag();
+      activePointerId = undefined;
+    };
     const onPointerDown = (event: PointerEvent) => {
       if (this.activeScreen === "prize") {
         const point = designPointFromEvent(event);
@@ -7062,7 +7107,7 @@ export class AquariumScene extends Phaser.Scene {
         return;
       }
 
-      if (event.button !== 0 || this.htmlDockDragging || this.activeScreen !== "tank") {
+      if (event.button !== 0 || this.htmlDockDragging) {
         return;
       }
 
@@ -7071,11 +7116,39 @@ export class AquariumScene extends Phaser.Scene {
         return;
       }
 
+      if (this.activeScreen === "makeup") {
+        const decoration = this.makeupDecorationAtPointer(point.x, point.y);
+        if (!decoration) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        activePointerId = event.pointerId;
+        this.capturePointerSafely(canvas, event.pointerId);
+        beginNativeMakeupDecorationDrag(decoration, point);
+        return;
+      }
+
+      if (this.activeScreen !== "tank") {
+        return;
+      }
+
       const tappedCoin = this.coinAtPointer(point.x, point.y);
       if (tappedCoin) {
         event.preventDefault();
         event.stopPropagation();
         this.collectCoin(tappedCoin, false);
+        return;
+      }
+
+      const decoration = this.decorationAtPointer(point.x, point.y);
+      if (decoration) {
+        event.preventDefault();
+        event.stopPropagation();
+        activePointerId = event.pointerId;
+        this.capturePointerSafely(canvas, event.pointerId);
+        beginNativeDecorationDrag(decoration);
         return;
       }
 
@@ -7095,7 +7168,7 @@ export class AquariumScene extends Phaser.Scene {
       fish.sprite.setDepth(14);
     };
     const onPointerMove = (event: PointerEvent) => {
-      if (activePointerId !== event.pointerId || this.activeScreen !== "tank") {
+      if (activePointerId !== event.pointerId) {
         return;
       }
 
@@ -7106,6 +7179,15 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       const tankPoint = this.screenToTankPoint(point.x, point.y);
+      if (this.nativeMakeupDraggedDecoration && this.activeScreen === "makeup") {
+        this.updateMakeupDecorationDragAtDesignPoint(point);
+        return;
+      }
+      if (this.nativeDraggedDecoration && this.activeScreen === "tank") {
+        this.moveDecoration(this.nativeDraggedDecoration, tankPoint.x, tankPoint.y);
+        this.highlightDecorationTrashTarget(decorationTrashZone.contains(point.x, point.y));
+        return;
+      }
       if (this.nativeDraggedFish) {
         this.nativeDraggedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
       }
@@ -7117,6 +7199,7 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       this.releasePointerSafely(canvas, event.pointerId);
+      endNativeMakeupDecorationDrag(event);
       endNativeDecorationDrag(event);
       endNativeFishDrag(event);
       activePointerId = undefined;
@@ -7128,6 +7211,7 @@ export class AquariumScene extends Phaser.Scene {
 
       event.preventDefault();
       this.releasePointerSafely(canvas, event.pointerId);
+      endNativeMakeupDecorationDrag(event);
       endNativeDecorationDrag(event);
       endNativeFishDrag(event);
       activePointerId = undefined;
@@ -7142,6 +7226,7 @@ export class AquariumScene extends Phaser.Scene {
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerCancel);
+      endNativeMakeupDecorationDrag();
       endNativeDecorationDrag();
       endNativeFishDrag();
     };
