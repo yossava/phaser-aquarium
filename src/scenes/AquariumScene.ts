@@ -4778,17 +4778,12 @@ export class AquariumScene extends Phaser.Scene {
 
   private completeShellBalanceGame(result: ShellBalanceResult): void {
     const productionPerMinute = this.activeFishProductionPerMinute();
-    const fallPenalty = result.fallCount * 0.5 * productionPerMinute;
-    const rewardCommonCoins = Math.max(0, Math.floor(result.caughtCount * productionPerMinute - fallPenalty));
+    const mismatchMultiplier = Math.max(0, 1 - result.mismatchCount * 0.05);
+    const rewardCommonCoins = Math.max(0, Math.floor(result.caughtCount * productionPerMinute * mismatchMultiplier));
     earn(this.wallet, "common", rewardCommonCoins);
     this.recordDailyQuestAction("prize-game");
     this.saveNow();
     this.returnFromShellBalanceGame();
-    this.showPrizeCelebration(
-      "Shell Balance!",
-      "/assets/ui/shop/coin_icon_common.png",
-      `${formatNumber(result.caughtCount)} helpers - ${formatNumber(result.fallCount)} falls x 0.5, at C${formatNumber(productionPerMinute)}/min = C${formatNumber(rewardCommonCoins)}.`
-    );
   }
 
   private activeFishProductionPerMinute(): number {

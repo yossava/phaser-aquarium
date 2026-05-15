@@ -9,7 +9,7 @@ export const ShellBalanceSceneKey = "ShellBalanceScene";
 export type ShellBalanceResult = {
   score: number;
   caughtCount: number;
-  fallCount: number;
+  mismatchCount: number;
 };
 
 type ShellBalanceSceneData = {
@@ -24,36 +24,52 @@ type StackPieceSource = {
   textureKey: string;
   width: number;
   height: number;
+  visualOriginY: number;
+  collisionWidthRatio: number;
+  collisionHeightRatio: number;
 };
 
 type StackPiece = {
   body: Phaser.Physics.Matter.Image;
   source: StackPieceSource;
+  level: number;
+  value: number;
   settled: boolean;
   released: boolean;
-  jellyPhase: number;
-  jellyKick: number;
 };
 
-const floorY = gameHeight - 56;
-const platformWidth = 150;
-const platformHeight = 24;
-const platformX = gameWidth / 2;
-const platformMoveRange = 96;
-const platformMoveSpeed = 0.00115;
+const floorHeight = 44;
+const floorTopY = gameHeight - floorHeight;
+const floorY = gameHeight - floorHeight / 2;
 const spawnY = 140;
-const dragLowerLimitY = gameHeight / 3;
-const maxFalls = 5;
-const settleSpeed = 0.42;
-const settleDelayMs = 560;
-const jellyDragSquash = 0.12;
-const jellyKickDecayPerSecond = 3.8;
-const platformTouchCarry = 0.74;
+const dropGuideY = spawnY + 44;
+const settleSpeed = 0.48;
+const readyMoveSpeed = 150;
+const nextCrabDelayMs = 500;
+const readyFadeInMs = 220;
+const readyMinX = 42;
+const readyMaxX = gameWidth - 42;
+const doneButtonWidth = 92;
+const doneButtonHeight = 38;
+const doneButtonX = gameWidth - 68;
+const doneButtonY = 44;
 const commonCoinIconPath = "/assets/ui/icon-common-coin.png";
 const coinCollectSoundKey = "sfx-coin-collect";
-const coinCollectSoundPath = "/assets/audio/sfx/coin-pick.ogg";
-const fishEatSoundKey = "sfx-fish-eat";
-const fishEatSoundPath = "/assets/audio/sfx/fish-eat.ogg";
+const helperPieceScale = 1.28;
+const mergeGrowthScale = 0.24;
+const gameDurationMs = 120000;
+const helperVisualOriginYById: Record<string, number> = {
+  "auto-cleaner": 0.25,
+  crab: 0.25,
+  "feeder-snail": 0.38,
+  shell: 0.13
+};
+const helperCollisionRatioById: Record<string, { width: number; height: number }> = {
+  "auto-cleaner": { width: 0.84, height: 0.55 },
+  crab: { width: 0.76, height: 0.5 },
+  "feeder-snail": { width: 0.76, height: 0.76 },
+  shell: { width: 0.57, height: 0.48 }
+};
 
 export class ShellBalanceScene extends Phaser.Scene {
   private onComplete?: (result: ShellBalanceResult) => void;
@@ -61,22 +77,22 @@ export class ShellBalanceScene extends Phaser.Scene {
   private pieces: StackPiece[] = [];
   private activePiece?: StackPiece;
   private pieceSources: StackPieceSource[] = [];
-  private targetX = gameWidth / 2;
-  private fallCount = 0;
+  private nextPieceSourceIndex = 0;
+  private readyMoveDirection = 1;
+  private scoreCount = 0;
+  private mismatchCount = 0;
   private settledCount = 0;
   private finished = false;
-  private draggingPiece = false;
-  private dragOffset = new Phaser.Math.Vector2();
-  private activeSettledSince?: number;
   private prizeText?: Phaser.GameObjects.Text;
-  private fallText?: Phaser.GameObjects.Text;
-  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-  private platformBody?: MatterJS.BodyType;
-  private platformTop?: Phaser.GameObjects.Rectangle;
-  private platformShadow?: Phaser.GameObjects.Rectangle;
-  private platformCurrentX = platformX;
+  private timerText?: Phaser.GameObjects.Text;
+  private floorBody?: MatterJS.BodyType;
+  private floorGraphics?: Phaser.GameObjects.Graphics;
   private productionPerMinute = 0;
   private prizeCoinIcon?: Phaser.GameObjects.Image;
+  private previousCanvasTouchAction = "";
+  private resultShown = false;
+  private nextSpawnTimer?: Phaser.Time.TimerEvent;
+  private gameEndsAt = 0;
 
   constructor() {
     super({
@@ -84,7 +100,7 @@ export class ShellBalanceScene extends Phaser.Scene {
       physics: {
         matter: {
           debug: false,
-          gravity: { x: 0, y: 0.72 }
+          gravity: { x: 0, y: 1.36 }
         }
       }
     });
@@ -101,12 +117,6 @@ export class ShellBalanceScene extends Phaser.Scene {
       this.load.image(this.stackHelperTextureKey(helperType.id), `/assets/helpers/${helperType.id}.png`);
     });
     this.load.image("stack-prize-common-coin", commonCoinIconPath);
-    if (!this.cache.audio.exists(coinCollectSoundKey)) {
-      this.load.audio(coinCollectSoundKey, coinCollectSoundPath);
-    }
-    if (!this.cache.audio.exists(fishEatSoundKey)) {
-      this.load.audio(fishEatSoundKey, fishEatSoundPath);
-    }
   }
 
   create(): void {
@@ -114,30 +124,36 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.input.keyboard?.removeAllListeners();
     this.matter.world.resume();
     this.finished = false;
+    this.resultShown = false;
     this.pieces = [];
     this.activePiece = undefined;
-    this.targetX = gameWidth / 2;
-    this.fallCount = 0;
+    this.nextPieceSourceIndex = 0;
+    this.readyMoveDirection = 1;
+    this.scoreCount = 0;
+    this.mismatchCount = 0;
     this.settledCount = 0;
-    this.draggingPiece = false;
-    this.dragOffset.set(0, 0);
-    this.activeSettledSince = undefined;
+    this.gameEndsAt = this.time.now + gameDurationMs;
+    this.disableSafariTouchGestures();
 
     this.configureCameraForHighDpi();
     this.createBackdrop();
     this.createPieceSources();
     this.createBounds();
     this.createDragBoundary();
-    this.createPlatform();
+    this.createFloor();
     this.createHud();
-    this.cursors = this.input.keyboard?.createCursorKeys();
     this.spawnPiece();
 
-    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.dragActivePiece(pointer));
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.beginDragActivePiece(pointer));
-    this.input.on("pointerup", () => this.releaseActivePiece());
-    this.input.on("pointerupoutside", () => this.releaseActivePiece());
+    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => this.releaseActivePiece(pointer));
+    this.input.on("pointerupoutside", (pointer: Phaser.Input.Pointer) => this.releaseActivePiece(pointer));
     this.input.keyboard?.on("keydown-ESC", () => this.cancelGame());
+    this.matter.world.on("collisionstart", this.handleCollisionStart, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.restoreSafariTouchGestures();
+      this.matter.world.off("collisionstart", this.handleCollisionStart, this);
+      this.nextSpawnTimer?.remove(false);
+      this.nextSpawnTimer = undefined;
+    });
   }
 
   update(time: number, delta: number): void {
@@ -145,12 +161,15 @@ export class ShellBalanceScene extends Phaser.Scene {
       return;
     }
 
-    const platformDeltaX = this.updateMovingPlatform(time);
-    this.applyPlatformFriction(platformDeltaX);
-    this.updateActivePiece(delta, time);
-    this.updateJellyPieces(time, delta);
+    const remainingMs = Math.max(0, this.gameEndsAt - time);
+    this.updateActivePiece(delta);
+    this.updateSettledPieces();
+    this.scoreCount = this.currentMergeCount();
     this.prizeText?.setText(formatNumber(this.currentPrizeAmount()));
-    this.fallText?.setText(`Falls ${formatNumber(this.fallCount)}/${formatNumber(maxFalls)}`);
+    this.timerText?.setText(this.formatTimer(remainingMs));
+    if (remainingMs <= 0) {
+      this.finishGame();
+    }
   }
 
   private configureCameraForHighDpi(): void {
@@ -163,10 +182,6 @@ export class ShellBalanceScene extends Phaser.Scene {
 
   private currentRenderScale(): number {
     return Phaser.Math.Clamp(this.scale.gameSize.width / gameWidth, 1, maxRenderScale);
-  }
-
-  private pointerDesignX(pointer: Phaser.Input.Pointer): number {
-    return pointer.x / this.currentRenderScale();
   }
 
   private pointerDesignPoint(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
@@ -188,14 +203,27 @@ export class ShellBalanceScene extends Phaser.Scene {
     }
   }
 
+  private disableSafariTouchGestures(): void {
+    this.previousCanvasTouchAction = this.game.canvas.style.touchAction;
+    this.game.canvas.style.touchAction = "none";
+  }
+
+  private restoreSafariTouchGestures(): void {
+    this.game.canvas.style.touchAction = this.previousCanvasTouchAction;
+  }
+
   private createPieceSources(): void {
-    const helperSources: StackPieceSource[] = helperCreatureTypes.map((helperType) => ({
-      id: `helper-${helperType.id}`,
-      name: helperType.name,
-      textureKey: this.stackHelperTextureKey(helperType.id),
-      width: helperType.id === "feeder-snail" ? 70 : 58,
-      height: helperType.id === "feeder-snail" ? 36 : 42
-    }));
+    const helperSources: StackPieceSource[] = helperCreatureTypes
+      .map((helperType) => ({
+        id: `helper-${helperType.id}`,
+        name: helperType.name,
+        textureKey: this.stackHelperTextureKey(helperType.id),
+        width: (helperType.id === "feeder-snail" ? 70 : 58) * helperPieceScale,
+        height: (helperType.id === "feeder-snail" ? 36 : 42) * helperPieceScale,
+        visualOriginY: helperVisualOriginYById[helperType.id] ?? 0.5,
+        collisionWidthRatio: helperCollisionRatioById[helperType.id]?.width ?? 0.78,
+        collisionHeightRatio: helperCollisionRatioById[helperType.id]?.height ?? 0.58
+      }));
     this.pieceSources = helperSources.filter((source) => this.textures.exists(source.textureKey));
   }
 
@@ -209,17 +237,14 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.matter.add.rectangle(gameWidth + 24, gameHeight / 2, 20, gameHeight, { isStatic: true, label: "right-loss" });
   }
 
-  private createPlatform(): void {
-    this.platformCurrentX = platformX;
-    this.platformTop = this.add.rectangle(platformX, floorY, platformWidth, platformHeight, 0x5ddaff, 0.96)
-      .setStrokeStyle(3, 0xd9fbff, 0.86)
-      .setDepth(2);
-    this.platformShadow = this.add.rectangle(platformX, floorY + 20, platformWidth + 28, 20, 0x063a58, 0.7).setDepth(1);
-    this.platformBody = this.matter.add.rectangle(platformX, floorY, platformWidth, platformHeight, {
+  private createFloor(): void {
+    this.floorGraphics = this.add.graphics().setDepth(2);
+    this.drawFloor();
+    this.floorBody = this.matter.add.rectangle(gameWidth / 2, floorY, gameWidth, floorHeight, {
       isStatic: true,
       friction: 0.95,
-      restitution: 0.02,
-      label: "stack-platform"
+      restitution: 0.12,
+      label: "stack-floor"
     });
   }
 
@@ -229,7 +254,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     for (let x = 0; x < gameWidth; x += segmentWidth + gapWidth) {
       this.add.line(
         0,
-        dragLowerLimitY,
+        dropGuideY,
         x,
         0,
         Math.min(x + segmentWidth, gameWidth),
@@ -238,6 +263,25 @@ export class ShellBalanceScene extends Phaser.Scene {
         0.42
       ).setOrigin(0, 0.5).setLineWidth(3, 3).setDepth(3);
     }
+  }
+
+  private drawFloor(): void {
+    if (!this.floorGraphics) {
+      return;
+    }
+
+    this.floorGraphics.clear();
+    this.floorGraphics.fillStyle(0xd2b36c, 1);
+    this.floorGraphics.fillRect(0, floorTopY, gameWidth, floorHeight);
+    this.floorGraphics.fillStyle(0xf0d68d, 0.85);
+    this.floorGraphics.fillRect(0, floorTopY, gameWidth, 8);
+    this.floorGraphics.lineStyle(2, 0x8f6a35, 0.35);
+    this.floorGraphics.beginPath();
+    this.floorGraphics.moveTo(0, floorTopY + 9);
+    for (let x = 0; x <= gameWidth; x += 22) {
+      this.floorGraphics.lineTo(x, floorTopY + 9 + Math.sin(x * 0.08) * 3);
+    }
+    this.floorGraphics.strokePath();
   }
 
   private createHud(): void {
@@ -262,246 +306,231 @@ export class ShellBalanceScene extends Phaser.Scene {
       .setDisplaySize(22, 22)
       .setDepth(4);
     this.prizeText = this.add.text(108, 74, "0", statStyle);
-    this.fallText = this.add.text(gameWidth - 22, 74, `Falls 0/${formatNumber(maxFalls)}`, statStyle).setOrigin(1, 0);
-
-    const close = this.add.text(gameWidth - 20, 24, "X", {
+    this.timerText = this.add.text(gameWidth / 2, 31, "2:00", {
       fontFamily: gameFontFamily,
       fontSize: "24px",
-      color: "#ffffff",
+      color: "#fff5a8",
       stroke: "#062840",
+      strokeThickness: 6
+    }).setOrigin(0.5).setDepth(4);
+    this.createDoneButton();
+  }
+
+  private createDoneButton(): void {
+    const buttonBg = this.add.graphics().setDepth(4);
+    buttonBg.fillStyle(0x2fb72f, 0.96);
+    buttonBg.fillRoundedRect(doneButtonX - doneButtonWidth / 2, doneButtonY - doneButtonHeight / 2, doneButtonWidth, doneButtonHeight, 13);
+    buttonBg.lineStyle(2, 0xb9ffbd, 0.78);
+    buttonBg.strokeRoundedRect(doneButtonX - doneButtonWidth / 2, doneButtonY - doneButtonHeight / 2, doneButtonWidth, doneButtonHeight, 13);
+    this.add.text(doneButtonX, doneButtonY, "DONE", {
+      fontFamily: gameFontFamily,
+      fontSize: "18px",
+      color: "#ffffff",
+      stroke: "#124a12",
       strokeThickness: 5
-    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
-    close.on("pointerup", () => this.cancelGame());
+    }).setOrigin(0.5).setDepth(5);
+    this.add.zone(doneButtonX, doneButtonY, doneButtonWidth, doneButtonHeight)
+      .setDepth(6)
+      .setInteractive({ useHandCursor: true })
+      .on("pointerup", () => this.finishGame());
   }
 
   private spawnPiece(): void {
-    const source = Phaser.Utils.Array.GetRandom(this.pieceSources);
+    const source = this.pieceSources[this.nextPieceSourceIndex % this.pieceSources.length];
     if (!source || !this.textures.exists(source.textureKey)) {
       this.time.delayedCall(120, () => this.spawnPiece());
       return;
     }
+    this.nextPieceSourceIndex += 1;
 
-    const x = gameWidth / 2;
-    const body = this.matter.add.image(x, spawnY, source.textureKey, undefined, {
-      shape: { type: "rectangle", width: source.width, height: source.height },
-      friction: 0.96,
-      frictionStatic: 1,
-      frictionAir: 0.018,
-      restitution: 0.02,
-      density: 0.0028,
-      label: "stack-piece"
-    });
-    body.setDisplaySize(source.width, source.height);
+    const body = this.createPieceBody(source, gameWidth / 2, spawnY, 1, true);
     body.setDepth(5);
-    body.setIgnoreGravity(true);
+    body.setAlpha(0);
     body.setVelocity(0, 0);
     body.setAngularVelocity(0);
     this.activePiece = {
       body,
       source,
+      level: 1,
+      value: 1,
       settled: false,
-      released: false,
-      jellyPhase: Phaser.Math.FloatBetween(0, Math.PI * 2),
-      jellyKick: 0.18
+      released: false
     };
     this.pieces.push(this.activePiece);
-    this.activeSettledSince = undefined;
-    this.draggingPiece = false;
+    this.tweens.add({
+      targets: body,
+      alpha: 1,
+      duration: readyFadeInMs,
+      ease: "Sine.easeOut"
+    });
   }
 
-  private updateActivePiece(delta: number, time: number): void {
+  private updateActivePiece(delta: number): void {
     if (!this.activePiece) {
       return;
     }
 
     const piece = this.activePiece.body;
-    if (!this.activePiece.released) {
-      piece.setVelocity(0, 0);
-      piece.setAngularVelocity(0);
-      const keyboardX = (this.cursors?.left?.isDown ? -1 : 0) + (this.cursors?.right?.isDown ? 1 : 0);
-      if (keyboardX !== 0) {
-        piece.setPosition(
-          Phaser.Math.Clamp(piece.x + keyboardX * delta * 0.36, 42, gameWidth - 42),
-          piece.y
-        );
-      }
+    if (this.activePiece.released) {
       return;
     }
 
-    if (this.activePieceMissedPlatform()) {
-      this.recordFall(piece.x, Phaser.Math.Clamp(piece.y, 130, gameHeight - 88));
-      piece.destroy();
-      this.pieces = this.pieces.filter((candidate) => candidate !== this.activePiece);
-      this.activePiece = undefined;
-      if (this.fallCount >= maxFalls) {
-        this.finishGame();
+    piece.setVelocity(0, 0);
+    piece.setAngularVelocity(0);
+      let nextX = piece.x + this.readyMoveDirection * readyMoveSpeed * (delta / 1000);
+    if (nextX <= readyMinX || nextX >= readyMaxX) {
+      this.readyMoveDirection *= -1;
+      nextX = Phaser.Math.Clamp(nextX, readyMinX, readyMaxX);
+    }
+    piece.setPosition(nextX, spawnY);
+  }
+
+  private updateSettledPieces(): void {
+    this.pieces.forEach((piece) => {
+      if (!piece.released || piece.settled || !piece.body.active) {
         return;
       }
-      this.time.delayedCall(260, () => this.spawnPiece());
-      return;
-    }
 
-    const velocity = piece.body?.velocity;
-    const matterBody = piece.body as MatterJS.BodyType | undefined;
-    const angularSpeed = Math.abs(matterBody?.angularVelocity ?? 0);
-    const slow = Math.abs(velocity?.x ?? 0) < settleSpeed && Math.abs(velocity?.y ?? 0) < settleSpeed && angularSpeed < 0.03;
-    const lowEnough = piece.y > spawnY + 90;
-    if (slow && lowEnough) {
-      this.activeSettledSince ??= time;
-      if (time - this.activeSettledSince >= settleDelayMs) {
-        this.activePiece.settled = true;
-        this.kickJelly(this.activePiece, 0.22);
+      const velocity = piece.body.body?.velocity;
+      const matterBody = piece.body.body as MatterJS.BodyType | undefined;
+      const angularSpeed = Math.abs(matterBody?.angularVelocity ?? 0);
+      const slow = Math.abs(velocity?.x ?? 0) < settleSpeed && Math.abs(velocity?.y ?? 0) < settleSpeed && angularSpeed < 0.035;
+      const lowEnough = piece.body.y > spawnY + 90;
+      if (slow && lowEnough) {
+        piece.settled = true;
         this.settledCount += 1;
-        this.playSfx(coinCollectSoundKey, { volume: 0.22 });
-        this.activePiece = undefined;
-        this.activeSettledSince = undefined;
-        this.time.delayedCall(240, () => this.spawnPiece());
       }
-    } else {
-      this.activeSettledSince = undefined;
-    }
-  }
-
-  private activePieceMissedPlatform(): boolean {
-    if (!this.activePiece?.released) {
-      return false;
-    }
-
-    const piece = this.activePiece.body;
-    const velocityY = piece.body?.velocity.y ?? 0;
-    const outsideBar = !this.isOverPlatform(piece.x, this.activePiece.source.width * 0.32);
-    return piece.y > gameHeight + 54 || piece.x < -70 || piece.x > gameWidth + 70 || (piece.y > floorY + platformHeight && velocityY > 0 && outsideBar);
-  }
-
-  private isOverPlatform(x: number, margin = 0): boolean {
-    const halfWidth = platformWidth / 2 + margin;
-    return x >= this.platformCurrentX - halfWidth && x <= this.platformCurrentX + halfWidth;
-  }
-
-  private updateMovingPlatform(time: number): number {
-    const previousX = this.platformCurrentX;
-    this.platformCurrentX = platformX + Math.sin(time * platformMoveSpeed) * platformMoveRange;
-    this.platformTop?.setX(this.platformCurrentX);
-    this.platformShadow?.setX(this.platformCurrentX);
-    if (this.platformBody) {
-      this.matter.body.setPosition(this.platformBody, { x: this.platformCurrentX, y: floorY });
-    }
-    return this.platformCurrentX - previousX;
-  }
-
-  private applyPlatformFriction(deltaX: number): void {
-    if (Math.abs(deltaX) < 0.001) {
-      return;
-    }
-
-    this.pieces.forEach((piece) => {
-      if (!piece.body.active || !piece.released) {
-        return;
-      }
-
-      const carry = piece.settled ? 1 : this.pieceTouchesPlatform(piece) ? platformTouchCarry : 0;
-      if (carry <= 0) {
-        return;
-      }
-
-      piece.body.setPosition(piece.body.x + deltaX * carry, piece.body.y);
-      const velocity = piece.body.body?.velocity;
-      piece.body.setVelocity((velocity?.x ?? 0) + deltaX * 0.028 * carry, velocity?.y ?? 0);
     });
   }
 
-  private pieceTouchesPlatform(piece: StackPiece): boolean {
-    const bottom = piece.body.y + piece.source.height / 2;
-    return bottom >= floorY - platformHeight * 1.35 && bottom <= floorY + platformHeight * 1.8 && this.isOverPlatform(piece.body.x, piece.source.width * 0.38);
-  }
-
-  private beginDragActivePiece(pointer: Phaser.Input.Pointer): void {
-    if (!this.activePiece || this.activePiece.released) {
+  private releaseActivePiece(pointer?: Phaser.Input.Pointer): void {
+    if (this.finished || !this.activePiece || this.activePiece.released || (pointer && this.isDoneButtonPointer(pointer))) {
       return;
     }
 
+    const releasedPiece = this.activePiece;
+    const slideVelocity = this.readyMoveDirection * readyMoveSpeed / 60;
+    releasedPiece.released = true;
+    releasedPiece.body.setIgnoreGravity(false);
+    releasedPiece.body.setVelocity(slideVelocity, 1.05);
+    releasedPiece.body.setAngularVelocity(Phaser.Math.FloatBetween(-0.045, 0.045));
+    this.activePiece = undefined;
+    this.scheduleNextPiece(nextCrabDelayMs);
+  }
+
+  private isDoneButtonPointer(pointer: Phaser.Input.Pointer): boolean {
     const point = this.pointerDesignPoint(pointer);
-    const bounds = this.activePiece.body.getBounds();
-    if (!bounds.contains(point.x, point.y)) {
-      return;
-    }
-
-    this.draggingPiece = true;
-    this.kickJelly(this.activePiece, 0.12);
-    this.dragOffset.set(this.activePiece.body.x - point.x, this.activePiece.body.y - point.y);
+    return Math.abs(point.x - doneButtonX) <= doneButtonWidth / 2 && Math.abs(point.y - doneButtonY) <= doneButtonHeight / 2;
   }
 
-  private dragActivePiece(pointer: Phaser.Input.Pointer): void {
-    if (!this.activePiece || this.activePiece.released || !this.draggingPiece) {
-      return;
-    }
-
-    const point = this.pointerDesignPoint(pointer);
-    this.activePiece.body.setPosition(
-      Phaser.Math.Clamp(point.x + this.dragOffset.x, 38, gameWidth - 38),
-      Phaser.Math.Clamp(point.y + this.dragOffset.y, 110, dragLowerLimitY)
-    );
-    this.activePiece.body.setVelocity(0, 0);
-    this.activePiece.body.setAngularVelocity(0);
-  }
-
-  private releaseActivePiece(): void {
-    if (!this.activePiece || this.activePiece.released || !this.draggingPiece) {
-      return;
-    }
-
-    this.draggingPiece = false;
-    this.activePiece.released = true;
-    this.kickJelly(this.activePiece, 0.28);
-    this.activePiece.body.setIgnoreGravity(false);
-    this.activePiece.body.setVelocity(0, 0.35);
-    this.activePiece.body.setAngularVelocity(Phaser.Math.FloatBetween(-0.01, 0.01));
-  }
-
-  private updateJellyPieces(time: number, delta: number): void {
-    const decay = Math.max(0, 1 - (delta / 1000) * jellyKickDecayPerSecond);
-    this.pieces.forEach((piece) => {
-      if (!piece.body.active) {
-        return;
-      }
-
-      piece.jellyKick *= decay;
-      const velocity = piece.body.body?.velocity;
-      const verticalStretch = Phaser.Math.Clamp(Math.abs(velocity?.y ?? 0) * 0.055, 0, 0.18);
-      const horizontalStretch = Phaser.Math.Clamp(Math.abs(velocity?.x ?? 0) * 0.032, 0, 0.09);
-      const dragSquash = piece === this.activePiece && this.draggingPiece ? jellyDragSquash : 0;
-      const wobbleStrength = (piece.settled ? 0.018 : 0.036) + piece.jellyKick * 0.36;
-      const wobble = Math.sin(time * 0.019 + piece.jellyPhase) * wobbleStrength;
-      const kick = piece.jellyKick;
-      const scaleX = Phaser.Math.Clamp(1 + verticalStretch + horizontalStretch + dragSquash + wobble + kick * 0.35, 0.78, 1.34);
-      const scaleY = Phaser.Math.Clamp(1 - verticalStretch * 0.72 - dragSquash * 0.62 - wobble * 0.58 - kick * 0.24, 0.72, 1.24);
-      piece.body.setDisplaySize(piece.source.width * scaleX, piece.source.height * scaleY);
-    });
-  }
-
-  private kickJelly(piece: StackPiece, amount: number): void {
-    piece.jellyKick = Math.max(piece.jellyKick, amount);
-  }
-
-  private recordFall(x: number, y: number): void {
+  private handleCollisionStart(event: Phaser.Physics.Matter.Events.CollisionStartEvent): void {
     if (this.finished) {
       return;
     }
 
-    this.fallCount += 1;
-    this.playSfx(fishEatSoundKey, { volume: 0.18 });
-    const text = this.add.text(Phaser.Math.Clamp(x, 46, gameWidth - 46), Phaser.Math.Clamp(y, 130, gameHeight - 90), "FALL", {
+    for (const pair of event.pairs) {
+      const first = this.pieceForBody(pair.bodyA);
+      const second = this.pieceForBody(pair.bodyB);
+      if (!first || !second || first === second || !first.released || !second.released) {
+        continue;
+      }
+
+      if (first.source.id === second.source.id) {
+        this.resolveCreatureMerge(first, second);
+        break;
+      }
+    }
+  }
+
+  private pieceForBody(body: MatterJS.BodyType): StackPiece | undefined {
+    return this.pieces.find((piece) => {
+      const pieceBody = piece.body.body as MatterJS.BodyType | undefined;
+      return piece.body.active && pieceBody?.id === body.id;
+    });
+  }
+
+  private resolveCreatureMerge(first: StackPiece, second: StackPiece): void {
+    if (!this.pieces.includes(first) || !this.pieces.includes(second)) {
+      return;
+    }
+
+    const source = first.source;
+    const nextLevel = Math.max(first.level, second.level) + 1;
+    const mergedValue = first.value + second.value;
+    const centerX = Phaser.Math.Clamp((first.body.x + second.body.x) / 2, readyMinX, readyMaxX);
+    const centerY = (first.body.y + second.body.y) / 2;
+    [first, second].forEach((piece) => {
+      if (piece.settled) {
+        this.settledCount = Math.max(0, this.settledCount - 1);
+      }
+      piece.body.destroy();
+    });
+    this.pieces = this.pieces.filter((piece) => piece !== first && piece !== second);
+
+    const mergedBody = this.createPieceBody(source, centerX, centerY, nextLevel, false);
+    mergedBody.setDepth(5 + nextLevel);
+    mergedBody.setVelocity(Phaser.Math.FloatBetween(-0.04, 0.04), 0.2);
+    mergedBody.setAngularVelocity(Phaser.Math.FloatBetween(-0.035, 0.035));
+    this.pieces.push({
+      body: mergedBody,
+      source,
+      level: nextLevel,
+      value: mergedValue,
+      settled: false,
+      released: true
+    });
+    this.playSfx(coinCollectSoundKey, { volume: 0.22 });
+    this.showMergePop(centerX, centerY, nextLevel);
+  }
+
+  private createPieceBody(source: StackPieceSource, x: number, y: number, level: number, ignoreGravity: boolean): Phaser.Physics.Matter.Image {
+    const scale = this.pieceLevelScale(level);
+    const width = source.width * scale;
+    const height = source.height * scale;
+    const collisionWidth = width * source.collisionWidthRatio;
+    const collisionHeight = height * source.collisionHeightRatio;
+    const body = this.matter.add.image(x, y, source.textureKey, undefined, {
+      shape: { type: "rectangle", width: collisionWidth, height: collisionHeight },
+      friction: 0.82,
+      frictionStatic: 0.82,
+      frictionAir: 0.016,
+      restitution: 0.34,
+      density: 0.0036,
+      slop: 0.08,
+      label: "stack-piece"
+    });
+    body.setDisplaySize(width, height);
+    body.setOrigin(0.5, source.visualOriginY);
+    body.setIgnoreGravity(ignoreGravity);
+    return body;
+  }
+
+  private pieceLevelScale(level: number): number {
+    return 1 + Math.max(0, level - 1) * mergeGrowthScale;
+  }
+
+  private showMergePop(x: number, y: number, level: number): void {
+    const burst = this.add.circle(x, y, 18, 0xfff5a8, 0.72).setDepth(18);
+    const text = this.add.text(x, y - 20, `L${formatNumber(level)}`, {
       fontFamily: gameFontFamily,
-      fontSize: "20px",
-      color: "#ffb7a8",
-      stroke: "#4a0f08",
-      strokeThickness: 5
-    }).setOrigin(0.5).setDepth(20);
+      fontSize: "22px",
+      color: "#fff5a8",
+      stroke: "#062840",
+      strokeThickness: 6
+    }).setOrigin(0.5).setDepth(19);
+    this.tweens.add({
+      targets: burst,
+      scale: 3,
+      alpha: 0,
+      duration: 360,
+      ease: "Sine.easeOut",
+      onComplete: () => burst.destroy()
+    });
     this.tweens.add({
       targets: text,
-      y: text.y - 28,
+      y: text.y - 24,
       alpha: 0,
-      duration: 520,
+      duration: 680,
       ease: "Sine.easeOut",
       onComplete: () => text.destroy()
     });
@@ -513,17 +542,51 @@ export class ShellBalanceScene extends Phaser.Scene {
     }
   }
 
+  private formatTimer(milliseconds: number): string {
+    const totalSeconds = Math.ceil(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  }
+
   private finishGame(): void {
+    if (this.resultShown) {
+      return;
+    }
+    this.resultShown = true;
     this.finished = true;
-    const score = this.settledCount;
-    this.showResult(`+C${formatNumber(this.currentPrizeAmount())}`, `${formatNumber(this.settledCount)} helpers landed`, () => {
-      this.onComplete?.({ score, caughtCount: this.settledCount, fallCount: this.fallCount });
+    this.scoreCount = this.currentMergeCount();
+    const score = this.scoreCount;
+    this.showResult(this.currentPrizeAmount(), () => {
+      this.onComplete?.({ score, caughtCount: this.scoreCount, mismatchCount: this.mismatchCount });
       this.scene.stop();
     });
   }
 
   private currentPrizeAmount(): number {
-    return Math.max(0, Math.floor((this.settledCount - this.fallCount * 0.5) * this.productionPerMinute));
+    return Math.floor(this.currentMergeCount() * this.productionPerMinute);
+  }
+
+  private currentMergeCount(): number {
+    return this.pieces.reduce((total, piece) => {
+      if (!piece.settled || !piece.body.active) {
+        return total;
+      }
+      return total + Math.max(0, piece.value - 1);
+    }, 0);
+  }
+
+  private scheduleNextPiece(delayMs: number): void {
+    if (this.nextSpawnTimer || this.finished) {
+      return;
+    }
+
+    this.nextSpawnTimer = this.time.delayedCall(delayMs, () => {
+      this.nextSpawnTimer = undefined;
+      if (!this.activePiece && !this.finished) {
+        this.spawnPiece();
+      }
+    });
   }
 
   private cancelGame(): void {
@@ -536,37 +599,58 @@ export class ShellBalanceScene extends Phaser.Scene {
     this.scene.stop();
   }
 
-  private showResult(title: string, detail: string, onClose: () => void): void {
+  private showResult(prizeAmount: number, onClose: () => void): void {
     this.matter.world.pause();
-    const panel = this.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth - 54, 230, 0x064464, 0.94)
-      .setStrokeStyle(3, 0x78dfff, 0.7);
-    const titleText = this.add.text(gameWidth / 2, gameHeight / 2 - 58, title, {
+    this.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x031f32, 0.42).setDepth(38);
+
+    const panelWidth = gameWidth - 54;
+    const panelHeight = 232;
+    const panelX = gameWidth / 2 - panelWidth / 2;
+    const panelY = gameHeight / 2 - panelHeight / 2;
+    const panel = this.add.graphics().setDepth(39);
+    panel.fillStyle(0x064464, 0.96);
+    panel.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 22);
+    panel.lineStyle(3, 0x78dfff, 0.72);
+    panel.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 22);
+
+    this.add.text(gameWidth / 2, gameHeight / 2 - 70, "Prize", {
+      fontFamily: gameFontFamily,
+      fontSize: "24px",
+      color: "#e7fbff",
+      stroke: "#062840",
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(40);
+
+    const coinIcon = this.add.image(gameWidth / 2 - 40, gameHeight / 2 - 26, "stack-prize-common-coin")
+      .setDisplaySize(34, 34)
+      .setDepth(40);
+    const amountText = this.add.text(coinIcon.x + 28, coinIcon.y, formatNumber(prizeAmount), {
       fontFamily: gameFontFamily,
       fontSize: "36px",
       color: "#fff5a8",
       stroke: "#062840",
       strokeThickness: 7
-    }).setOrigin(0.5);
-    const detailText = this.add.text(gameWidth / 2, gameHeight / 2 - 8, detail, {
-      fontFamily: gameFontFamily,
-      fontSize: "18px",
-      color: "#e7fbff",
-      stroke: "#062840",
-      strokeThickness: 5
-    }).setOrigin(0.5);
-    const button = this.add.text(gameWidth / 2, gameHeight / 2 + 66, "CLAIM", {
+    }).setOrigin(0, 0.5).setDepth(40);
+
+    const buttonWidth = 168;
+    const buttonHeight = 52;
+    const buttonY = gameHeight / 2 + 66;
+    const buttonBg = this.add.graphics().setDepth(40);
+    buttonBg.fillStyle(0x2fb72f, 1);
+    buttonBg.fillRoundedRect(gameWidth / 2 - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 16);
+    buttonBg.lineStyle(3, 0xb9ffbd, 0.75);
+    buttonBg.strokeRoundedRect(gameWidth / 2 - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 16);
+
+    const buttonText = this.add.text(gameWidth / 2, buttonY, "CLAIM", {
       fontFamily: gameFontFamily,
       fontSize: "24px",
       color: "#ffffff",
       stroke: "#124a12",
-      strokeThickness: 6,
-      backgroundColor: "#2fb72f",
-      padding: { x: 30, y: 13 }
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    this.children.bringToTop(panel);
-    this.children.bringToTop(titleText);
-    this.children.bringToTop(detailText);
-    this.children.bringToTop(button);
-    button.once("pointerup", onClose);
+      strokeThickness: 6
+    }).setOrigin(0.5).setDepth(41);
+    const buttonHitArea = this.add.zone(gameWidth / 2, buttonY, buttonWidth, buttonHeight)
+      .setDepth(42)
+      .setInteractive({ useHandCursor: true });
+    buttonHitArea.once("pointerup", onClose);
   }
 }
