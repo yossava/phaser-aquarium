@@ -273,8 +273,8 @@ export class StoreOverlay {
     if (levelLocked) {
       card.classList.add("opacity-70");
     }
-    const preview = createStorePreview(`/assets/fish/${fish.id}.png`, fish.name, owned > 0 ? "" : "aq-fish-preview-unpurchased");
-    if (owned <= 0) {
+    const preview = createStorePreview(`/assets/fish/${fish.id}.png`, fish.name, levelLocked ? "aq-fish-preview-unpurchased" : "");
+    if (levelLocked) {
       preview.querySelector("img")?.classList.remove("drop-shadow-lg");
     }
     card.append(

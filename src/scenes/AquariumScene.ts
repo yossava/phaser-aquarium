@@ -168,7 +168,7 @@ import { createModalShell, createRewardedAdModalShell, type ModalAction } from "
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../types/mechanics";
 import { ShellBalanceScene, ShellBalanceSceneKey, type ShellBalanceResult } from "./ShellBalanceScene";
 
-type AppScreen = "tank" | "menu" | "store" | "album" | "goals" | "prize" | "makeup" | "settings";
+type AppScreen = "tank" | "menu" | "store" | "album" | "goals" | "prize" | "makeup" | "settings" | "fishDev";
 
 type PreparedPrizeMachineReward =
   | { kind: "rare"; amount: number; segmentIndex: number }
@@ -729,6 +729,10 @@ export class AquariumScene extends Phaser.Scene {
   private htmlPageOverlayScrollTop = 0;
   private htmlPageOverlayRenderKey = "";
   private storeOverlay?: StoreOverlay;
+  private fishDevOrder: FishType[] = [...fishTypes];
+  private fishDevSaveTimer?: number;
+  private fishDevSaveStatus = "Drag fish to reorder. Saves on drop.";
+  private fishDevSaveStatusElement?: HTMLElement;
   private modal?: HTMLDivElement;
   private modalTitle?: string;
   private makeupOverlay?: HTMLDivElement;
@@ -3002,8 +3006,10 @@ export class AquariumScene extends Phaser.Scene {
       this.appendAlbumPage(content);
     } else if (this.activeScreen === "goals") {
       this.appendGoalsPage(content);
-    } else {
+    } else if (this.activeScreen === "settings") {
       this.appendSettingsPage(content);
+    } else {
+      this.appendFishDevPage(content);
     }
 
     return page;
@@ -3020,6 +3026,9 @@ export class AquariumScene extends Phaser.Scene {
       { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnfinishedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnfinishedCount()) : undefined },
       { id: "settings", label: "Settings", icon: menuIconAssetPathByKey["ui-settings"], action: () => this.openScreen("settings") }
     ];
+    if (import.meta.env.DEV) {
+      items.push({ id: "fish-dev", label: "Fish Sort", icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("fishDev") });
+    }
     const grid = htmlElement("div", "aq-main-menu-grid");
     for (const item of items) {
       const button = this.htmlButton("", "aq-main-menu-card aq-kids-card-groove", item.action);
@@ -5681,6 +5690,147 @@ export class AquariumScene extends Phaser.Scene {
       .filter((creatureType) => creatureType.rarity === "common")
       .sort((first, second) => this.priceWealth(first.price) - this.priceWealth(second.price));
     return availableCommon.find((creatureType) => !ownedHelperIds.has(creatureType.id)) ?? availableCommon[0] ?? helperCreatureTypes[0];
+  }
+
+  private appendFishDevPage(content: HTMLElement): void {
+    content.classList.add("aq-fish-dev-content");
+    const createButton = this.pageButtonFactory();
+    const actions = htmlElement("div", "aq-page-actions aq-fish-dev-actions", [
+      createButton("Sort by Price", "aq-page-button aq-page-button-good", () => this.sortFishDevOrderByPrice()),
+      createButton("Reset View", "aq-page-button aq-page-button-muted", () => this.resetFishDevOrder())
+    ]);
+    const status = htmlElement("p", "aq-page-card-meta aq-fish-dev-status", [this.fishDevSaveStatus]);
+    this.fishDevSaveStatusElement = status;
+    const list = htmlElement("div", "aq-fish-dev-list");
+    this.fishDevOrder.forEach((fishType, index) => list.append(this.createFishDevRow(fishType, index)));
+    content.append(actions, status, list);
+  }
+
+  private createFishDevRow(fishType: FishType, index: number): HTMLElement {
+    const row = htmlElement("article", "aq-fish-dev-row");
+    row.draggable = true;
+    row.dataset.fishId = fishType.id;
+    row.dataset.index = String(index);
+    const handle = htmlElement("div", "aq-fish-dev-handle", ["::"]);
+    row.addEventListener("dragstart", (event) => {
+      row.classList.add("is-dragging");
+      event.dataTransfer?.setData("text/plain", String(index));
+      event.dataTransfer?.setData("application/x-aq-fish-id", fishType.id);
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = "move";
+      }
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("is-dragging");
+      this.htmlPageOverlay?.querySelectorAll(".aq-fish-dev-row.is-drop-target").forEach((element) => element.classList.remove("is-drop-target"));
+    });
+    row.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      row.classList.add("is-drop-target");
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "move";
+      }
+    });
+    row.addEventListener("dragleave", () => {
+      row.classList.remove("is-drop-target");
+    });
+    row.addEventListener("drop", (event) => {
+      event.preventDefault();
+      row.classList.remove("is-drop-target");
+      const fromIndex = Number(event.dataTransfer?.getData("text/plain"));
+      if (!Number.isFinite(fromIndex)) {
+        return;
+      }
+      this.moveFishDevOrder(fromIndex, index);
+    });
+
+    const shopLevel = fishShopRequiredLevel(fishType);
+    row.append(
+      htmlElement("div", "aq-fish-dev-position", [formatNumber(index + 1)]),
+      handle,
+      htmlElement("div", "aq-fish-dev-image-wrap", [
+        htmlImage(`/assets/fish/${fishType.id}.png`, fishType.name, "aq-fish-dev-image")
+      ]),
+      htmlElement("div", "aq-fish-dev-info", [
+        htmlElement("h3", "aq-fish-dev-name", [fishType.name]),
+        htmlElement("p", "aq-fish-dev-meta", [
+          `Shop L${formatNumber(shopLevel)} | ${fishType.rarity} | ${fishType.id}`
+        ])
+      ]),
+      htmlElement("strong", "aq-fish-dev-price", [formatPrice(fishType.price)])
+    );
+    return row;
+  }
+
+  private sortFishDevOrderByPrice(): void {
+    this.fishDevOrder = [...this.fishDevOrder].sort((first, second) =>
+      this.priceWealth(first.price) - this.priceWealth(second.price) ||
+      first.name.localeCompare(second.name)
+    );
+    this.queueFishDevOrderSave();
+    this.syncHtmlPageOverlay();
+  }
+
+  private resetFishDevOrder(): void {
+    this.fishDevOrder = [...fishTypes];
+    this.updateFishDevSaveStatus("View reset. JSON not changed yet.");
+    this.syncHtmlPageOverlay();
+  }
+
+  private moveFishDevOrder(fromIndex: number, toIndex: number): void {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= this.fishDevOrder.length || toIndex >= this.fishDevOrder.length) {
+      return;
+    }
+
+    const nextOrder = [...this.fishDevOrder];
+    const [moved] = nextOrder.splice(fromIndex, 1);
+    if (!moved) {
+      return;
+    }
+    nextOrder.splice(toIndex, 0, moved);
+    this.fishDevOrder = nextOrder;
+    this.queueFishDevOrderSave();
+    this.syncHtmlPageOverlay();
+  }
+
+  private queueFishDevOrderSave(): void {
+    if (!import.meta.env.DEV) {
+      this.updateFishDevSaveStatus("Dev server required to save JSON.");
+      return;
+    }
+
+    if (this.fishDevSaveTimer !== undefined) {
+      window.clearTimeout(this.fishDevSaveTimer);
+    }
+    this.updateFishDevSaveStatus("Saving fish order...");
+    this.fishDevSaveTimer = window.setTimeout(() => {
+      this.fishDevSaveTimer = undefined;
+      void this.saveFishDevOrder();
+    }, 250);
+  }
+
+  private async saveFishDevOrder(): Promise<void> {
+    try {
+      const response = await fetch("/__dev/fish-order", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: this.fishDevOrder.map((fishType) => fishType.id) })
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof result.error === "string" ? result.error : `Save failed ${response.status}`);
+      }
+      this.updateFishDevSaveStatus(`Saved ${formatNumber(this.fishDevOrder.length)} fish to JSON. Reload to apply order in shop.`);
+    } catch (error) {
+      this.updateFishDevSaveStatus(error instanceof Error ? `Save failed: ${error.message}` : "Save failed.");
+    }
+  }
+
+  private updateFishDevSaveStatus(status: string): void {
+    this.fishDevSaveStatus = status;
+    if (this.fishDevSaveStatusElement) {
+      this.fishDevSaveStatusElement.textContent = status;
+    }
   }
 
   private appendSettingsPage(content: HTMLElement): void {

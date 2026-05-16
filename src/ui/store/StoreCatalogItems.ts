@@ -10,7 +10,7 @@ export function currentStoreItems(
   tankCategory: TankStoreCategory
 ): StoreCatalogItem[] {
   if (activeTab === "fish") {
-    return [...fishTypes].sort((first, second) => tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)));
+    return fishTypes;
   }
   if (activeTab === "food") {
     return foodTypes
