@@ -142,7 +142,7 @@ import {
   prizeWheelIconTextureKeys,
   type PrizeWheelSegment
 } from "../game/prize-machine-wheel";
-import { buildStoreOverlayState } from "../game/store-catalog";
+import { buildStoreOverlayState, fishShopRequiredLevel } from "../game/store-catalog";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
 import { FoodPellet } from "../objects/FoodPellet";
@@ -384,6 +384,8 @@ const fishFusionPremiumChanceLossPerAgeGapMonth = 0.02;
 const fishFusionCostRate = 0.5;
 const fishFusionDurationMs = 3000;
 const baseFishProductionLevelThreshold = 250;
+const minTargetActiveLevelHours = 2;
+const maxTargetActiveLevelHours = 2.5;
 const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
   rare: "/assets/ui/icon-rare-coin.png",
@@ -6091,8 +6093,9 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private showFishBuyQuantityModal(fishType: FishType): void {
-    if (!this.developerGodMode && fishType.tankLevel > this.tankDisplayLevel()) {
-      this.floatText(`Needs tank L${formatNumber(fishType.tankLevel)}`, toastX, toastY, "#ffb0a8");
+    const requiredLevel = fishShopRequiredLevel(fishType);
+    if (!this.developerGodMode && requiredLevel > this.tankDisplayLevel()) {
+      this.floatText(`Needs tank L${formatNumber(requiredLevel)}`, toastX, toastY, "#ffb0a8");
       return;
     }
 
@@ -6161,8 +6164,9 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private buyFish(fishType: FishType, quantity = 1): void {
-    if (!this.developerGodMode && fishType.tankLevel > this.tankDisplayLevel()) {
-      this.floatText(`Needs tank L${formatNumber(fishType.tankLevel)}`, toastX, toastY, "#ffb0a8");
+    const requiredLevel = fishShopRequiredLevel(fishType);
+    if (!this.developerGodMode && requiredLevel > this.tankDisplayLevel()) {
+      this.floatText(`Needs tank L${formatNumber(requiredLevel)}`, toastX, toastY, "#ffb0a8");
       return;
     }
 
@@ -8100,11 +8104,13 @@ export class AquariumScene extends Phaser.Scene {
         const amount = Math.floor(currentFish.coinProductionValueForCalories(convertedCalories));
         if (amount > 0) {
           currentFish.consumeFullnessCalories(convertedCalories);
-          earned.common += amount;
-          this.addFishProductionTotal(currentFish.tankLevel, amount);
-          const tankEarned = earnedByTank.get(currentFish.tankLevel) ?? createEmptyWallet();
-          tankEarned.common += amount;
-          earnedByTank.set(currentFish.tankLevel, tankEarned);
+          const leveledUp = this.addFishProductionTotal(currentFish.tankLevel, amount);
+          if (!leveledUp) {
+            earned.common += amount;
+            const tankEarned = earnedByTank.get(currentFish.tankLevel) ?? createEmptyWallet();
+            tankEarned.common += amount;
+            earnedByTank.set(currentFish.tankLevel, tankEarned);
+          }
         }
       }
 
@@ -8260,12 +8266,15 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const value = fish.takeCoinProductionDrop(now);
+    const value = fish.takeCoinProductionDrop(now, this.activeProductionPaceMultiplier());
     if (value <= 0) {
       return;
     }
 
-    this.addFishProductionTotal(fish.tankLevel, value);
+    const leveledUp = this.addFishProductionTotal(fish.tankLevel, value);
+    if (leveledUp) {
+      return;
+    }
     const boostedDrop = fish.hasActiveProductionBoost(now);
     const dropX = fish.sprite.x + (boostedDrop ? 0 : Phaser.Math.Between(-18, 18));
     this.createCoinDrop(
@@ -9068,15 +9077,19 @@ export class AquariumScene extends Phaser.Scene {
       this.refundUnusedFood(food);
       food.destroy();
     }
-    for (const coin of this.coinDrops) {
-      coin.destroy();
-    }
+    this.clearCoinDrops();
     for (const drop of this.pendingHelperCreatureDrops) {
       drop.sprite.destroy();
     }
     this.foods = [];
-    this.coinDrops = [];
     this.pendingHelperCreatureDrops = [];
+  }
+
+  private clearCoinDrops(): void {
+    for (const coin of this.coinDrops) {
+      coin.destroy();
+    }
+    this.coinDrops = [];
   }
 
   private refreshFishTankVisibility(): void {
@@ -9108,16 +9121,16 @@ export class AquariumScene extends Phaser.Scene {
     return priceComponents(price).reduce((total, [coinType, amount]) => total + amount * coinWealthValue[coinType], 0);
   }
 
-  private addFishProductionTotal(level: number, amount: number): void {
+  private addFishProductionTotal(level: number, amount: number): boolean {
     const production = Math.max(0, Math.floor(amount));
     if (production <= 0) {
-      return;
+      return false;
     }
     const state = this.ensureTankState(level);
     const previousProduction = Math.max(0, Math.floor(state.fishProductionTotal ?? 0));
     const nextProduction = previousProduction + production;
     state.fishProductionTotal = nextProduction;
-    this.awardLevelCompletionRewards(level, previousProduction, nextProduction);
+    return this.awardLevelCompletionRewards(level, previousProduction, nextProduction);
   }
 
   private fishProductionTotal(level = this.tankLevel): number {
@@ -9210,6 +9223,34 @@ export class AquariumScene extends Phaser.Scene {
     return baseFishProductionLevelThreshold * Math.pow(5, displayLevel - 2);
   }
 
+  private targetActiveHoursForDisplayLevel(level: number): number {
+    return Math.min(maxTargetActiveLevelHours, minTargetActiveLevelHours + (Math.max(1, Math.floor(level)) - 1) * 0.1);
+  }
+
+  private projectedActiveProductionPerMinute(): number {
+    return this.activeFish()
+      .filter((fish) => fish.state !== "ill" && fish.health >= 35 && fish.currentFullnessCalories() > 0)
+      .reduce((total, fish) => total + fish.projectedProductionPerMinute(), 0);
+  }
+
+  private targetProductionPerMinuteForLevel(level = this.tankDisplayLevel()): number {
+    const currentLevel = Math.max(1, Math.floor(level));
+    const currentThreshold = this.fishProductionThresholdForLevel(currentLevel);
+    const nextThreshold = this.fishProductionThresholdForLevel(currentLevel + 1);
+    const targetMinutes = this.targetActiveHoursForDisplayLevel(currentLevel) * 60;
+    return Math.max(1, (nextThreshold - currentThreshold) / Math.max(1, targetMinutes));
+  }
+
+  private activeProductionPaceMultiplier(): number {
+    const projectedPerMinute = this.projectedActiveProductionPerMinute();
+    if (projectedPerMinute <= 0) {
+      return 1;
+    }
+
+    const targetPerMinute = this.targetProductionPerMinuteForLevel();
+    return Phaser.Math.Clamp(targetPerMinute / projectedPerMinute, 0.25, 4);
+  }
+
   private levelProgressToNext(level = this.tankDisplayLevel(), production = this.fishProductionTotal()): { level: number; ratio: number; percent: number } {
     const currentLevel = Math.max(1, Math.floor(level));
     const currentThreshold = this.fishProductionThresholdForLevel(currentLevel);
@@ -9226,32 +9267,59 @@ export class AquariumScene extends Phaser.Scene {
     };
   }
 
-  private awardLevelCompletionRewards(level: number, previousProduction: number, nextProduction: number): void {
+  private awardLevelCompletionRewards(level: number, previousProduction: number, nextProduction: number): boolean {
     const previousLevel = this.rawTankDisplayLevelFromProduction(previousProduction);
     const nextLevel = this.rawTankDisplayLevelFromProduction(nextProduction);
     if (nextLevel <= previousLevel) {
-      return;
+      return false;
     }
 
-    let totalReward = 0;
+    const rewardFish: FishType[] = [];
     for (let completedLevel = previousLevel + 1; completedLevel <= nextLevel; completedLevel += 1) {
       const completedThreshold = this.fishProductionThresholdForLevel(completedLevel);
-      totalReward += Math.max(1, Math.floor(completedThreshold * 0.3));
+      rewardFish.push(this.levelRewardFishFor(completedLevel, Math.max(1, Math.floor(completedThreshold * 0.3))));
     }
 
-    if (totalReward <= 0) {
-      return;
+    if (rewardFish.length === 0) {
+      return false;
     }
 
     const state = this.ensureTankState(level);
     if (level === this.tankLevel) {
-      earn(this.wallet, "common", totalReward);
+      this.moveActiveFishToInventory();
+      this.clearCoinDrops();
+      this.wallet = createEmptyWallet();
       state.wallet = this.wallet;
-      this.showLevelCompletionRewardModal(previousLevel, nextLevel, totalReward);
+      rewardFish.forEach((fishType) => this.addFishToInventory(fishType));
+      this.showLevelCompletionRewardModal(previousLevel, nextLevel, rewardFish);
       this.refreshUi();
       this.storeOverlay?.refresh();
+      this.saveNow();
     } else {
-      earn(state.wallet, "common", totalReward);
+      state.wallet = createEmptyWallet();
+      for (const fishType of rewardFish) {
+        state.fishInventory.set(fishType.id, (state.fishInventory.get(fishType.id) ?? 0) + 1);
+      }
+    }
+    return true;
+  }
+
+  private levelRewardFishFor(completedLevel: number, targetValue: number): FishType {
+    const unlockedLevel = Math.max(1, completedLevel + 1);
+    const ownedIds = this.ownedFishTypeIds();
+    const unlockedFish = fishTypes.filter((fishType) => fishType.tankLevel <= unlockedLevel);
+    const unownedFish = unlockedFish.filter((fishType) => !ownedIds.has(fishType.id));
+    const pool = unownedFish.length > 0 ? unownedFish : unlockedFish.length > 0 ? unlockedFish : fishTypes;
+    return [...pool].sort((first, second) => {
+      const firstDelta = Math.abs(this.priceWealth(first.price) - targetValue);
+      const secondDelta = Math.abs(this.priceWealth(second.price) - targetValue);
+      return firstDelta - secondDelta || first.tankLevel - second.tankLevel || this.priceWealth(first.price) - this.priceWealth(second.price);
+    })[0];
+  }
+
+  private moveActiveFishToInventory(): void {
+    for (const fish of [...this.activeFish()]) {
+      this.storeFish(fish);
     }
   }
 
@@ -10666,7 +10734,7 @@ export class AquariumScene extends Phaser.Scene {
     this.syncCoinDropVisibilityAndInput();
   }
 
-  private showLevelCompletionRewardModal(completedLevel: number, nextLevel: number, rewardCommonCoins: number): void {
+  private showLevelCompletionRewardModal(completedLevel: number, nextLevel: number, rewardFish: FishType[]): void {
     this.closeModal();
     const shell = htmlElement("div", "aq-modal-shell aq-level-reward-shell");
     const stopEvent = (event: Event) => {
@@ -10677,11 +10745,22 @@ export class AquariumScene extends Phaser.Scene {
     shell.addEventListener("click", stopEvent);
 
     const closeButton = this.htmlButton("Claim", "aq-modal-button good", () => this.closeModal());
+    const primaryFish = rewardFish[0] ?? fishTypes[0];
+    if (!primaryFish) {
+      return;
+    }
+    const rewardLabel = rewardFish.length > 1
+      ? `${primaryFish.name} +${formatNumber(rewardFish.length - 1)} fish`
+      : primaryFish.name;
     const panel = htmlElement("section", "aq-modal aq-level-reward-modal", [
       htmlElement("h2", "aq-modal-title aq-level-reward-title", [`Level ${formatNumber(completedLevel)} Complete!`]),
       htmlElement("div", "aq-level-reward-medallion", [formatNumber(nextLevel)]),
       htmlElement("p", "aq-modal-line aq-level-reward-detail", [`Tank reached Level ${formatNumber(nextLevel)}.`]),
-      this.commonCoinValueRow("Reward", rewardCommonCoins),
+      htmlElement("div", "aq-modal-preview", [
+        htmlImage(`/assets/fish/${primaryFish.id}.png`, primaryFish.name, "aq-modal-preview-image fish")
+      ]),
+      htmlElement("p", "aq-modal-owned-line", [`Reward: ${rewardLabel}`]),
+      htmlElement("p", "aq-modal-line aq-level-reward-detail", ["Coins reset. Tank fish moved to inventory."]),
       htmlElement("div", "aq-modal-actions single", [closeButton])
     ]);
     shell.append(panel);

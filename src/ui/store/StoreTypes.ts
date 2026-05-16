@@ -59,6 +59,7 @@ export type StoreOverlayState = {
   fishCount: number;
   fishCapacity: number;
   fishOwned: Record<string, number>;
+  fishRequiredLevels: Record<string, number>;
   foodOwned: Record<string, number>;
   helperOwned: Record<string, number>;
   tankCosmeticCards: StoreTankCosmeticCard[];

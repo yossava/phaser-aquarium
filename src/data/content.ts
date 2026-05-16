@@ -6,12 +6,13 @@ import { commonPerCalorie, maximumMealCaloriesNeed } from "../game/economy-model
 import type { CoinType, DecorationType, FishType, FoodType, HelperCreatureType, Price, Rarity } from "../types/mechanics";
 
 const baselineCommonFishPrice = 60;
+const fishShopTierSize = 8;
+const activeFishProductionSlots = 4;
+const minTargetActiveHours = 2;
+const maxTargetActiveHours = 2.5;
+const baseFishProductionLevelThreshold = 250;
 
-const fishCommonPriceByRarity: Record<Rarity, (index: number, original: number) => number> = {
-  common: (index, original) => Math.max(baselineCommonFishPrice, Math.round(original * (1 + index * 0.035))),
-  rare: (index, original) => Math.max(1000, Math.round(original * 24 + index * 320)),
-  superRare: (index, original) => Math.max(12000, Math.round(original * 900 + index * 18000))
-};
+const fishCommonPriceByShopLevel = new Map<number, number>();
 
 const fishFoodFamilies = [
   { id: "micro", name: "Micro Food", assetId: "micro" },
@@ -67,11 +68,87 @@ function tokenPriceForRarity(rarity: Rarity, index: number): Pick<Price, "rareAm
   return {};
 }
 
+function fishShopLevelForCatalogIndex(index: number): number {
+  return Math.max(1, Math.floor(Math.max(0, index) / fishShopTierSize) + 1);
+}
+
+function targetActiveHoursForShopLevel(shopLevel: number): number {
+  return Math.min(maxTargetActiveHours, minTargetActiveHours + (Math.max(1, shopLevel) - 1) * 0.1);
+}
+
+function fishProductionDeltaForShopLevel(shopLevel: number): number {
+  if (shopLevel <= 1) {
+    return baseFishProductionLevelThreshold;
+  }
+  const previousThreshold = baseFishProductionLevelThreshold * Math.pow(5, shopLevel - 2);
+  const nextThreshold = baseFishProductionLevelThreshold * Math.pow(5, shopLevel - 1);
+  return nextThreshold - previousThreshold;
+}
+
+function productionPerPriceOverHours(hours: number): number {
+  const safeHours = Math.max(0, hours);
+  if (safeHours <= 3) {
+    return 0.15 * safeHours * safeHours + safeHours / 3;
+  }
+  return 0.865 + 0.165 * safeHours * safeHours;
+}
+
+function averageFishCommonPriceForShopLevel(shopLevel: number): number {
+  const level = Math.max(1, shopLevel);
+  const cached = fishCommonPriceByShopLevel.get(level);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  if (level === 1) {
+    fishCommonPriceByShopLevel.set(level, baselineCommonFishPrice);
+    return baselineCommonFishPrice;
+  }
+
+  const previousAveragePrice = averageFishCommonPriceForShopLevel(level - 1);
+  const targetProduction = fishProductionDeltaForShopLevel(level);
+  const targetHours = targetActiveHoursForShopLevel(level);
+  const productionPerPrice = Math.max(0.001, productionPerPriceOverHours(targetHours));
+  const targetTotalFishPrice = targetProduction / productionPerPrice;
+  const replacementAdjustedPrice = targetTotalFishPrice - previousAveragePrice * (activeFishProductionSlots - 1);
+  const averagePrice = Math.max(
+    Math.ceil(previousAveragePrice * 1.45),
+    Math.round(replacementAdjustedPrice)
+  );
+  fishCommonPriceByShopLevel.set(level, averagePrice);
+  return averagePrice;
+}
+
+function roundFishCommonPrice(value: number): number {
+  if (value < 100) {
+    return Math.max(1, Math.round(value / 5) * 5);
+  }
+  if (value < 1000) {
+    return Math.round(value / 10) * 10;
+  }
+  if (value < 10000) {
+    return Math.round(value / 50) * 50;
+  }
+  if (value < 100000) {
+    return Math.round(value / 100) * 100;
+  }
+  return Math.round(value / 1000) * 1000;
+}
+
+function fishCommonPriceForCatalogIndex(index: number): number {
+  const shopLevel = fishShopLevelForCatalogIndex(index);
+  const averagePrice = averageFishCommonPriceForShopLevel(shopLevel);
+  const positionInTier = index % fishShopTierSize;
+  const tierRatio = fishShopTierSize <= 1 ? 0.5 : positionInTier / (fishShopTierSize - 1);
+  const rangeMultiplier = 0.85 + tierRatio * 0.3;
+  return Math.max(1, roundFishCommonPrice(averagePrice * rangeMultiplier));
+}
+
 function normalizeFishTypes(source: FishType[]): FishType[] {
   const rarityIndex: Record<Rarity, number> = { common: 0, rare: 0, superRare: 0 };
-  return source.map((fishType) => {
+  return source.map((fishType, catalogIndex) => {
     const index = rarityIndex[fishType.rarity]++;
-    const commonAmount = fishCommonPriceByRarity[fishType.rarity](index, fishType.price.amount);
+    const commonAmount = fishCommonPriceForCatalogIndex(catalogIndex);
     const price: Price = {
       coinType: "common",
       amount: commonAmount,

@@ -158,6 +158,7 @@ export class StoreOverlay {
       fishCount: state.fishCount,
       fishCapacity: state.fishCapacity,
       fishOwned: recordEntries(state.fishOwned),
+      fishRequiredLevels: recordEntries(state.fishRequiredLevels),
       foodOwned: recordEntries(state.foodOwned),
       helperOwned: recordEntries(state.helperOwned),
       tankCosmeticCards: state.tankCosmeticCards.map((cosmetic) => [
@@ -264,7 +265,8 @@ export class StoreOverlay {
   private fishCard(fish: FishType, state: StoreOverlayState): HTMLElement {
     const owned = state.fishOwned[fish.id] ?? 0;
     const affordable = state.developerGodMode || canAfford(state.wallet, fish.price);
-    const levelLocked = !state.developerGodMode && fish.tankLevel > Math.max(1, state.activeTankLevel);
+    const requiredLevel = state.fishRequiredLevels[fish.id] ?? fish.tankLevel;
+    const levelLocked = !state.developerGodMode && requiredLevel > Math.max(1, state.activeTankLevel);
     const hourlyLimitReached = !state.developerGodMode && state.fishPurchasesInWindow >= state.fishPurchaseHourlyLimit;
     const disabled = levelLocked || !affordable || hourlyLimitReached;
     const card = createStoreBaseCard(fish.rarity);
@@ -283,7 +285,7 @@ export class StoreOverlay {
           createStorePriceBadge(fish.price)
         ]),
         button(
-          levelLocked ? `Need Tank L${formatNumber(fish.tankLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
+          levelLocked ? `Need Tank L${formatNumber(requiredLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy w-full",
           () => this.actions.buyFish(fish),
           disabled

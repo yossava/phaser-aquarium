@@ -1,6 +1,6 @@
 import { decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
 import type { StoreOverlayState, StoreTankCosmeticCard, StoreTankDecorationCard, StoreTankUtilityCard } from "../ui/store/StoreTypes";
-import type { DecorationType, FoodType, Price, Wallet } from "../types/mechanics";
+import type { DecorationType, FishType, FoodType, Price, Wallet } from "../types/mechanics";
 
 export type StoreDecorationSize = StoreTankDecorationCard["variants"][number]["size"];
 
@@ -47,6 +47,11 @@ export type BuildStoreOverlayStateInput = {
   utilityDefinitions: StoreUtilityDefinition[];
 };
 
+export function fishShopRequiredLevel(fishType: Pick<FishType, "id">): number {
+  const catalogIndex = fishTypes.findIndex((catalogFish) => catalogFish.id === fishType.id);
+  return Math.max(1, Math.floor(Math.max(0, catalogIndex) / 8) + 1);
+}
+
 export function buildStoreOverlayState(input: BuildStoreOverlayStateInput): StoreOverlayState {
   return {
     wallet: { ...input.wallet },
@@ -64,6 +69,7 @@ export function buildStoreOverlayState(input: BuildStoreOverlayStateInput): Stor
     fishCount: input.fishCount,
     fishCapacity: input.fishCapacity,
     fishOwned: Object.fromEntries(fishTypes.map((fishType) => [fishType.id, input.getFishOwned(fishType.id)])),
+    fishRequiredLevels: Object.fromEntries(fishTypes.map((fishType) => [fishType.id, fishShopRequiredLevel(fishType)])),
     foodOwned: Object.fromEntries(foodTypes.map((foodType) => [foodType.id, input.getFoodOwned(foodType)])),
     helperOwned: Object.fromEntries(helperCreatureTypes.map((creatureType) => [creatureType.id, input.getHelperOwned(creatureType.id)])),
     tankCosmeticCards: buildStoreTankCosmeticCards(input),

@@ -585,7 +585,7 @@ export class Fish {
     );
   }
 
-  public takeCoinProductionDrop(now: number): number {
+  public takeCoinProductionDrop(now: number, productionPaceMultiplier = 1): number {
     const fullnessCalories = this.currentFullnessCalories();
     if (fullnessCalories <= 0) {
       this.pendingProductionCoinValue = 0;
@@ -593,12 +593,13 @@ export class Fish {
       return 0;
     }
 
+    const paceMultiplier = Phaser.Math.Clamp(productionPaceMultiplier, 0.25, 4);
     const plan = fishCoinDropPlan({
       fullnessCalories,
       fullCaloriesNeed: this.fullCaloriesNeed(),
       valuePerCalorie: this.coinValuePerFullnessCalorie(),
       pendingValue: this.pendingProductionCoinValue,
-      windowSeconds: Phaser.Math.FloatBetween(5, 30),
+      windowSeconds: Phaser.Math.FloatBetween(5, 30) * paceMultiplier,
       calorieVariance: Phaser.Math.FloatBetween(0.75, 1.45),
       capMultiplier: Phaser.Math.FloatBetween(1.1, 2.8)
     });
@@ -621,6 +622,10 @@ export class Fish {
     this.pendingProductionCoinValue = Math.max(0, plan.nextPendingValueAfterDropBase - producedValue);
     this.scheduleNextCoinProduction(now);
     return producedValue;
+  }
+
+  public projectedProductionPerMinute(): number {
+    return (this.fullCaloriesNeed() * this.coinValuePerFullnessCalorie()) / 60;
   }
 
   public postponeCoinProduction(now: number, delayMs = 1000): void {
