@@ -101,10 +101,6 @@ export function fishCoinDropPlan(input: FishCoinDropPlanInput): FishCoinDropPlan
   const availableValue = targetCalories * valuePerCalorie + Math.max(0, input.pendingValue);
   let flooredValue = Math.floor(availableValue);
 
-  if (flooredValue <= 0 && fullnessCalories * valuePerCalorie >= 1) {
-    flooredValue = 1;
-  }
-
   if (flooredValue <= 0) {
     return {
       producedValueMax: 0,

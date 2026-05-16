@@ -593,7 +593,7 @@ export class Fish {
       return 0;
     }
 
-    const paceMultiplier = Phaser.Math.Clamp(productionPaceMultiplier, 0.25, 4);
+    const paceMultiplier = Phaser.Math.Clamp(productionPaceMultiplier, 0.001, 4);
     const plan = fishCoinDropPlan({
       fullnessCalories,
       fullCaloriesNeed: this.fullCaloriesNeed(),
@@ -625,7 +625,13 @@ export class Fish {
   }
 
   public projectedProductionPerMinute(): number {
-    return (this.fullCaloriesNeed() * this.coinValuePerFullnessCalorie()) / 60;
+    const averageDropDelaySeconds = ((fishCoinProductionMinDelayMs + fishCoinProductionMaxDelayMs) / 2) / 1000;
+    const dropsPerMinute = 60 / Math.max(1, averageDropDelaySeconds);
+    const averageWindowSeconds = 17.5;
+    const averageCalorieVariance = 1.1;
+    const productionBoost = this.hasActiveProductionBoost(this.scene.time.now) ? productionBoostMultiplier : 1;
+    const baseCaloriesPerDrop = this.fullCaloriesNeed() * (averageWindowSeconds / 3600) * averageCalorieVariance;
+    return baseCaloriesPerDrop * this.coinValuePerFullnessCalorie() * dropsPerMinute * productionBoost;
   }
 
   public postponeCoinProduction(now: number, delayMs = 1000): void {

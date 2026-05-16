@@ -328,6 +328,7 @@ const looseFoodTankDirtPerSecond = maxTankDirtPerSecond * 0.11;
 const automatedCoinCollectFeeRate = 0;
 const coinComboMaxCount = 50;
 const coinComboRewardPercentPerCount = 1;
+const coinComboMaxProductionMultiplier = 1 + (coinComboMaxCount * coinComboRewardPercentPerCount) / 100;
 const coinComboIdleTimeoutMs = 10_000;
 const coinComboRewardTextDurationMs = 3000;
 const hudStatusSyncIntervalSeconds = 0.25;
@@ -8555,9 +8556,10 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     earn(this.wallet, "common", bonus);
+    const leveledUp = this.addFishProductionTotal(this.tankLevel, bonus);
     this.showCoinComboOverlay(`COMBO BONUS C${formatNumber(bonus)}!`, true, coinComboRewardTextDurationMs);
     this.floatTankText(`COMBO BONUS C${formatNumber(bonus)}!`, position.x, position.y - 24, coinVisualsByType.common.textColor);
-    this.refreshUi(false);
+    this.refreshUi(!leveledUp);
     this.saveNow();
   }
 
@@ -9278,7 +9280,7 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     const targetPerMinute = this.targetProductionPerMinuteForLevel();
-    return Phaser.Math.Clamp(targetPerMinute / projectedPerMinute, 0.25, 4);
+    return Phaser.Math.Clamp(targetPerMinute / (projectedPerMinute * coinComboMaxProductionMultiplier), 0.001, 4);
   }
 
   private levelProgressToNext(level = this.tankDisplayLevel(), production = this.fishProductionTotal()): { level: number; ratio: number; percent: number } {
@@ -9320,7 +9322,7 @@ export class AquariumScene extends Phaser.Scene {
       this.clearCoinDrops();
       this.wallet = createEmptyWallet();
       state.wallet = this.wallet;
-      rewardFish.forEach((fishType) => this.addFishToInventory(fishType));
+      rewardFish.forEach((fishType) => this.addFishToInventory(fishType, 1, false));
       this.showLevelCompletionRewardModal(previousLevel, nextLevel, rewardFish);
       this.refreshUi();
       this.storeOverlay?.refresh();
