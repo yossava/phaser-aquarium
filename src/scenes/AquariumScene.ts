@@ -19,6 +19,17 @@ import {
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, priceComponents, spend } from "../game/economy";
 import { fishCoinProductionMaxDelayMs, fishCoinProductionMinDelayMs, fishCommonPrice } from "../game/economy-model";
 import { FishDeliveryBubbleManager, type PendingFishBubble } from "../game/fish-delivery-bubbles";
+import {
+  createFishFusionSources,
+  fishFusionChancesFor as fishFusionChancesForModel,
+  fishFusionCostFor as fishFusionCostForModel,
+  fishFusionDurationMs,
+  fishFusionResultTypes as fishFusionResultTypesModel,
+  fishFusionSourceSellValue as fishFusionSourceSellValueModel,
+  fusionAgeLabel as fusionAgeLabelModel,
+  type FishFusionChances,
+  type FishFusionSource
+} from "../game/fish-fusion";
 import { gameFontFamily } from "../game/fonts";
 import {
   fishProductionThresholdForLevel,
@@ -151,6 +162,12 @@ import {
   type PrizeWheelSegment
 } from "../game/prize-machine-wheel";
 import { buildStoreOverlayState, fishShopRequiredLevel } from "../game/store-catalog";
+import {
+  addStoredFishAge as addStoredFishAgeModel,
+  setStoredFishAges as setStoredFishAgesModel,
+  storedFishAgesFor as storedFishAgesForModel,
+  takeStoredFishAge as takeStoredFishAgeModel
+} from "../game/stored-fish-ages";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../objects/CoinDrop";
 import { Fish } from "../objects/Fish";
 import { FoodPellet } from "../objects/FoodPellet";
@@ -169,6 +186,7 @@ import {
 import { createFishAlbumRow } from "../ui/AlbumPage";
 import { createQuestList } from "../ui/QuestPage";
 import { createRewardedAdsPage } from "../ui/RewardedAdsPage";
+import { createSellQuantityModalContent } from "../ui/SellQuantityModal";
 import { createDeveloperSettingsCard, createSettingsMusicCard, createSettingsToggleCard } from "../ui/SettingsPage";
 import { StoreOverlay, type StoreOverlayState } from "../ui/StoreOverlay";
 import { createHtmlButton, htmlElement, htmlImage, installHtmlInputShield, playHtmlPageTransition, shouldSuppressHtmlClick } from "../ui/dom";
@@ -206,13 +224,6 @@ type TankMenuTab = "background" | "seabed" | "decor" | "utility";
 type InventoryTab = "fish" | "fusion" | "food" | "decor" | "coins" | "tank";
 type MakeupSection = "background" | "seabed" | "decor";
 type TankUtilityId = "food-dispenser" | "coin-magnet" | "auto-food-buyer";
-type FishFusionSource =
-  | { key: string; kind: "active"; type: FishType; ageSeconds: number; activeIndex: number; label: string }
-  | { key: string; kind: "stored"; type: FishType; ageSeconds: number; storedAgeIndex?: number; label: string };
-type FishFusionChances = {
-  normal: number;
-  premium: number;
-};
 type FishFusionPageResult = {
   label: string;
   fishTypeId: string;
@@ -359,11 +370,6 @@ const coinWealthValue: Record<CoinType, number> = {
   superRare: 10000
 };
 const inventorySellRate = 0.7;
-const fishFusionMaxPremiumChance = 1 / 3;
-const fishFusionMinPremiumChance = 0.05;
-const fishFusionPremiumChanceLossPerAgeGapMonth = 0.02;
-const fishFusionCostRate = 0.5;
-const fishFusionDurationMs = 3000;
 const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
   rare: "/assets/ui/icon-rare-coin.png",
@@ -9776,75 +9782,34 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private fishFusionSources(): FishFusionSource[] {
-    const activeSources = this.activeFish().map((fish) => ({
-      key: `active:${this.fish.indexOf(fish)}`,
-      kind: "active" as const,
-      type: fish.type,
-      ageSeconds: fish.ageSeconds,
-      activeIndex: this.fish.indexOf(fish),
-      label: "Tank"
-    }));
-    const storedSources = fishTypes.flatMap((fishType) => {
-      const count = this.getFishInventory(fishType.id);
-      const ages = this.storedFishAgesFor(fishType.id);
-      return Array.from({ length: count }, (_, index): FishFusionSource => ({
-        key: `stored:${fishType.id}:${index}`,
-        kind: "stored",
-        type: fishType,
-        ageSeconds: ages[index] ?? 0,
-        storedAgeIndex: index < ages.length ? index : undefined,
-        label: "Inventory"
-      }));
+    return createFishFusionSources({
+      activeFish: this.activeFish(),
+      fishInventory: this.fishInventory,
+      storedFishAgesFor: (fishTypeId) => this.storedFishAgesFor(fishTypeId)
     });
-    return [...activeSources, ...storedSources];
   }
 
   private fishFusionResultTypes(sources: FishFusionSource[]): { normal?: FishType; premium?: FishType } {
-    const normal = this.fishFusionResultType(sources);
-    if (!normal) {
-      return {};
-    }
-
-    const premium = this.fishFusionResultType(
+    return fishFusionResultTypesModel({
       sources,
-      this.priceWealth(normal.price) * 2,
-      new Set([normal.id])
-    );
-    return { normal, premium };
-  }
-
-  private fishFusionResultType(sources: FishFusionSource[], targetValueOverride?: number, excludedIds = new Set<string>()): FishType | undefined {
-    const ownedIds = this.ownedFishTypeIds();
-    const unowned = fishTypes.filter((fishType) => !ownedIds.has(fishType.id) && !excludedIds.has(fishType.id));
-    if (unowned.length === 0) {
-      return undefined;
-    }
-
-    const combinedSellValue = sources.reduce((total, source) => total + this.fishFusionSourceSellValue(source), 0);
-    const targetValue = targetValueOverride ?? combinedSellValue * 1.08;
-    const minimumValue = targetValueOverride ? targetValue * 0.72 : combinedSellValue * 0.95;
-    const higherOrSimilar = unowned.filter((fishType) => this.priceWealth(fishType.price) >= minimumValue);
-    const pool = higherOrSimilar.length > 0 ? higherOrSimilar : unowned;
-    return [...pool].sort((first, second) => {
-      const firstDistance = Math.abs(this.priceWealth(first.price) - targetValue);
-      const secondDistance = Math.abs(this.priceWealth(second.price) - targetValue);
-      return firstDistance - secondDistance || this.priceWealth(first.price) - this.priceWealth(second.price);
-    })[0];
+      ownedFishTypeIds: this.ownedFishTypeIds(),
+      activeFish: this.fish,
+      activeFishSellValue: (fish) => this.activeFishSellValue(fish),
+      storedFishSellValue: (fishType) => this.storedFishSellValue(fishType),
+      priceWealth: (price) => this.priceWealth(price)
+    });
   }
 
   private fishFusionSourceSellValue(source: FishFusionSource): number {
-    if (source.kind === "active") {
-      const fish = this.fish[source.activeIndex];
-      if (fish && fish.type.id === source.type.id) {
-        return this.activeFishSellValue(fish);
-      }
-    }
-    return this.storedFishSellValue(source.type);
+    return fishFusionSourceSellValueModel(source, {
+      activeFish: this.fish,
+      activeFishSellValue: (fish) => this.activeFishSellValue(fish),
+      storedFishSellValue: (fishType) => this.storedFishSellValue(fishType)
+    });
   }
 
   private fishFusionCostFor(sources: FishFusionSource[]): Price {
-    const combinedSellValue = sources.reduce((total, source) => total + this.fishFusionSourceSellValue(source), 0);
-    return { coinType: "common", amount: Math.max(1, Math.round(combinedSellValue * fishFusionCostRate)) };
+    return fishFusionCostForModel(sources, (source) => this.fishFusionSourceSellValue(source));
   }
 
   private areFishFusionSourcesAvailable(sources: FishFusionSource[]): boolean {
@@ -9866,19 +9831,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private fishFusionChancesFor(sources: FishFusionSource[], hasPremium: boolean): FishFusionChances {
-    const ages = sources.map((source) => source.ageSeconds);
-    const ageGapMonths = sources.length >= 2 ? Math.abs(Math.max(...ages) - Math.min(...ages)) / 3600 : 0;
-    const premium = hasPremium
-      ? Phaser.Math.Clamp(
-        fishFusionMaxPremiumChance - ageGapMonths * fishFusionPremiumChanceLossPerAgeGapMonth,
-        fishFusionMinPremiumChance,
-        fishFusionMaxPremiumChance
-      )
-      : 0;
-    return {
-      normal: 1 - premium,
-      premium
-    };
+    return fishFusionChancesForModel(sources, hasPremium);
   }
 
   private consumeFishFusionSources(sources: FishFusionSource[]): void {
@@ -9934,35 +9887,19 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private storedFishAgesFor(fishTypeId: string): number[] {
-    return [...(this.fishInventoryAges.get(fishTypeId) ?? [])].sort((first, second) => second - first);
+    return storedFishAgesForModel(this.fishInventoryAges, fishTypeId);
   }
 
   private addStoredFishAge(fishTypeId: string, ageSeconds: number): void {
-    if (ageSeconds <= 0) {
-      return;
-    }
-    this.setStoredFishAges(fishTypeId, [...this.storedFishAgesFor(fishTypeId), Math.floor(ageSeconds)]);
+    addStoredFishAgeModel(this.fishInventoryAges, fishTypeId, ageSeconds, this.getFishInventory(fishTypeId));
   }
 
   private takeStoredFishAge(fishTypeId: string): number {
-    const ages = this.storedFishAgesFor(fishTypeId);
-    const ageSeconds = ages.shift() ?? 0;
-    this.setStoredFishAges(fishTypeId, ages);
-    return ageSeconds;
+    return takeStoredFishAgeModel(this.fishInventoryAges, fishTypeId, Math.max(0, this.getFishInventory(fishTypeId) - 1));
   }
 
   private setStoredFishAges(fishTypeId: string, ages: number[]): void {
-    const count = this.getFishInventory(fishTypeId);
-    const sanitized = ages
-      .filter((ageSeconds) => Number.isFinite(ageSeconds) && ageSeconds > 0)
-      .map((ageSeconds) => Math.floor(ageSeconds))
-      .sort((first, second) => second - first)
-      .slice(0, Math.max(0, count));
-    if (sanitized.length === 0) {
-      this.fishInventoryAges.delete(fishTypeId);
-      return;
-    }
-    this.fishInventoryAges.set(fishTypeId, sanitized);
+    setStoredFishAgesModel(this.fishInventoryAges, fishTypeId, ages, this.getFishInventory(fishTypeId));
   }
 
   private trimStoredFishAges(fishTypeId: string): void {
@@ -9970,15 +9907,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private fusionAgeLabel(ageSeconds: number): string {
-    const months = Math.max(0, Math.floor(ageSeconds / 3600));
-    if (months >= 12) {
-      const years = Math.floor(months / 12);
-      const remainingMonths = months % 12;
-      const yearLabel = `${formatNumber(years)} ${years === 1 ? "year" : "years"}`;
-      const monthLabel = remainingMonths > 0 ? `${formatNumber(remainingMonths)} ${remainingMonths === 1 ? "month" : "months"}` : "";
-      return monthLabel ? `${yearLabel} ${monthLabel}` : yearLabel;
-    }
-    return months > 0 ? `${formatNumber(months)} ${months === 1 ? "month" : "months"}` : "new";
+    return fusionAgeLabelModel(ageSeconds);
   }
 
   private showInventorySellQuantityModal(options: {
@@ -9989,45 +9918,16 @@ export class AquariumScene extends Phaser.Scene {
     valueForQuantity: (quantity: number) => number;
     onSell: (quantity: number) => void;
   }): void {
-    const maxQuantity = Math.max(1, Math.floor(options.maxQuantity));
-    let selectedQuantity = 1;
-    const quantityText = htmlElement("strong", "aq-sell-qty-value", [formatNumber(selectedQuantity)]);
-    const valueText = this.commonCoinValueRow("Receive", options.valueForQuantity(selectedQuantity));
-    const update = () => {
-      selectedQuantity = Phaser.Math.Clamp(Math.floor(selectedQuantity), 1, maxQuantity);
-      quantityText.textContent = formatNumber(selectedQuantity);
-      const nextValueText = this.commonCoinValueRow("Receive", options.valueForQuantity(selectedQuantity));
-      valueText.replaceChildren(...Array.from(nextValueText.childNodes));
-    };
-    const setQuantity = (quantity: number) => {
-      selectedQuantity = quantity;
-      update();
-    };
-    const quantityPicker = htmlElement("div", "aq-sell-qty-picker aq-sell-qty-picker-with-max", [
-      createHtmlButton("-", "aq-sell-qty-step", () => setQuantity(selectedQuantity - 1), {
-        disabled: maxQuantity <= 1,
-        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
-      }),
-      htmlElement("div", "aq-sell-qty-display", [quantityText]),
-      createHtmlButton("+", "aq-sell-qty-step", () => setQuantity(selectedQuantity + 1), {
-        disabled: maxQuantity <= 1,
-        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
-      }),
-      createHtmlButton("MAX", "aq-sell-qty-step aq-sell-qty-max-button", () => setQuantity(maxQuantity), {
-        disabled: maxQuantity <= 1,
-        attachTouchFeedback: (button) => this.attachTouchFeedback(button)
-      })
-    ]);
-    const bodyElements = [
-      options.preview,
-      htmlElement("p", "aq-modal-owned-line", [options.ownedLabel]),
-      quantityPicker,
-      valueText
-    ];
-    const actions: ModalAction[] = [
-      { label: "SELL NOW", fill: 0x76512d, action: () => options.onSell(selectedQuantity) },
-      { label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }
-    ];
+    const { bodyElements, actions } = createSellQuantityModalContent({
+      preview: options.preview,
+      ownedLabel: options.ownedLabel,
+      maxQuantity: options.maxQuantity,
+      valueForQuantity: options.valueForQuantity,
+      createValueRow: (label, amount) => this.commonCoinValueRow(label, amount),
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
+      onSell: options.onSell,
+      onCancel: () => this.closeModal()
+    });
 
     this.showModal(
       options.title,
