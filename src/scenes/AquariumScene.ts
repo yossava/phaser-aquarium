@@ -38,6 +38,19 @@ import {
   targetProductionPerMinuteForLevel
 } from "../game/level-progression";
 import {
+  addPriceToWallet as addPriceToWalletModel,
+  decorationSizeUpgradePrice as decorationSizeUpgradePriceModel,
+  makeupDecorationCostEntries as makeupDecorationCostEntriesModel,
+  makeupDecorationDisplayDepth,
+  makeupPurchaseLines as makeupPurchaseLinesModel,
+  makeupTotalCost as makeupTotalCostModel,
+  priceComponentAmount as priceComponentAmountModel,
+  walletToPrice as walletToPriceModel,
+  type MakeupDecorationDraft,
+  type MakeupDraft,
+  type MakeupSection
+} from "../game/makeup-mode";
+import {
   bestCalorieFoodForTarget,
   cappedFoodCountLabel,
   addedFoodBuyQuantity as addedFoodBuyQuantityModel,
@@ -184,6 +197,7 @@ import {
   type PageScreenMeta
 } from "../ui/PageOverlay";
 import { createFishAlbumRow } from "../ui/AlbumPage";
+import { createCommonCoinValueRow, createMakeupCostElement, createPriceIconRow, createWalletIconRow } from "../ui/PriceRows";
 import { createQuestList } from "../ui/QuestPage";
 import { createRewardedAdsPage } from "../ui/RewardedAdsPage";
 import { createSellQuantityModalContent } from "../ui/SellQuantityModal";
@@ -222,33 +236,11 @@ type PlacementMode =
 
 type TankMenuTab = "background" | "seabed" | "decor" | "utility";
 type InventoryTab = "fish" | "fusion" | "food" | "decor" | "coins" | "tank";
-type MakeupSection = "background" | "seabed" | "decor";
 type TankUtilityId = "food-dispenser" | "coin-magnet" | "auto-food-buyer";
 type FishFusionPageResult = {
   label: string;
   fishTypeId: string;
   ageSeconds: number;
-};
-type MakeupDecorationDraft = {
-  typeId: string;
-  originalTypeId?: string;
-  originalSize?: DecorationSize;
-  size: DecorationSize;
-  x: number;
-  y: number;
-  depth: number;
-  image: Phaser.GameObjects.Image;
-};
-type MakeupDraft = {
-  section?: MakeupSection;
-  backgroundIndex: number;
-  seabedIndex: number;
-  backgroundTintById: Map<string, number>;
-  seabedTintById: Map<string, number>;
-  selectedDecorationTypeIndex: number;
-  selectedSize: DecorationSize;
-  selectedDecorationIndex?: number;
-  decorations: MakeupDecorationDraft[];
 };
 type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; badgeLabel?: string; icon: string }
@@ -3811,14 +3803,14 @@ export class AquariumScene extends Phaser.Scene {
     draft.decorations.forEach((decoration, index) => {
       decoration.depth = index;
       if (decoration !== this.makeupDraggedDecoration) {
-        decoration.image.setDepth(this.makeupDecorationDisplayDepth(index));
+        decoration.image.setDepth(makeupDecorationDisplayDepth(index));
       }
       this.tankLayer.bringToTop(decoration.image);
     });
   }
 
   private makeupDecorationDisplayDepth(index: number): number {
-    return 11 + index * 0.05;
+    return makeupDecorationDisplayDepth(index);
   }
 
   private removeSelectedMakeupDecoration(): void {
@@ -3834,192 +3826,90 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private makeupTotalCost(): Price {
-    if (!this.makeupDraft) {
-      return { coinType: "common", amount: 0 };
-    }
-
-    const total = createEmptyWallet();
-    const background = this.makeupSelectedCosmetic("background");
-    const seabed = this.makeupSelectedCosmetic("seabed");
-    if (!this.ownsTankCosmetic(background)) {
-      this.addPriceToWallet(total, background.price);
-    }
-    if (!this.ownsTankCosmetic(seabed)) {
-      this.addPriceToWallet(total, seabed.price);
-    }
-
-    for (const entry of this.makeupDecorationCostEntries()) {
-      this.addPriceToWallet(total, entry.price, entry.count);
-    }
-
-    return this.walletToPrice(total);
+    return makeupTotalCostModel({
+      draft: this.makeupDraft,
+      background: this.makeupSelectedCosmetic("background"),
+      seabed: this.makeupSelectedCosmetic("seabed"),
+      ownsTankCosmetic: (asset) => this.ownsTankCosmetic(asset),
+      decorationCostEntries: this.makeupDecorationCostEntries()
+    });
   }
 
   private makeupDecorationCostEntries(): Array<{ line: string; price: Price; count: number }> {
-    if (!this.makeupDraft) {
-      return [];
-    }
-
-    const entries: Array<{ line: string; price: Price; count: number }> = [];
-    const newDecorationCounts = new Map<string, { type: DecorationType; size: DecorationSize; count: number }>();
-    for (const decoration of this.makeupDraft.decorations) {
-      const decorationType = decorationTypes.find((item) => item.id === decoration.typeId);
-      if (!decorationType) {
-        continue;
-      }
-
-      if (decoration.originalTypeId === decoration.typeId && decoration.originalSize) {
-        const upgradePrice = this.decorationSizeUpgradePrice(decorationType, decoration.originalSize, decoration.size);
-        if (this.priceWealth(upgradePrice) > 0) {
-          entries.push({
-            line: `Decor upgrade: ${decorationType.name} ${decorationSizes[decoration.originalSize].label} -> ${decorationSizes[decoration.size].label}`,
-            price: upgradePrice,
-            count: 1
-          });
-        }
-        continue;
-      }
-
-      const key = this.decorationInventoryKey(decoration.typeId, decoration.size);
-      const current = newDecorationCounts.get(key) ?? { type: decorationType, size: decoration.size, count: 0 };
-      current.count += 1;
-      newDecorationCounts.set(key, current);
-    }
-
-    for (const entry of newDecorationCounts.values()) {
-      const storedCount = this.getDecorationInventory(entry.type.id, entry.size);
-      const purchaseCount = Math.max(0, entry.count - storedCount);
-      if (purchaseCount > 0) {
-        entries.push({
-          line: `Decor: ${entry.type.name} ${decorationSizes[entry.size].label} x${formatNumber(purchaseCount)}`,
-          price: this.decorationVariantPrice(entry.type, entry.size),
-          count: purchaseCount
-        });
-      }
-    }
-
-    return entries;
+    return makeupDecorationCostEntriesModel({
+      draft: this.makeupDraft,
+      decorationTypes,
+      decorationSizeLabel: (size) => decorationSizes[size].label,
+      decorationInventoryKey: (decorationTypeId, size) => this.decorationInventoryKey(decorationTypeId, size),
+      getDecorationInventory: (decorationTypeId, size) => this.getDecorationInventory(decorationTypeId, size),
+      decorationVariantPrice: (decorationType, size) => this.decorationVariantPrice(decorationType, size),
+      priceWealth: (price) => this.priceWealth(price),
+      formatNumber
+    });
   }
 
   private decorationSizeUpgradePrice(decorationType: DecorationType, fromSize: DecorationSize, toSize: DecorationSize): Price {
-    const fromPrice = this.decorationVariantPrice(decorationType, fromSize);
-    const toPrice = this.decorationVariantPrice(decorationType, toSize);
-    const total = createEmptyWallet();
-    for (const coinType of ["common", "rare", "superRare"] as const) {
-      const fromAmount = this.priceComponentAmount(fromPrice, coinType);
-      const toAmount = this.priceComponentAmount(toPrice, coinType);
-      total[coinType] = Math.max(0, toAmount - fromAmount);
-    }
-    return this.walletToPrice(total);
+    return decorationSizeUpgradePriceModel({
+      decorationType,
+      fromSize,
+      toSize,
+      decorationVariantPrice: (item, size) => this.decorationVariantPrice(item, size)
+    });
   }
 
   private priceComponentAmount(price: Price, coinType: CoinType): number {
-    if (price.coinType === coinType) {
-      return price.amount;
-    }
-    if (coinType === "rare") {
-      return price.rareAmount ?? 0;
-    }
-    if (coinType === "superRare") {
-      return price.superRareAmount ?? 0;
-    }
-    return 0;
+    return priceComponentAmountModel(price, coinType);
   }
 
   private makeupPurchaseLines(): string[] {
-    if (!this.makeupDraft) {
-      return [];
-    }
-
-    const purchases: string[] = [];
-    const background = this.makeupSelectedCosmetic("background");
-    const seabed = this.makeupSelectedCosmetic("seabed");
-    if (!this.ownsTankCosmetic(background)) {
-      purchases.push(`Background: ${background.name}`);
-    }
-    if (!this.ownsTankCosmetic(seabed)) {
-      purchases.push(`Bed: ${seabed.name}`);
-    }
-
-    purchases.push(...this.makeupDecorationCostEntries().map((entry) => entry.line));
-
-    return purchases;
+    return makeupPurchaseLinesModel({
+      draft: this.makeupDraft,
+      background: this.makeupSelectedCosmetic("background"),
+      seabed: this.makeupSelectedCosmetic("seabed"),
+      ownsTankCosmetic: (asset) => this.ownsTankCosmetic(asset),
+      decorationCostEntries: this.makeupDecorationCostEntries()
+    });
   }
 
   private makeupCostElement(price: Price): HTMLElement {
-    if (this.priceWealth(price) <= 0) {
-      return htmlElement("div", "aq-makeup-cost", ["Cost Free"]);
-    }
-
-    const row = htmlElement("div", "aq-makeup-cost aq-makeup-cost-icons", [htmlElement("span", "", ["Cost"])]);
-    for (const [coinType, amount] of priceComponents(price)) {
-      row.append(
-        htmlElement("span", "aq-makeup-cost-chip", [
-          htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
-          htmlElement("strong", "", [formatNumber(amount)])
-        ])
-      );
-    }
-    return row;
+    return createMakeupCostElement({
+      price,
+      priceWealth: (itemPrice) => this.priceWealth(itemPrice),
+      coinAssetPathByType
+    });
   }
 
   private priceIconRow(price: Price, label = "Total price"): HTMLElement {
-    if (this.priceWealth(price) <= 0) {
-      return htmlElement("p", "aq-modal-line", [`${label}: Free`]);
-    }
-
-    const row = htmlElement("p", "aq-modal-line aq-modal-price-line", [htmlElement("span", "", [`${label}:`])]);
-    for (const [coinType, amount] of priceComponents(price)) {
-      row.append(
-        htmlElement("span", "aq-makeup-cost-chip", [
-          htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
-          htmlElement("strong", "", [formatNumber(amount)])
-        ])
-      );
-    }
-    return row;
+    return createPriceIconRow({
+      price,
+      label,
+      priceWealth: (itemPrice) => this.priceWealth(itemPrice),
+      coinAssetPathByType
+    });
   }
 
   private commonCoinValueRow(label: string, amount: number): HTMLElement {
-    return htmlElement("p", "aq-modal-line aq-modal-price-line aq-sell-qty-total", [
-      htmlElement("span", "", [label]),
-      htmlElement("span", "aq-makeup-cost-chip", [
-        htmlImage(coinAssetPathByType.common, "Common coins", "aq-makeup-cost-icon"),
-        htmlElement("strong", "", [formatNumber(amount)])
-      ])
-    ]);
+    return createCommonCoinValueRow({
+      label,
+      amount,
+      commonCoinAssetPath: coinAssetPathByType.common
+    });
   }
 
   private walletIconRow(label: string, wallet: Wallet): HTMLElement {
-    const row = htmlElement("p", "aq-modal-line aq-modal-price-line aq-sell-qty-total", [
-      htmlElement("span", "", [label])
-    ]);
-    const entries = (Object.entries(wallet) as Array<[CoinType, number]>).filter(([, amount]) => amount > 0);
-    const visibleEntries = entries.length > 0 ? entries : [["common", 0] as [CoinType, number]];
-    for (const [coinType, amount] of visibleEntries) {
-      row.append(
-        htmlElement("span", "aq-makeup-cost-chip", [
-          htmlImage(coinAssetPathByType[coinType], coinType, "aq-makeup-cost-icon"),
-          htmlElement("strong", "", [formatNumber(amount)])
-        ])
-      );
-    }
-    return row;
+    return createWalletIconRow({
+      label,
+      wallet,
+      coinAssetPathByType
+    });
   }
 
   private addPriceToWallet(total: Wallet, price: Price, multiplier = 1): void {
-    for (const [coinType, amount] of priceComponents(price)) {
-      total[coinType] += Math.max(0, Math.floor(amount * multiplier));
-    }
+    addPriceToWalletModel(total, price, multiplier);
   }
 
   private walletToPrice(wallet: Wallet): Price {
-    return {
-      coinType: "common",
-      amount: Math.max(0, Math.floor(wallet.common)),
-      rareAmount: wallet.rare > 0 ? Math.max(0, Math.floor(wallet.rare)) : undefined,
-      superRareAmount: wallet.superRare > 0 ? Math.max(0, Math.floor(wallet.superRare)) : undefined
-    };
+    return walletToPriceModel(wallet);
   }
 
   private showMakeupApplyConfirmation(): void {
