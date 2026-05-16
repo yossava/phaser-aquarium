@@ -8,8 +8,8 @@ const coinDisplaySize = Math.round(gameWidth * 0.12);
 const coinTapTargetSize = Math.round(gameWidth * 0.16);
 const coinValueTextOffset = Math.round(gameWidth * 0.04);
 const coinValueFontSize = Math.round(gameWidth * 0.03);
-const coinBottomPadding = Math.round(gameWidth * 0.1);
-const coinSeabedDepthBand = Math.round(gameWidth * 0.1);
+const coinBottomPadding = Math.round(gameWidth * 0.2);
+const coinSeabedDepthBand = Math.round(gameWidth * 0.08);
 const coinShimmerTextureKey = "coin-shimmer-sparkle";
 const coinShimmerTextureSize = 40;
 

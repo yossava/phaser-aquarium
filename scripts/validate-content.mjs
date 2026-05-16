@@ -6,7 +6,7 @@ const dataDir = path.join(root, "src", "data");
 
 const rarities = new Set(["common", "rare", "superRare"]);
 const coinTypes = new Set(["common", "rare", "superRare"]);
-const foodTypes = new Set(["micro", "basic", "basicMedium", "basicLarge", "basicXL", "premium", "herb", "protein", "coral", "medicine", "ageBoost", "creature", "event"]);
+const foodTypes = new Set(["micro", "basic", "basicMedium", "basicLarge", "basicXL", "premium", "herb", "protein", "coral", "medicine", "ageBoost", "productionBoost", "creature", "event"]);
 const ageStages = ["baby", "juvenile", "adult", "elder", "master"];
 
 const errors = [];

@@ -20,10 +20,10 @@ export function currentStoreItems(
   if (activeTab === "supply") {
     return foodTypes
       .filter((food) => !hiddenFoodTypeIds.has(food.id) && supplyFoodTypeIds.has(food.id))
-      .sort((first, second) => tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)));
+      .sort(compareStoreItemPrice);
   }
   if (activeTab === "creature") {
-    return [...helperCreatureTypes].sort((first, second) => tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)));
+    return [...helperCreatureTypes].sort(compareStoreItemPrice);
   }
 
   const tankItemsByCategory: Record<TankStoreCategory, Array<StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard>> = {
@@ -35,21 +35,34 @@ export function currentStoreItems(
   if (tankCategory === "background" || tankCategory === "seabed") {
     return tankItemsByCategory[tankCategory]
       .filter((item) => !item.owned)
-      .sort((first, second) => tierOrder(storeItemTier("common", first.price)) - tierOrder(storeItemTier("common", second.price)));
+      .sort(compareStoreCardPrice);
   }
   return tankItemsByCategory[tankCategory];
 }
 
 export function storeItemTier(rarity: Rarity, price: Price): CoinType {
-  if (price.superRareAmount && price.superRareAmount > 0) {
+  if (rarity === "superRare" || (price.superRareAmount && price.superRareAmount > 0)) {
     return "superRare";
   }
-  if (price.rareAmount && price.rareAmount > 0) {
+  if (rarity === "rare" || (price.rareAmount && price.rareAmount > 0)) {
     return "rare";
   }
-  return rarity === "superRare" ? "superRare" : rarity === "rare" ? "rare" : "common";
+  return "common";
 }
 
 function tierOrder(tier: CoinType): number {
   return tier === "common" ? 0 : tier === "rare" ? 1 : 2;
+}
+
+function priceWealth(price: Price): number {
+  const baseAmount = price.coinType === "common" ? price.amount : price.coinType === "rare" ? price.amount * 1000 : price.amount * 10000;
+  return baseAmount + (price.rareAmount ?? 0) * 1000 + (price.superRareAmount ?? 0) * 10000;
+}
+
+function compareStoreItemPrice(first: { rarity: Rarity; price: Price }, second: { rarity: Rarity; price: Price }): number {
+  return tierOrder(storeItemTier(first.rarity, first.price)) - tierOrder(storeItemTier(second.rarity, second.price)) || priceWealth(first.price) - priceWealth(second.price);
+}
+
+function compareStoreCardPrice(first: StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard, second: StoreTankCosmeticCard | StoreTankDecorationCard | StoreTankUtilityCard): number {
+  return tierOrder(storeItemTier("common", first.price)) - tierOrder(storeItemTier("common", second.price)) || priceWealth(first.price) - priceWealth(second.price);
 }

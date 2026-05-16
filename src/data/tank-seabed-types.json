@@ -1,0 +1,102 @@
+[
+  {
+    "assetIndex": 1,
+    "themeId": "lagoon_sand",
+    "name": "Lagoon Sand"
+  },
+  {
+    "assetIndex": 3,
+    "themeId": "kelp_mud",
+    "name": "Kelp Mud"
+  },
+  {
+    "assetIndex": 2,
+    "themeId": "coral_rubble",
+    "name": "Coral Rubble"
+  },
+  {
+    "assetIndex": 4,
+    "themeId": "crystal_gravel",
+    "name": "Crystal Gravel"
+  },
+  {
+    "assetIndex": 5,
+    "themeId": "abyss_black_sand",
+    "name": "Abyss Black Sand"
+  },
+  {
+    "assetIndex": 6,
+    "themeId": "sunset_sand",
+    "name": "Sunset Sand"
+  },
+  {
+    "assetIndex": 7,
+    "themeId": "freshwater_pebbles",
+    "name": "Freshwater Pebbles"
+  },
+  {
+    "assetIndex": 8,
+    "themeId": "ruin_tiles",
+    "name": "Ruin Tiles"
+  },
+  {
+    "assetIndex": 9,
+    "themeId": "mangrove_silt",
+    "name": "Mangrove Silt"
+  },
+  {
+    "assetIndex": 10,
+    "themeId": "volcanic_basalt",
+    "name": "Volcanic Basalt"
+  },
+  {
+    "assetIndex": 11,
+    "themeId": "glowing_plankton_sand",
+    "name": "Glowing Plankton Sand"
+  },
+  {
+    "assetIndex": 12,
+    "themeId": "arctic_pale_gravel",
+    "name": "Arctic Pale Gravel"
+  },
+  {
+    "assetIndex": 13,
+    "themeId": "jade_moss_stone",
+    "name": "Jade Moss Stone"
+  },
+  {
+    "assetIndex": 14,
+    "themeId": "pearl_shell_sand",
+    "name": "Pearl Shell Sand"
+  },
+  {
+    "assetIndex": 15,
+    "themeId": "shipwreck_planks",
+    "name": "Shipwreck Planks"
+  },
+  {
+    "assetIndex": 16,
+    "themeId": "lily_pond_mud",
+    "name": "Lily Pond Mud"
+  },
+  {
+    "assetIndex": 17,
+    "themeId": "moonlit_silver_sand",
+    "name": "Moonlit Silver Sand"
+  },
+  {
+    "assetIndex": 18,
+    "themeId": "opal_crystal_gravel",
+    "name": "Opal Crystal Gravel"
+  },
+  {
+    "assetIndex": 19,
+    "themeId": "golden_rippled_sand",
+    "name": "Golden Rippled Sand"
+  },
+  {
+    "assetIndex": 20,
+    "themeId": "deep_temple_stone",
+    "name": "Deep Temple Stone"
+  }
+]

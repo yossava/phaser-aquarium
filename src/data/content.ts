@@ -2,11 +2,14 @@ import fishTypeData from "./fish-types.json";
 import foodTypeData from "./food-types.json";
 import decorationTypeData from "./decoration-types.json";
 import helperCreatureTypeData from "./helper-creature-types.json";
-import { commonPerCalorie, maximumMealCaloriesNeed } from "../game/economy-model";
+import { maximumMealCaloriesNeed } from "../game/economy-model";
 import type { CoinType, DecorationType, FishType, FoodType, HelperCreatureType, Price, Rarity } from "../types/mechanics";
 
 const baselineCommonFishPrice = 60;
 const fishShopTierSize = 8;
+const foodShopTierSize = 4;
+const decorationShopTierSize = 8;
+const helperCreatureShopTierSize = 2;
 const activeFishProductionSlots = 4;
 const minTargetActiveHours = 2;
 const maxTargetActiveHours = 2.5;
@@ -54,8 +57,17 @@ function roundFoodCalories(value: number): number {
   return Math.max(1, Math.round(value / step) * step);
 }
 
-function foodPriceForCalories(calories: number): Price {
-  return { coinType: "common", amount: Math.max(1, Math.round(calories * commonPerCalorie)) };
+function supplyFoodPrice(foodTypeId: FoodType["id"]): Price {
+  if (foodTypeId === "medicine") {
+    return { coinType: "common", amount: roundEconomyCommonPrice(fishProductionDeltaForShopLevel(1) * 0.04) };
+  }
+  if (foodTypeId === "productionBoost") {
+    return { coinType: "common", amount: roundEconomyCommonPrice(fishProductionDeltaForShopLevel(1) * 0.6) };
+  }
+  if (foodTypeId === "ageBoost") {
+    return { coinType: "common", amount: roundEconomyCommonPrice(fishProductionDeltaForShopLevel(2) * 0.8) };
+  }
+  return { coinType: "common", amount: roundEconomyCommonPrice(fishProductionDeltaForShopLevel(1) * 0.05) };
 }
 
 function tokenPriceForRarity(rarity: Rarity, index: number): Pick<Price, "rareAmount" | "superRareAmount"> {
@@ -83,6 +95,15 @@ function fishProductionDeltaForShopLevel(shopLevel: number): number {
   const previousThreshold = baseFishProductionLevelThreshold * Math.pow(5, shopLevel - 2);
   const nextThreshold = baseFishProductionLevelThreshold * Math.pow(5, shopLevel - 1);
   return nextThreshold - previousThreshold;
+}
+
+function economyLevelForCatalogIndex(index: number, tierSize: number): number {
+  return Math.max(1, Math.floor(Math.max(0, index) / Math.max(1, tierSize)) + 1);
+}
+
+function economyTierRatio(index: number, tierSize: number): number {
+  const safeTierSize = Math.max(1, tierSize);
+  return safeTierSize <= 1 ? 0 : (Math.max(0, index) % safeTierSize) / Math.max(1, safeTierSize - 1);
 }
 
 function productionPerPriceOverHours(hours: number): number {
@@ -133,6 +154,42 @@ function roundFishCommonPrice(value: number): number {
     return Math.round(value / 100) * 100;
   }
   return Math.round(value / 1000) * 1000;
+}
+
+function roundEconomyCommonPrice(value: number): number {
+  if (value < 100) {
+    return Math.max(1, Math.round(value / 5) * 5);
+  }
+  if (value < 1000) {
+    return Math.round(value / 10) * 10;
+  }
+  if (value < 10000) {
+    return Math.round(value / 50) * 50;
+  }
+  if (value < 100000) {
+    return Math.round(value / 100) * 100;
+  }
+  return Math.round(value / 1000) * 1000;
+}
+
+function economyTokenPriceForLevel(level: number): Pick<Price, "rareAmount" | "superRareAmount"> {
+  if (level >= 5) {
+    return { superRareAmount: Math.max(1, level - 4) };
+  }
+  if (level >= 3) {
+    return { rareAmount: Math.max(1, Math.floor((level - 2) / 2)) };
+  }
+  return {};
+}
+
+function fishFoodPriceForCatalogIndex(index: number): Price {
+  const level = economyLevelForCatalogIndex(index, foodShopTierSize);
+  const ratio = economyTierRatio(index, foodShopTierSize);
+  const productionDelta = fishProductionDeltaForShopLevel(level);
+  return {
+    coinType: "common",
+    amount: roundEconomyCommonPrice(productionDelta * (0.018 + ratio * 0.042))
+  };
 }
 
 function fishCommonPriceForCatalogIndex(index: number): number {
@@ -188,7 +245,7 @@ function normalizeSupplyFoodTypes(source: FoodType[]): FoodType[] {
     return {
       ...foodType,
       rarity: economy.rarity ?? foodType.rarity,
-      price: economy.price,
+      price: supplyFoodPrice(foodType.id),
       calories: economy.calories,
       densityLevel: economy.densityLevel,
       acceptedByDefault: true
@@ -202,19 +259,20 @@ function normalizeFishFoodTypes(): FoodType[] {
   let index = 0;
   return fishFoodFamilies.flatMap((family) =>
     fishFoodSizeVariants.map((size): FoodType => {
+      const catalogIndex = index;
       const id = foodVariantId(family.id, size.suffix);
-      const calories = index === 0
+      const calories = catalogIndex === 0
         ? 34
-        : index === variantCount - 1
+        : catalogIndex === variantCount - 1
           ? maximumMealCaloriesNeed
-          : roundFoodCalories(34 * calorieGrowth ** index);
+          : roundFoodCalories(34 * calorieGrowth ** catalogIndex);
       index += 1;
       foodAssetIdById.set(id, family.assetId);
       return {
         id,
         name: `${family.name} ${size.label}`,
         rarity: "common",
-        price: foodPriceForCalories(calories),
+        price: fishFoodPriceForCatalogIndex(catalogIndex),
         nutrition: calories,
         calories,
         densityLevel: size.densityLevel,
@@ -224,35 +282,36 @@ function normalizeFishFoodTypes(): FoodType[] {
   );
 }
 
-function normalizeCompositePrice(price: Price, rarity: Rarity, index: number, commonMultiplier: number): Price {
-  const commonAmount = Math.max(1, Math.round(price.amount * commonMultiplier));
-  return {
-    coinType: "common",
-    amount: commonAmount,
-    ...tokenPriceForRarity(rarity, index)
-  };
-}
-
 function normalizeDecorationTypes(source: DecorationType[]): DecorationType[] {
-  const rarityIndex: Record<Rarity, number> = { common: 0, rare: 0, superRare: 0 };
-  return source.map((decoration) => {
-    const index = rarityIndex[decoration.rarity]++;
-    const multiplier = decoration.rarity === "common" ? 5 : decoration.rarity === "rare" ? 140 : 1200;
+  return source.map((decoration, index) => {
+    const level = economyLevelForCatalogIndex(index, decorationShopTierSize);
+    const ratio = economyTierRatio(index, decorationShopTierSize);
+    const productionDelta = fishProductionDeltaForShopLevel(level);
+    const commonAmount = roundEconomyCommonPrice(productionDelta * (0.22 + ratio * 0.58));
     return {
       ...decoration,
-      price: normalizeCompositePrice(decoration.price, decoration.rarity, index, multiplier)
+      price: {
+        coinType: "common",
+        amount: commonAmount,
+        ...economyTokenPriceForLevel(level)
+      }
     };
   });
 }
 
 function normalizeHelperCreatureTypes(source: HelperCreatureType[]): HelperCreatureType[] {
-  const rarityIndex: Record<Rarity, number> = { common: 0, rare: 0, superRare: 0 };
-  return source.map((creature) => {
-    const index = rarityIndex[creature.rarity]++;
-    const multiplier = creature.rarity === "common" ? 8 : creature.rarity === "rare" ? 450 : 2500;
+  return source.map((creature, index) => {
+    const level = economyLevelForCatalogIndex(index, helperCreatureShopTierSize);
+    const ratio = economyTierRatio(index, helperCreatureShopTierSize);
+    const productionDelta = fishProductionDeltaForShopLevel(level);
+    const commonAmount = roundEconomyCommonPrice(productionDelta * (0.55 + ratio * 0.65));
     return {
       ...creature,
-      price: normalizeCompositePrice(creature.price, creature.rarity, index, multiplier)
+      price: {
+        coinType: "common",
+        amount: commonAmount,
+        ...economyTokenPriceForLevel(level)
+      }
     };
   });
 }

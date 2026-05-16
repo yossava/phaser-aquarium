@@ -6,7 +6,7 @@ export type PageScreenMeta = {
   icon: string;
 };
 
-export type PageOverlayScreen = "menu" | "album" | "goals" | "settings" | "fishDev";
+export type PageOverlayScreen = "menu" | "album" | "goals" | "settings";
 
 export type PageScreenMetaInput = {
   screen: PageOverlayScreen;
@@ -38,11 +38,6 @@ export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
       title: "Settings",
       subtitle: "Audio, motion, notifications, and save controls",
       icon: "/assets/ui/settings.png"
-    },
-    fishDev: {
-      title: "Fish Order",
-      subtitle: "Temporary development sorter",
-      icon: "/assets/ui/book.png"
     }
   };
 

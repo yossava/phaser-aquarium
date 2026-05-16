@@ -1,5 +1,7 @@
 import type { DecorationType, Price } from "../types/mechanics";
 import type { TankCosmeticCategory } from "./tank-state";
+import generatedTankBackgroundData from "../data/tank-background-types.json";
+import generatedTankSeabedData from "../data/tank-seabed-types.json";
 
 export type DecorationSize = "xs" | "s" | "m" | "l" | "xl";
 
@@ -29,94 +31,23 @@ export const tankThemeTexturePairs = tankThemeIds.map((themeId) => ({
 }));
 export type TankThemeTexturePair = (typeof tankThemeTexturePairs)[number];
 
-const generatedTankBackgrounds = [
-  ["lagoon_depth", "Lagoon Depth"],
-  ["coral_garden", "Coral Garden"],
-  ["kelp_forest", "Kelp Forest"],
-  ["crystal_cavern", "Crystal Cavern"],
-  ["abyss_blue", "Abyss Blue"],
-  ["sunset_shallows", "Sunset Shallows"],
-  ["freshwater_plants", "Freshwater Plants"],
-  ["misty_ruins", "Misty Ruins"],
-  ["mangrove_roots", "Mangrove Roots"],
-  ["volcanic_reef", "Volcanic Reef"],
-  ["glowing_plankton", "Glowing Plankton"],
-  ["arctic_glass", "Arctic Glass"],
-  ["jade_grotto", "Jade Grotto"],
-  ["pearl_cave", "Pearl Cave"],
-  ["distant_shipwreck", "Distant Shipwreck"],
-  ["lily_freshwater", "Lily Freshwater"],
-  ["moonlit_reef", "Moonlit Reef"],
-  ["opal_cavern", "Opal Cavern"],
-  ["golden_shallows", "Golden Shallows"],
-  ["deep_temple", "Deep Temple"],
-  ["pink_coral_lagoon", "Pink Coral Lagoon"],
-  ["blue_crystal_reef", "Blue Crystal Reef"],
-  ["purple_moon_grotto", "Purple Moon Grotto"],
-  ["green_kelp_garden", "Green Kelp Garden"],
-  ["golden_sunlit_shallows", "Golden Sunlit Shallows"],
-  ["red_volcanic_glow", "Red Volcanic Glow"],
-  ["white_pearl_cove", "White Pearl Cove"],
-  ["black_abyss_neon", "Black Abyss Neon"],
-  ["orange_sunset_reef", "Orange Sunset Reef"],
-  ["mint_freshwater_spring", "Mint Freshwater Spring"],
-  ["cyan_ice_cavern", "Cyan Ice Cavern"],
-  ["rose_jelly_glow", "Rose Jelly Glow"],
-  ["emerald_mangrove_shade", "Emerald Mangrove Shade"],
-  ["lavender_dream_reef", "Lavender Dream Reef"],
-  ["teal_rainforest_pool", "Teal Rainforest Pool"],
-  ["bronze_ancient_ruins", "Bronze Ancient Ruins"],
-  ["rainbow_opal_cavern", "Rainbow Opal Cavern"],
-  ["deep_navy_trench", "Deep Navy Trench"],
-  ["peach_sakura_reef", "Peach Sakura Reef"],
-  ["lime_lagoon", "Lime Lagoon"],
-  ["magenta_twilight_cave", "Magenta Twilight Cave"],
-  ["sky_blue_open_ocean", "Sky Blue Open Ocean"],
-  ["turquoise_bubble_palace", "Turquoise Bubble Palace"],
-  ["amber_kelp_sunset", "Amber Kelp Sunset"],
-  ["silver_rain_aquarium", "Silver Rain Aquarium"],
-  ["candy_aqua_reef", "Candy Aqua Reef"],
-  ["royal_sapphire_temple", "Royal Sapphire Temple"],
-  ["coral_pink_nursery", "Coral Pink Nursery"],
-  ["mystic_indigo_biolume", "Mystic Indigo Biolume"],
-  ["pastel_rainbow_lagoon", "Pastel Rainbow Lagoon"]
-] as const;
+type GeneratedTankCosmeticDefinition = { assetIndex: number; themeId: string; name: string };
 
-const generatedTankSeabeds = [
-  ["lagoon_sand", "Lagoon Sand"],
-  ["coral_rubble", "Coral Rubble"],
-  ["kelp_mud", "Kelp Mud"],
-  ["crystal_gravel", "Crystal Gravel"],
-  ["abyss_black_sand", "Abyss Black Sand"],
-  ["sunset_sand", "Sunset Sand"],
-  ["freshwater_pebbles", "Freshwater Pebbles"],
-  ["ruin_tiles", "Ruin Tiles"],
-  ["mangrove_silt", "Mangrove Silt"],
-  ["volcanic_basalt", "Volcanic Basalt"],
-  ["glowing_plankton_sand", "Glowing Plankton Sand"],
-  ["arctic_pale_gravel", "Arctic Pale Gravel"],
-  ["jade_moss_stone", "Jade Moss Stone"],
-  ["pearl_shell_sand", "Pearl Shell Sand"],
-  ["shipwreck_planks", "Shipwreck Planks"],
-  ["lily_pond_mud", "Lily Pond Mud"],
-  ["moonlit_silver_sand", "Moonlit Silver Sand"],
-  ["opal_crystal_gravel", "Opal Crystal Gravel"],
-  ["golden_rippled_sand", "Golden Rippled Sand"],
-  ["deep_temple_stone", "Deep Temple Stone"]
-] as const;
+export const generatedTankBackgrounds = generatedTankBackgroundData as GeneratedTankCosmeticDefinition[];
+export const generatedTankSeabeds = generatedTankSeabedData as GeneratedTankCosmeticDefinition[];
 
-export const generatedTankBackgroundTexturePairs = generatedTankBackgrounds.map(([themeId, name], index) => ({
-  id: `generated-bg-${String(index + 1).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
+export const generatedTankBackgroundTexturePairs = generatedTankBackgrounds.map(({ assetIndex, themeId, name }) => ({
+  id: `generated-bg-${String(assetIndex).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
   name,
-  textureKey: `tank-generated-bg-${String(index + 1).padStart(2, "0")}`,
-  path: `/assets/backgrounds/generated-bg/tank-bg-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
+  textureKey: `tank-generated-bg-${String(assetIndex).padStart(2, "0")}`,
+  path: `/assets/backgrounds/generated-bg/tank-bg-${String(assetIndex).padStart(2, "0")}-${themeId}.webp`
 }));
 
-export const generatedTankSeabedTexturePairs = generatedTankSeabeds.map(([themeId, name], index) => ({
-  id: `generated-seabed-${String(index + 1).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
+export const generatedTankSeabedTexturePairs = generatedTankSeabeds.map(({ assetIndex, themeId, name }) => ({
+  id: `generated-seabed-${String(assetIndex).padStart(2, "0")}-${themeId.replaceAll("_", "-")}`,
   name,
-  textureKey: `tank-generated-seabed-${String(index + 1).padStart(2, "0")}`,
-  path: `/assets/backgrounds/generated-seabed/tank-seabed-${String(index + 1).padStart(2, "0")}-${themeId}.webp`
+  textureKey: `tank-generated-seabed-${String(assetIndex).padStart(2, "0")}`,
+  path: `/assets/backgrounds/generated-seabed/tank-seabed-${String(assetIndex).padStart(2, "0")}-${themeId}.webp`
 }));
 
 const imagegenTankBackgroundTexturePairs = [
@@ -165,18 +96,50 @@ const themeFloorCropTopById = new Map<string, number>([
 ]);
 
 export const tankFloorTextureCropTopByKey = new Map<string, number>([
-  ...generatedTankSeabedTexturePairs.map((theme, index) => [theme.textureKey, generatedSeabedCropTops[index] ?? 0] as const),
+  ...generatedTankSeabedTexturePairs.map((theme) => {
+    const match = theme.textureKey.match(/(\d+)$/);
+    const sourceIndex = match ? Number(match[1]) - 1 : 0;
+    return [theme.textureKey, generatedSeabedCropTops[sourceIndex] ?? 0] as const;
+  }),
   ...tankThemeTexturePairs.map((theme) => [theme.floorKey, themeFloorCropTopById.get(theme.id) ?? 0] as const)
 ]);
 
-function tankCosmeticPrice(index: number, baseCommon: number): Price {
-  if (index >= 16) {
-    return { coinType: "common", amount: Math.round(baseCommon * 6), superRareAmount: 1 + Math.floor((index - 16) / 4) };
+const baseFishProductionLevelThreshold = 250;
+
+function productionDeltaForEconomyTier(tier: number): number {
+  const level = Math.max(1, Math.floor(tier));
+  if (level <= 1) {
+    return baseFishProductionLevelThreshold;
   }
-  if (index >= 8) {
-    return { coinType: "common", amount: Math.round(baseCommon * 3), rareAmount: 1 + Math.floor((index - 8) / 4) };
+  return baseFishProductionLevelThreshold * Math.pow(5, level - 1) - baseFishProductionLevelThreshold * Math.pow(5, level - 2);
+}
+
+function roundTankCosmeticPrice(value: number): number {
+  if (value < 1000) {
+    return Math.max(1, Math.round(value / 10) * 10);
   }
-  return { coinType: "common", amount: Math.round(baseCommon) };
+  if (value < 10000) {
+    return Math.round(value / 50) * 50;
+  }
+  if (value < 100000) {
+    return Math.round(value / 100) * 100;
+  }
+  return Math.round(value / 1000) * 1000;
+}
+
+function tankCosmeticPrice(index: number, category: TankCosmeticCategory): Price {
+  const economyTier = Math.floor(index / 8) + 1;
+  const tierProgress = (index % 8) / 7;
+  const productionDelta = productionDeltaForEconomyTier(economyTier);
+  const lowRate = category === "background" ? 0.45 : 0.35;
+  const highRate = category === "background" ? 0.9 : 0.7;
+  const amount = roundTankCosmeticPrice(productionDelta * (lowRate + (highRate - lowRate) * tierProgress));
+  return {
+    coinType: "common",
+    amount,
+    rareAmount: economyTier >= 3 && economyTier < 5 ? economyTier - 2 : undefined,
+    superRareAmount: economyTier >= 5 ? economyTier - 4 : undefined
+  };
 }
 
 export const tankBackgroundCosmetics: TankCosmetic[] = [
@@ -186,7 +149,7 @@ export const tankBackgroundCosmetics: TankCosmetic[] = [
     name: theme.name,
     category: "background",
     textureKey: theme.textureKey,
-    price: tankCosmeticPrice(index, 900 + index * 420),
+    price: tankCosmeticPrice(index, "background"),
     tint: 0xffffff
   })),
   ...tankThemeTexturePairs.map((theme, index): TankCosmetic => ({
@@ -194,7 +157,7 @@ export const tankBackgroundCosmetics: TankCosmetic[] = [
     name: `${theme.id[0].toUpperCase()}${theme.id.slice(1)} Water`,
     category: "background",
     textureKey: theme.backgroundKey,
-    price: tankCosmeticPrice(index, [1600, 3200, 5200, 8400, 18000, 30000][index] ?? 1600),
+    price: tankCosmeticPrice(index, "background"),
     tint: 0xffffff
   }))
 ];
@@ -206,7 +169,7 @@ export const tankSeabedCosmetics: TankCosmetic[] = [
     name: theme.name,
     category: "seabed",
     textureKey: theme.textureKey,
-    price: tankCosmeticPrice(index, 750 + index * 320),
+    price: tankCosmeticPrice(index, "seabed"),
     tint: 0xffffff
   })),
   ...tankThemeTexturePairs.map((theme, index): TankCosmetic => ({
@@ -214,7 +177,7 @@ export const tankSeabedCosmetics: TankCosmetic[] = [
     name: `${theme.id[0].toUpperCase()}${theme.id.slice(1)} Bed`,
     category: "seabed",
     textureKey: theme.floorKey,
-    price: tankCosmeticPrice(index, [1200, 2600, 4600, 7600, 16000, 26000][index] ?? 1200),
+    price: tankCosmeticPrice(index, "seabed"),
     tint: 0xffffff
   }))
 ];
