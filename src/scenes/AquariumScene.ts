@@ -272,6 +272,7 @@ type PendingFishBubble = {
   destination: "inventory" | "tank";
   type: FishType;
   quantity: number;
+  consumesInventory?: boolean;
   ageSeconds?: number;
   exchangeTarget?: Fish;
   container: Phaser.GameObjects.Container;
@@ -6104,6 +6105,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    this.ensureFishTexturesLoaded(fishType);
     const maxQuantity = Math.max(1, Math.min(maxFishBuyQuantity, remainingHourlyBuys));
     let selectedQuantity = 1;
     const quantityText = htmlElement("strong", "aq-sell-qty-value", [formatNumber(selectedQuantity)]);
@@ -6139,7 +6141,7 @@ export class AquariumScene extends Phaser.Scene {
     ]);
     const owned = this.fish.filter((fish) => fish.type.id === fishType.id).length + this.getFishInventory(fishType.id);
     const previewImage = htmlImage(`/assets/fish/${fishType.id}.png`, fishType.name, "aq-modal-preview-image fish");
-    const preview = htmlElement("div", `aq-modal-preview ${owned > 0 ? "" : "aq-fish-preview-unpurchased"}`.trim(), [previewImage]);
+    const preview = htmlElement("div", "aq-modal-preview", [previewImage]);
     if (owned <= 0) {
       previewImage.classList.remove("drop-shadow-lg");
     }
@@ -6186,19 +6188,42 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.addFishToInventory(fishType, buyQuantity);
+    const pendingTankDeliveries = this.pendingFishBubbles.filter((pending) => pending.destination === "tank").length;
+    const tankSlotsAvailable = Math.max(0, this.maxFishCapacityForLevel() - this.activeFish().length - pendingTankDeliveries);
+    const tankDeliveryQuantity = Math.min(buyQuantity, tankSlotsAvailable);
+    const inventoryQuantity = buyQuantity - tankDeliveryQuantity;
+    if (inventoryQuantity > 0) {
+      this.addFishToInventory(fishType, inventoryQuantity, false);
+    }
     for (let index = 0; index < buyQuantity; index += 1) {
       this.recordFishPurchase(fishType);
     }
+    this.closeModal();
+    this.closeStoreAfterPurchase();
+
+    for (let index = 0; index < tankDeliveryQuantity; index += 1) {
+      const position = this.randomFishPlacement();
+      this.spawnFishTankBubble(fishType, position.x, position.y);
+    }
+
+    if (inventoryQuantity > 0) {
+      this.spawnFishInventoryBubble(fishType, inventoryQuantity);
+    }
+
     this.recentInventoryDockItemKey = "fish-menu:fish-menu";
     this.placementMode = { kind: "none" };
-    this.floatText(`${fishType.name} x${formatNumber(buyQuantity)} in bubble`, toastX, toastY, "#a8ffb0");
-    this.closeModal();
+    this.floatText(
+      tankDeliveryQuantity > 0
+        ? `${fishType.name} ${tankDeliveryQuantity > 1 ? `x${formatNumber(tankDeliveryQuantity)} ` : ""}in tank bubble`
+        : `${fishType.name} x${formatNumber(buyQuantity)} in inventory`,
+      toastX,
+      toastY,
+      "#a8ffb0"
+    );
     this.storeOverlay?.refresh();
     this.refreshUi();
     this.createFoodDock();
     this.saveNow();
-    this.closeStoreAfterPurchase();
   }
 
   private showFoodBuyQuantityModal(foodType: FoodType, initialQuantity = this.getFoodBuyQuantity(foodType.id)): void {
@@ -7490,7 +7515,7 @@ export class AquariumScene extends Phaser.Scene {
     fishType: FishType,
     x: number,
     y: number,
-    options: { ageSeconds?: number; exchangeTarget?: Fish } = {}
+    options: { ageSeconds?: number; exchangeTarget?: Fish; consumesInventory?: boolean } = {}
   ): void {
     this.spawnFishBubble({
       destination: "tank",
@@ -7499,7 +7524,8 @@ export class AquariumScene extends Phaser.Scene {
       x,
       y,
       ageSeconds: options.ageSeconds,
-      exchangeTarget: options.exchangeTarget
+      exchangeTarget: options.exchangeTarget,
+      consumesInventory: options.consumesInventory
     });
   }
 
@@ -7511,10 +7537,13 @@ export class AquariumScene extends Phaser.Scene {
     y?: number;
     ageSeconds?: number;
     exchangeTarget?: Fish;
+    consumesInventory?: boolean;
   }): void {
     const fishType = options.fishType;
     const quantity = Math.max(1, Math.floor(options.quantity ?? 1));
-    const textureKey = this.textures.exists(`fish-${fishType.id}`) ? `fish-${fishType.id}` : "fish-base";
+    const staticTextureKey = `fish-${fishType.id}`;
+    const textureReady = this.textures.exists(staticTextureKey);
+    const textureKey = textureReady ? staticTextureKey : "fish-base";
     const radius = 34;
     const x = options.x ?? Phaser.Math.Between(Math.round(tankBounds.left + 62), Math.round(tankBounds.right - 62));
     const y = options.y ?? Phaser.Math.Between(Math.round(tankBounds.top + 82), Math.round(tankBounds.bottom - 116));
@@ -7523,7 +7552,7 @@ export class AquariumScene extends Phaser.Scene {
     const shine = this.add.circle(-12, -13, 7, 0xffffff, 0.38);
     const fishImage = this.add.image(0, 3, textureKey)
       .setDisplaySize(54, 34)
-      .setAlpha(0.94);
+      .setAlpha(textureReady ? 0.94 : 0);
     const children: Phaser.GameObjects.GameObject[] = [bubble, shine, fishImage];
     const quantityText = quantity > 1
       ? this.add.text(17, 18, `x${formatNumber(quantity)}`, {
@@ -7556,6 +7585,7 @@ export class AquariumScene extends Phaser.Scene {
       destination: options.destination,
       type: fishType,
       quantity,
+      consumesInventory: options.consumesInventory,
       ageSeconds: options.ageSeconds,
       exchangeTarget: options.exchangeTarget,
       container,
@@ -7570,7 +7600,7 @@ export class AquariumScene extends Phaser.Scene {
       if (!fishImage.active) {
         return;
       }
-      fishImage.setTexture(`fish-${fishType.id}`).setDisplaySize(54, 34);
+      fishImage.setTexture(staticTextureKey).setDisplaySize(54, 34).setAlpha(0.94);
     });
 
     this.tweens.add({
@@ -7653,6 +7683,9 @@ export class AquariumScene extends Phaser.Scene {
   private releaseFishTankBubble(pending: PendingFishBubble): void {
     const x = pending.container.x;
     const y = pending.container.y;
+    if (pending.consumesInventory) {
+      this.removeStoredFish(pending.type.id);
+    }
     if (pending.exchangeTarget && this.fish.includes(pending.exchangeTarget)) {
       this.storeFish(pending.exchangeTarget);
     }
@@ -11217,7 +11250,14 @@ export class AquariumScene extends Phaser.Scene {
       },
       placeFishFromInventory: (fishTypeId: string, x: number, y: number) => {
         const fishType = fishTypes.find((item) => item.id === fishTypeId);
-        if (!fishType || this.getFishInventory(fishType.id) <= 0) {
+        if (!fishType) {
+          return;
+        }
+        if (this.getFishInventory(fishType.id) <= 0) {
+          const pendingTankBubble = this.pendingFishBubbles.find((pending) => pending.destination === "tank" && pending.type.id === fishType.id);
+          if (pendingTankBubble) {
+            this.popFishInventoryBubble(pendingTankBubble);
+          }
           return;
         }
 
