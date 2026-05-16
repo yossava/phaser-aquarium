@@ -4,6 +4,7 @@ import {
   fishCoinDropPlan,
   fishCoinProductionMaxDelayMs,
   fishCoinProductionMinDelayMs,
+  minimumFishCoinDropValue,
   fishCoinProductionValueForCalories,
   fishCoinValuePerFullnessCalorie,
   fishCommonPrice,
@@ -616,7 +617,9 @@ export class Fish {
       return 0;
     }
 
-    const producedValue = Phaser.Math.Between(1, plan.producedValueMax);
+    const producedValue = plan.producedValueMax < 1
+      ? Math.max(minimumFishCoinDropValue, Math.round(plan.producedValueMax * 10) / 10)
+      : Phaser.Math.Between(1, Math.floor(plan.producedValueMax));
     const caloriesSpent = Math.min(fullnessCalories, producedValue * plan.caloriesSpentPerCoin);
     this.consumeFullnessCalories(caloriesSpent);
     this.pendingProductionCoinValue = Math.max(0, plan.nextPendingValueAfterDropBase - producedValue);

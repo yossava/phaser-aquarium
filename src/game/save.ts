@@ -280,7 +280,7 @@ export function calculateOfflineSeconds(savedAt: number, now = Date.now()): numb
 function sanitizeWallet(wallet: Partial<Wallet>): Wallet {
   const result = createEmptyWallet();
   for (const coinType of coinTypes) {
-    result[coinType] = Math.max(0, Math.floor(sanitizeNumber(wallet[coinType], 0)));
+    result[coinType] = Math.max(0, Math.round(sanitizeNumber(wallet[coinType], 0) * 10) / 10);
   }
   return result;
 }
@@ -446,7 +446,7 @@ function sanitizeTankStates(source: Record<string, SavedTankState> | undefined):
       cleanliness: clamp(sanitizeNumber(value.cleanliness, 100), 0, 100),
       cleanedAt: sanitizeNumber(value.cleanedAt, Date.now()),
       maxDisplayLevel: Math.max(1, Math.floor(sanitizeNumber(value.maxDisplayLevel, 1))),
-      fishProductionTotal: Math.max(0, Math.floor(sanitizeNumber(value.fishProductionTotal, 0)))
+      fishProductionTotal: Math.max(0, Math.round(sanitizeNumber(value.fishProductionTotal, 0) * 10) / 10)
     };
   }
   return result;
@@ -505,7 +505,7 @@ function sanitizeCoinDrop(coin: Partial<SavedCoinDrop>): SavedCoinDrop | undefin
     return undefined;
   }
 
-  const value = Math.floor(sanitizeNumber(coin.value, 0));
+  const value = Math.round(sanitizeNumber(coin.value, 0) * 10) / 10;
   if (value <= 0) {
     return undefined;
   }

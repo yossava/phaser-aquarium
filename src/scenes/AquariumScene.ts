@@ -9154,19 +9154,19 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private addFishProductionTotal(level: number, amount: number): boolean {
-    const production = Math.max(0, Math.floor(amount));
+    const production = Math.max(0, Math.round(amount * 10) / 10);
     if (production <= 0) {
       return false;
     }
     const state = this.ensureTankState(level);
-    const previousProduction = Math.max(0, Math.floor(state.fishProductionTotal ?? 0));
-    const nextProduction = previousProduction + production;
+    const previousProduction = Math.max(0, state.fishProductionTotal ?? 0);
+    const nextProduction = Math.round((previousProduction + production) * 10) / 10;
     state.fishProductionTotal = nextProduction;
     return this.awardLevelCompletionRewards(level, previousProduction, nextProduction);
   }
 
   private fishProductionTotal(level = this.tankLevel): number {
-    return Math.max(0, Math.floor(this.ensureTankState(level).fishProductionTotal ?? 0));
+    return Math.max(0, this.ensureTankState(level).fishProductionTotal ?? 0);
   }
 
   private calculateTotalWealth(): number {

@@ -7,7 +7,6 @@ export function createFallbackTextures(
   helperCreatureTypes: HelperCreatureType[]
 ): void {
   createFishTexture(scene);
-  createFishAssetTextures(scene);
   createFoodTexture(scene);
   createMedicineTexture(scene);
   createCoinTexture(scene);
@@ -29,113 +28,6 @@ function createFishTexture(scene: Phaser.Scene): void {
   graphics.arc(26, 27, 10, 0.1, 1.3);
   graphics.strokePath();
   graphics.generateTexture("fish-base", 64, 48);
-  graphics.destroy();
-}
-
-function createFishAssetTextures(scene: Phaser.Scene): void {
-  if (!scene.textures.exists("fish-goldfish")) {
-    createGoldfishTexture(scene);
-  }
-  if (!scene.textures.exists("fish-angelfish")) {
-    createAngelfishTexture(scene);
-  }
-  if (!scene.textures.exists("fish-celestial-koi")) {
-    createCelestialKoiTexture(scene);
-  }
-}
-
-function createGoldfishTexture(scene: Phaser.Scene): void {
-  const graphics = scene.add.graphics();
-  graphics.fillStyle(0xffb13b, 0.9);
-  graphics.fillTriangle(12, 24, 1, 10, 1, 38);
-  graphics.fillTriangle(16, 24, 5, 15, 5, 33);
-  graphics.lineStyle(1, 0xffe0a0, 0.52);
-  graphics.strokeTriangle(12, 24, 1, 10, 1, 38);
-  graphics.fillStyle(0xffb23c, 1);
-  graphics.fillEllipse(35, 24, 44, 27);
-  graphics.fillStyle(0xffd06a, 1);
-  graphics.fillEllipse(39, 19, 28, 13);
-  graphics.fillStyle(0xfff0b8, 0.8);
-  graphics.fillEllipse(43, 29, 20, 8);
-  graphics.fillStyle(0xff8e2e, 0.72);
-  graphics.fillEllipse(31, 12, 15, 8);
-  graphics.fillEllipse(31, 36, 16, 8);
-  graphics.lineStyle(2, 0xd86a20, 0.38);
-  graphics.beginPath();
-  graphics.arc(27, 27, 8, 0.15, 1.25);
-  graphics.strokePath();
-  graphics.fillStyle(0xffffff, 1);
-  graphics.fillCircle(49, 18, 4);
-  graphics.fillStyle(0x082033, 1);
-  graphics.fillCircle(50, 18, 2);
-  graphics.fillStyle(0xffffff, 0.95);
-  graphics.fillCircle(51, 17, 1);
-  graphics.generateTexture("fish-goldfish", 64, 48);
-  graphics.destroy();
-}
-
-function createAngelfishTexture(scene: Phaser.Scene): void {
-  const graphics = scene.add.graphics();
-  graphics.fillStyle(0x56a8ff, 0.82);
-  graphics.fillTriangle(14, 24, 1, 9, 3, 39);
-  graphics.fillStyle(0xffb13b, 0.8);
-  graphics.fillTriangle(8, 24, 1, 18, 1, 30);
-  graphics.fillStyle(0xfff1c5, 0.42);
-  graphics.fillTriangle(28, 24, 21, 1, 40, 19);
-  graphics.fillTriangle(28, 24, 20, 47, 41, 30);
-  graphics.fillStyle(0xdd9f68, 1);
-  graphics.fillTriangle(18, 24, 40, 5, 52, 24);
-  graphics.fillTriangle(18, 24, 40, 43, 52, 24);
-  graphics.fillStyle(0xf7d7a2, 0.88);
-  graphics.fillEllipse(40, 24, 29, 30);
-  graphics.lineStyle(3, 0x754b31, 0.42);
-  graphics.lineBetween(33, 10, 30, 38);
-  graphics.lineBetween(43, 9, 39, 39);
-  graphics.lineStyle(2, 0xfff3c4, 0.8);
-  graphics.strokeTriangle(18, 24, 40, 5, 52, 24);
-  graphics.strokeTriangle(18, 24, 40, 43, 52, 24);
-  graphics.fillStyle(0xffffff, 1);
-  graphics.fillCircle(50, 20, 4);
-  graphics.fillStyle(0x082033, 1);
-  graphics.fillCircle(51, 20, 2);
-  graphics.fillStyle(0xffffff, 0.95);
-  graphics.fillCircle(52, 19, 1);
-  graphics.generateTexture("fish-angelfish", 64, 48);
-  graphics.destroy();
-}
-
-function createCelestialKoiTexture(scene: Phaser.Scene): void {
-  const graphics = scene.add.graphics();
-  graphics.fillStyle(0x78d957, 0.86);
-  graphics.fillTriangle(12, 24, 1, 7, 2, 41);
-  graphics.fillStyle(0x35d6d0, 0.72);
-  graphics.fillTriangle(8, 24, 1, 15, 1, 33);
-  graphics.fillStyle(0xaee81f, 0.22);
-  graphics.fillEllipse(34, 24, 60, 36);
-  graphics.fillStyle(0xaae81f, 1);
-  graphics.fillEllipse(34, 24, 48, 23);
-  graphics.fillStyle(0xf6ffd5, 0.9);
-  graphics.fillEllipse(43, 28, 25, 8);
-  graphics.fillStyle(0x8dd9aa, 0.92);
-  graphics.fillEllipse(26, 18, 12, 6);
-  graphics.fillEllipse(36, 21, 10, 5);
-  graphics.fillStyle(0xd7fcff, 0.6);
-  graphics.fillEllipse(31, 11, 18, 7);
-  graphics.fillEllipse(31, 37, 18, 7);
-  graphics.lineStyle(1, 0xf7ffb3, 0.9);
-  graphics.lineBetween(21, 22, 48, 17);
-  graphics.lineBetween(22, 27, 47, 31);
-  graphics.fillStyle(0xffffff, 0.95);
-  graphics.fillCircle(25, 19, 1.4);
-  graphics.fillCircle(33, 16, 1.2);
-  graphics.fillCircle(43, 21, 1.2);
-  graphics.fillStyle(0xffffff, 1);
-  graphics.fillCircle(51, 19, 4);
-  graphics.fillStyle(0x082033, 1);
-  graphics.fillCircle(52, 19, 2);
-  graphics.fillStyle(0xffffff, 0.95);
-  graphics.fillCircle(53, 18, 1);
-  graphics.generateTexture("fish-celestial-koi", 64, 48);
   graphics.destroy();
 }
 

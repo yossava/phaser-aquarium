@@ -10,6 +10,7 @@ export const maximumFullCaloriesNeed = maximumMealCaloriesNeed * mealsToFull;
 export const fishCoinProductionMinDelayMs = 2000;
 export const fishCoinProductionMaxDelayMs = 8000;
 export const fishCoinProductionAverageDelaySeconds = 5;
+export const minimumFishCoinDropValue = 0.1;
 
 export type FishCoinDropPlanInput = {
   fullnessCalories: number;
@@ -27,6 +28,10 @@ export type FishCoinDropPlan = {
   nextPendingValueIfNoDrop: number;
   nextPendingValueAfterDropBase: number;
 };
+
+function floorToDropUnit(value: number): number {
+  return Math.floor(Math.max(0, value) / minimumFishCoinDropValue) * minimumFishCoinDropValue;
+}
 
 export function fishCommonPrice(fishType: FishType): number {
   return fishType.price.coinType === "common" ? Math.max(1, fishType.price.amount) : baselineCommonFishPrice;
@@ -102,6 +107,16 @@ export function fishCoinDropPlan(input: FishCoinDropPlanInput): FishCoinDropPlan
   let flooredValue = Math.floor(availableValue);
 
   if (flooredValue <= 0) {
+    const fractionalValue = floorToDropUnit(availableValue);
+    if (fractionalValue >= minimumFishCoinDropValue) {
+      return {
+        producedValueMax: fractionalValue,
+        caloriesSpentPerCoin: 1 / valuePerCalorie,
+        nextPendingValueIfNoDrop: availableValue,
+        nextPendingValueAfterDropBase: availableValue
+      };
+    }
+
     return {
       producedValueMax: 0,
       caloriesSpentPerCoin: 1 / valuePerCalorie,

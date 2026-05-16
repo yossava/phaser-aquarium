@@ -26,6 +26,7 @@ export function earn(wallet: Wallet, coinType: CoinType, amount: number): void {
 export function formatNumber(value: number): string {
   const sign = value < 0 ? "-" : "";
   const absoluteValue = Math.abs(value);
+  const hasFraction = Math.abs(absoluteValue - Math.round(absoluteValue)) > 0.001;
   const suffixes = [
     { value: 1_000_000_000_000, label: "T" },
     { value: 1_000_000_000, label: "B" },
@@ -37,6 +38,10 @@ export function formatNumber(value: number): string {
     if (absoluteValue >= suffix.value) {
       return `${sign}${(absoluteValue / suffix.value).toFixed(1)}${suffix.label}`;
     }
+  }
+
+  if (absoluteValue > 0 && absoluteValue < 100 && hasFraction) {
+    return `${sign}${absoluteValue.toFixed(1).replace(/\.0$/, "")}`;
   }
 
   return `${sign}${Math.round(absoluteValue)}`;
