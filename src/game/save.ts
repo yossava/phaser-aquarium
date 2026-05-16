@@ -2,7 +2,7 @@ import { foodTypes } from "../data/content";
 import { createDefaultPrizeMachineState, normalizePrizeMachineState, type PrizeMachineState } from "./prize-machine";
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
 export const MAX_OFFLINE_SECONDS = 60 * 60 * 3;
 
@@ -101,6 +101,7 @@ export type SavedTankState = {
   cleanliness?: number;
   cleanedAt?: number;
   maxDisplayLevel?: number;
+  fishProductionTotal?: number;
 };
 
 export type OfflineProgress = {
@@ -444,7 +445,8 @@ function sanitizeTankStates(source: Record<string, SavedTankState> | undefined):
       selectedSeabedId: typeof value.selectedSeabedId === "string" ? value.selectedSeabedId : undefined,
       cleanliness: clamp(sanitizeNumber(value.cleanliness, 100), 0, 100),
       cleanedAt: sanitizeNumber(value.cleanedAt, Date.now()),
-      maxDisplayLevel: Math.max(1, Math.floor(sanitizeNumber(value.maxDisplayLevel, 1)))
+      maxDisplayLevel: Math.max(1, Math.floor(sanitizeNumber(value.maxDisplayLevel, 1))),
+      fishProductionTotal: Math.max(0, Math.floor(sanitizeNumber(value.fishProductionTotal, 0)))
     };
   }
   return result;

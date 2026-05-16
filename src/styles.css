@@ -1026,6 +1026,10 @@ canvas {
     @apply min-h-9 w-full px-1.5 py-1 text-[11px];
   }
 
+  .aq-album-row-actions {
+    @apply grid w-full grid-cols-2 gap-1;
+  }
+
   .aq-fusion-page {
     @apply flex flex-col overflow-hidden rounded-[22px] border border-sky-500/60 bg-[#062f68] pb-4;
     box-shadow: none;
@@ -1315,6 +1319,35 @@ canvas {
 
   .aq-main-menu-status-badge {
     @apply -right-2 -top-2 min-h-4 min-w-4 px-0 text-[9px];
+  }
+
+  .aq-main-menu-level-card {
+    @apply gap-0.5;
+  }
+
+  .aq-main-menu-level-ring {
+    --level-progress: 0%;
+    @apply relative grid h-9 w-9 place-items-center rounded-full text-white;
+    background:
+      radial-gradient(circle at center, #0b4f94 0 52%, transparent 53%),
+      conic-gradient(#7df7ff var(--level-progress), rgba(125, 247, 255, 0.18) 0);
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.28),
+      0 2px 5px rgba(0, 24, 44, 0.28);
+  }
+
+  .aq-main-menu-level-ring::after {
+    content: "";
+    @apply absolute inset-1 rounded-full border border-white/20;
+  }
+
+  .aq-main-menu-level-number {
+    @apply relative z-10 text-[15px] font-black leading-none text-white;
+    text-shadow: 0 2px 0 rgba(0, 31, 53, 0.65);
+  }
+
+  .aq-main-menu-level-percent {
+    @apply text-[11px];
   }
 
   .aq-main-menu-status-label {
@@ -1970,6 +2003,38 @@ canvas {
   }
 
   .aq-prize-celebration-detail {
+    @apply relative mt-4 text-base text-cyan-50;
+  }
+
+  .aq-level-reward-modal {
+    @apply relative overflow-hidden border-transparent text-center;
+    background: linear-gradient(180deg, rgba(11, 88, 124, 0.98), rgba(5, 39, 68, 0.98));
+    background-clip: padding-box;
+  }
+
+  .aq-level-reward-modal::before {
+    @apply pointer-events-none absolute inset-0 rounded-2xl p-[4px];
+    content: "";
+    background: conic-gradient(from var(--aq-rainbow-angle, 0deg), #ff5b7f, #ffe66d, #65ff9a, #5de8ff, #a47cff, #ff5b7f);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: aq-prize-rainbow-border 1.4s linear infinite;
+  }
+
+  .aq-level-reward-title {
+    @apply relative text-2xl text-yellow-100;
+  }
+
+  .aq-level-reward-medallion {
+    @apply relative mx-auto mt-4 grid h-20 w-20 place-items-center rounded-full border-4 border-cyan-100 text-4xl font-black text-white;
+    background: conic-gradient(#ff5f8f, #ffd166, #7cff6b, #4ddfff, #9b7cff, #ff5f8f);
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.42),
+      0 0 22px rgba(125, 247, 255, 0.42);
+    text-shadow: 0 3px 0 rgba(0, 31, 53, 0.7);
+  }
+
+  .aq-level-reward-detail {
     @apply relative mt-4 text-base text-cyan-50;
   }
 

@@ -248,6 +248,7 @@ type MakeupDraft = {
 };
 type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; badgeLabel?: string; icon: string }
+  | { kind: "fish-menu"; id: "fish-menu"; label: string; count: number; icon: string }
   | { kind: "fish"; id: string; label: string; count: number; icon: string }
   | { kind: "decoration"; id: string; size: DecorationSize; label: string; count: number; icon: string }
   | { kind: "helper"; id: string; label: string; count: number; icon: string }
@@ -266,6 +267,19 @@ type PendingHelperCreatureDrop = {
   sprite: Phaser.GameObjects.Image;
   tankLevel: number;
   targetX: number;
+};
+type PendingFishBubble = {
+  destination: "inventory" | "tank";
+  type: FishType;
+  quantity: number;
+  ageSeconds?: number;
+  exchangeTarget?: Fish;
+  container: Phaser.GameObjects.Container;
+  bubble: Phaser.GameObjects.Arc;
+  fishImage: Phaser.GameObjects.Image;
+  quantityText?: Phaser.GameObjects.Text;
+  velocity: Phaser.Math.Vector2;
+  bobOffset: number;
 };
 
 type CompatibilitySummary = {
@@ -293,8 +307,7 @@ const prizeRewardSoundKey = "sfx-prize-reward";
 const prizeRewardSoundPath = "/assets/audio/sfx/prize-reward.ogg";
 const backgroundMusicKey = "music-underwater-ambient";
 const backgroundMusicPath = "/assets/audio/bgm/underwater.mp3";
-const baseFishCapacity = 5;
-const upgradedTankFishCapacity = 10;
+const maxActiveFishPerTank = 4;
 const maxDecorations = 8;
 const maxHelperCreatures = 5;
 const maxFishCatalogLevel = 5;
@@ -370,13 +383,15 @@ const fishFusionMinPremiumChance = 0.05;
 const fishFusionPremiumChanceLossPerAgeGapMonth = 0.02;
 const fishFusionCostRate = 0.5;
 const fishFusionDurationMs = 3000;
+const baseFishProductionLevelThreshold = 250;
 const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
   rare: "/assets/ui/icon-rare-coin.png",
   superRare: "/assets/ui/icon-super-rare-coin.png"
 };
+const fishMenuIconAssetPath = "/assets/ui/menu/menu_tank_hub_icon.png";
 const menuIconAssetPathByKey: Record<string, string> = {
-  "ui-menu": "/assets/ui/menu/menu_tank_hub_icon.png",
+  "ui-menu": "/assets/ui/menu/menu_inventory_book.png",
   "ui-shop": "/assets/ui/shop.png",
   "ui-game": "/assets/ui/menu/menu_game_shell.png",
   "ui-book": "/assets/ui/menu/menu_inventory_book.png",
@@ -635,6 +650,7 @@ export class AquariumScene extends Phaser.Scene {
   private activeAirStoneBubbles = new Set<Phaser.GameObjects.Arc>();
   private helperCreatures: HelperCreature[] = [];
   private pendingHelperCreatureDrops: PendingHelperCreatureDrop[] = [];
+  private pendingFishBubbles: PendingFishBubble[] = [];
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -866,6 +882,7 @@ export class AquariumScene extends Phaser.Scene {
     this.updateAutoFoodBuyer(tankFish);
     this.updateFoodDispenser(tankFish);
     this.updatePendingHelperCreatureDrops(deltaSeconds);
+    this.updatePendingFishBubbles(deltaSeconds);
     this.updateHelperCreatures(deltaSeconds, tankFish, activeHelpers);
     this.updateTankCleanliness(deltaSeconds, tankFish.length);
     this.updateDirtyTankOverlay();
@@ -1096,8 +1113,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private maxFishCapacityForLevel(level = this.tankLevel): number {
-    const baseCapacity = this.tankDisplayLevel(level) <= 1 ? baseFishCapacity : upgradedTankFishCapacity;
-    return baseCapacity + this.fishCapacityUpgradeBonusForLevel(level);
+    return maxActiveFishPerTank + this.fishCapacityUpgradeBonusForLevel(level);
   }
 
   private fishCapacityUpgradeBonusForLevel(_level = this.tankLevel): number {
@@ -1106,6 +1122,24 @@ export class AquariumScene extends Phaser.Scene {
 
   private activeFish(): Fish[] {
     return this.fish.filter((currentFish) => currentFish.tankLevel === this.tankLevel);
+  }
+
+  private activeFishAtTankPoint(x: number, y: number): Fish | undefined {
+    const scale = this.tankViewScaleForLevel();
+    const minimumRadius = 44 / Math.max(0.01, scale);
+    let nearestFish: Fish | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const fish of this.activeFish()) {
+      const radius = Math.max(minimumRadius, fish.sprite.displayWidth * 0.52, fish.sprite.displayHeight * 0.72);
+      const distance = Phaser.Math.Distance.Between(x, y, fish.sprite.x, fish.sprite.y);
+      if (distance <= radius && distance < nearestDistance) {
+        nearestFish = fish;
+        nearestDistance = distance;
+      }
+    }
+
+    return nearestFish;
   }
 
   private activeHelperCreatures(): HelperCreature[] {
@@ -1159,7 +1193,8 @@ export class AquariumScene extends Phaser.Scene {
       selectedSeabedId: state.selectedSeabedId,
       cleanliness: this.cleanliness,
       cleanedAt: this.cleanedAt,
-      maxDisplayLevel: Math.max(state.maxDisplayLevel ?? 1, this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(this.tankLevel)))
+      maxDisplayLevel: this.rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0),
+      fishProductionTotal: state.fishProductionTotal
     });
   }
 
@@ -1635,7 +1670,7 @@ export class AquariumScene extends Phaser.Scene {
         badge.textContent = "!";
         bubble.append(badge);
       }
-      button.append(bubble);
+      button.append(bubble, htmlElement("span", "aq-tank-menu-label", [item.label]));
       overlay.append(button);
     }
 
@@ -2322,15 +2357,16 @@ export class AquariumScene extends Phaser.Scene {
         badgeLabel: this.foodInventoryBadgeLabel(foodType),
         icon: foodAssetPath(foodType.id)
       }));
-    const fishItems: InventoryDockItem[] = fishTypes
-      .filter((fishType) => this.getFishInventory(fishType.id) > 0)
-      .map((fishType) => ({
-        kind: "fish",
-        id: fishType.id,
-        label: fishType.name,
-        count: this.getFishInventory(fishType.id),
-        icon: `/assets/fish/${fishType.id}.png`
-      }));
+    const storedFishCount = this.totalStoredFishCount();
+    const fishItems: InventoryDockItem[] = storedFishCount > 0
+      ? [{
+          kind: "fish-menu",
+          id: "fish-menu",
+          label: "My Fish",
+          count: storedFishCount,
+          icon: fishMenuIconAssetPath
+        }]
+      : [];
     const decorationItems: InventoryDockItem[] = [];
     for (const decorationType of decorationTypes) {
       for (const size of decorationSizeOrder) {
@@ -2402,6 +2438,14 @@ export class AquariumScene extends Phaser.Scene {
     label.textContent = item.label;
 
     button.append(bubble, label);
+    if (item.kind === "fish-menu") {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.openFishInventory();
+      });
+      return button;
+    }
     button.addEventListener("pointerdown", (event) => this.startHtmlInventoryDrag(event, item));
     return button;
   }
@@ -2543,7 +2587,7 @@ export class AquariumScene extends Phaser.Scene {
     if (item.kind === "fish") {
       const fishType = fishTypes.find((candidate) => candidate.id === item.id);
       if (fishType) {
-        if (this.activeFish().length >= this.maxFishCapacityForLevel()) {
+        if (this.activeFish().length >= this.maxFishCapacityForLevel() && !this.activeFishAtTankPoint(x, y)) {
           this.showTankFullText(x, y);
           return;
         }
@@ -2641,6 +2685,7 @@ export class AquariumScene extends Phaser.Scene {
     this.coinComboOverlay = undefined;
     this.destroyPrizeSpinContainer();
     this.destroyTankMenuOverlay();
+    this.destroyPendingFishBubbles();
     this.storeOverlay?.destroy();
     this.storeOverlay = undefined;
   }
@@ -2686,6 +2731,17 @@ export class AquariumScene extends Phaser.Scene {
     this.storeOverlay?.hide();
     this.renderTabControls();
     this.refreshUi(false);
+  }
+
+  private openFishInventory(): void {
+    this.inventoryTab = "fish";
+    this.inventoryDrillOpen = true;
+    this.tankMenuDrillOpen = false;
+    this.tankMenuPage = 1;
+    this.openScreen("album");
+    this.inventoryTab = "fish";
+    this.inventoryDrillOpen = true;
+    this.syncHtmlPageOverlay();
   }
 
   private closePage(): void {
@@ -2980,8 +3036,8 @@ export class AquariumScene extends Phaser.Scene {
 
   private createMainMenuStatusGrid(): HTMLElement {
     const grid = htmlElement("div", "aq-main-menu-status-grid");
+    grid.append(this.createMainMenuLevelStatusCard());
     const statusItems: Array<{ icon: string; label: string; value: string; action?: () => void; badge?: string }> = [
-      { icon: "/assets/ui/shop/icon_category_tanks.png", label: "Level", value: formatNumber(this.tankDisplayLevel()) },
       { icon: hudIconAssetPathByKey["ui-icon-total-wealth"], label: "Wealth", value: formatNumber(this.calculateTankNetWorth()) },
       { icon: hudIconAssetPathByKey["ui-icon-food-status"], label: "Food", value: formatNumber(this.getTotalFoodInventory()) },
       { icon: hudIconAssetPathByKey["ui-icon-clean-status"], label: "Clean", value: this.cleaningTank ? "Cleaning" : `${formatNumber(Math.round(this.cleanliness))}%`, action: () => this.cleanTank(), badge: this.isTankDirty() ? "!" : undefined },
@@ -3007,6 +3063,21 @@ export class AquariumScene extends Phaser.Scene {
       );
     });
     return grid;
+  }
+
+  private createMainMenuLevelStatusCard(): HTMLElement {
+    const progress = this.levelProgressToNext();
+    const card = htmlElement("div", "aq-main-menu-status-card aq-main-menu-level-card");
+    const ring = htmlElement("span", "aq-main-menu-level-ring", [
+      htmlElement("strong", "aq-main-menu-level-number", [formatNumber(progress.level)])
+    ]);
+    ring.style.setProperty("--level-progress", `${Math.round(progress.ratio * 100)}%`);
+    card.append(
+      ring,
+      htmlElement("span", "aq-main-menu-status-label", ["Level"]),
+      htmlElement("strong", "aq-main-menu-status-value aq-main-menu-level-percent", [`${formatNumber(progress.percent)}%`])
+    );
+    return card;
   }
 
   private createDrillMenuCard(icon: string, label: string, description: string, action: () => void): HTMLButtonElement {
@@ -3130,7 +3201,7 @@ export class AquariumScene extends Phaser.Scene {
       htmlElement("span", "aq-page-tank-level", [`Level ${formatNumber(this.tankDisplayLevel(level))}`]),
       htmlElement("h3", "aq-page-card-title", [this.getTankName(level)]),
       htmlElement("p", "aq-page-card-meta", [`${owned ? "Owned" : "Locked"} | ${formatNumber(this.fishInTank(level).length)}/${formatNumber(this.maxFishCapacityForLevel(level))} fish`]),
-      htmlElement("p", "aq-page-card-copy", [`Worth ${formatNumber(this.calculateTankNetWorth(level))} | ${this.tankSummary(level)}`])
+      htmlElement("p", "aq-page-card-copy", [`Produced ${formatNumber(this.fishProductionTotal(level))} | ${this.tankSummary(level)}`])
     );
 
     if (owned) {
@@ -4269,7 +4340,7 @@ export class AquariumScene extends Phaser.Scene {
       return total + decorationSizeOrder.reduce((sizeTotal, size) => sizeTotal + this.getOwnedDecorationCount(decorationType.id, size), 0);
     }, 0);
     const items: Array<{ tab: InventoryTab; label: string; icon: string; description: string }> = [
-      { tab: "fish", label: "Fish", icon: "/assets/fish/goldfish.png", description: `${formatNumber(this.activeFish().length)} tank | ${formatNumber(storedFishCount)} stored` },
+      { tab: "fish", label: "My Fish", icon: fishMenuIconAssetPath, description: `${formatNumber(this.activeFish().length)} tank | ${formatNumber(storedFishCount)} inventory` },
       { tab: "fusion", label: "Fusion", icon: "/assets/fish/goldfish.png", description: "Combine owned fish" },
       { tab: "food", label: "Food", icon: "/assets/ui/shop/icon_category_food.png", description: `${formatNumber(foodCount)} owned` },
       { tab: "decor", label: "Decor", icon: "/assets/decorations/amethyst-cluster.png", description: `${formatNumber(decorCount)} owned` },
@@ -4309,7 +4380,7 @@ export class AquariumScene extends Phaser.Scene {
     const fishList = htmlElement("div", "aq-album-list");
     const activeFish = this.activeFish();
     if (activeFish.length === 0) {
-      fishList.append(createPageEmptyCard("No fish in this tank", "Buy fish from Shop, then drag them from the dock."));
+      fishList.append(createPageEmptyCard("No fish in this tank", "Buy fish from Shop, then choose To Tank from inventory."));
     } else {
       activeFish.forEach((fish) =>
         fishList.append(
@@ -4320,17 +4391,18 @@ export class AquariumScene extends Phaser.Scene {
             rarityLabel: this.rarityLabel(fish.type.rarity),
             sellValue: this.activeFishSellValue(fish),
             createButton: this.pageButtonFactory(),
+            onStore: (index) => this.storeFishByIndex(index),
             onSell: (index) => this.showSellConfirmation(index)
           })
         )
       );
     }
-    content.append(fishList, htmlElement("h2", "aq-page-section-title", ["Stored Fish"]));
+    content.append(fishList, htmlElement("h2", "aq-page-section-title", ["My Fish Inventory"]));
 
     const storedList = htmlElement("div", "aq-album-list");
     const storedFish = fishTypes.filter((fishType) => this.getFishInventory(fishType.id) > 0);
     if (storedFish.length === 0) {
-      storedList.append(createPageEmptyCard("No stored fish", "Buy fish from Shop. New fish stay in the dock until placed."));
+      storedList.append(createPageEmptyCard("No fish in inventory", "Buy fish from Shop, then choose which ones go into the tank."));
     } else {
       storedFish.forEach((fishType) => storedList.append(this.createStoredFishInventoryRow(fishType)));
     }
@@ -4357,7 +4429,7 @@ export class AquariumScene extends Phaser.Scene {
       ])
     );
     if (!canStart && !this.fusionPageResult) {
-      fusionList.append(createPageEmptyCard("Need 2 owned fish", "Keep at least two tank or stored fish to start fusion."));
+      fusionList.append(createPageEmptyCard("Need 2 owned fish", "Keep at least two tank or inventory fish to start fusion."));
     } else {
       const selectedDock = htmlElement("div", "aq-fusion-selected-dock");
       const outputStage = htmlElement("div", "aq-fusion-machine-output", [
@@ -4378,7 +4450,7 @@ export class AquariumScene extends Phaser.Scene {
             htmlElement("span", "aq-fusion-result-tier", [this.fusionPageResult.label]),
             htmlImage(`/assets/fish/${resultFish.id}.png`, "", "aq-fusion-result-image"),
             htmlElement("p", "aq-fusion-result-name", [resultFish.name]),
-            htmlElement("p", "aq-fusion-result-copy success", [`Stored | ${this.fusionAgeLabel(this.fusionPageResult.ageSeconds)}`])
+            htmlElement("p", "aq-fusion-result-copy success", [`Inventory | ${this.fusionAgeLabel(this.fusionPageResult.ageSeconds)}`])
           ])
         );
       };
@@ -4481,7 +4553,7 @@ export class AquariumScene extends Phaser.Scene {
               htmlElement("span")
             ]),
             htmlElement("p", "aq-fusion-loading-title", ["Fusion in progress"]),
-            htmlElement("p", "aq-fusion-result-copy", ["Preparing your new stored fish"])
+            htmlElement("p", "aq-fusion-result-copy", ["Preparing your new inventory fish"])
           ])
         );
         outputStage.style.setProperty("--aq-fusion-duration", `${fusionDurationMs}ms`);
@@ -4515,7 +4587,7 @@ export class AquariumScene extends Phaser.Scene {
           const resultType = resultOutcome.fishType;
           this.captureActiveTankState();
           this.consumeFishFusionSources(selected);
-          this.fishInventory.set(resultType.id, this.getFishInventory(resultType.id) + 1);
+          this.addFishToInventory(resultType);
           this.addStoredFishAge(resultType.id, inheritedAge);
           this.ensureFishTexturesLoaded(resultType);
           outputStage.style.removeProperty("--aq-fusion-duration");
@@ -4526,7 +4598,7 @@ export class AquariumScene extends Phaser.Scene {
           };
           this.fusionPreviewSourceKeys.clear();
           this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
-          this.floatText(`${resultType.name} stored`, toastX, toastY, "#a8ffb0");
+          this.floatText(`${resultType.name} moved to inventory`, toastX, toastY, "#a8ffb0");
           this.createFoodDock();
           updatePreviewSelection();
           this.saveNow();
@@ -4535,7 +4607,7 @@ export class AquariumScene extends Phaser.Scene {
           this.showPrizeCelebration(
             `Fusion ${resultOutcome.label}!`,
             `/assets/fish/${resultType.id}.png`,
-            `${resultType.name} stored | ${this.fusionAgeLabel(inheritedAge)}`,
+            `${resultType.name} inventory | ${this.fusionAgeLabel(inheritedAge)}`,
             "Close",
             () => this.closePage()
           );
@@ -4660,13 +4732,16 @@ export class AquariumScene extends Phaser.Scene {
     const row = htmlElement("article", "aq-album-row fish");
     const body = htmlElement("div", "aq-album-row-body", [
       htmlElement("h3", "aq-album-row-title", [fishType.name]),
-      htmlElement("p", "aq-album-row-meta", [`Stored x${formatNumber(count)} | ${this.rarityLabel(fishType.rarity)}${ageCopy}`]),
+      htmlElement("p", "aq-album-row-meta", [`Inventory x${formatNumber(count)} | ${this.rarityLabel(fishType.rarity)}${ageCopy}`]),
       htmlElement("p", "aq-album-row-copy", [`Sell converts one fish to C${formatNumber(sellValue)}`])
     ]);
     row.append(
       htmlImage(`/assets/fish/${fishType.id}.png`, "", "aq-album-row-image fish"),
       body,
-      this.htmlButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showStoredFishSellConfirmation(fishType.id))
+      htmlElement("div", "aq-album-row-actions", [
+        this.htmlButton("To Tank", "aq-page-button aq-page-button-good aq-album-row-button", () => this.prepareFishPlacement(fishType.id)),
+        this.htmlButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => this.showStoredFishSellConfirmation(fishType.id))
+      ])
     );
     return row;
   }
@@ -5483,10 +5558,9 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private awardPrizeMachineRareFish(fishType: FishType): void {
-    this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
-    this.recentInventoryDockItemKey = `fish:${fishType.id}`;
-    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is waiting in your right dock.");
-    this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is waiting in your dock.");
+    this.addFishToInventory(fishType);
+    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is floating in a bubble.");
+    this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is floating in your tank bubble.");
     if (fishType.rarity === "common") {
       this.prizeCommonFish = this.nextPrizeFish("common");
     } else {
@@ -5850,7 +5924,7 @@ export class AquariumScene extends Phaser.Scene {
     return tankStatesRecordModel(
       this.sortedOwnedTankLevels(),
       (level) => this.ensureTankState(level),
-      (level, state) => Math.max(state.maxDisplayLevel ?? 1, this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(level)))
+      (_level, state) => this.rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0)
     );
   }
 
@@ -6111,13 +6185,13 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + buyQuantity);
+    this.addFishToInventory(fishType, buyQuantity);
     for (let index = 0; index < buyQuantity; index += 1) {
       this.recordFishPurchase(fishType);
     }
-    this.recentInventoryDockItemKey = `fish:${fishType.id}`;
+    this.recentInventoryDockItemKey = "fish-menu:fish-menu";
     this.placementMode = { kind: "none" };
-    this.floatText(`${fishType.name} x${formatNumber(buyQuantity)} docked`, toastX, toastY, "#a8ffb0");
+    this.floatText(`${fishType.name} x${formatNumber(buyQuantity)} in bubble`, toastX, toastY, "#a8ffb0");
     this.closeModal();
     this.storeOverlay?.refresh();
     this.refreshUi();
@@ -6685,24 +6759,31 @@ export class AquariumScene extends Phaser.Scene {
     return Math.max(1, Math.floor(this.priceWealth(fishType.price) * inventorySellRate));
   }
 
+  private removeStoredFish(fishTypeId: string, quantity = 1): void {
+    const current = this.getFishInventory(fishTypeId);
+    const next = Math.max(0, current - Math.max(1, Math.floor(quantity)));
+    if (next > 0) {
+      this.fishInventory.set(fishTypeId, next);
+    } else {
+      this.fishInventory.delete(fishTypeId);
+    }
+    this.trimStoredFishAges(fishTypeId);
+  }
+
   private sellStoredFish(fishTypeId: string, quantity = 1): void {
     const fishType = fishTypes.find((item) => item.id === fishTypeId);
     const current = this.getFishInventory(fishTypeId);
     if (!fishType || current <= 0) {
-      this.floatText("No stored fish", toastX, toastY, "#ffb0a8");
+      this.floatText("No fish in inventory", toastX, toastY, "#ffb0a8");
       return;
     }
 
     const sellQuantity = Phaser.Math.Clamp(Math.floor(quantity), 1, current);
     const sellValue = this.storedFishSellValue(fishType) * sellQuantity;
-    if (current <= sellQuantity) {
-      this.fishInventory.delete(fishTypeId);
-    } else {
-      this.fishInventory.set(fishTypeId, current - sellQuantity);
-    }
     for (let index = 0; index < sellQuantity; index += 1) {
       this.takeStoredFishAge(fishTypeId);
     }
+    this.removeStoredFish(fishTypeId, sellQuantity);
     earn(this.wallet, "common", sellValue);
     this.recordDailyQuestAction("sell-stored-fish");
     this.floatText(`Sold ${fishType.name} x${formatNumber(sellQuantity)} +C${formatNumber(sellValue)}`, toastX, toastY, "#ffe67a");
@@ -6885,7 +6966,7 @@ export class AquariumScene extends Phaser.Scene {
     const position = this.randomFishPlacement();
     this.addFishToTank(babyType, position.x, position.y, { tankLevel: this.tankLevel });
     this.recordDailyQuestAction("breed-fish");
-    this.floatTankText(`${babyType.name} added`, position.x, position.y - 34, "#ffffff");
+    this.floatTankText(`${babyType.name} moved in`, position.x, position.y - 34, "#ffffff");
     this.renderTabControls();
     this.refreshUi();
     this.saveNow();
@@ -6897,6 +6978,35 @@ export class AquariumScene extends Phaser.Scene {
       removedFish.destroy();
     }
     return removedFish;
+  }
+
+  private storeFish(fish: Fish): void {
+    const index = this.fish.indexOf(fish);
+    if (index < 0) {
+      return;
+    }
+
+    this.fishInventory.set(fish.type.id, this.getFishInventory(fish.type.id) + 1);
+    this.addStoredFishAge(fish.type.id, fish.ageSeconds);
+    this.recentInventoryDockItemKey = "fish-menu:fish-menu";
+    this.removeFishAt(index);
+  }
+
+  private storeFishByIndex(index: number): void {
+    const fish = this.fish[index];
+    if (!fish) {
+      this.floatText("No fish to store", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    const name = fish.type.name;
+    this.storeFish(fish);
+    this.recordDailyQuestAction("move-fish");
+    this.floatText(`${name} moved to inventory`, toastX, toastY, "#d7f4ff");
+    this.closeModal();
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
   }
 
   private selectFood(foodTypeId = this.selectedFoodTypeId): void {
@@ -6932,6 +7042,23 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi();
   }
 
+  private prepareFishPlacement(fishTypeId: string): void {
+    const fishType = fishTypes.find((candidate) => candidate.id === fishTypeId);
+    if (!fishType || this.getFishInventory(fishTypeId) <= 0) {
+      this.floatText("No fish in inventory", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    if (this.activeFish().length >= this.maxFishCapacityForLevel()) {
+      this.floatText("Tank full - move a fish to inventory first", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    this.returnToTankScreen();
+    const position = this.randomFishPlacement();
+    this.placeFishWithCompatibility(fishType, position.x, position.y);
+  }
+
   private handleTankPointer(pointer: Phaser.Input.Pointer): void {
     if (this.activeScreen !== "tank" || this.modal) {
       return;
@@ -6939,6 +7066,12 @@ export class AquariumScene extends Phaser.Scene {
 
     const pointerPoint = this.pointerDesignPoint(pointer);
     if (!tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
+      return;
+    }
+
+    const tappedFishBubble = this.pendingFishBubbleAtPointer(pointerPoint.x, pointerPoint.y);
+    if (tappedFishBubble) {
+      this.popFishInventoryBubble(tappedFishBubble);
       return;
     }
 
@@ -6957,7 +7090,7 @@ export class AquariumScene extends Phaser.Scene {
         return;
       }
 
-      if (this.activeFish().length >= this.maxFishCapacityForLevel()) {
+      if (this.activeFish().length >= this.maxFishCapacityForLevel() && !this.activeFishAtTankPoint(tankPoint.x, tankPoint.y)) {
         this.floatText("Active tank full", toastX, toastY, "#ffb0a8");
         return;
       }
@@ -7150,21 +7283,19 @@ export class AquariumScene extends Phaser.Scene {
         return;
       }
 
+      const tappedFishBubble = this.pendingFishBubbleAtPointer(point.x, point.y);
+      if (tappedFishBubble) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.popFishInventoryBubble(tappedFishBubble);
+        return;
+      }
+
       const tappedCoin = this.coinAtPointer(point.x, point.y);
       if (tappedCoin) {
         event.preventDefault();
         event.stopPropagation();
         this.collectCoin(tappedCoin, false);
-        return;
-      }
-
-      const decoration = this.decorationAtPointer(point.x, point.y);
-      if (decoration) {
-        event.preventDefault();
-        event.stopPropagation();
-        activePointerId = event.pointerId;
-        this.capturePointerSafely(canvas, event.pointerId);
-        beginNativeDecorationDrag(decoration);
         return;
       }
 
@@ -7302,17 +7433,26 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private placeFishWithCompatibility(type: FishType, x: number, y: number): void {
-    if (this.activeFish().length >= this.maxFishCapacityForLevel()) {
+    const exchangeTarget = this.activeFish().length >= this.maxFishCapacityForLevel()
+      ? this.activeFishAtTankPoint(x, y)
+      : undefined;
+    if (this.activeFish().length >= this.maxFishCapacityForLevel() && !exchangeTarget) {
       this.showTankFullText(x, y);
       return;
     }
 
     const storedAgeSeconds = this.takeStoredFishAge(type.id);
-    this.fishInventory.set(type.id, this.getFishInventory(type.id) - 1);
-    this.addFishToTank(type, x, y, { tankLevel: this.tankLevel, ageSeconds: storedAgeSeconds });
+    this.removeStoredFish(type.id);
+    if (exchangeTarget) {
+      this.storeFish(exchangeTarget);
+    }
+    this.spawnFishTankBubble(type, x, y, {
+      ageSeconds: storedAgeSeconds,
+      exchangeTarget
+    });
     this.recordDailyQuestAction("place-fish");
 
-    this.floatTankText(`${type.name} added`, x, y - 34, "#ffffff");
+    this.floatTankText(exchangeTarget ? `${type.name} ready to swap` : `${type.name} ready`, x, y - 34, "#ffffff");
     this.placementMode = { kind: "none" };
     this.closeModal();
     this.refreshUi();
@@ -7326,6 +7466,210 @@ export class AquariumScene extends Phaser.Scene {
     if (tankBounds.contains(x, y)) {
       this.floatTankText(message, x, y - 28, "#ffb0a8");
     }
+  }
+
+  private addFishToInventory(fishType: FishType, quantity = 1, showBubble = true): void {
+    const safeQuantity = Math.max(1, Math.floor(quantity));
+    this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + safeQuantity);
+    this.recentInventoryDockItemKey = "fish-menu:fish-menu";
+    if (showBubble) {
+      this.spawnFishInventoryBubble(fishType, safeQuantity);
+    }
+  }
+
+  private spawnFishInventoryBubble(fishType: FishType, quantity = 1): void {
+    this.spawnFishBubble({
+      destination: "inventory",
+      fishType,
+      quantity
+    });
+  }
+
+  private spawnFishTankBubble(
+    fishType: FishType,
+    x: number,
+    y: number,
+    options: { ageSeconds?: number; exchangeTarget?: Fish } = {}
+  ): void {
+    this.spawnFishBubble({
+      destination: "tank",
+      fishType,
+      quantity: 1,
+      x,
+      y,
+      ageSeconds: options.ageSeconds,
+      exchangeTarget: options.exchangeTarget
+    });
+  }
+
+  private spawnFishBubble(options: {
+    destination: PendingFishBubble["destination"];
+    fishType: FishType;
+    quantity?: number;
+    x?: number;
+    y?: number;
+    ageSeconds?: number;
+    exchangeTarget?: Fish;
+  }): void {
+    const fishType = options.fishType;
+    const quantity = Math.max(1, Math.floor(options.quantity ?? 1));
+    const textureKey = this.textures.exists(`fish-${fishType.id}`) ? `fish-${fishType.id}` : "fish-base";
+    const radius = 34;
+    const x = options.x ?? Phaser.Math.Between(Math.round(tankBounds.left + 62), Math.round(tankBounds.right - 62));
+    const y = options.y ?? Phaser.Math.Between(Math.round(tankBounds.top + 82), Math.round(tankBounds.bottom - 116));
+    const bubble = this.add.circle(0, 0, radius, 0xbfeeff, 0.22)
+      .setStrokeStyle(3, 0xf4feff, 0.74);
+    const shine = this.add.circle(-12, -13, 7, 0xffffff, 0.38);
+    const fishImage = this.add.image(0, 3, textureKey)
+      .setDisplaySize(54, 34)
+      .setAlpha(0.94);
+    const children: Phaser.GameObjects.GameObject[] = [bubble, shine, fishImage];
+    const quantityText = quantity > 1
+      ? this.add.text(17, 18, `x${formatNumber(quantity)}`, {
+          fontFamily: gameFontFamily,
+          fontSize: "13px",
+          color: "#ffffff",
+          fontStyle: "900",
+          stroke: "#063557",
+          strokeThickness: 4
+        }).setOrigin(0.5)
+      : undefined;
+    if (quantityText) {
+      children.push(quantityText);
+    }
+
+    const hitRadius = radius * 1.85;
+    const container = this.add.container(x, y, children)
+      .setDepth(30)
+      .setSize(hitRadius * 2, hitRadius * 2)
+      .setInteractive(new Phaser.Geom.Circle(0, 0, hitRadius), Phaser.Geom.Circle.Contains);
+    container.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      this.popFishInventoryBubble(pending);
+    });
+    this.tankLayer.add(container);
+
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const speed = Phaser.Math.FloatBetween(10, 18);
+    const pending: PendingFishBubble = {
+      destination: options.destination,
+      type: fishType,
+      quantity,
+      ageSeconds: options.ageSeconds,
+      exchangeTarget: options.exchangeTarget,
+      container,
+      bubble,
+      fishImage,
+      quantityText,
+      velocity: new Phaser.Math.Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed),
+      bobOffset: Phaser.Math.FloatBetween(0, Math.PI * 2)
+    };
+    this.pendingFishBubbles.push(pending);
+    this.ensureFishTexturesLoaded(fishType, () => {
+      if (!fishImage.active) {
+        return;
+      }
+      fishImage.setTexture(`fish-${fishType.id}`).setDisplaySize(54, 34);
+    });
+
+    this.tweens.add({
+      targets: container,
+      scaleX: { from: 0.68, to: 1 },
+      scaleY: { from: 0.68, to: 1 },
+      alpha: { from: 0.1, to: 1 },
+      duration: 280,
+      ease: "Back.Out"
+    });
+  }
+
+  private updatePendingFishBubbles(deltaSeconds: number): void {
+    for (const pending of this.pendingFishBubbles) {
+      const container = pending.container;
+      const bob = Math.sin(this.time.now * 0.0014 + pending.bobOffset) * 8;
+      container.x += pending.velocity.x * deltaSeconds;
+      container.y += pending.velocity.y * deltaSeconds;
+      if (container.x < tankBounds.left + 44 || container.x > tankBounds.right - 44) {
+        pending.velocity.x *= -1;
+        container.x = Phaser.Math.Clamp(container.x, tankBounds.left + 44, tankBounds.right - 44);
+      }
+      if (container.y < tankBounds.top + 58 || container.y > tankBounds.bottom - 94) {
+        pending.velocity.y *= -1;
+        container.y = Phaser.Math.Clamp(container.y, tankBounds.top + 58, tankBounds.bottom - 94);
+      }
+      pending.fishImage.y = 3 + bob * 0.08;
+      pending.bubble.setAlpha(Phaser.Math.Clamp(0.22 + Math.sin(this.time.now * 0.002 + pending.bobOffset) * 0.05, 0.16, 0.3));
+    }
+  }
+
+  private pendingFishBubbleAtPointer(designX: number, designY: number): PendingFishBubble | undefined {
+    if (this.activeScreen !== "tank" || this.pendingFishBubbles.length === 0) {
+      return undefined;
+    }
+
+    const tankPoint = this.screenToTankPoint(designX, designY);
+    const hitRadius = 64 / Math.max(0.01, this.tankViewScaleForLevel());
+    let nearestBubble: PendingFishBubble | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const pending of this.pendingFishBubbles) {
+      const distance = Phaser.Math.Distance.Between(tankPoint.x, tankPoint.y, pending.container.x, pending.container.y);
+      if (distance <= hitRadius && distance < nearestDistance) {
+        nearestBubble = pending;
+        nearestDistance = distance;
+      }
+    }
+
+    return nearestBubble;
+  }
+
+  private popFishInventoryBubble(pending: PendingFishBubble): void {
+    const index = this.pendingFishBubbles.indexOf(pending);
+    if (index >= 0) {
+      this.pendingFishBubbles.splice(index, 1);
+    }
+    pending.container.disableInteractive();
+    if (pending.destination === "tank") {
+      this.releaseFishTankBubble(pending);
+    } else {
+      this.floatTankText(
+        pending.quantity > 1 ? `${pending.type.name} x${formatNumber(pending.quantity)} in inventory` : `${pending.type.name} in inventory`,
+        pending.container.x,
+        pending.container.y - 38,
+        "#d7f4ff"
+      );
+    }
+    this.tweens.add({
+      targets: pending.container,
+      scaleX: 1.38,
+      scaleY: 1.38,
+      alpha: 0,
+      duration: 180,
+      ease: "Quad.Out",
+      onComplete: () => pending.container.destroy(true)
+    });
+  }
+
+  private releaseFishTankBubble(pending: PendingFishBubble): void {
+    const x = pending.container.x;
+    const y = pending.container.y;
+    if (pending.exchangeTarget && this.fish.includes(pending.exchangeTarget)) {
+      this.storeFish(pending.exchangeTarget);
+    }
+    this.addFishToTank(pending.type, x, y, {
+      tankLevel: this.tankLevel,
+      ageSeconds: pending.ageSeconds
+    });
+    this.floatTankText(`${pending.type.name} moved in`, x, y - 38, "#ffffff");
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
+  }
+
+  private destroyPendingFishBubbles(): void {
+    for (const pending of this.pendingFishBubbles) {
+      pending.container.destroy(true);
+    }
+    this.pendingFishBubbles = [];
   }
 
   private randomFishPlacement(): Phaser.Math.Vector2 {
@@ -7468,7 +7812,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private beginPhaserDecorationDrag(decoration: PlacedDecoration): void {
-    if (this.nativeDraggedDecoration) {
+    if (this.nativeDraggedDecoration || this.activeScreen !== "makeup") {
       return;
     }
 
@@ -7480,7 +7824,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private updatePhaserDecorationDrag(pointer: Phaser.Input.Pointer): void {
-    if (this.nativeDraggedDecoration || this.activeScreen !== "tank") {
+    if (this.nativeDraggedDecoration || this.activeScreen !== "makeup") {
       return;
     }
 
@@ -7503,9 +7847,9 @@ export class AquariumScene extends Phaser.Scene {
     decoration.image.setAlpha(1);
     this.showDecorationTrashTarget(false);
     const pointerPoint = this.pointerDesignPoint(pointer);
-    if (this.activeScreen === "tank" && decorationTrashZone.contains(pointerPoint.x, pointerPoint.y)) {
+    if (this.activeScreen === "makeup" && decorationTrashZone.contains(pointerPoint.x, pointerPoint.y)) {
       this.trashDecoration(decoration);
-    } else if (this.activeScreen === "tank" && tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
+    } else if (this.activeScreen === "makeup" && tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
       const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
       this.moveDecoration(decoration, tankPoint.x, tankPoint.y);
       this.recordDailyQuestAction("move-decoration");
@@ -7712,7 +8056,6 @@ export class AquariumScene extends Phaser.Scene {
         savedFish.continuousHungrySeconds
       );
     }
-
     for (const savedCoin of saved.coinDrops) {
       if ((savedCoin.tankLevel ?? this.tankLevel) !== this.tankLevel || this.coinDrops.length >= maxCoinDrops) {
         continue;
@@ -7758,6 +8101,7 @@ export class AquariumScene extends Phaser.Scene {
         if (amount > 0) {
           currentFish.consumeFullnessCalories(convertedCalories);
           earned.common += amount;
+          this.addFishProductionTotal(currentFish.tankLevel, amount);
           const tankEarned = earnedByTank.get(currentFish.tankLevel) ?? createEmptyWallet();
           tankEarned.common += amount;
           earnedByTank.set(currentFish.tankLevel, tankEarned);
@@ -7921,6 +8265,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
+    this.addFishProductionTotal(fish.tankLevel, value);
     const boostedDrop = fish.hasActiveProductionBoost(now);
     const dropX = fish.sprite.x + (boostedDrop ? 0 : Phaser.Math.Between(-18, 18));
     this.createCoinDrop(
@@ -8378,6 +8723,10 @@ export class AquariumScene extends Phaser.Scene {
     return this.fishInventory.get(fishTypeId) ?? 0;
   }
 
+  private totalStoredFishCount(): number {
+    return [...this.fishInventory.values()].reduce((total, count) => total + Math.max(0, count), 0);
+  }
+
   private getFoodInventory(foodTypeId: FoodTypeId): number {
     return this.foodInventory.get(foodTypeId) ?? 0;
   }
@@ -8759,6 +9108,22 @@ export class AquariumScene extends Phaser.Scene {
     return priceComponents(price).reduce((total, [coinType, amount]) => total + amount * coinWealthValue[coinType], 0);
   }
 
+  private addFishProductionTotal(level: number, amount: number): void {
+    const production = Math.max(0, Math.floor(amount));
+    if (production <= 0) {
+      return;
+    }
+    const state = this.ensureTankState(level);
+    const previousProduction = Math.max(0, Math.floor(state.fishProductionTotal ?? 0));
+    const nextProduction = previousProduction + production;
+    state.fishProductionTotal = nextProduction;
+    this.awardLevelCompletionRewards(level, previousProduction, nextProduction);
+  }
+
+  private fishProductionTotal(level = this.tankLevel): number {
+    return Math.max(0, Math.floor(this.ensureTankState(level).fishProductionTotal ?? 0));
+  }
+
   private calculateTotalWealth(): number {
     return this.sortedOwnedTankLevels().reduce((total, level) => total + this.calculateTankNetWorth(level), 0);
   }
@@ -8821,20 +9186,78 @@ export class AquariumScene extends Phaser.Scene {
 
   private tankDisplayLevel(level = this.tankLevel): number {
     const state = this.ensureTankState(level);
-    const currentLevel = this.rawTankDisplayLevelFromWorth(this.calculateTankNetWorth(level));
-    if (currentLevel > (state.maxDisplayLevel ?? 1)) {
-      state.maxDisplayLevel = currentLevel;
-    }
-    return Math.max(1, state.maxDisplayLevel ?? currentLevel);
+    const currentLevel = this.rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0);
+    state.maxDisplayLevel = Math.max(1, currentLevel);
+    return state.maxDisplayLevel;
   }
 
-  private rawTankDisplayLevelFromWorth(worth: number): number {
-    return Math.max(1, Math.floor(Math.log10(Math.max(1, worth) / 250 + 1)) + 1);
+  private rawTankDisplayLevelFromProduction(production: number): number {
+    const totalProduction = Math.max(0, Math.floor(production));
+    let level = 1;
+    let nextThreshold = baseFishProductionLevelThreshold;
+    while (totalProduction >= nextThreshold) {
+      level += 1;
+      nextThreshold *= 5;
+    }
+    return level;
+  }
+
+  private fishProductionThresholdForLevel(level: number): number {
+    const displayLevel = Math.max(1, Math.floor(level));
+    if (displayLevel <= 1) {
+      return 0;
+    }
+    return baseFishProductionLevelThreshold * Math.pow(5, displayLevel - 2);
+  }
+
+  private levelProgressToNext(level = this.tankDisplayLevel(), production = this.fishProductionTotal()): { level: number; ratio: number; percent: number } {
+    const currentLevel = Math.max(1, Math.floor(level));
+    const currentThreshold = this.fishProductionThresholdForLevel(currentLevel);
+    const nextThreshold = this.fishProductionThresholdForLevel(currentLevel + 1);
+    const ratio = Phaser.Math.Clamp(
+      (Math.max(0, production) - currentThreshold) / Math.max(1, nextThreshold - currentThreshold),
+      0,
+      1
+    );
+    return {
+      level: currentLevel,
+      ratio,
+      percent: Math.floor(ratio * 100)
+    };
+  }
+
+  private awardLevelCompletionRewards(level: number, previousProduction: number, nextProduction: number): void {
+    const previousLevel = this.rawTankDisplayLevelFromProduction(previousProduction);
+    const nextLevel = this.rawTankDisplayLevelFromProduction(nextProduction);
+    if (nextLevel <= previousLevel) {
+      return;
+    }
+
+    let totalReward = 0;
+    for (let completedLevel = previousLevel + 1; completedLevel <= nextLevel; completedLevel += 1) {
+      const completedThreshold = this.fishProductionThresholdForLevel(completedLevel);
+      totalReward += Math.max(1, Math.floor(completedThreshold * 0.3));
+    }
+
+    if (totalReward <= 0) {
+      return;
+    }
+
+    const state = this.ensureTankState(level);
+    if (level === this.tankLevel) {
+      earn(this.wallet, "common", totalReward);
+      state.wallet = this.wallet;
+      this.showLevelCompletionRewardModal(previousLevel, nextLevel, totalReward);
+      this.refreshUi();
+      this.storeOverlay?.refresh();
+    } else {
+      earn(state.wallet, "common", totalReward);
+    }
   }
 
   private getTankNeedIndicator(): string {
     if (this.activeFish().length === 0) {
-      return `Tank Lv${formatNumber(this.tankDisplayLevel())} | Worth ${formatNumber(this.calculateTankNetWorth())}`;
+      return `Tank Lv${formatNumber(this.tankDisplayLevel())} | Produced ${formatNumber(this.fishProductionTotal())}`;
     }
 
     if (this.getTotalFoodInventory() === 0 && this.fish.some((currentFish) => currentFish.hunger >= 45)) {
@@ -8845,7 +9268,7 @@ export class AquariumScene extends Phaser.Scene {
       return "Tank needs coin collection";
     }
 
-    return `Tank Lv${formatNumber(this.tankDisplayLevel())} | Worth ${formatNumber(this.calculateTankNetWorth())}`;
+    return `Tank Lv${formatNumber(this.tankDisplayLevel())} | Produced ${formatNumber(this.fishProductionTotal())}`;
   }
 
   private getCompactTankNeedIndicator(): string {
@@ -8857,7 +9280,7 @@ export class AquariumScene extends Phaser.Scene {
       return "Collect coins";
     }
 
-    return `Lv${formatNumber(this.tankDisplayLevel())} Worth ${formatNumber(this.calculateTankNetWorth())}`;
+    return `Lv${formatNumber(this.tankDisplayLevel())} Produced ${formatNumber(this.fishProductionTotal())}`;
   }
 
   private calculateTankHappiness(): number {
@@ -9326,9 +9749,8 @@ export class AquariumScene extends Phaser.Scene {
       this.floatText(`+${foodType.name}`, toastX, toastY, "#ffe67a");
     } else if (kind === "fish") {
       const fishType = this.rewardedAdFishReward();
-      this.fishInventory.set(fishType.id, this.getFishInventory(fishType.id) + 1);
-      this.recentInventoryDockItemKey = `fish:${fishType.id}`;
-      this.floatText(`+${fishType.name}`, toastX, toastY, "#a8ffb0");
+      this.addFishToInventory(fishType);
+      this.floatText(`${fishType.name} in bubble`, toastX, toastY, "#a8ffb0");
     } else if (kind === "helper") {
       const creatureType = this.rewardedAdHelperReward();
       this.creatureInventory.set(creatureType.id, this.getCreatureInventory(creatureType.id) + 1);
@@ -9572,7 +9994,7 @@ export class AquariumScene extends Phaser.Scene {
     const fishType = fishTypes.find((item) => item.id === fishTypeId);
     const count = this.getFishInventory(fishTypeId);
     if (!fishType || count <= 0) {
-      this.floatText("No stored fish", toastX, toastY, "#ffb0a8");
+      this.floatText("No fish in inventory", toastX, toastY, "#ffb0a8");
       return;
     }
 
@@ -9732,7 +10154,7 @@ export class AquariumScene extends Phaser.Scene {
         const resultType = resultOutcome.fishType;
         this.captureActiveTankState();
         this.consumeFishFusionSources(selected);
-        this.fishInventory.set(resultType.id, this.getFishInventory(resultType.id) + 1);
+        this.addFishToInventory(resultType);
         this.addStoredFishAge(resultType.id, inheritedAge);
         this.ensureFishTexturesLoaded(resultType);
         this.recordDailyQuestAction("fuse-fish");
@@ -9742,10 +10164,10 @@ export class AquariumScene extends Phaser.Scene {
         resultStage.classList.remove("processing");
         resultStage.replaceChildren(
           htmlImage(`/assets/fish/${resultType.id}.png`, "", "aq-fusion-result-image"),
-          htmlElement("p", "aq-fusion-result-copy success", [`${resultOutcome.label} success: ${resultType.name} stored | ${this.fusionAgeLabel(inheritedAge)}`])
+          htmlElement("p", "aq-fusion-result-copy success", [`${resultOutcome.label} success: ${resultType.name} inventory | ${this.fusionAgeLabel(inheritedAge)}`])
         );
         this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
-        this.floatText(`${resultType.name} stored`, toastX, toastY, "#a8ffb0");
+        this.floatText(`${resultType.name} moved to inventory`, toastX, toastY, "#a8ffb0");
         closeButton.textContent = "Close";
         closeButton.disabled = false;
         this.createFoodDock();
@@ -9795,7 +10217,7 @@ export class AquariumScene extends Phaser.Scene {
         type: fishType,
         ageSeconds: ages[index] ?? 0,
         storedAgeIndex: index < ages.length ? index : undefined,
-        label: "Stored"
+        label: "Inventory"
       }));
     });
     return [...activeSources, ...storedSources];
@@ -10236,6 +10658,30 @@ export class AquariumScene extends Phaser.Scene {
         htmlImage(imageUrl, "", "aq-prize-celebration-image")
       ]),
       htmlElement("p", "aq-modal-line aq-prize-celebration-detail", [detail]),
+      htmlElement("div", "aq-modal-actions single", [closeButton])
+    ]);
+    shell.append(panel);
+    document.body.appendChild(shell);
+    this.modal = shell;
+    this.syncCoinDropVisibilityAndInput();
+  }
+
+  private showLevelCompletionRewardModal(completedLevel: number, nextLevel: number, rewardCommonCoins: number): void {
+    this.closeModal();
+    const shell = htmlElement("div", "aq-modal-shell aq-level-reward-shell");
+    const stopEvent = (event: Event) => {
+      event.stopPropagation();
+    };
+    shell.addEventListener("pointerdown", stopEvent);
+    shell.addEventListener("pointerup", stopEvent);
+    shell.addEventListener("click", stopEvent);
+
+    const closeButton = this.htmlButton("Claim", "aq-modal-button good", () => this.closeModal());
+    const panel = htmlElement("section", "aq-modal aq-level-reward-modal", [
+      htmlElement("h2", "aq-modal-title aq-level-reward-title", [`Level ${formatNumber(completedLevel)} Complete!`]),
+      htmlElement("div", "aq-level-reward-medallion", [formatNumber(nextLevel)]),
+      htmlElement("p", "aq-modal-line aq-level-reward-detail", [`Tank reached Level ${formatNumber(nextLevel)}.`]),
+      this.commonCoinValueRow("Reward", rewardCommonCoins),
       htmlElement("div", "aq-modal-actions single", [closeButton])
     ]);
     shell.append(panel);

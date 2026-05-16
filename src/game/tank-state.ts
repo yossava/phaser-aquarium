@@ -20,6 +20,7 @@ export type TankRuntimeState = {
   cleanliness: number;
   cleanedAt: number;
   maxDisplayLevel: number;
+  fishProductionTotal: number;
 };
 
 export type TankStateConfig = {
@@ -70,7 +71,8 @@ export function createDefaultTankState(level: number, config: TankStateConfig, n
     selectedSeabedId: cosmeticId,
     cleanliness: 100,
     cleanedAt: now,
-    maxDisplayLevel: 1
+    maxDisplayLevel: 1,
+    fishProductionTotal: 0
   };
 }
 
@@ -95,6 +97,7 @@ export function ensureTankState(
   state.selectedBackgroundId ??= fallbackCosmeticId;
   state.selectedSeabedId ??= fallbackCosmeticId;
   state.maxDisplayLevel = Math.max(1, Math.floor(state.maxDisplayLevel ?? 1));
+  state.fishProductionTotal = Math.max(0, Math.floor(state.fishProductionTotal ?? 0));
   return state;
 }
 
@@ -133,7 +136,8 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       selectedSeabedId: config.validCosmeticId("seabed", value.selectedSeabedId, level),
       cleanliness: clamp(value.cleanliness ?? 100, 0, 100),
       cleanedAt: value.cleanedAt ?? Date.now(),
-      maxDisplayLevel: Math.max(1, Math.floor(value.maxDisplayLevel ?? 1))
+      maxDisplayLevel: Math.max(1, Math.floor(value.maxDisplayLevel ?? 1)),
+      fishProductionTotal: Math.max(0, Math.floor(value.fishProductionTotal ?? 0))
     });
   }
 
@@ -153,7 +157,8 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       selectedSeabedId: config.validCosmeticId("seabed", undefined, 1),
       cleanliness: saved.tank.cleanliness,
       cleanedAt: saved.tank.cleanedAt,
-      maxDisplayLevel: 1
+      maxDisplayLevel: 1,
+      fishProductionTotal: 0
     });
   }
 
@@ -183,7 +188,8 @@ export function tankStatesRecord(
       selectedSeabedId: state.selectedSeabedId,
       cleanliness: state.cleanliness,
       cleanedAt: state.cleanedAt,
-      maxDisplayLevel: Math.max(state.maxDisplayLevel ?? 1, maxDisplayLevelFor(level, state))
+      maxDisplayLevel: Math.max(1, maxDisplayLevelFor(level, state)),
+      fishProductionTotal: Math.max(0, Math.floor(state.fishProductionTotal ?? 0))
     };
   }
   return result;

@@ -12,6 +12,7 @@ export type FishAlbumRowOptions = {
   rarityLabel: string;
   sellValue: number;
   createButton: PageButtonFactory;
+  onStore?: (index: number) => void;
   onSell: (index: number) => void;
 };
 
@@ -25,7 +26,7 @@ export type HelperAlbumRowOptions = {
 };
 
 export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
-  const { fish, index, happinessPercent, rarityLabel, sellValue, createButton, onSell } = options;
+  const { fish, index, happinessPercent, rarityLabel, sellValue, createButton, onStore, onSell } = options;
   const growthStatus = fish.isGrowthLimitedByTank() ? "Max screen size" : "Growing";
   const row = htmlElement("article", "aq-album-row fish");
   const fullnessValue = Math.round(clampPercent(fish.fullnessRatio() * 100));
@@ -48,7 +49,10 @@ export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
   row.append(
     imageWrap,
     body,
-    createButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => onSell(index))
+    htmlElement("div", "aq-album-row-actions", [
+      ...(onStore ? [createButton("To Inventory", "aq-page-button aq-page-button-good aq-album-row-button", () => onStore(index))] : []),
+      createButton(`Sell C${formatNumber(sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", () => onSell(index))
+    ])
   );
   return row;
 }
