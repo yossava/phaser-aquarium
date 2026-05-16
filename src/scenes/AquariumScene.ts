@@ -18,7 +18,14 @@ import {
 } from "../game/dispenser-system";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, priceComponents, spend } from "../game/economy";
 import { fishCoinProductionMaxDelayMs, fishCoinProductionMinDelayMs, fishCommonPrice } from "../game/economy-model";
+import { FishDeliveryBubbleManager, type PendingFishBubble } from "../game/fish-delivery-bubbles";
 import { gameFontFamily } from "../game/fonts";
+import {
+  fishProductionThresholdForLevel,
+  levelProgressToNext,
+  rawTankDisplayLevelFromProduction,
+  targetProductionPerMinuteForLevel
+} from "../game/level-progression";
 import {
   bestCalorieFoodForTarget,
   cappedFoodCountLabel,
@@ -135,6 +142,7 @@ import {
   type PrizeMachineState,
   type PrizeSpinPrize
 } from "../game/prize-machine";
+import { PrizeWheelPlanner, type PreparedPrizeMachineReward } from "../game/prize-wheel-planner";
 import {
   createPrizeMachineSpinner,
   playPrizeMachineSpin,
@@ -169,21 +177,6 @@ import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodTyp
 import { ShellBalanceScene, ShellBalanceSceneKey, type ShellBalanceResult } from "./ShellBalanceScene";
 
 type AppScreen = "tank" | "menu" | "store" | "album" | "goals" | "prize" | "makeup" | "settings";
-
-type PreparedPrizeMachineReward =
-  | { kind: "rare"; amount: number; segmentIndex: number }
-  | { kind: "superRare"; amount: number; segmentIndex: number }
-  | { kind: "rareFish"; fishType: FishType; segmentIndex: number }
-  | { kind: "premiumCommon"; amount: number; segmentIndex: number }
-  | { kind: "food"; foodType: FoodType; quantity: number; segmentIndex: number }
-  | { kind: "decoration"; decorationType: DecorationType; size: DecorationSize; segmentIndex: number }
-  | { kind: "common"; amount: number; segmentIndex: number };
-
-type PrizeSegmentCandidate = {
-  key: string;
-  segment: PrizeWheelSegment;
-  value: number;
-};
 
 const fixedPrizeBetAmounts: readonly PrizeMachineBetAmount[] = [
   1,
@@ -267,20 +260,6 @@ type PendingHelperCreatureDrop = {
   sprite: Phaser.GameObjects.Image;
   tankLevel: number;
   targetX: number;
-};
-type PendingFishBubble = {
-  destination: "inventory" | "tank";
-  type: FishType;
-  quantity: number;
-  consumesInventory?: boolean;
-  ageSeconds?: number;
-  exchangeTarget?: Fish;
-  container: Phaser.GameObjects.Container;
-  bubble: Phaser.GameObjects.Arc;
-  fishImage: Phaser.GameObjects.Image;
-  quantityText?: Phaser.GameObjects.Text;
-  velocity: Phaser.Math.Vector2;
-  bobOffset: number;
 };
 
 type CompatibilitySummary = {
@@ -385,9 +364,6 @@ const fishFusionMinPremiumChance = 0.05;
 const fishFusionPremiumChanceLossPerAgeGapMonth = 0.02;
 const fishFusionCostRate = 0.5;
 const fishFusionDurationMs = 3000;
-const baseFishProductionLevelThreshold = 250;
-const minTargetActiveLevelHours = 2;
-const maxTargetActiveLevelHours = 2.5;
 const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
   rare: "/assets/ui/icon-rare-coin.png",
@@ -654,7 +630,7 @@ export class AquariumScene extends Phaser.Scene {
   private activeAirStoneBubbles = new Set<Phaser.GameObjects.Arc>();
   private helperCreatures: HelperCreature[] = [];
   private pendingHelperCreatureDrops: PendingHelperCreatureDrop[] = [];
-  private pendingFishBubbles: PendingFishBubble[] = [];
+  private fishDeliveryBubbles?: FishDeliveryBubbleManager;
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -860,6 +836,16 @@ export class AquariumScene extends Phaser.Scene {
     });
   }
 
+  private fishBubbleManager(): FishDeliveryBubbleManager {
+    this.fishDeliveryBubbles ??= new FishDeliveryBubbleManager(
+      this,
+      this.tankLayer,
+      (fishType, onLoad) => this.ensureFishTexturesLoaded(fishType, onLoad),
+      (pending) => this.handleFishBubblePop(pending)
+    );
+    return this.fishDeliveryBubbles;
+  }
+
   public update(_time: number, delta: number): void {
     const deltaSeconds = delta / 1000;
     const now = this.time.now;
@@ -886,7 +872,7 @@ export class AquariumScene extends Phaser.Scene {
     this.updateAutoFoodBuyer(tankFish);
     this.updateFoodDispenser(tankFish);
     this.updatePendingHelperCreatureDrops(deltaSeconds);
-    this.updatePendingFishBubbles(deltaSeconds);
+    this.fishDeliveryBubbles?.update(deltaSeconds, now);
     this.updateHelperCreatures(deltaSeconds, tankFish, activeHelpers);
     this.updateTankCleanliness(deltaSeconds, tankFish.length);
     this.updateDirtyTankOverlay();
@@ -1197,7 +1183,7 @@ export class AquariumScene extends Phaser.Scene {
       selectedSeabedId: state.selectedSeabedId,
       cleanliness: this.cleanliness,
       cleanedAt: this.cleanedAt,
-      maxDisplayLevel: this.rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0),
+      maxDisplayLevel: rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0),
       fishProductionTotal: state.fishProductionTotal
     });
   }
@@ -2689,7 +2675,7 @@ export class AquariumScene extends Phaser.Scene {
     this.coinComboOverlay = undefined;
     this.destroyPrizeSpinContainer();
     this.destroyTankMenuOverlay();
-    this.destroyPendingFishBubbles();
+    this.fishDeliveryBubbles?.destroyAll();
     this.storeOverlay?.destroy();
     this.storeOverlay = undefined;
   }
@@ -3070,7 +3056,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createMainMenuLevelStatusCard(): HTMLElement {
-    const progress = this.levelProgressToNext();
+    const progress = levelProgressToNext(this.tankDisplayLevel(), this.fishProductionTotal());
     const card = htmlElement("div", "aq-main-menu-status-card aq-main-menu-level-card");
     const ring = htmlElement("span", "aq-main-menu-level-ring", [
       htmlElement("strong", "aq-main-menu-level-number", [formatNumber(progress.level)])
@@ -5112,9 +5098,10 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     this.prizeMachine = recordPrizeMachineSpin(this.prizeMachine, this.priceWealth(config.spinCost));
-    const segments = this.createPrizeWheelSegments();
-    const preparedReward = this.choosePrizeMachinePreparedReward(segments);
-    const preparedRewardValue = this.prizeMachineRewardResaleValue(preparedReward);
+    const prizePlanner = this.createPrizeWheelPlanner();
+    const segments = prizePlanner.createSegments();
+    const preparedReward = prizePlanner.choosePreparedReward(segments);
+    const preparedRewardValue = prizePlanner.rewardResaleValue(preparedReward);
     this.prizeSpinInProgress = true;
     this.htmlPageOverlay?.classList.add("hidden");
     this.destroyPrizeSpinContainer();
@@ -5129,7 +5116,7 @@ export class AquariumScene extends Phaser.Scene {
       this.prizeMachine = recordPrizeMachineWin(
         this.prizeMachine,
         preparedRewardValue,
-        this.prizeMachineRewardKey(preparedReward)
+        prizePlanner.rewardKey(preparedReward)
       );
 
       this.recordDailyQuestAction("prize-game");
@@ -5169,351 +5156,39 @@ export class AquariumScene extends Phaser.Scene {
     });
   }
 
-  private createPrizeWheelSegments(): PrizeWheelSegment[] {
-    const betAmount = this.prizeMachine.selectedBetAmount;
-    const targetMultipliers = [0.5, 0.58, 0.66, 0.74, 0.82, 0.9, 1.1, 1.18, 1.26, 1.34, 1.42, 1.5];
-    const usedKeys = new Set<string>();
-
-    return targetMultipliers.map((multiplier, index) => {
-      const lane: "loss" | "win" = multiplier < 1 ? "loss" : "win";
-      const rawTargetValue = betAmount * multiplier;
-      const targetValue = lane === "loss"
-        ? Math.max(1, Math.min(betAmount - 1, Math.floor(rawTargetValue)))
-        : Math.max(betAmount + 1, Math.round(rawTargetValue));
-      if (index === 10) {
-        const fishCandidate = this.prizeWheelFishCandidateForTarget(targetValue, lane);
-        usedKeys.add(fishCandidate.key);
-        return fishCandidate.segment;
-      }
-
-      const candidates = this.prizeWheelCandidatesForTarget(targetValue, lane, index);
-      const candidate = this.choosePrizeWheelSegmentCandidate(candidates, targetValue, index, usedKeys);
-      usedKeys.add(candidate.key);
-      return candidate.segment;
+  private createPrizeWheelPlanner(): PrizeWheelPlanner {
+    return new PrizeWheelPlanner({
+      selectedBetAmount: this.prizeMachine.selectedBetAmount,
+      recentPrizeKeys: this.prizeMachine.recentPrizeKeys,
+      rareCoinWealthValue: coinWealthValue.rare,
+      superRareCoinWealthValue: coinWealthValue.superRare,
+      ownedFishTypeIds: () => new Set([
+        ...this.fish.map((fish) => fish.type.id),
+        ...[...this.fishInventory.entries()].filter(([, count]) => count > 0).map(([fishTypeId]) => fishTypeId)
+      ]),
+      textureExists: (textureKey) => this.textures.exists(textureKey),
+      isDroppableFood: (foodTypeId) => this.isDroppableFood(foodTypeId),
+      isCalorieTrackedFood: (foodTypeId) => this.isCalorieTrackedFood(foodTypeId),
+      foodTextureKey: (foodTypeId) => this.foodTextureKey(foodTypeId),
+      foodSellValue: (foodType, storedAmount) => this.foodSellValue(foodType, storedAmount),
+      decorationSellValue: (decorationType, size, count) => this.decorationSellValue(decorationType, size, count),
+      decorationVariantPrice: (decorationType, size) => this.decorationVariantPrice(decorationType, size),
+      priceWealth: (price) => this.priceWealth(price),
+      coinSellValue: (coinType, count) => this.coinSellValue(coinType, count),
+      storedFishSellValue: (fishType) => this.storedFishSellValue(fishType),
+      sanitizeDecorationSize: (size) => this.sanitizeDecorationSize(size)
     });
   }
 
-  private prizeWheelCandidatesForTarget(targetValue: number, lane: "loss" | "win", slotIndex: number): PrizeSegmentCandidate[] {
-    const betAmount = this.prizeMachine.selectedBetAmount;
-    const candidates = [
-      this.prizeWheelCommonCandidate(targetValue, slotIndex),
-      ...this.prizeWheelFoodCandidates(targetValue, lane, slotIndex),
-      ...this.prizeWheelDecorationCandidates(targetValue, lane, slotIndex),
-      ...this.prizeWheelRareCoinCandidates(targetValue, lane),
-      ...this.prizeWheelSuperRareCoinCandidates(targetValue, lane),
-      ...this.prizeWheelRareFishCandidates(targetValue, lane)
-    ].filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane, betAmount));
-
-    return candidates.length > 0 ? candidates : [this.prizeWheelCommonCandidate(targetValue, slotIndex)];
-  }
-
-  private prizeWheelCommonCandidate(targetValue: number, slotIndex: number): PrizeSegmentCandidate {
-    const commonColors = [0x0c8fb3, 0x136f96, 0x1ba8c9, 0x0b7f8c, 0x2e9fc0, 0x0f5f7f];
-    const amount = Math.max(1, Math.round(targetValue));
-    return {
-      key: `common:${amount}`,
-      value: amount,
-      segment: {
-        kind: "common",
-        label: `C${formatNumber(amount)}`,
-        iconTextureKey: prizeWheelIconTextureKeys.common,
-        color: commonColors[slotIndex % commonColors.length],
-        commonAmount: amount
-      }
-    };
-  }
-
-  private prizeWheelFoodCandidates(targetValue: number, lane: "loss" | "win", slotIndex: number): PrizeSegmentCandidate[] {
-    const foodColors = [0x55b987, 0x6fc6aa, 0x78ad72, 0x2c9c8d, 0x76b8c8, 0x4f9a6b];
-    return foodTypes
-      .filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id) && this.isDroppableFood(foodType.id))
-      .map((foodType, index) => {
-        const unitStoredAmount = this.isCalorieTrackedFood(foodType.id) ? foodType.calories : 1;
-        const unitValue = this.foodSellValue(foodType, unitStoredAmount);
-        const quantity = this.prizeWheelQuantityForTarget(unitValue, targetValue, lane);
-        const storedAmount = unitStoredAmount * quantity;
-        const value = this.foodSellValue(foodType, storedAmount);
-        const marketValue = this.priceWealth(foodType.price) * quantity;
-        const label = `${this.prizeWheelFoodLabel(foodType)}${quantity > 1 ? ` x${formatNumber(quantity)}` : ""}`;
-        return {
-          key: `food:${foodType.id}:${quantity}`,
-          value,
-          segment: {
-            kind: "food" as const,
-            label,
-            resultLabel: label,
-            resultMarketLabel: `(Worth C${formatNumber(marketValue)})`,
-            iconTextureKey: this.foodTextureKey(foodType.id),
-            color: foodColors[(slotIndex + index) % foodColors.length],
-            foodTypeId: foodType.id,
-            foodQuantity: quantity
-          }
-        };
-      });
-  }
-
-  private prizeWheelDecorationCandidates(targetValue: number, lane: "loss" | "win", slotIndex: number): PrizeSegmentCandidate[] {
-    const decorationColors = [0xc58c4a, 0xa76ee6, 0x26b8a6, 0xe0a13a, 0x6fa8dc, 0xd47f6a];
-    return decorationTypes
-      .flatMap((decorationType, decorationIndex) =>
-        decorationSizeOrder.map((size, sizeIndex) => {
-          const unitValue = this.decorationSellValue(decorationType, size, 1);
-          const price = this.decorationVariantPrice(decorationType, size);
-          return {
-            decorationType,
-            size,
-            value: unitValue,
-            marketValue: this.priceWealth(price),
-            color: decorationColors[(slotIndex + decorationIndex + sizeIndex) % decorationColors.length]
-          };
-        })
-      )
-      .filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane))
-      .sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))
-      .slice(0, 8)
-      .map((candidate) => {
-        const sizeLabel = decorationSizes[candidate.size].label;
-        const label = `${candidate.decorationType.name} ${sizeLabel}`;
-        return {
-          key: `decoration:${candidate.decorationType.id}:${candidate.size}`,
-          value: candidate.value,
-          segment: {
-            kind: "decoration" as const,
-            label,
-            resultLabel: label,
-            resultMarketLabel: `(Worth C${formatNumber(candidate.marketValue)})`,
-            iconTextureKey: this.textures.exists(candidate.decorationType.texture) ? candidate.decorationType.texture : prizeWheelIconTextureKeys.food,
-            color: candidate.color,
-            decorationTypeId: candidate.decorationType.id,
-            decorationSize: candidate.size
-          }
-        };
-      });
-  }
-
-  private prizeWheelRareCoinCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
-    if (this.prizeMachine.selectedBetAmount < coinWealthValue.rare) {
-      return [];
-    }
-
-    const unitValue = this.coinSellValue("rare");
-    const amount = this.prizeWheelQuantityForTarget(unitValue, targetValue, lane);
-    const value = this.coinSellValue("rare", amount);
-    return [{
-      key: `rare:${amount}`,
-      value,
-      segment: {
-        kind: "rare",
-        label: `R${formatNumber(amount)}`,
-        resultLabel: `R${formatNumber(amount)}`,
-        resultMarketLabel: `(Worth C${formatNumber(coinWealthValue.rare * amount)})`,
-        iconTextureKey: prizeWheelIconTextureKeys.rare,
-        color: 0x89d5e8,
-        rareAmount: amount
-      }
-    }];
-  }
-
-  private prizeWheelSuperRareCoinCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
-    if (this.prizeMachine.selectedBetAmount < coinWealthValue.superRare) {
-      return [];
-    }
-
-    const unitValue = this.coinSellValue("superRare");
-    const amount = this.prizeWheelQuantityForTarget(unitValue, targetValue, lane);
-    const value = this.coinSellValue("superRare", amount);
-    return [{
-      key: `superRare:${amount}`,
-      value,
-      segment: {
-        kind: "superRare",
-        label: `SR${formatNumber(amount)}`,
-        resultLabel: `SR${formatNumber(amount)}`,
-        resultMarketLabel: `(Worth C${formatNumber(coinWealthValue.superRare * amount)})`,
-        iconTextureKey: prizeWheelIconTextureKeys.superRare,
-        color: 0x7d73dd,
-        superRareAmount: amount
-      }
-    }];
-  }
-
-  private prizeWheelRareFishCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
-    return this.prizeWheelFishPrizePool()
-      .map((fishType) => this.prizeWheelFishCandidate(fishType))
-      .filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane))
-      .sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))
-      .slice(0, 4);
-  }
-
-  private prizeWheelFishCandidateForTarget(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate {
-    const candidates = this.prizeWheelFishPrizePool().map((fishType) => this.prizeWheelFishCandidate(fishType));
-    const fittingCandidates = candidates.filter((candidate) => this.prizeWheelValueMatchesLane(candidate.value, lane));
-    const saneCandidates = candidates.filter((candidate) => candidate.value <= Math.max(1, Math.ceil(this.prizeMachine.selectedBetAmount * 1.5)));
-    const pool = fittingCandidates.length > 0
-      ? fittingCandidates
-      : saneCandidates.length > 0
-        ? saneCandidates
-        : candidates;
-    return [...pool].sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))[0] ?? this.prizeWheelFishCandidate(fishTypes[0]);
-  }
-
-  private prizeWheelFishCandidate(fishType: FishType): PrizeSegmentCandidate {
-    const label = fishType.rarity === "common" ? "C Fish" : fishType.rarity === "rare" ? "R Fish" : "SR Fish";
-    const value = this.storedFishSellValue(fishType);
-    return {
-      key: `rareFish:${fishType.id}`,
-      value,
-      segment: {
-        kind: "rareFish",
-        label,
-        iconTextureKey: this.textures.exists(`fish-${fishType.id}`) ? `fish-${fishType.id}` : prizeWheelIconTextureKeys.fish,
-        color: 0xf28f6b,
-        resultLabel: fishType.name,
-        resultMarketLabel: `(Worth C${formatNumber(this.priceWealth(fishType.price))})`,
-        fishTypeId: fishType.id
-      }
-    };
-  }
-
-  private prizeWheelFishPrizePool(): FishType[] {
-    const ownedFishIds = new Set([
-      ...this.fish.map((fish) => fish.type.id),
-      ...[...this.fishInventory.entries()].filter(([, count]) => count > 0).map(([fishTypeId]) => fishTypeId)
-    ]);
-    const rarityPool = this.prizeMachine.selectedBetAmount < coinWealthValue.rare
-      ? fishTypes.filter((fishType) => fishType.rarity === "common")
-      : fishTypes.filter((fishType) => fishType.rarity !== "common");
-    const basePool = rarityPool.length > 0 ? rarityPool : fishTypes;
-    const unowned = basePool.filter((fishType) => !ownedFishIds.has(fishType.id));
-    return unowned.length > 0 ? unowned : basePool;
+  private createPrizeWheelSegments(): PrizeWheelSegment[] {
+    return this.createPrizeWheelPlanner().createSegments();
   }
 
   private ensurePrizeWheelFishTexturesLoaded(): void {
-    this.prizeWheelFishPrizePool()
+    this.createPrizeWheelPlanner()
+      .fishPrizePool()
       .slice(0, 8)
       .forEach((fishType) => this.ensureFishTexturesLoaded(fishType));
-  }
-
-  private prizeWheelQuantityForTarget(unitValue: number, targetValue: number, lane: "loss" | "win"): number {
-    const safeUnitValue = Math.max(1, unitValue);
-    const estimatedQuantity = Math.max(1, Math.round(targetValue / safeUnitValue));
-    const betAmount = this.prizeMachine.selectedBetAmount;
-    const quantities = Array.from({ length: 9 }, (_, offset) => Math.max(1, estimatedQuantity - 4 + offset));
-    const sorted = [...new Set(quantities)].sort((first, second) => {
-      const firstValue = first * safeUnitValue;
-      const secondValue = second * safeUnitValue;
-      const firstValid = this.prizeWheelValueMatchesLane(firstValue, lane, betAmount) ? 0 : 1;
-      const secondValid = this.prizeWheelValueMatchesLane(secondValue, lane, betAmount) ? 0 : 1;
-      return firstValid - secondValid || Math.abs(firstValue - targetValue) - Math.abs(secondValue - targetValue);
-    });
-    return sorted[0] ?? estimatedQuantity;
-  }
-
-  private prizeWheelValueMatchesLane(value: number, lane: "loss" | "win", betAmount = this.prizeMachine.selectedBetAmount): boolean {
-    const safeBet = Math.max(1, betAmount);
-    if (lane === "loss") {
-      return value >= Math.max(1, Math.floor(safeBet * 0.5)) && value < safeBet;
-    }
-    return value > safeBet && value <= Math.max(safeBet + 1, Math.ceil(safeBet * 1.5));
-  }
-
-  private choosePrizeWheelSegmentCandidate(
-    candidates: PrizeSegmentCandidate[],
-    targetValue: number,
-    slotIndex: number,
-    usedKeys: Set<string>
-  ): PrizeSegmentCandidate {
-    const preferredKinds: PrizeSpinPrize[] = ["common", "food", "decoration", "food", "common", "rare", "decoration", "food", "rare", "food", "rareFish", "superRare"];
-    const unusedCandidates = candidates.filter((candidate) => !usedKeys.has(candidate.key));
-    const availableCandidates = unusedCandidates.length > 0 ? unusedCandidates : candidates;
-    const preferredKind = preferredKinds[slotIndex % preferredKinds.length];
-    const preferredCandidates = availableCandidates.filter((candidate) => candidate.segment.kind === preferredKind);
-    const pool = preferredCandidates.length > 0 ? preferredCandidates : availableCandidates;
-    return [...pool].sort((first, second) => Math.abs(first.value - targetValue) - Math.abs(second.value - targetValue))[0] ?? candidates[0];
-  }
-
-  private choosePrizeMachinePreparedReward(segments: PrizeWheelSegment[]): PreparedPrizeMachineReward {
-    const candidates = segments.map((segment, segmentIndex) => {
-      const reward = this.preparePrizeMachineSegmentReward(segment, segmentIndex);
-      return {
-        reward,
-        value: this.prizeMachineRewardResaleValue(reward),
-        key: this.prizeMachineRewardKey(reward)
-      };
-    });
-    const recentPrizeKeys = new Set(this.prizeMachine.recentPrizeKeys);
-    const filteredCandidates = this.filterPrizeRepeatCandidates(candidates, recentPrizeKeys);
-    return Phaser.Utils.Array.GetRandom(filteredCandidates.length > 0 ? filteredCandidates : candidates)?.reward ?? { kind: "common", amount: 10, segmentIndex: 0 };
-  }
-
-  private filterPrizeRepeatCandidates<T extends { key: string }>(candidates: T[], recentPrizeKeys: Set<string>): T[] {
-    const filtered = candidates.filter((candidate) => !recentPrizeKeys.has(candidate.key));
-    return filtered.length >= 3 ? filtered : candidates;
-  }
-
-  private preparePrizeMachineSegmentReward(segment: PrizeWheelSegment, segmentIndex: number): PreparedPrizeMachineReward {
-    if (segment.kind === "rare") {
-      return { kind: "rare", amount: Math.max(1, segment.rareAmount ?? 1), segmentIndex };
-    }
-    if (segment.kind === "superRare") {
-      return { kind: "superRare", amount: Math.max(1, segment.superRareAmount ?? 1), segmentIndex };
-    }
-    if (segment.kind === "rareFish") {
-      const fishType = fishTypes.find((candidate) => candidate.id === segment.fishTypeId) ?? this.prizeRareFish;
-      return { kind: "rareFish", fishType, segmentIndex };
-    }
-    if (segment.kind === "premiumCommon") {
-      return { kind: "premiumCommon", amount: segment.commonAmount ?? 500, segmentIndex };
-    }
-    if (segment.kind === "food") {
-      const foodType = foodTypes.find((candidate) => candidate.id === segment.foodTypeId) ?? basicFood;
-      return { kind: "food", foodType, quantity: Math.max(1, segment.foodQuantity ?? 1), segmentIndex };
-    }
-    if (segment.kind === "decoration") {
-      const decorationType = decorationTypes.find((candidate) => candidate.id === segment.decorationTypeId) ?? decorationTypes[0];
-      return {
-        kind: "decoration",
-        decorationType,
-        size: this.sanitizeDecorationSize(segment.decorationSize),
-        segmentIndex
-      };
-    }
-    return { kind: "common", amount: segment.commonAmount ?? 10, segmentIndex };
-  }
-
-  private prizeMachineRewardResaleValue(reward: PreparedPrizeMachineReward): number {
-    if (reward.kind === "rare") {
-      return this.coinSellValue("rare", reward.amount);
-    }
-    if (reward.kind === "superRare") {
-      return this.coinSellValue("superRare", reward.amount);
-    }
-    if (reward.kind === "rareFish") {
-      return this.storedFishSellValue(reward.fishType);
-    }
-    if (reward.kind === "premiumCommon" || reward.kind === "common") {
-      return reward.amount;
-    }
-    if (reward.kind === "decoration") {
-      return this.decorationSellValue(reward.decorationType, reward.size, 1);
-    }
-    return this.foodSellValue(reward.foodType, (this.isCalorieTrackedFood(reward.foodType.id) ? reward.foodType.calories : 1) * reward.quantity);
-  }
-
-  private prizeMachineRewardKey(reward: PreparedPrizeMachineReward): string {
-    if (reward.kind === "food") {
-      return `food:${reward.foodType.id}:${reward.quantity}`;
-    }
-    if (reward.kind === "common" || reward.kind === "premiumCommon") {
-      return `${reward.kind}:C${reward.amount}`;
-    }
-    if (reward.kind === "rareFish") {
-      return `rareFish:${reward.fishType.id}`;
-    }
-    if (reward.kind === "decoration") {
-      return `decoration:${reward.decorationType.id}:${reward.size}`;
-    }
-    return `${reward.kind}:${reward.amount}`;
   }
 
   private awardPrizeMachinePreparedReward(reward: PreparedPrizeMachineReward): void {
@@ -5615,13 +5290,6 @@ export class AquariumScene extends Phaser.Scene {
     const unowned = rarityPool.filter((fishType) => !ownedFishIds.has(fishType.id));
     const pool = unowned.length > 0 ? unowned : rarityPool;
     return Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : fishTypes);
-  }
-
-  private prizeWheelFoodLabel(foodType: FoodType): string {
-    return foodType.name
-      .replace(/\s+(Food|Flakes|Bites|Dust|Treat)\b/gi, "")
-      .replace(/\s+Small\b/gi, "")
-      .trim();
   }
 
   private rewardedAdOptions(): RewardedAdOption[] {
@@ -5925,7 +5593,7 @@ export class AquariumScene extends Phaser.Scene {
     return tankStatesRecordModel(
       this.sortedOwnedTankLevels(),
       (level) => this.ensureTankState(level),
-      (_level, state) => this.rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0)
+      (_level, state) => rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0)
     );
   }
 
@@ -6189,7 +5857,7 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    const pendingTankDeliveries = this.pendingFishBubbles.filter((pending) => pending.destination === "tank").length;
+    const pendingTankDeliveries = this.fishDeliveryBubbles?.bubbles.filter((pending) => pending.destination === "tank").length ?? 0;
     const tankSlotsAvailable = Math.max(0, this.maxFishCapacityForLevel() - this.activeFish().length - pendingTankDeliveries);
     const tankDeliveryQuantity = Math.min(buyQuantity, tankSlotsAvailable);
     const inventoryQuantity = buyQuantity - tankDeliveryQuantity;
@@ -7505,11 +7173,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private spawnFishInventoryBubble(fishType: FishType, quantity = 1): void {
-    this.spawnFishBubble({
-      destination: "inventory",
-      fishType,
-      quantity
-    });
+    this.fishBubbleManager().spawnInventory(fishType, quantity);
   }
 
   private spawnFishTankBubble(
@@ -7518,148 +7182,23 @@ export class AquariumScene extends Phaser.Scene {
     y: number,
     options: { ageSeconds?: number; exchangeTarget?: Fish; consumesInventory?: boolean } = {}
   ): void {
-    this.spawnFishBubble({
-      destination: "tank",
-      fishType,
-      quantity: 1,
-      x,
-      y,
-      ageSeconds: options.ageSeconds,
-      exchangeTarget: options.exchangeTarget,
-      consumesInventory: options.consumesInventory
-    });
-  }
-
-  private spawnFishBubble(options: {
-    destination: PendingFishBubble["destination"];
-    fishType: FishType;
-    quantity?: number;
-    x?: number;
-    y?: number;
-    ageSeconds?: number;
-    exchangeTarget?: Fish;
-    consumesInventory?: boolean;
-  }): void {
-    const fishType = options.fishType;
-    const quantity = Math.max(1, Math.floor(options.quantity ?? 1));
-    const staticTextureKey = `fish-${fishType.id}`;
-    const textureReady = this.textures.exists(staticTextureKey);
-    const textureKey = textureReady ? staticTextureKey : "fish-base";
-    const radius = 34;
-    const x = options.x ?? Phaser.Math.Between(Math.round(tankBounds.left + 62), Math.round(tankBounds.right - 62));
-    const y = options.y ?? Phaser.Math.Between(Math.round(tankBounds.top + 82), Math.round(tankBounds.bottom - 116));
-    const bubble = this.add.circle(0, 0, radius, 0xbfeeff, 0.22)
-      .setStrokeStyle(3, 0xf4feff, 0.74);
-    const shine = this.add.circle(-12, -13, 7, 0xffffff, 0.38);
-    const fishImage = this.add.image(0, 3, textureKey)
-      .setDisplaySize(54, 34)
-      .setAlpha(textureReady ? 0.94 : 0);
-    const children: Phaser.GameObjects.GameObject[] = [bubble, shine, fishImage];
-    const quantityText = quantity > 1
-      ? this.add.text(17, 18, `x${formatNumber(quantity)}`, {
-          fontFamily: gameFontFamily,
-          fontSize: "13px",
-          color: "#ffffff",
-          fontStyle: "900",
-          stroke: "#063557",
-          strokeThickness: 4
-        }).setOrigin(0.5)
-      : undefined;
-    if (quantityText) {
-      children.push(quantityText);
-    }
-
-    const hitRadius = radius * 1.85;
-    const container = this.add.container(x, y, children)
-      .setDepth(30)
-      .setSize(hitRadius * 2, hitRadius * 2)
-      .setInteractive(new Phaser.Geom.Circle(0, 0, hitRadius), Phaser.Geom.Circle.Contains);
-    container.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      this.popFishInventoryBubble(pending);
-    });
-    this.tankLayer.add(container);
-
-    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-    const speed = Phaser.Math.FloatBetween(10, 18);
-    const pending: PendingFishBubble = {
-      destination: options.destination,
-      type: fishType,
-      quantity,
-      consumesInventory: options.consumesInventory,
-      ageSeconds: options.ageSeconds,
-      exchangeTarget: options.exchangeTarget,
-      container,
-      bubble,
-      fishImage,
-      quantityText,
-      velocity: new Phaser.Math.Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed),
-      bobOffset: Phaser.Math.FloatBetween(0, Math.PI * 2)
-    };
-    this.pendingFishBubbles.push(pending);
-    this.ensureFishTexturesLoaded(fishType, () => {
-      if (!fishImage.active) {
-        return;
-      }
-      fishImage.setTexture(staticTextureKey).setDisplaySize(54, 34).setAlpha(0.94);
-    });
-
-    this.tweens.add({
-      targets: container,
-      scaleX: { from: 0.68, to: 1 },
-      scaleY: { from: 0.68, to: 1 },
-      alpha: { from: 0.1, to: 1 },
-      duration: 280,
-      ease: "Back.Out"
-    });
-  }
-
-  private updatePendingFishBubbles(deltaSeconds: number): void {
-    for (const pending of this.pendingFishBubbles) {
-      const container = pending.container;
-      const bob = Math.sin(this.time.now * 0.0014 + pending.bobOffset) * 8;
-      container.x += pending.velocity.x * deltaSeconds;
-      container.y += pending.velocity.y * deltaSeconds;
-      if (container.x < tankBounds.left + 44 || container.x > tankBounds.right - 44) {
-        pending.velocity.x *= -1;
-        container.x = Phaser.Math.Clamp(container.x, tankBounds.left + 44, tankBounds.right - 44);
-      }
-      if (container.y < tankBounds.top + 58 || container.y > tankBounds.bottom - 94) {
-        pending.velocity.y *= -1;
-        container.y = Phaser.Math.Clamp(container.y, tankBounds.top + 58, tankBounds.bottom - 94);
-      }
-      pending.fishImage.y = 3 + bob * 0.08;
-      pending.bubble.setAlpha(Phaser.Math.Clamp(0.22 + Math.sin(this.time.now * 0.002 + pending.bobOffset) * 0.05, 0.16, 0.3));
-    }
+    this.fishBubbleManager().spawnTank(fishType, x, y, options);
   }
 
   private pendingFishBubbleAtPointer(designX: number, designY: number): PendingFishBubble | undefined {
-    if (this.activeScreen !== "tank" || this.pendingFishBubbles.length === 0) {
+    if (this.activeScreen !== "tank") {
       return undefined;
     }
 
     const tankPoint = this.screenToTankPoint(designX, designY);
-    const hitRadius = 64 / Math.max(0.01, this.tankViewScaleForLevel());
-    let nearestBubble: PendingFishBubble | undefined;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    for (const pending of this.pendingFishBubbles) {
-      const distance = Phaser.Math.Distance.Between(tankPoint.x, tankPoint.y, pending.container.x, pending.container.y);
-      if (distance <= hitRadius && distance < nearestDistance) {
-        nearestBubble = pending;
-        nearestDistance = distance;
-      }
-    }
-
-    return nearestBubble;
+    return this.fishDeliveryBubbles?.atTankPoint(tankPoint.x, tankPoint.y, this.tankViewScaleForLevel());
   }
 
   private popFishInventoryBubble(pending: PendingFishBubble): void {
-    const index = this.pendingFishBubbles.indexOf(pending);
-    if (index >= 0) {
-      this.pendingFishBubbles.splice(index, 1);
-    }
-    pending.container.disableInteractive();
+    this.fishDeliveryBubbles?.pop(pending);
+  }
+
+  private handleFishBubblePop(pending: PendingFishBubble): void {
     if (pending.destination === "tank") {
       this.releaseFishTankBubble(pending);
     } else {
@@ -7670,15 +7209,6 @@ export class AquariumScene extends Phaser.Scene {
         "#d7f4ff"
       );
     }
-    this.tweens.add({
-      targets: pending.container,
-      scaleX: 1.38,
-      scaleY: 1.38,
-      alpha: 0,
-      duration: 180,
-      ease: "Quad.Out",
-      onComplete: () => pending.container.destroy(true)
-    });
   }
 
   private releaseFishTankBubble(pending: PendingFishBubble): void {
@@ -7698,13 +7228,6 @@ export class AquariumScene extends Phaser.Scene {
     this.refreshUi();
     this.createFoodDock();
     this.saveNow();
-  }
-
-  private destroyPendingFishBubbles(): void {
-    for (const pending of this.pendingFishBubbles) {
-      pending.container.destroy(true);
-    }
-    this.pendingFishBubbles = [];
   }
 
   private randomFishPlacement(): Phaser.Math.Vector2 {
@@ -9231,32 +8754,9 @@ export class AquariumScene extends Phaser.Scene {
 
   private tankDisplayLevel(level = this.tankLevel): number {
     const state = this.ensureTankState(level);
-    const currentLevel = this.rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0);
+    const currentLevel = rawTankDisplayLevelFromProduction(state.fishProductionTotal ?? 0);
     state.maxDisplayLevel = Math.max(1, currentLevel);
     return state.maxDisplayLevel;
-  }
-
-  private rawTankDisplayLevelFromProduction(production: number): number {
-    const totalProduction = Math.max(0, Math.floor(production));
-    let level = 1;
-    let nextThreshold = baseFishProductionLevelThreshold;
-    while (totalProduction >= nextThreshold) {
-      level += 1;
-      nextThreshold *= 5;
-    }
-    return level;
-  }
-
-  private fishProductionThresholdForLevel(level: number): number {
-    const displayLevel = Math.max(1, Math.floor(level));
-    if (displayLevel <= 1) {
-      return 0;
-    }
-    return baseFishProductionLevelThreshold * Math.pow(5, displayLevel - 2);
-  }
-
-  private targetActiveHoursForDisplayLevel(level: number): number {
-    return Math.min(maxTargetActiveLevelHours, minTargetActiveLevelHours + (Math.max(1, Math.floor(level)) - 1) * 0.1);
   }
 
   private projectedActiveProductionPerMinute(): number {
@@ -9265,50 +8765,26 @@ export class AquariumScene extends Phaser.Scene {
       .reduce((total, fish) => total + fish.projectedProductionPerMinute(), 0);
   }
 
-  private targetProductionPerMinuteForLevel(level = this.tankDisplayLevel()): number {
-    const currentLevel = Math.max(1, Math.floor(level));
-    const currentThreshold = this.fishProductionThresholdForLevel(currentLevel);
-    const nextThreshold = this.fishProductionThresholdForLevel(currentLevel + 1);
-    const targetMinutes = this.targetActiveHoursForDisplayLevel(currentLevel) * 60;
-    return Math.max(1, (nextThreshold - currentThreshold) / Math.max(1, targetMinutes));
-  }
-
   private activeProductionPaceMultiplier(): number {
     const projectedPerMinute = this.projectedActiveProductionPerMinute();
     if (projectedPerMinute <= 0) {
       return 1;
     }
 
-    const targetPerMinute = this.targetProductionPerMinuteForLevel();
+    const targetPerMinute = targetProductionPerMinuteForLevel(this.tankDisplayLevel());
     return Phaser.Math.Clamp(targetPerMinute / (projectedPerMinute * coinComboMaxProductionMultiplier), 0.001, 4);
   }
 
-  private levelProgressToNext(level = this.tankDisplayLevel(), production = this.fishProductionTotal()): { level: number; ratio: number; percent: number } {
-    const currentLevel = Math.max(1, Math.floor(level));
-    const currentThreshold = this.fishProductionThresholdForLevel(currentLevel);
-    const nextThreshold = this.fishProductionThresholdForLevel(currentLevel + 1);
-    const ratio = Phaser.Math.Clamp(
-      (Math.max(0, production) - currentThreshold) / Math.max(1, nextThreshold - currentThreshold),
-      0,
-      1
-    );
-    return {
-      level: currentLevel,
-      ratio,
-      percent: Math.floor(ratio * 100)
-    };
-  }
-
   private awardLevelCompletionRewards(level: number, previousProduction: number, nextProduction: number): boolean {
-    const previousLevel = this.rawTankDisplayLevelFromProduction(previousProduction);
-    const nextLevel = this.rawTankDisplayLevelFromProduction(nextProduction);
+    const previousLevel = rawTankDisplayLevelFromProduction(previousProduction);
+    const nextLevel = rawTankDisplayLevelFromProduction(nextProduction);
     if (nextLevel <= previousLevel) {
       return false;
     }
 
     const rewardFish: FishType[] = [];
     for (let completedLevel = previousLevel + 1; completedLevel <= nextLevel; completedLevel += 1) {
-      const completedThreshold = this.fishProductionThresholdForLevel(completedLevel);
+      const completedThreshold = fishProductionThresholdForLevel(completedLevel);
       rewardFish.push(this.levelRewardFishFor(completedLevel, Math.max(1, Math.floor(completedThreshold * 0.3))));
     }
 
@@ -11256,20 +10732,20 @@ export class AquariumScene extends Phaser.Scene {
           return;
         }
         if (this.getFishInventory(fishType.id) <= 0) {
-          const pendingTankBubble = this.pendingFishBubbles.find((pending) => pending.destination === "tank" && pending.type.id === fishType.id);
+          const pendingTankBubble = this.fishDeliveryBubbles?.bubbles.find((pending) => pending.destination === "tank" && pending.type.id === fishType.id);
           if (pendingTankBubble) {
             this.popFishInventoryBubble(pendingTankBubble);
           }
           return;
         }
 
-        const previousBubbleCount = this.pendingFishBubbles.length;
+        const previousBubbleCount = this.fishDeliveryBubbles?.bubbles.length ?? 0;
         this.placeFishWithCompatibility(
           fishType,
           Phaser.Math.Clamp(x, tankBounds.left + 28, tankBounds.right - 28),
           Phaser.Math.Clamp(y, tankBounds.top + 26, tankBounds.bottom - 26)
         );
-        const pendingTankBubble = this.pendingFishBubbles
+        const pendingTankBubble = this.fishDeliveryBubbles?.bubbles
           .slice(previousBubbleCount)
           .find((pending) => pending.destination === "tank" && pending.type.id === fishType.id);
         if (pendingTankBubble) {
