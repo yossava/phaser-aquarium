@@ -64,10 +64,10 @@ export class CoinDrop {
   public shimmer: Phaser.GameObjects.Sprite;
   public hitZone: Phaser.GameObjects.Zone;
   public valueText: Phaser.GameObjects.Text;
-  public readonly bottomY: number;
+  public bottomY: number;
   public readonly visual: CoinVisual;
   public readonly sinkSpeed: number;
-  public readonly landingX: number;
+  public landingX: number;
   public hasTouchedSand: boolean;
   private tankViewScale = 1;
   private shimmerTime = Phaser.Math.FloatBetween(0, 1.8);
@@ -150,6 +150,21 @@ export class CoinDrop {
     this.updateShimmer(0);
     this.valueText.setFontSize(`${(coinValueFontSize * (this.isMega ? 0.82 : 1)) / this.tankViewScale}px`);
     this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + this.valueTextOffset(), tankBounds.bottom - 8));
+  }
+
+  public fitWithinVisibleBounds(bounds: Phaser.Geom.Rectangle, maxBottomY: number): void {
+    const horizontalPadding = coinTapTargetSize * 0.5 / this.tankViewScale;
+    const minX = Math.max(tankBounds.left + horizontalPadding, bounds.left + horizontalPadding);
+    const maxX = Math.min(tankBounds.right - horizontalPadding, bounds.right - horizontalPadding);
+    const fallbackX = Phaser.Math.Clamp(bounds.centerX || tankBounds.centerX, tankBounds.left + horizontalPadding, tankBounds.right - horizontalPadding);
+    const clampX = (x: number) => (minX <= maxX ? Phaser.Math.Clamp(x, minX, maxX) : fallbackX);
+
+    this.landingX = clampX(this.landingX);
+    this.bottomY = Phaser.Math.Clamp(this.bottomY, tankBounds.top + 80, maxBottomY);
+    this.sprite.setPosition(clampX(this.sprite.x), Phaser.Math.Clamp(this.sprite.y, bounds.top + 24, this.bottomY));
+    this.hitZone.setPosition(this.sprite.x, this.sprite.y);
+    this.updateShimmer(0);
+    this.valueText.setPosition(this.sprite.x, Math.min(this.sprite.y + this.valueTextOffset(), bounds.bottom - 8));
   }
 
   public get atBottom(): boolean {

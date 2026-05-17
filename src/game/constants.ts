@@ -39,3 +39,22 @@ export function setTankWorldScale(scale: number): void {
   const worldHeight = gameHeight / safeScale;
   tankBounds.setTo((gameWidth - worldWidth) / 2, (gameHeight - worldHeight) / 2, worldWidth, worldHeight);
 }
+
+export function setTankViewportBoundsFromCanvas(canvas: HTMLCanvasElement): void {
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    tankViewportBounds.setTo(0, 0, gameWidth, gameHeight);
+    return;
+  }
+
+  const viewportLeft = 0;
+  const viewportTop = 0;
+  const viewportRight = window.innerWidth;
+  const viewportBottom = window.innerHeight;
+  const left = Phaser.Math.Clamp(((viewportLeft - rect.left) / rect.width) * gameWidth, 0, gameWidth);
+  const top = Phaser.Math.Clamp(((viewportTop - rect.top) / rect.height) * gameHeight, 0, gameHeight);
+  const right = Phaser.Math.Clamp(((viewportRight - rect.left) / rect.width) * gameWidth, 0, gameWidth);
+  const bottom = Phaser.Math.Clamp(((viewportBottom - rect.top) / rect.height) * gameHeight, 0, gameHeight);
+
+  tankViewportBounds.setTo(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
+}

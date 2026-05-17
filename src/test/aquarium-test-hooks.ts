@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
-import { tankBounds } from "../game/constants";
+import { tankBounds, tankViewportBounds } from "../game/constants";
 import { foodDispenserInventoryKey } from "../game/dispenser-system";
 import { earn, formatNumber } from "../game/economy";
 import { clearSave, loadGame, mapToRecord } from "../game/save";
@@ -78,6 +78,14 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
         width: tankBounds.width,
         height: tankBounds.height
       },
+      tankVisibleBounds: {
+        left: tankViewportBounds.left,
+        top: tankViewportBounds.top,
+        right: tankViewportBounds.right,
+        bottom: tankViewportBounds.bottom,
+        width: tankViewportBounds.width,
+        height: tankViewportBounds.height
+      },
       tankScreenEdges: {
         left: scene.tankToScreenPoint(tankBounds.left, tankBounds.top).x,
         top: scene.tankToScreenPoint(tankBounds.left, tankBounds.top).y,
@@ -111,6 +119,12 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
         alpha: scene.dirtyTankOverlay?.alpha ?? 0,
         displayWidth: scene.dirtyTankOverlay?.displayWidth ?? 0,
         displayHeight: scene.dirtyTankOverlay?.displayHeight ?? 0
+      },
+      tankFloor: {
+        x: scene.tankSand?.x ?? 0,
+        y: scene.tankSand?.y ?? 0,
+        displayWidth: scene.tankSand?.displayWidth ?? 0,
+        displayHeight: scene.tankSand?.displayHeight ?? 0
       },
       numberFormatSamples: {
         small: formatNumber(999),

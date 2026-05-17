@@ -1,6 +1,16 @@
 import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../../data/content";
-import { gameHeight, gameWidth, maxRenderScale, setTankWorldScale, tankBounds, tankViewportBounds, toastX, toastY } from "../../game/constants";
+import {
+  gameHeight,
+  gameWidth,
+  maxRenderScale,
+  setTankViewportBoundsFromCanvas,
+  setTankWorldScale,
+  tankBounds,
+  tankViewportBounds,
+  toastX,
+  toastY
+} from "../../game/constants";
 import {
   clearStoredDecorationInventory as clearStoredDecorationInventoryModel,
   consumeStoredDecoration as consumeStoredDecorationModel,
@@ -561,6 +571,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private makeupDecorScrollLeft = 0;
   private draggedFish?: Fish;
   private nativeCanvasInputCleanup?: () => void;
+  private viewportResizeCleanup?: () => void;
   private nativeDraggedFish?: Fish;
   private nativeDraggedDecoration?: PlacedDecoration;
   private phaserDraggedDecoration?: PlacedDecoration;
@@ -592,6 +603,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   public create(): void {
+    this.refreshVisibleTankViewport();
     this.configureCameraForHighDpi();
     createFallbackTextures(this, decorationTypes, helperCreatureTypes);
     this.createFishAnimations();
@@ -616,6 +628,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.updateMakeupDecorationDrag(pointer));
     this.input.on("pointerup", () => this.endMakeupDecorationDrag());
     this.input.on("pointerupoutside", () => this.endMakeupDecorationDrag());
+    this.installViewportResizeHandling();
     this.installNativeCanvasInputFallback();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyHtmlGameInterface());
 
@@ -989,9 +1002,46 @@ export class AquariumSceneCore extends Phaser.Scene {
     setTankWorldScale(scale);
     this.tankLayer.setScale(1);
     this.tankLayer.setPosition(0, 0);
+    this.refreshVisibleTankViewport();
     this.layoutTankBackground();
     this.layoutTankFloor();
     this.refreshTankScaledDropSizes();
+  }
+
+  private installViewportResizeHandling(): void {
+    if (this.viewportResizeCleanup) {
+      return;
+    }
+
+    const handleResize = () => this.time.delayedCall(0, () => this.handleViewportResize());
+    window.addEventListener("resize", handleResize);
+    window.visualViewport?.addEventListener("resize", handleResize);
+    window.visualViewport?.addEventListener("scroll", handleResize);
+    this.scale.on(Phaser.Scale.Events.RESIZE, handleResize);
+    this.viewportResizeCleanup = () => {
+      window.removeEventListener("resize", handleResize);
+      window.visualViewport?.removeEventListener("resize", handleResize);
+      window.visualViewport?.removeEventListener("scroll", handleResize);
+      this.scale.off(Phaser.Scale.Events.RESIZE, handleResize);
+    };
+  }
+
+  private handleViewportResize(): void {
+    this.refreshVisibleTankViewport();
+    this.configureCameraForHighDpi();
+    this.layoutTankBackground();
+    this.layoutTankFloor();
+    this.updateDirtyTankOverlay();
+    this.syncFoodDockPosition();
+    this.syncFoodDispenserPosition();
+    this.syncCoinMagnetPosition();
+    this.syncAutoFoodBuyerPosition();
+    this.fitCoinDropsToVisibleViewport();
+    this.refreshTankScaledDropSizes();
+  }
+
+  private refreshVisibleTankViewport(): void {
+    setTankViewportBoundsFromCanvas(this.game.canvas);
   }
 
   private layoutTankBackground(): void {
@@ -1094,20 +1144,15 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private visibleTankBottomDesignY(): number {
-    const rect = this.game.canvas.getBoundingClientRect();
-    if (rect.height <= 0) {
-      return tankBounds.bottom;
-    }
-
-    const visibleBottom = ((window.innerHeight - rect.top) / rect.height) * gameHeight;
-    return Phaser.Math.Clamp(visibleBottom, tankBounds.top, tankBounds.bottom);
+    this.refreshVisibleTankViewport();
+    return Phaser.Math.Clamp(tankViewportBounds.bottom, tankBounds.top, tankBounds.bottom);
   }
 
   private screenToTankPoint(x: number, y: number): Phaser.Math.Vector2 {
     const scale = this.tankViewScaleForLevel();
     return new Phaser.Math.Vector2(
-      Phaser.Math.Clamp((x - this.tankLayer.x) / scale, tankBounds.left, tankBounds.right),
-      Phaser.Math.Clamp((y - this.tankLayer.y) / scale, tankBounds.top, tankBounds.bottom)
+      Phaser.Math.Clamp((x - this.tankLayer.x) / scale, tankViewportBounds.left, tankViewportBounds.right),
+      Phaser.Math.Clamp((y - this.tankLayer.y) / scale, tankViewportBounds.top, tankViewportBounds.bottom)
     );
   }
 
@@ -1129,6 +1174,11 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.foods.forEach((food) => food.setWorldScaleCompensation(scale));
     this.coinDrops.forEach((coin) => coin.setWorldScaleCompensation(scale));
     this.pendingHelperCreatureDrops.forEach((drop) => this.fitPendingHelperCreatureDrop(drop, scale));
+  }
+
+  private fitCoinDropsToVisibleViewport(): void {
+    const maxBottomY = this.visibleCoinBottomDesignY();
+    this.coinDrops.forEach((coin) => coin.fitWithinVisibleBounds(tankViewportBounds, maxBottomY));
   }
 
   private createScreenNav(): void {
@@ -1750,6 +1800,8 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private destroyHtmlGameInterface(): void {
+    this.viewportResizeCleanup?.();
+    this.viewportResizeCleanup = undefined;
     this.nativeCanvasInputCleanup?.();
     this.nativeCanvasInputCleanup = undefined;
     this.cancelPendingFusion();
@@ -4259,14 +4311,31 @@ export class AquariumSceneCore extends Phaser.Scene {
     isMega = false,
     options: CoinDropOptions = {}
   ): CoinDrop {
+    const visibleBounds = tankViewportBounds;
+    const horizontalPadding = 34 / Math.max(0.01, this.tankViewScaleForLevel());
+    const minVisibleX = Math.max(tankBounds.left + horizontalPadding, visibleBounds.left + horizontalPadding);
+    const maxVisibleX = Math.min(tankBounds.right - horizontalPadding, visibleBounds.right - horizontalPadding);
+    const fallbackX = Phaser.Math.Clamp(visibleBounds.centerX || tankBounds.centerX, tankBounds.left + horizontalPadding, tankBounds.right - horizontalPadding);
+    const clampedVisibleX = (targetX: number) => (minVisibleX <= maxVisibleX ? Phaser.Math.Clamp(targetX, minVisibleX, maxVisibleX) : fallbackX);
+    const landingX = clampedVisibleX(options.landingX ?? x);
+    const maxBottomY = this.visibleCoinBottomDesignY();
+    const bottomBand = Math.round(gameWidth * 0.08);
+    const bottomY = Phaser.Math.Clamp(
+      options.bottomY ?? Phaser.Math.Between(Math.round(maxBottomY - bottomBand), Math.round(maxBottomY)),
+      tankBounds.top + 80,
+      maxBottomY
+    );
+    const visibleX = clampedVisibleX(x);
+    const visibleY = Phaser.Math.Clamp(y, visibleBounds.top + 24, maxBottomY);
+
     return createCoinDropModel({
       scene: this,
-      x,
-      y,
+      x: visibleX,
+      y: visibleY,
       value,
       coinType,
       isMega,
-      options,
+      options: { ...options, landingX, bottomY },
       tankViewScale: this.tankViewScaleForLevel(),
       tankLayer: this.tankLayer,
       coinDrops: this.coinDrops,
@@ -4276,6 +4345,13 @@ export class AquariumSceneCore extends Phaser.Scene {
       collectCoin: (coin, automated) => this.collectCoin(coin, automated),
       setCoinDropVisible: (coin, visible) => this.setCoinDropVisible(coin, visible)
     });
+  }
+
+  private visibleCoinBottomDesignY(): number {
+    this.refreshVisibleTankViewport();
+    const scale = Math.max(0.01, this.tankViewScaleForLevel());
+    const visualPadding = Math.max(34, 46 / scale);
+    return Phaser.Math.Clamp(tankViewportBounds.bottom - visualPadding, tankBounds.top + 80, tankBounds.bottom - 8);
   }
 
   private setCoinDropVisible(coin: CoinDrop, visible: boolean): void {

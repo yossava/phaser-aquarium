@@ -37,6 +37,7 @@ export type AquariumTestSnapshot = {
   fishCatalogMaxLevel: number;
   tankViewScale: number;
   tankWorldBounds: { left: number; top: number; right: number; bottom: number; width: number; height: number };
+  tankVisibleBounds: { left: number; top: number; right: number; bottom: number; width: number; height: number };
   tankScreenEdges: { left: number; top: number; right: number; bottom: number };
   totalWealth: number;
   tankWorth: number;
@@ -70,6 +71,7 @@ export type AquariumTestSnapshot = {
     displayWidth: number;
     displayHeight: number;
   };
+  tankFloor: { x: number; y: number; displayWidth: number; displayHeight: number };
   nextTankUpgradePrice?: Price;
   numberFormatSamples: {
     small: string;
