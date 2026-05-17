@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import { tankBounds } from "../game/constants";
 import { creatureFoodTypeId } from "../game/food-system";
 import type { CoinDrop } from "./CoinDrop";
-import type { Fish } from "./Fish";
 import type { FoodPellet } from "./FoodPellet";
 import type { HelperCreatureType } from "../types/mechanics";
 
@@ -31,7 +30,7 @@ export class HelperCreature {
   private wanderCooldown = 0;
 
   public constructor(
-    private readonly scene: Phaser.Scene,
+    scene: Phaser.Scene,
     public readonly type: HelperCreatureType,
     x: number,
     y = helperBottomY(),
@@ -55,7 +54,7 @@ export class HelperCreature {
     this.sprite.setVisible(visible);
   }
 
-  public update(deltaSeconds: number, coins: CoinDrop[], foods: FoodPellet[], fish: Fish[] = []): HelperCreatureAction | undefined {
+  public update(deltaSeconds: number, coins: CoinDrop[], foods: FoodPellet[]): HelperCreatureAction | undefined {
     this.coinCooldown = Math.max(0, this.coinCooldown - deltaSeconds);
     this.cleanupCooldown = Math.max(0, this.cleanupCooldown - deltaSeconds);
     this.tankCleanCooldown = Math.max(0, this.tankCleanCooldown - deltaSeconds);

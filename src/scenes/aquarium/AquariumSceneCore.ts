@@ -5123,9 +5123,9 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.aquariumFoodController().foodDispenserThrowVelocity(outlet);
   }
 
-  private updateHelperCreatures(deltaSeconds: number, tankFish = this.activeFish(), activeHelpers = this.activeHelperCreatures()): void {
+  private updateHelperCreatures(deltaSeconds: number, activeHelpers = this.activeHelperCreatures()): void {
     for (const helper of activeHelpers) {
-      const action = helper.update(deltaSeconds, this.coinDrops, this.foods, tankFish);
+      const action = helper.update(deltaSeconds, this.coinDrops, this.foods);
 
       if (!action) {
         continue;

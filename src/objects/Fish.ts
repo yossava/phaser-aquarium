@@ -39,8 +39,6 @@ const sixMonthTankWidthRatio = 0.39;
 const readyToMoveTankWidthRatio = 0.5;
 const veryBigTankWidthRatio = 0.78;
 const maximumFishScreenWidthRatio = 0.7;
-const minimumGrowthWidthRatio = maximumFishScreenWidthRatio;
-const maximumGrowthWidthRatio = maximumFishScreenWidthRatio;
 const statusEmojiDurationMs = 5000;
 const statusEmojiCooldownMs = 30_000;
 const happyEmojiDurationMs = statusEmojiDurationMs;
@@ -1629,10 +1627,6 @@ export class Fish {
     this.updateStatusBars(true);
   }
 
-  private currentMoodRatio(): number {
-    return Phaser.Math.Clamp(this.health / 100, 0, 1);
-  }
-
   private currentFullnessRatio(): number {
     return Phaser.Math.Clamp(1 - this.hunger / 100, 0, 1);
   }
@@ -1664,10 +1658,6 @@ export class Fish {
     if (this.scene.anims.exists(animationKey)) {
       this.sprite.play(animationKey);
     }
-  }
-
-  private isFullyGrown(): boolean {
-    return this.currentVisualWorldScale() >= this.tankGrowthScaleCap() - 0.01;
   }
 
   private updateTailMark(): void {
@@ -1712,15 +1702,6 @@ export class Fish {
     this.tailMark.lineBetween(tailJoinX, 0, tailEdgeX, tailWag);
   }
 
-  private desaturatedTint(tint: number, amount: number): number {
-    const red = (tint >> 16) & 0xff;
-    const green = (tint >> 8) & 0xff;
-    const blue = tint & 0xff;
-    const gray = red * 0.3 + green * 0.59 + blue * 0.11;
-    const mix = (channel: number) => Math.round(channel * (1 - amount) + gray * amount);
-    return Phaser.Display.Color.GetColor(mix(red), mix(green), mix(blue));
-  }
-
   private sickGreenTint(tint: number): number {
     const red = (tint >> 16) & 0xff;
     const green = (tint >> 8) & 0xff;
@@ -1732,18 +1713,4 @@ export class Fish {
     );
   }
 
-  private mixColor(from: number, to: number, amount: number): number {
-    const ratio = Phaser.Math.Clamp(amount, 0, 1);
-    const fromRed = (from >> 16) & 0xff;
-    const fromGreen = (from >> 8) & 0xff;
-    const fromBlue = from & 0xff;
-    const toRed = (to >> 16) & 0xff;
-    const toGreen = (to >> 8) & 0xff;
-    const toBlue = to & 0xff;
-    return Phaser.Display.Color.GetColor(
-      Math.round(Phaser.Math.Linear(fromRed, toRed, ratio)),
-      Math.round(Phaser.Math.Linear(fromGreen, toGreen, ratio)),
-      Math.round(Phaser.Math.Linear(fromBlue, toBlue, ratio))
-    );
-  }
 }

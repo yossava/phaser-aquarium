@@ -6,7 +6,7 @@ import type { PlacedDecoration } from "./tank-entities";
 import type { Fish } from "../objects/Fish";
 import type { HelperCreature } from "../objects/HelperCreature";
 import type { CoinDrop } from "../objects/CoinDrop";
-import type { CoinType, FoodTypeId, Wallet } from "../types/mechanics";
+import type { FoodTypeId, Wallet } from "../types/mechanics";
 
 export function savedCoinDrops(input: {
   coinDrops: CoinDrop[];

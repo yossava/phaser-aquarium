@@ -38,8 +38,7 @@ export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget):
   scene.dailyGoals = scene.normalizeDailyGoals(saved.dailyGoals);
   scene.prizeMachine = beginPrizeMachineSession(
     normalizePrizeMachineState(saved.prizeMachine),
-    scene.prizeMachineRuntimeSessionId,
-    Math.random
+    scene.prizeMachineRuntimeSessionId
   );
   restoreDecorations(scene, saved.decorations);
   restoreHelperCreatures(scene, saved.helperCreatures);

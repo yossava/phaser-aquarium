@@ -104,7 +104,7 @@ export class AquariumPrizeController {
   public openPrizeMachineArcade(): void {
     this.host.setActiveScreen("prize");
     this.host.setPlacementMode({ kind: "none" });
-    this.setPrizeMachine(beginPrizeMachineSession(this.prizeMachine(), this.host.runtimeSessionId, Math.random));
+    this.setPrizeMachine(beginPrizeMachineSession(this.prizeMachine(), this.host.runtimeSessionId));
     this.host.closeModal();
     this.host.hideStoreOverlay();
     this.host.hideHtmlPageOverlay();

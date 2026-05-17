@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import { tankViewportBounds } from "../game/constants";
 import type { PendingFishBubble } from "../game/fish-delivery-bubbles";
 import type { MakeupDecorationDraft } from "../game/makeup-mode";
-import type { PlacedDecoration } from "../game/tank-entities";
 import type { CoinDrop } from "../objects/CoinDrop";
 import type { Fish } from "../objects/Fish";
 
@@ -16,7 +15,6 @@ export function installNativeCanvasInputFallback(input: {
   screenToTankPoint: (designX: number, designY: number) => Phaser.Math.Vector2;
   capturePointer: (element: HTMLElement, pointerId: number) => void;
   releasePointer: (element: HTMLElement, pointerId: number) => void;
-  decorationTrashZone: Phaser.Geom.Rectangle;
   handlePrizePointer: (designX: number, designY: number) => boolean;
   makeupDecorationAtPointer: (designX: number, designY: number) => MakeupDecorationDraft | undefined;
   selectMakeupDecoration: (decoration: MakeupDecorationDraft) => void;
@@ -31,22 +29,12 @@ export function installNativeCanvasInputFallback(input: {
   setNativeDraggedFish: (fish: Fish | undefined) => void;
   setDraggedFish: (fish: Fish | undefined) => void;
   selectFish: (fish: Fish) => void;
-  decorationAtPointer: (designX: number, designY: number) => PlacedDecoration | undefined;
-  beginDecorationDrag: (decoration: PlacedDecoration) => void;
-  setNativeDraggedDecoration: (decoration: PlacedDecoration | undefined) => void;
-  setDraggedDecoration: (decoration: PlacedDecoration | undefined) => void;
-  clearPhaserDraggedDecoration: () => void;
-  moveDecoration: (decoration: PlacedDecoration, tankX: number, tankY: number) => void;
-  trashDecoration: (decoration: PlacedDecoration) => void;
-  showDecorationTrashTarget: (show: boolean) => void;
-  highlightDecorationTrashTarget: (active: boolean) => void;
   bringMakeupDecorationToTop: (decoration: MakeupDecorationDraft) => void;
   saveNow: () => void;
   recordDailyQuestAction: (action: string) => void;
 }): () => void {
   let activePointerId: number | undefined;
   let nativeDraggedFish: Fish | undefined;
-  let nativeDraggedDecoration: PlacedDecoration | undefined;
   let nativeMakeupDraggedDecoration: MakeupDecorationDraft | undefined;
 
   const endNativeFishDrag = (event?: PointerEvent) => {
@@ -69,31 +57,6 @@ export function installNativeCanvasInputFallback(input: {
     activePointerId = undefined;
     input.recordDailyQuestAction("move-fish");
     input.saveNow();
-  };
-
-  const endNativeDecorationDrag = (event?: PointerEvent) => {
-    if (!nativeDraggedDecoration) {
-      return;
-    }
-
-    const decoration = nativeDraggedDecoration;
-    decoration.image.setAlpha(1);
-    input.showDecorationTrashTarget(false);
-    const point = event ? input.designPointFromEvent(event) : undefined;
-    if (point && input.activeScreen() === "tank" && input.decorationTrashZone.contains(point.x, point.y)) {
-      input.trashDecoration(decoration);
-    } else if (point && tankViewportBounds.contains(point.x, point.y) && input.activeScreen() === "tank") {
-      const tankPoint = input.screenToTankPoint(point.x, point.y);
-      input.moveDecoration(decoration, tankPoint.x, tankPoint.y);
-      input.recordDailyQuestAction("move-decoration");
-      input.saveNow();
-    }
-
-    nativeDraggedDecoration = undefined;
-    input.setDraggedDecoration(undefined);
-    input.setNativeDraggedDecoration(undefined);
-    input.clearPhaserDraggedDecoration();
-    activePointerId = undefined;
   };
 
   const endNativeMakeupDecorationDrag = (event?: PointerEvent) => {
@@ -119,13 +82,6 @@ export function installNativeCanvasInputFallback(input: {
     input.selectFish(fish);
     fish.beginManualDrag();
     fish.sprite.setDepth(14);
-  };
-
-  const beginNativeDecorationDrag = (decoration: PlacedDecoration, pointerId: number) => {
-    activePointerId = pointerId;
-    input.capturePointer(input.canvas, pointerId);
-    nativeDraggedDecoration = decoration;
-    input.beginDecorationDrag(decoration);
   };
 
   const beginNativeMakeupDecorationDrag = (decoration: MakeupDecorationDraft, point: Phaser.Math.Vector2, pointerId: number) => {
@@ -215,11 +171,6 @@ export function installNativeCanvasInputFallback(input: {
       input.updateMakeupDecorationDragAtDesignPoint(point);
       return;
     }
-    if (nativeDraggedDecoration && input.activeScreen() === "tank") {
-      input.moveDecoration(nativeDraggedDecoration, tankPoint.x, tankPoint.y);
-      input.highlightDecorationTrashTarget(input.decorationTrashZone.contains(point.x, point.y));
-      return;
-    }
     if (nativeDraggedFish) {
       nativeDraggedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
     }
@@ -233,7 +184,6 @@ export function installNativeCanvasInputFallback(input: {
     event.preventDefault();
     input.releasePointer(input.canvas, event.pointerId);
     endNativeMakeupDecorationDrag(event);
-    endNativeDecorationDrag(event);
     endNativeFishDrag(event);
     activePointerId = undefined;
   };
@@ -249,7 +199,6 @@ export function installNativeCanvasInputFallback(input: {
     input.canvas.removeEventListener("pointerup", endPointer);
     input.canvas.removeEventListener("pointercancel", endPointer);
     endNativeMakeupDecorationDrag();
-    endNativeDecorationDrag();
     endNativeFishDrag();
   };
 }

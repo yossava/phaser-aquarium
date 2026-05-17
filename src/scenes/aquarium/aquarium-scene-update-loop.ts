@@ -40,7 +40,7 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.updateFoodDispenser(tankFish);
   scene.updatePendingHelperCreatureDrops(deltaSeconds);
   scene.fishDeliveryBubbles?.update(deltaSeconds, now);
-  scene.updateHelperCreatures(deltaSeconds, tankFish, activeHelpers);
+  scene.updateHelperCreatures(deltaSeconds, activeHelpers);
   scene.updateTankCleanliness(deltaSeconds, tankFish.length);
   scene.updateDirtyTankOverlay();
   const foodAssignments = scene.assignFoodsToFish(tankFish);

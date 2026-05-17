@@ -97,8 +97,7 @@ export function setPrizeMachineBet(state: PrizeMachineState, betAmount: number):
 
 export function beginPrizeMachineSession(
   state: PrizeMachineState,
-  sessionId: number,
-  random = Math.random
+  sessionId: number
 ): PrizeMachineState {
   const normalized = normalizePrizeMachineState(state);
   const nextSessionId = sanitizeCount(sessionId);

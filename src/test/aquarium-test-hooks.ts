@@ -6,7 +6,6 @@ import { earn, formatNumber } from "../game/economy";
 import { clearSave, loadGame, mapToRecord } from "../game/save";
 import { fishFoodTintFor } from "../game/visuals";
 import { FoodPellet } from "../objects/FoodPellet";
-import type { AquariumTestSnapshot } from "./aquarium-test-api";
 import type { CoinType, FishGender, FoodTypeId, StoreTab } from "../types/mechanics";
 
 type AquariumTestScene = any;

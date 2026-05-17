@@ -3,7 +3,7 @@ import { hiddenFoodTypeIds } from "./food-system";
 import { foodCssFilterFor } from "./visuals";
 import { decorationSizeOrder, decorationSizes, type DecorationSize } from "./tank-catalog";
 import type { Fish } from "../objects/Fish";
-import type { CoinType, DecorationType, FishType, FoodType, FoodTypeId } from "../types/mechanics";
+import type { DecorationType, FishType, FoodType, FoodTypeId } from "../types/mechanics";
 
 export type DecorationInventoryEntry = {
   decorationType: DecorationType;

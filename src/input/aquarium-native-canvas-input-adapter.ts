@@ -1,10 +1,8 @@
 import Phaser from "phaser";
 import type { PendingFishBubble } from "../game/fish-delivery-bubbles";
 import type { MakeupDecorationDraft } from "../game/makeup-mode";
-import type { PlacedDecoration } from "../game/tank-entities";
 import type { CoinDrop } from "../objects/CoinDrop";
 import type { Fish } from "../objects/Fish";
-import { decorationTrashZone } from "../scenes/aquarium/aquarium-scene-config";
 import {
   capturePointerSafely,
   releasePointerSafely
@@ -33,14 +31,6 @@ type AquariumNativeCanvasInputScene = {
   draggedFish?: Fish;
   fish: Fish[];
   selectedFishIndex?: number;
-  decorationAtPointer: (designX: number, designY: number) => PlacedDecoration | undefined;
-  phaserDraggedDecoration?: PlacedDecoration;
-  nativeDraggedDecoration?: PlacedDecoration;
-  draggedDecoration?: PlacedDecoration;
-  showDecorationTrashTarget: (show: boolean) => void;
-  moveDecoration: (decoration: PlacedDecoration, tankX: number, tankY: number) => void;
-  trashDecoration: (decoration: PlacedDecoration) => void;
-  highlightDecorationTrashTarget: (active: boolean) => void;
   tankLayer: Phaser.GameObjects.Layer;
   saveNow: () => void;
   recordDailyQuestAction: (action: string) => void;
@@ -57,7 +47,6 @@ export function installAquariumNativeCanvasInputFallback(scene: unknown): () => 
     screenToTankPoint: (designX, designY) => host.screenToTankPoint(designX, designY),
     capturePointer: capturePointerSafely,
     releasePointer: releasePointerSafely,
-    decorationTrashZone,
     handlePrizePointer: (designX, designY) => host.handleNativePrizePointer(designX, designY),
     makeupDecorationAtPointer: (designX, designY) => host.makeupDecorationAtPointer(designX, designY),
     selectMakeupDecoration: (decoration) => host.selectMakeupDecoration(decoration),
@@ -85,28 +74,6 @@ export function installAquariumNativeCanvasInputFallback(scene: unknown): () => 
     selectFish: (fish) => {
       host.selectedFishIndex = host.fish.indexOf(fish);
     },
-    decorationAtPointer: (designX, designY) => host.decorationAtPointer(designX, designY),
-    beginDecorationDrag: (decoration) => {
-      host.phaserDraggedDecoration = undefined;
-      host.nativeDraggedDecoration = decoration;
-      host.draggedDecoration = decoration;
-      decoration.image.setAlpha(0.78);
-      decoration.image.setDepth(9);
-      host.showDecorationTrashTarget(true);
-    },
-    setNativeDraggedDecoration: (decoration) => {
-      host.nativeDraggedDecoration = decoration;
-    },
-    setDraggedDecoration: (decoration) => {
-      host.draggedDecoration = decoration;
-    },
-    clearPhaserDraggedDecoration: () => {
-      host.phaserDraggedDecoration = undefined;
-    },
-    moveDecoration: (decoration, tankX, tankY) => host.moveDecoration(decoration, tankX, tankY),
-    trashDecoration: (decoration) => host.trashDecoration(decoration),
-    showDecorationTrashTarget: (show) => host.showDecorationTrashTarget(show),
-    highlightDecorationTrashTarget: (active) => host.highlightDecorationTrashTarget(active),
     bringMakeupDecorationToTop: (decoration) => host.tankLayer.bringToTop(decoration.image),
     saveNow: () => host.saveNow(),
     recordDailyQuestAction: (action) => host.recordDailyQuestAction(action)

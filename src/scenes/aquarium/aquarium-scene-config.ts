@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { gameHeight, gameWidth, tankBounds } from "../../game/constants";
 import { createWallet } from "../../game/economy";
 import type { Fish } from "../../objects/Fish";
-import type { CoinType, DecorationType, FishType, FoodTypeId, HelperCreatureType, Price, Wallet } from "../../types/mechanics";
+import type { CoinType, FishType, FoodTypeId, HelperCreatureType, Price, Wallet } from "../../types/mechanics";
 import type { DecorationSize } from "../../game/tank-catalog";
 import type { PrizeMachineBetAmount } from "../../game/prize-machine";
 

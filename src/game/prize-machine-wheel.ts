@@ -208,7 +208,7 @@ function createPrizeWheel(
     .setStrokeStyle(3, 0xc8fbff, 0.24);
   const innerHubGlow = scene.add.circle(0, 0, 34, 0x020914, 0.92)
     .setStrokeStyle(3, 0x8eeeff, 0.45);
-  const pointer = createPrizePointer(scene, radius);
+  const pointer = createPrizePointer(scene);
 
   container.add([outerGlow, wheelGraphics, highlight, separatorGraphics, outerRim]);
 
@@ -279,7 +279,7 @@ function drawWheelSeparator(graphics: Phaser.GameObjects.Graphics, index: number
   graphics.lineBetween(0, 0, Math.cos(angle) * radius, Math.sin(angle) * radius);
 }
 
-function createPrizePointer(scene: Phaser.Scene, radius: number): Phaser.GameObjects.Container {
+function createPrizePointer(scene: Phaser.Scene): Phaser.GameObjects.Container {
   const pointer = scene.add.container(0, 0);
   const marker = scene.add.graphics();
   marker.fillStyle(0xb91c1c, 0.98);

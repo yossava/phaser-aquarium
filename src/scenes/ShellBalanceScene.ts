@@ -105,10 +105,8 @@ export class ShellBalanceScene extends Phaser.Scene {
   private finished = false;
   private prizeText?: Phaser.GameObjects.Text;
   private timerText?: Phaser.GameObjects.Text;
-  private floorBody?: MatterJS.BodyType;
   private floorGraphics?: Phaser.GameObjects.Graphics;
   private productionPerMinute = 0;
-  private prizeCoinIcon?: Phaser.GameObjects.Image;
   private previousCanvasTouchAction = "";
   private resultShown = false;
   private resultCompleted = false;
@@ -191,14 +189,14 @@ export class ShellBalanceScene extends Phaser.Scene {
     });
   }
 
-  update(time: number, delta: number): void {
+  update(time: number, _delta: number): void {
     if (this.finished) {
       return;
     }
 
     const remainingMs = Math.max(0, this.gameEndsAt - time);
     this.updateMovingBricks(time);
-    this.updateActivePiece(delta);
+    this.updateActivePiece();
     this.prizeText?.setText(formatNumber(this.currentPrizeAmount()));
     this.timerText?.setText(this.formatTimer(remainingMs));
     if (remainingMs <= 0) {
@@ -273,7 +271,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   private createFloor(): void {
     this.floorGraphics = this.add.graphics().setDepth(2);
     this.drawFloor();
-    this.floorBody = this.matter.add.rectangle(gameWidth / 2, floorY, gameWidth, floorHeight, {
+    this.matter.add.rectangle(gameWidth / 2, floorY, gameWidth, floorHeight, {
       isStatic: true,
       friction: 0.95,
       restitution: 0.12,
@@ -394,7 +392,7 @@ export class ShellBalanceScene extends Phaser.Scene {
       strokeThickness: 5
     };
     this.add.text(22, 74 + topSafeOffset, "Prize:", statStyle);
-    this.prizeCoinIcon = this.add.image(92, 85 + topSafeOffset, "stack-prize-common-coin")
+    this.add.image(92, 85 + topSafeOffset, "stack-prize-common-coin")
       .setDisplaySize(22, 22)
       .setDepth(4);
     this.prizeText = this.add.text(108, 74 + topSafeOffset, "0", statStyle);
@@ -456,7 +454,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     });
   }
 
-  private updateActivePiece(delta: number): void {
+  private updateActivePiece(): void {
     if (!this.activePiece) {
       return;
     }
@@ -799,7 +797,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     const coinIcon = this.add.image(gameWidth / 2 - 40, gameHeight / 2 - 26, "stack-prize-common-coin")
       .setDisplaySize(34, 34)
       .setDepth(40);
-    const amountText = this.add.text(coinIcon.x + 28, coinIcon.y, formatNumber(prizeAmount), {
+    this.add.text(coinIcon.x + 28, coinIcon.y, formatNumber(prizeAmount), {
       fontFamily: gameFontFamily,
       fontSize: "36px",
       color: "#fff5a8",
@@ -822,7 +820,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     buttonBg.lineStyle(3, 0xb9ffbd, 0.75);
     buttonBg.strokeRoundedRect(gameWidth / 2 - buttonWidth / 2, buttonY - buttonHeight / 2, buttonWidth, buttonHeight, 16);
 
-    const buttonText = this.add.text(gameWidth / 2, buttonY, "CLAIM", {
+    this.add.text(gameWidth / 2, buttonY, "CLAIM", {
       fontFamily: gameFontFamily,
       fontSize: "24px",
       color: "#ffffff",
