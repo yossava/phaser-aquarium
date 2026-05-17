@@ -2757,17 +2757,19 @@ canvas {
   }
 
   .aq-fish-joystick {
-    @apply pointer-events-auto fixed z-40 grid place-items-center rounded-full border border-white/25 bg-sky-100/10;
+    @apply pointer-events-auto fixed z-40 grid place-items-center rounded-full border border-white/15 bg-sky-100/5;
     width: clamp(70px, 19vw, 88px);
     height: clamp(70px, 19vw, 88px);
-    right: calc((100vw - var(--aq-stage-width)) / 2 + 12px);
-    bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px));
+    left: calc((100vw - var(--aq-stage-width)) / 2 + var(--aq-stage-width) / 2);
+    bottom: max(132px, calc(env(safe-area-inset-bottom) + 120px));
+    transform: translateX(-50%);
     touch-action: none;
     box-shadow:
-      inset 0 2px 8px rgba(255, 255, 255, 0.16),
-      0 8px 18px rgba(0, 19, 36, 0.2);
+      inset 0 2px 8px rgba(255, 255, 255, 0.08),
+      0 8px 18px rgba(0, 19, 36, 0.12);
     backdrop-filter: blur(4px);
-    opacity: 0.74;
+    opacity: 0.26;
+    transition: opacity 120ms ease, background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
   }
 
   .aq-fish-joystick.hidden {
@@ -2779,7 +2781,7 @@ canvas {
   }
 
   .aq-fish-joystick-knob {
-    @apply absolute rounded-full border border-white/45 bg-cyan-100/55;
+    @apply absolute rounded-full border border-white/35 bg-cyan-100/35;
     --joystick-x: 0px;
     --joystick-y: 0px;
     width: 36%;
@@ -2794,6 +2796,14 @@ canvas {
   .aq-fish-joystick.is-active .aq-fish-joystick-knob {
     @apply bg-emerald-100/60;
     transition: none;
+  }
+
+  .aq-fish-joystick.is-active {
+    @apply border-white/45 bg-sky-100/18;
+    opacity: 0.86;
+    box-shadow:
+      inset 0 2px 9px rgba(255, 255, 255, 0.18),
+      0 10px 22px rgba(0, 19, 36, 0.26);
   }
 
   .aq-food-button {
