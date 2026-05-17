@@ -199,17 +199,17 @@ function applyOfflineFishProduction(
   const paceMultiplier = scene.activeProductionPaceMultiplier();
   const targetCalories = (currentFish.fullCaloriesNeed() / 3600) * elapsedSeconds * paceMultiplier;
   const convertedCalories = Math.min(currentFish.currentFullnessCalories(), targetCalories);
-  const amount = Math.floor(currentFish.coinProductionValueForCalories(convertedCalories));
-  if (amount <= 0) {
+  const producedValue = currentFish.coinProductionValueForCalories(convertedCalories);
+  const amount = producedValue < 1
+    ? Math.floor(producedValue * 10) / 10
+    : Math.floor(producedValue);
+  if (amount < 0.1 || producedValue <= 0) {
     return;
   }
 
-  currentFish.consumeFullnessCalories(convertedCalories);
-  const leveledUp = scene.addFishProductionTotal(currentFish.tankLevel, amount);
-  if (leveledUp) {
-    return;
-  }
-
+  const consumedCalories = Math.min(convertedCalories, convertedCalories * (amount / producedValue));
+  currentFish.consumeFullnessCalories(consumedCalories);
+  scene.addFishProductionTotal(currentFish.tankLevel, amount);
   earned.common += amount;
   const tankEarned = earnedByTank.get(currentFish.tankLevel) ?? createEmptyWallet();
   tankEarned.common += amount;

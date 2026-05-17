@@ -86,6 +86,7 @@ import {
   fishProductionThresholdForLevel,
   maxDynamicProductionPaceMultiplier,
   rawTankDisplayLevelFromProduction,
+  targetActiveHoursForDisplayLevel,
   targetProductionPerMinuteForLevel
 } from "../../game/level-progression";
 import {
@@ -5256,8 +5257,24 @@ export class AquariumSceneCore extends Phaser.Scene {
       return 1;
     }
 
-    const targetPerMinute = targetProductionPerMinuteForLevel(this.tankDisplayLevel());
-    return Phaser.Math.Clamp(targetPerMinute / (projectedPerMinute * coinComboMaxProductionMultiplier), 0.001, maxDynamicProductionPaceMultiplier);
+    const displayLevel = this.tankDisplayLevel();
+    const targetPerMinute = targetProductionPerMinuteForLevel(displayLevel);
+    const baseMultiplier = targetPerMinute / (projectedPerMinute * coinComboMaxProductionMultiplier);
+    const currentThreshold = fishProductionThresholdForLevel(displayLevel);
+    const nextThreshold = fishProductionThresholdForLevel(displayLevel + 1);
+    const productionRatio = Phaser.Math.Clamp(
+      (this.fishProductionTotal(this.tankLevel) - currentThreshold) / Math.max(1, nextThreshold - currentThreshold),
+      0,
+      1
+    );
+    const targetSeconds = targetActiveHoursForDisplayLevel(displayLevel) * 3600;
+    const oldestActiveAgeSeconds = this.activeFish().reduce((oldest, fish) => Math.max(oldest, fish.ageSeconds), 0);
+    const activeAgeWithinLevelSeconds = targetSeconds > 0 ? oldestActiveAgeSeconds % targetSeconds : 0;
+    const expectedRatio = Phaser.Math.Clamp(activeAgeWithinLevelSeconds / Math.max(1, targetSeconds), 0, 1);
+    const catchUpMultiplier = expectedRatio > productionRatio
+      ? Phaser.Math.Clamp(expectedRatio / Math.max(0.02, productionRatio), 1, maxDynamicProductionPaceMultiplier)
+      : 1;
+    return Phaser.Math.Clamp(baseMultiplier * catchUpMultiplier, 0.001, maxDynamicProductionPaceMultiplier);
   }
 
   private awardLevelCompletionRewards(level: number, previousProduction: number, nextProduction: number): boolean {

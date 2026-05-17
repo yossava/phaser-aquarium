@@ -6,6 +6,9 @@ import { prizeWheelIconTextureKeys, type PrizeWheelSegment } from "./prize-machi
 import { decorationSizeOrder, decorationSizes, type DecorationSize } from "./tank-catalog";
 import type { DecorationType, FishType, FoodType, FoodTypeId, Price } from "../types/mechanics";
 
+const minimumCommonSpinPrize = 0.1;
+const commonSpinPrizeStep = 0.1;
+
 export type PreparedPrizeMachineReward =
   | { kind: "rare"; amount: number; segmentIndex: number }
   | { kind: "superRare"; amount: number; segmentIndex: number }
@@ -52,7 +55,7 @@ export class PrizeWheelPlanner {
       const lane: "loss" | "win" = multiplier < 1 ? "loss" : "win";
       const rawTargetValue = betAmount * multiplier;
       const targetValue = lane === "loss"
-        ? Math.max(1, Math.min(betAmount - 1, Math.floor(rawTargetValue)))
+        ? Math.max(minimumCommonSpinPrize, Math.min(betAmount - commonSpinPrizeStep, rawTargetValue))
         : Math.max(betAmount + 1, Math.round(rawTargetValue));
       if (index === 10) {
         const fishCandidate = this.fishCandidateForTarget(targetValue, lane);
@@ -143,7 +146,9 @@ export class PrizeWheelPlanner {
 
   private commonCandidate(targetValue: number, slotIndex: number): PrizeSegmentCandidate {
     const commonColors = [0x0c8fb3, 0x136f96, 0x1ba8c9, 0x0b7f8c, 0x2e9fc0, 0x0f5f7f];
-    const amount = Math.max(1, Math.round(targetValue));
+    const amount = targetValue < 1
+      ? Math.max(minimumCommonSpinPrize, Math.round(targetValue / commonSpinPrizeStep) * commonSpinPrizeStep)
+      : Math.max(1, Math.round(targetValue));
     return {
       key: `common:${amount}`,
       value: amount,
@@ -318,10 +323,9 @@ export class PrizeWheelPlanner {
 
   private coinAmountForTarget(coinType: "rare" | "superRare", unitValue: number, targetValue: number, lane: "loss" | "win"): number {
     const safeUnitValue = Math.max(1, unitValue);
-    const step = 0.001;
-    const estimatedAmount = Math.max(step, Math.round((targetValue / safeUnitValue) / step) * step);
-    const amounts = Array.from({ length: 11 }, (_, offset) => Math.max(step, estimatedAmount + (offset - 5) * step));
-    const sorted = [...new Set(amounts.map((amount) => Math.round(amount * 1000) / 1000))].sort((first, second) => {
+    const estimatedAmount = Math.max(1, Math.round(targetValue / safeUnitValue));
+    const amounts = Array.from({ length: 11 }, (_, offset) => Math.max(1, estimatedAmount + offset - 5));
+    const sorted = [...new Set(amounts)].sort((first, second) => {
       const firstValue = this.input.coinSellValue(coinType, first);
       const secondValue = this.input.coinSellValue(coinType, second);
       const firstValid = this.valueMatchesLane(firstValue, lane) ? 0 : 1;
@@ -334,7 +338,7 @@ export class PrizeWheelPlanner {
   private valueMatchesLane(value: number, lane: "loss" | "win", betAmount = this.input.selectedBetAmount): boolean {
     const safeBet = Math.max(1, betAmount);
     if (lane === "loss") {
-      return value >= Math.max(1, Math.floor(safeBet * 0.5)) && value < safeBet;
+      return value >= Math.max(minimumCommonSpinPrize, safeBet * 0.5) && value < safeBet;
     }
     return value > safeBet && value <= Math.max(safeBet + 1, Math.ceil(safeBet * 1.5));
   }
@@ -361,10 +365,10 @@ export class PrizeWheelPlanner {
 
   private prepareSegmentReward(segment: PrizeWheelSegment, segmentIndex: number): PreparedPrizeMachineReward {
     if (segment.kind === "rare") {
-      return { kind: "rare", amount: Math.max(0.001, segment.rareAmount ?? 1), segmentIndex };
+      return { kind: "rare", amount: Math.max(1, Math.floor(segment.rareAmount ?? 1)), segmentIndex };
     }
     if (segment.kind === "superRare") {
-      return { kind: "superRare", amount: Math.max(0.001, segment.superRareAmount ?? 1), segmentIndex };
+      return { kind: "superRare", amount: Math.max(1, Math.floor(segment.superRareAmount ?? 1)), segmentIndex };
     }
     if (segment.kind === "rareFish") {
       const fishType = fishTypes.find((candidate) => candidate.id === segment.fishTypeId) ?? fishTypes[0];
