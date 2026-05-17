@@ -539,6 +539,17 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].statusBars.rarityStars === 0, "Fish should not render above-fish rarity star badges in the tank.");
   assert(!state.fish[0].statusBars.fullyGrown, "New fish should not show the fully grown marker.");
   assert(!state.fish[0].statusBars.emojiVisible && !state.fish[0].statusBars.emojiBubbleVisible, "Happy emoji should not show until the fish eats.");
+  const prizeFishInventoryBefore = state.fishInventoryByType.angelfish ?? 0;
+  const prizeFishBubbleCountBefore = state.fishDeliveryBubbleCount;
+  await evaluate(cdp, "window.__aquariumTest.awardPrizeFishForTest('angelfish')");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      (current.fishInventoryByType.angelfish ?? 0) === prizeFishInventoryBefore + 1 &&
+      current.fishDeliveryBubbleCount === prizeFishBubbleCountBefore &&
+      current.fishCount === 1,
+    "Prize fish reward should be stored in inventory without a delivery bubble."
+  );
   const swimSampleA = {
     x: state.fish[0].x,
     y: state.fish[0].y,

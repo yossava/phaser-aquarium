@@ -87,7 +87,7 @@ export type AquariumPrizeControllerHost = {
   coinSellValue: (coinType: "rare" | "superRare", count?: number) => number;
   storedFishSellValue: (fishType: FishType) => number;
   sanitizeDecorationSize: (size: string | undefined) => DecorationSize;
-  addFishToInventory: (fishType: FishType) => void;
+  addFishToInventory: (fishType: FishType, showBubble?: boolean) => void;
   setPrizeCommonFish: (fishType: FishType) => void;
   setPrizeRareFish: (fishType: FishType) => void;
   getFoodInventory: (foodTypeId: FoodTypeId) => number;
@@ -360,9 +360,9 @@ export class AquariumPrizeController {
   }
 
   private awardPrizeMachineRareFish(fishType: FishType): void {
-    this.host.addFishToInventory(fishType);
-    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is floating in a bubble.");
-    this.host.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is floating in your tank bubble.");
+    this.host.addFishToInventory(fishType, false);
+    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is waiting in your Inventory.");
+    this.host.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is waiting in your Inventory.");
     if (fishType.rarity === "common") {
       this.host.setPrizeCommonFish(this.nextPrizeFish("common"));
     } else {

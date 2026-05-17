@@ -7,6 +7,8 @@ export type AquariumTestSnapshot = {
   wallet: Wallet;
   foodInventory: number;
   foodInventoryByType: Record<string, number>;
+  fishInventoryByType: Record<string, number>;
+  fishDeliveryBubbleCount: number;
   foodBuyQuantities: Record<string, number>;
   creatureInventoryByType: Record<string, number>;
   activeScreen: string;
@@ -175,6 +177,7 @@ export type AquariumTestApi = {
   forceCoinReady: (index: number) => void;
   forceProductionDrop: (index: number) => void;
   forceFishAge: (index: number, ageSeconds: number) => void;
+  awardPrizeFishForTest: (fishTypeId: string) => void;
   saveNow: () => void;
   clearSave: () => void;
   backdateSave: (seconds: number) => void;

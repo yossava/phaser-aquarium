@@ -41,6 +41,8 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       wallet: { ...scene.wallet },
       foodInventory: scene.getTotalFoodInventory(),
       foodInventoryByType: scene.foodInventoryRecord(),
+      fishInventoryByType: mapToRecord(scene.fishInventory),
+      fishDeliveryBubbleCount: scene.fishDeliveryBubbles?.bubbles.length ?? 0,
       foodBuyQuantities: scene.foodBuyQuantityRecord(),
       creatureInventoryByType: mapToRecord(scene.creatureInventory),
       activeScreen: scene.activeScreen,
@@ -352,6 +354,15 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       }
 
       targetFish.setAgeSeconds(ageSeconds);
+    },
+    awardPrizeFishForTest: (fishTypeId: string) => {
+      const fishType = fishTypes.find((item) => item.id === fishTypeId);
+      if (!fishType) {
+        return;
+      }
+
+      scene.prizeController().awardPrizeMachineRareFish(fishType);
+      scene.refreshUi();
     },
     saveNow: () => {
       scene.saveNow();
