@@ -1,6 +1,31 @@
 import { formatNumber } from "../game/economy";
 import { htmlElement, htmlImage } from "./dom";
+import { appendInventoryItemSection } from "./InventoryRows";
 import type { DecorationType } from "../types/mechanics";
+
+export function appendTankInventoryTabContent(input: {
+  content: HTMLElement;
+  backgrounds: HTMLElement[];
+  seabeds: HTMLElement[];
+  decorations: HTMLElement[];
+  tools: HTMLElement[];
+}): void {
+  appendTankInventorySection(input.content, "Background", input.backgrounds, "No backgrounds owned", "Buy tank backgrounds from Shop.");
+  appendTankInventorySection(input.content, "Seabed", input.seabeds, "No seabeds owned", "Buy tank seabeds from Shop.");
+  appendTankInventorySection(input.content, "Decor", input.decorations, "No decorations owned", "Buy tank decorations from Shop.");
+  appendTankInventorySection(input.content, "Tools", input.tools, "No tools owned", "Buy tank utilities from Shop.");
+}
+
+function appendTankInventorySection(content: HTMLElement, title: string, items: HTMLElement[], emptyTitle: string, emptyDetail: string): void {
+  appendInventoryItemSection({
+    content,
+    title,
+    items,
+    emptyTitle,
+    emptyDetail,
+    listClassName: "aq-inventory-tank-grid"
+  });
+}
 
 export function createBlueTintPreviewOverlay(intensity: number): HTMLElement {
   const overlay = htmlElement("div", "aq-blue-tint-preview");

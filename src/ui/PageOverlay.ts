@@ -1,4 +1,4 @@
-import { htmlElement, htmlImage } from "./dom";
+import { htmlElement, htmlImage, installHtmlInputShield, playHtmlPageTransition } from "./dom";
 
 export type PageScreenMeta = {
   title: string;
@@ -7,6 +7,8 @@ export type PageScreenMeta = {
 };
 
 export type PageOverlayScreen = "menu" | "album" | "goals" | "settings";
+export type PageOverlayHiddenScreen = "tank" | "store" | "prize" | "makeup";
+export type PageOverlayAppScreen = PageOverlayScreen | PageOverlayHiddenScreen;
 
 export type PageScreenMetaInput = {
   screen: PageOverlayScreen;
@@ -16,6 +18,33 @@ export type PageScreenMetaInput = {
 };
 
 export type PageButtonFactory = (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
+
+export type PageOverlaySyncInput = {
+  activeScreen: PageOverlayAppScreen;
+  overlay: HTMLDivElement | undefined;
+  renderKey: string;
+  scrollTop: number;
+  reducedMotion: boolean;
+  createOverlay: () => HTMLDivElement;
+  createPage: () => HTMLElement;
+  getRenderKey: () => string;
+};
+
+export type PageOverlaySyncResult = {
+  overlay: HTMLDivElement | undefined;
+  renderKey: string;
+  scrollTop: number;
+};
+
+export type PageShellContentInput = {
+  activeScreen: PageOverlayScreen;
+  meta: PageScreenMeta;
+  closeButton: HTMLButtonElement;
+  appendMainMenuPage: (content: HTMLElement) => void;
+  appendAlbumPage: (content: HTMLElement) => void;
+  appendGoalsPage: (content: HTMLElement) => void;
+  appendSettingsPage: (content: HTMLElement) => void;
+};
 
 export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
   const meta: Record<PageOverlayScreen, PageScreenMeta> = {
@@ -55,6 +84,63 @@ export function createPageOverlayRoot(): HTMLDivElement {
   overlay.addEventListener("click", stopEvent);
   document.body.appendChild(overlay);
   return overlay;
+}
+
+export function shouldShowPageOverlay(screen: PageOverlayAppScreen): screen is PageOverlayScreen {
+  return screen === "menu" || screen === "album" || screen === "goals" || screen === "settings";
+}
+
+export function hidePageOverlay(overlay: HTMLDivElement | undefined): void {
+  overlay?.classList.add("hidden");
+  overlay?.replaceChildren();
+}
+
+export function syncPageOverlay(input: PageOverlaySyncInput): PageOverlaySyncResult {
+  if (!shouldShowPageOverlay(input.activeScreen)) {
+    hidePageOverlay(input.overlay);
+    return {
+      overlay: input.overlay,
+      renderKey: input.renderKey,
+      scrollTop: input.scrollTop
+    };
+  }
+
+  const overlay = input.overlay ?? input.createOverlay();
+  const previousKey = input.renderKey;
+  const scrollTop = capturePageScrollTop(overlay);
+  const nextKey = input.getRenderKey();
+  overlay.className = "aq-page-shell";
+  overlay.classList.remove("hidden");
+  overlay.replaceChildren(input.createPage());
+  if (previousKey !== nextKey) {
+    playHtmlPageTransition(overlay, input.reducedMotion);
+  }
+  installHtmlInputShield(overlay);
+  if (previousKey === nextKey && scrollTop > 0) {
+    restorePageScrollTop(overlay, scrollTop);
+  }
+
+  return {
+    overlay,
+    renderKey: nextKey,
+    scrollTop
+  };
+}
+
+export function createPageShellContent(input: PageShellContentInput): HTMLElement {
+  const { page, content } = createPageShell(input.meta, input.closeButton);
+  if (input.activeScreen === "menu") {
+    content.classList.add("aq-page-content-main-menu");
+    input.appendMainMenuPage(content);
+  } else if (input.activeScreen === "album") {
+    input.appendAlbumPage(content);
+  } else if (input.activeScreen === "goals") {
+    input.appendGoalsPage(content);
+  } else {
+    input.appendSettingsPage(content);
+  }
+
+  return page;
 }
 
 export function createPageEmptyCard(title: string, detail: string): HTMLElement {

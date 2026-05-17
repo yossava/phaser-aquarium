@@ -1,4 +1,4 @@
-import type { FishState, FoodType, FoodTypeId } from "../types/mechanics";
+import type { FishState, FoodType, FoodTypeId, Price } from "../types/mechanics";
 import { formatNumber } from "./economy";
 
 export const creatureFoodTypeId: FoodTypeId = "creature";
@@ -16,6 +16,15 @@ type DispenserTarget = {
 
 type PendingFood = {
   source: "manual" | "dispenser";
+};
+
+type MealTarget = {
+  mealCaloriesNeeded(): number;
+};
+
+export type FoodReservation = {
+  reservedCalories: number;
+  nextInventory: number;
 };
 
 export function isDroppableFood(foodTypeId: FoodTypeId): boolean {
@@ -115,6 +124,104 @@ export function bestCalorieFoodForTarget(
     const secondMiss = secondServing >= targetCalories ? secondServing - targetCalories : targetCalories - secondServing + targetCalories;
     return firstMiss - secondMiss || secondServing - firstServing;
   })[0];
+}
+
+export function careFoodTargetForDrop<T>(
+  foodTypeId: FoodTypeId,
+  targetFish: T | undefined,
+  activeFish: T[]
+): T | undefined {
+  if (foodTypeId !== ageBoostFoodTypeId && foodTypeId !== productionBoostFoodTypeId) {
+    return undefined;
+  }
+
+  return targetFish && activeFish.includes(targetFish) ? targetFish : undefined;
+}
+
+export function reserveFoodForDrop(foodType: FoodType, currentInventory: number): FoodReservation {
+  if (currentInventory <= 0) {
+    return { reservedCalories: 0, nextInventory: currentInventory };
+  }
+
+  if (!isCalorieTrackedFood(foodType.id)) {
+    return {
+      reservedCalories: foodType.calories,
+      nextInventory: Math.max(0, currentInventory - 1)
+    };
+  }
+
+  const reservedCalories = Math.min(foodType.calories, currentInventory);
+  return {
+    reservedCalories,
+    nextInventory: Math.max(0, currentInventory - reservedCalories)
+  };
+}
+
+export function refundedFoodInventory(input: {
+  foodTypeId: FoodTypeId;
+  reservedNutrition: number;
+  consumedCalories: number;
+  currentInventory: number;
+}): number {
+  if (!isCalorieTrackedFood(input.foodTypeId)) {
+    return input.currentInventory;
+  }
+
+  const unusedCalories = Math.max(0, input.reservedNutrition - input.consumedCalories);
+  return unusedCalories > 0 ? input.currentInventory + unusedCalories : input.currentInventory;
+}
+
+export function chooseAutoFoodForFish(
+  foodTypes: FoodType[],
+  targetFish: MealTarget,
+  getInventory: (foodTypeId: FoodTypeId) => number
+): FoodType | undefined {
+  const candidates = foodTypes.filter(
+    (foodType) =>
+      isCalorieTrackedFood(foodType.id) &&
+      isDroppableFood(foodType.id) &&
+      getInventory(foodType.id) > 0
+  );
+
+  return bestCalorieFoodForTarget(candidates, targetFish.mealCaloriesNeeded(), getInventory);
+}
+
+export function medianMealCaloriesNeeded(tankFish: MealTarget[]): number {
+  const needs = tankFish
+    .map((fish) => fish.mealCaloriesNeeded())
+    .filter((need) => Number.isFinite(need) && need > 0)
+    .sort((first, second) => first - second);
+  if (needs.length === 0) {
+    return 0;
+  }
+
+  const middle = Math.floor(needs.length / 2);
+  return needs.length % 2 === 1 ? needs[middle]! : (needs[middle - 1]! + needs[middle]!) / 2;
+}
+
+export function chooseAutoPurchasableFood(input: {
+  foodTypes: FoodType[];
+  tankFish: MealTarget[];
+  developerGodMode: boolean;
+  canAfford: (price: Price) => boolean;
+  priceWealth: (price: Price) => number;
+}): FoodType | undefined {
+  const candidates = input.foodTypes.filter(
+    (foodType) =>
+      isCalorieTrackedFood(foodType.id) &&
+      isDroppableFood(foodType.id) &&
+      (input.developerGodMode || input.canAfford(foodType.price))
+  );
+
+  const medianMealCalories = medianMealCaloriesNeeded(input.tankFish);
+  if (medianMealCalories > 0) {
+    return bestCalorieFoodForTarget(candidates, medianMealCalories, (foodTypeId) => {
+      const foodType = input.foodTypes.find((item) => item.id === foodTypeId);
+      return foodType?.calories ?? 0;
+    });
+  }
+
+  return candidates.sort((first, second) => input.priceWealth(first.price) - input.priceWealth(second.price) || first.calories - second.calories)[0];
 }
 
 export function recommendedFoodName(foodTypes: FoodType[], targetCalories: number): string {

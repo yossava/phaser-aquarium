@@ -1,4 +1,9 @@
-import type { Price } from "../types/mechanics";
+import type { FoodType, Price } from "../types/mechanics";
+import {
+  findFoodDispenserTarget,
+  findMedicineDispenserTarget,
+  hasPendingDispenserFood
+} from "./food-system";
 
 export const foodDispenserAssetPath = "/assets/ui/helper-food-dispenser.png";
 export const autoFoodBuyerAssetPath = "/assets/ui/auto-food-buyer.png";
@@ -43,6 +48,29 @@ export type TankUtilityInventoryCardData = {
   meta: string;
   copy: string;
   price: Price;
+};
+
+type DispenserFood = {
+  source: "manual" | "dispenser";
+};
+
+type DispenserFish = {
+  state: "hungry" | "ill" | "happy";
+  health: number;
+  hunger: number;
+};
+
+export type FoodDispenserDropPlan<T extends DispenserFish> = {
+  foodType: FoodType;
+  targetFish: T;
+  isMedicine: boolean;
+  nextDispenseAt: number;
+};
+
+export type AutoFoodBuyerPurchasePlan = {
+  foodType: FoodType;
+  totalPrice: Price;
+  nextPurchaseAt: number;
 };
 
 export const tankUtilities: Record<TankUtilityId, TankUtilityInfo> = {
@@ -160,6 +188,79 @@ export function ownedTankUtilityInventoryCards(input: {
     });
   }
   return cards;
+}
+
+export function planFoodDispenserDrop<T extends DispenserFish>(input: {
+  hasFoodDispenser: boolean;
+  now: number;
+  nextFoodDispenseAt: number;
+  foods: DispenserFood[];
+  maxFoodDrops: number;
+  minIntervalMs: number;
+  tankFish: T[];
+  medicineInventory: number;
+  foodTypes: FoodType[];
+  chooseAutoFoodForFish: (targetFish: T) => FoodType | undefined;
+}): FoodDispenserDropPlan<T> | undefined {
+  if (!input.hasFoodDispenser || input.now < input.nextFoodDispenseAt) {
+    return undefined;
+  }
+
+  if (hasPendingDispenserFood(input.foods) || input.foods.length >= input.maxFoodDrops) {
+    return undefined;
+  }
+
+  const medicineTarget = findMedicineDispenserTarget(input.tankFish, input.medicineInventory);
+  const targetFish = medicineTarget ?? findFoodDispenserTarget(input.tankFish);
+  if (!targetFish) {
+    return undefined;
+  }
+
+  const foodType = medicineTarget
+    ? input.foodTypes.find((item) => item.id === "medicine")
+    : input.chooseAutoFoodForFish(targetFish);
+  if (!foodType) {
+    return undefined;
+  }
+
+  return {
+    foodType,
+    targetFish,
+    isMedicine: Boolean(medicineTarget),
+    nextDispenseAt: input.now + input.minIntervalMs
+  };
+}
+
+export function planAutoFoodBuyerPurchase(input: {
+  hasAutoFoodBuyer: boolean;
+  now: number;
+  nextPurchaseAt: number;
+  looseFoodCount: number;
+  maxFoodDrops: number;
+  feedableFoodInventory: number;
+  purchaseQuantity: number;
+  purchaseCooldownMs: number;
+  chooseFoodType: () => FoodType | undefined;
+  quantityPrice: (price: Price, quantity: number) => Price;
+}): AutoFoodBuyerPurchasePlan | undefined {
+  if (!input.hasAutoFoodBuyer || input.now < input.nextPurchaseAt || input.looseFoodCount >= input.maxFoodDrops) {
+    return undefined;
+  }
+
+  if (input.feedableFoodInventory > 0) {
+    return undefined;
+  }
+
+  const foodType = input.chooseFoodType();
+  if (!foodType) {
+    return undefined;
+  }
+
+  return {
+    foodType,
+    totalPrice: input.quantityPrice(foodType.price, input.purchaseQuantity),
+    nextPurchaseAt: input.now + input.purchaseCooldownMs
+  };
 }
 
 export function loadUtilityPositionY(input: {

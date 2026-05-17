@@ -1,6 +1,7 @@
 import { decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../data/content";
 import type { StoreOverlayState, StoreTankCosmeticCard, StoreTankDecorationCard, StoreTankUtilityCard } from "../ui/store/StoreTypes";
-import type { DecorationType, FishType, FoodType, Price, Wallet } from "../types/mechanics";
+import { hiddenFoodTypeIds, supplyFoodTypeIds } from "./food-system";
+import type { CoinType, DecorationType, FishType, FoodType, HelperCreatureType, Price, Wallet } from "../types/mechanics";
 
 export type StoreDecorationSize = StoreTankDecorationCard["variants"][number]["size"];
 
@@ -50,6 +51,74 @@ export type BuildStoreOverlayStateInput = {
 export function fishShopRequiredLevel(fishType: Pick<FishType, "id">): number {
   const catalogIndex = fishTypes.findIndex((catalogFish) => catalogFish.id === fishType.id);
   return Math.max(1, Math.floor(Math.max(0, catalogIndex) / 8) + 1);
+}
+
+export type StoreTabKey = "fish" | "food" | "supply" | "decor" | "tank" | "creature";
+
+export function matchesStoreCoinFilter(price: Price, rarity: FishType["rarity"] = "common", storeCoinFilter: CoinType): boolean {
+  if (rarity === "superRare" || (price.superRareAmount && price.superRareAmount > 0)) {
+    return storeCoinFilter === "superRare";
+  }
+
+  if (rarity === "rare" || (price.rareAmount && price.rareAmount > 0)) {
+    return storeCoinFilter === "rare";
+  }
+
+  return storeCoinFilter === "common";
+}
+
+export function visibleFishCatalog(storeCoinFilter: CoinType): FishType[] {
+  return fishTypes.filter((fishType) => matchesStoreCoinFilter(fishType.price, fishType.rarity, storeCoinFilter));
+}
+
+export function visibleFoodCatalog(): FoodType[] {
+  return foodTypes.filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id));
+}
+
+export function visibleSupplyCatalog(storeCoinFilter: CoinType): FoodType[] {
+  return foodTypes.filter(
+    (foodType) => !hiddenFoodTypeIds.has(foodType.id) && supplyFoodTypeIds.has(foodType.id) && matchesStoreCoinFilter(foodType.price, foodType.rarity, storeCoinFilter)
+  );
+}
+
+export function visibleTankCatalogLevels(maxOwnedTanks: number): number[] {
+  return Array.from({ length: Math.max(0, Math.floor(maxOwnedTanks)) }, (_unused, index) => index + 1);
+}
+
+export function visibleDecorationCatalog(storeCoinFilter: CoinType): DecorationType[] {
+  return decorationTypes.filter((decorationType) => matchesStoreCoinFilter(decorationType.price, decorationType.rarity, storeCoinFilter));
+}
+
+export function visibleHelperCreatureCatalog(storeCoinFilter: CoinType): HelperCreatureType[] {
+  return helperCreatureTypes.filter((creatureType) => matchesStoreCoinFilter(creatureType.price, creatureType.rarity, storeCoinFilter));
+}
+
+export function visibleStoreCatalogCount(input: {
+  activeTab: StoreTabKey;
+  storeCoinFilter: CoinType;
+  maxOwnedTanks: number;
+}): number {
+  if (input.activeTab === "fish") {
+    return visibleFishCatalog(input.storeCoinFilter).length;
+  }
+
+  if (input.activeTab === "food") {
+    return visibleFoodCatalog().length;
+  }
+
+  if (input.activeTab === "supply") {
+    return visibleSupplyCatalog(input.storeCoinFilter).length;
+  }
+
+  if (input.activeTab === "decor") {
+    return visibleDecorationCatalog(input.storeCoinFilter).length;
+  }
+
+  if (input.activeTab === "tank") {
+    return visibleTankCatalogLevels(input.maxOwnedTanks).length;
+  }
+
+  return visibleHelperCreatureCatalog(input.storeCoinFilter).length;
 }
 
 export function buildStoreOverlayState(input: BuildStoreOverlayStateInput): StoreOverlayState {

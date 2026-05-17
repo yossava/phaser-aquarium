@@ -17,6 +17,43 @@ export type DeveloperSettingsOptions = {
   onWrongPassword: () => void;
 };
 
+export type SettingsPageActions = {
+  createButton: PageButtonFactory;
+  toggleSetting: (key: keyof SettingsPageState) => void;
+  setMusicVolume: (volume: number, commit: boolean) => void;
+  showOfflineSummary: () => void;
+  showResetConfirmation: () => void;
+  developer: DeveloperSettingsOptions;
+};
+
+export function appendSettingsPageContent(content: HTMLElement, settings: SettingsPageState, actions: SettingsPageActions): void {
+  const grid = htmlElement("div", "aq-page-card-grid");
+  grid.append(
+    createSettingsToggleCard("Sound", settings.sound, actions.createButton, () => actions.toggleSetting("sound")),
+    createSettingsToggleCard("Motion", !settings.reducedMotion, actions.createButton, () => actions.toggleSetting("reducedMotion")),
+    createSettingsToggleCard("Notify", settings.notifications, actions.createButton, () => actions.toggleSetting("notifications"))
+  );
+  grid.prepend(
+    createSettingsMusicCard(
+      settings,
+      actions.createButton,
+      actions.setMusicVolume,
+      () => actions.toggleSetting("music")
+    )
+  );
+
+  const actionRow = htmlElement("div", "aq-page-actions");
+  actionRow.append(
+    actions.createButton("Offline Summary", "aq-page-button aq-page-button-good", actions.showOfflineSummary),
+    actions.createButton("Reset Save", "aq-page-button aq-page-button-danger", actions.showResetConfirmation)
+  );
+  content.append(
+    grid,
+    actionRow,
+    createDeveloperSettingsCard(actions.developer, actions.createButton)
+  );
+}
+
 export function createSettingsToggleCard(
   label: string,
   enabled: boolean,

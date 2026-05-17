@@ -1,4 +1,5 @@
 import { formatNumber, formatPrice } from "../game/economy";
+import { inventoryCategoryTitle, type InventoryCategoryItem } from "../game/inventory-dock";
 import type { Fish } from "../objects/Fish";
 import type { HelperCreature } from "../objects/HelperCreature";
 import type { Price } from "../types/mechanics";
@@ -24,6 +25,71 @@ export type HelperAlbumRowOptions = {
   createButton: PageButtonFactory;
   onSell: (index: number) => void;
 };
+
+export type AlbumPageOptions<Tab extends string> = {
+  content: HTMLElement;
+  inventoryDrillOpen: boolean;
+  inventoryTab: Tab;
+  createCategoryGrid: () => HTMLElement;
+  createDrillHeader: (title: string, onBack: () => void) => HTMLElement;
+  onBackToCategories: () => void;
+  appendFishTab: (content: HTMLElement) => void;
+  appendFusionTab: (content: HTMLElement) => void;
+  appendFoodTab: (content: HTMLElement) => void;
+  appendDecorTab: (content: HTMLElement) => void;
+  appendTankTab: (content: HTMLElement) => void;
+  appendCoinsTab: (content: HTMLElement) => void;
+};
+
+export type InventoryCategoryGridOptions<Tab extends string> = {
+  items: Array<InventoryCategoryItem<Tab>>;
+  createDrillMenuCard: (icon: string, label: string, description: string, action: () => void) => HTMLButtonElement;
+  createFusionDrillMenuCard: (description: string, action: () => void) => HTMLButtonElement;
+  onSelectTab: (tab: Tab) => void;
+};
+
+export function appendAlbumPage<Tab extends string>(options: AlbumPageOptions<Tab>): void {
+  options.content.classList.add("aq-page-content-scroll");
+  if (!options.inventoryDrillOpen) {
+    options.content.classList.add("aq-page-content-main-menu");
+    options.content.append(options.createCategoryGrid());
+    return;
+  }
+
+  options.content.append(options.createDrillHeader(inventoryCategoryTitle(options.inventoryTab), options.onBackToCategories));
+  if (options.inventoryTab === "fish") {
+    options.appendFishTab(options.content);
+    return;
+  }
+  if (options.inventoryTab === "fusion") {
+    options.appendFusionTab(options.content);
+    return;
+  }
+  if (options.inventoryTab === "food") {
+    options.appendFoodTab(options.content);
+    return;
+  }
+  if (options.inventoryTab === "decor") {
+    options.appendDecorTab(options.content);
+    return;
+  }
+  if (options.inventoryTab === "tank") {
+    options.appendTankTab(options.content);
+    return;
+  }
+  options.appendCoinsTab(options.content);
+}
+
+export function createInventoryCategoryGrid<Tab extends string>(options: InventoryCategoryGridOptions<Tab>): HTMLElement {
+  const grid = htmlElement("div", "aq-main-menu-grid");
+  options.items.forEach((item) => {
+    const action = () => options.onSelectTab(item.tab);
+    grid.append(item.tab === "fusion"
+      ? options.createFusionDrillMenuCard(item.description, action)
+      : options.createDrillMenuCard(item.icon, item.label, item.description, action));
+  });
+  return grid;
+}
 
 export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
   const { fish, index, happinessPercent, rarityLabel, sellValue, createButton, onStore, onSell } = options;
