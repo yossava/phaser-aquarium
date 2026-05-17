@@ -8,6 +8,7 @@ export function appendGoalsPageContent(input: {
   goals: DailyQuestItem[];
   claimedGoalIds: string[];
   foodNameForId: (foodTypeId: string) => string;
+  fishNameForId: (fishTypeId: string) => string;
   rewardedAdOptions: RewardedAdOption[];
   rewardedAd: RewardedAdState | undefined;
   createButton: PageButtonFactory;
@@ -17,7 +18,7 @@ export function appendGoalsPageContent(input: {
 }): void {
   input.content.classList.add("aq-page-content-scroll");
   input.content.append(
-    createQuestList(input.goals, input.claimedGoalIds, input.foodNameForId, input.createButton, input.claimDailyGoal),
+    createQuestList(input.goals, input.claimedGoalIds, input.foodNameForId, input.fishNameForId, input.createButton, input.claimDailyGoal),
     createRewardedAdsPage(input.rewardedAdOptions, input.rewardedAd, input.createButton, {
       startRewardedAd: input.startRewardedAd,
       claimRewardedAd: input.claimRewardedAd

@@ -157,6 +157,24 @@
       "runtime_filename": "icon-happy-status.png",
       "intended_use": "Prompt-generated happy status badge for the top HUD care row.",
       "prompt_source": "docs/prompt.json assets.icon_happy_status"
+    },
+    {
+      "filename": "ui_time_stat_icon_keyed.png",
+      "runtime_filename": "icon-time-status.png",
+      "dimensions": {
+        "width": 192,
+        "height": 192
+      },
+      "format": "png",
+      "transparency": "rgba_alpha_from_magenta_chroma_key",
+      "background_notes": "Seashell pocket-watch time status icon; flat magenta keyed background removed.",
+      "intended_use": "Main menu Time statistic card icon.",
+      "source_generation": {
+        "method": "imagegen via create-assets skill plus local chroma-key alpha postprocess",
+        "original_generated_image": "/Users/yossava/.codex/generated_images/019e34d6-8ef4-7fd3-9a13-df26ff1684d7/ig_0665aa5341387347016a097fa637548191a2cb7eb9cabc7d79.png",
+        "source_copy": "assets/generated/source/ui_time_stat_icon_keyed.png",
+        "postprocess": "Magenta key removed with tools/key_out_magenta.py and resized to 192x192."
+      }
     }
   ]
 }

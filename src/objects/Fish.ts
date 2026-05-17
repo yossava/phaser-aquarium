@@ -17,6 +17,7 @@ import {
   fishTargetMealCalories
 } from "../game/economy-model";
 import { gameFontFamily } from "../game/fonts";
+import { maxDynamicProductionPaceMultiplier } from "../game/level-progression";
 import { fishFoodTintFor } from "../game/visuals";
 import type { AgeStage, CoinProduction, FishGender, FishState, FishType, FoodType } from "../types/mechanics";
 import { FoodPellet } from "./FoodPellet";
@@ -593,7 +594,7 @@ export class Fish {
       return 0;
     }
 
-    const paceMultiplier = Phaser.Math.Clamp(productionPaceMultiplier, 0.001, 4);
+    const paceMultiplier = Phaser.Math.Clamp(productionPaceMultiplier, 0.001, maxDynamicProductionPaceMultiplier);
     const plan = fishCoinDropPlan({
       fullnessCalories,
       fullCaloriesNeed: this.fullCaloriesNeed(),

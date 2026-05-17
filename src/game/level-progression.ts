@@ -1,6 +1,7 @@
 export const baseFishProductionLevelThreshold = 250;
 export const minTargetActiveLevelHours = 2;
 export const maxTargetActiveLevelHours = 2.5;
+export const maxDynamicProductionPaceMultiplier = 50;
 
 export type LevelProgress = {
   level: number;

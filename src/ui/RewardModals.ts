@@ -29,6 +29,7 @@ export function createLevelCompletionRewardShell(input: {
   nextLevel: number;
   rewardFish: FishType[];
   fallbackFish: FishType;
+  bonusRewards?: string[];
   createButton: (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
   onClaim: () => void;
 }): HTMLDivElement {
@@ -38,6 +39,7 @@ export function createLevelCompletionRewardShell(input: {
   const rewardLabel = input.rewardFish.length > 1
     ? `${primaryFish.name} +${formatNumber(input.rewardFish.length - 1)} fish`
     : primaryFish.name;
+  const bonusRewardRows = (input.bonusRewards ?? []).map((reward) => htmlElement("p", "aq-modal-owned-line", [`Reward: ${reward}`]));
   const panel = htmlElement("section", "aq-modal aq-level-reward-modal", [
     htmlElement("h2", "aq-modal-title aq-level-reward-title", [`Level ${formatNumber(input.completedLevel)} Complete!`]),
     htmlElement("div", "aq-level-reward-medallion", [formatNumber(input.nextLevel)]),
@@ -46,6 +48,7 @@ export function createLevelCompletionRewardShell(input: {
       htmlImage(`/assets/fish/${primaryFish.id}.png`, primaryFish.name, "aq-modal-preview-image fish")
     ]),
     htmlElement("p", "aq-modal-owned-line", [`Reward: ${rewardLabel}`]),
+    ...bonusRewardRows,
     htmlElement("p", "aq-modal-line aq-level-reward-detail", ["Coins reset. Tank fish moved to inventory."]),
     htmlElement("div", "aq-modal-actions single", [closeButton])
   ]);

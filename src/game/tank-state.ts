@@ -32,6 +32,10 @@ export type TankStateConfig = {
   validCosmeticId: (category: TankCosmeticCategory, id: string | undefined, level: number) => string;
 };
 
+function sanitizeProductionTotal(value: number | undefined): number {
+  return Math.max(0, Math.round((value ?? 0) * 10) / 10);
+}
+
 export function sortedTankLevels(levels: Set<number>): number[] {
   return [...levels].sort((a, b) => a - b);
 }
@@ -99,7 +103,7 @@ export function ensureTankState(
   state.selectedBackgroundId ??= fallbackCosmeticId;
   state.selectedSeabedId ??= fallbackCosmeticId;
   state.maxDisplayLevel = Math.max(1, Math.floor(state.maxDisplayLevel ?? 1));
-  state.fishProductionTotal = Math.max(0, Math.floor(state.fishProductionTotal ?? 0));
+  state.fishProductionTotal = sanitizeProductionTotal(state.fishProductionTotal);
   state.timeCurrentRemainingSeconds = Math.max(0, state.timeCurrentRemainingSeconds ?? 0);
   return state;
 }
@@ -189,7 +193,7 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       cleanliness: clamp(value.cleanliness ?? 100, 0, 100),
       cleanedAt: value.cleanedAt ?? Date.now(),
       maxDisplayLevel: Math.max(1, Math.floor(value.maxDisplayLevel ?? 1)),
-      fishProductionTotal: Math.max(0, Math.floor(value.fishProductionTotal ?? 0)),
+      fishProductionTotal: sanitizeProductionTotal(value.fishProductionTotal),
       timeCurrentRemainingSeconds: Math.max(0, value.timeCurrentRemainingSeconds ?? 0)
     });
   }
@@ -243,7 +247,7 @@ export function tankStatesRecord(
       cleanliness: state.cleanliness,
       cleanedAt: state.cleanedAt,
       maxDisplayLevel: Math.max(1, maxDisplayLevelFor(level, state)),
-      fishProductionTotal: Math.max(0, Math.floor(state.fishProductionTotal ?? 0)),
+      fishProductionTotal: sanitizeProductionTotal(state.fishProductionTotal),
       timeCurrentRemainingSeconds: Math.max(0, state.timeCurrentRemainingSeconds ?? 0)
     };
   }

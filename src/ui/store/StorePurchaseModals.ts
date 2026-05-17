@@ -18,6 +18,8 @@ export function createFishBuyQuantityModalContent(options: {
   owned: number;
   coinAssetPathByType: Record<CoinType, string>;
   quantityPrice: (price: Price, quantity: number) => Price;
+  walletCanAfford: (price: Price) => boolean;
+  developerGodMode: boolean;
   attachTouchFeedback: (button: HTMLButtonElement) => void;
   onBuy: (quantity: number) => void;
   onCancel: () => void;
@@ -36,6 +38,8 @@ export function createFishBuyQuantityModalContent(options: {
     disableQuantityButtonsAtOne: false,
     coinAssetPathByType: options.coinAssetPathByType,
     quantityPrice: options.quantityPrice,
+    walletCanAfford: options.walletCanAfford,
+    developerGodMode: options.developerGodMode,
     attachTouchFeedback: options.attachTouchFeedback,
     onBuy: options.onBuy,
     onCancel: options.onCancel
@@ -48,6 +52,8 @@ export function createFoodBuyQuantityModalContent(options: {
   maxQuantity: number;
   coinAssetPathByType: Record<CoinType, string>;
   quantityPrice: (price: Price, quantity: number) => Price;
+  walletCanAfford: (price: Price) => boolean;
+  developerGodMode: boolean;
   attachTouchFeedback: (button: HTMLButtonElement) => void;
   onBuy: (quantity: number) => void;
   onCancel: () => void;
@@ -64,6 +70,8 @@ export function createFoodBuyQuantityModalContent(options: {
     disableQuantityButtonsAtOne: true,
     coinAssetPathByType: options.coinAssetPathByType,
     quantityPrice: options.quantityPrice,
+    walletCanAfford: options.walletCanAfford,
+    developerGodMode: options.developerGodMode,
     attachTouchFeedback: options.attachTouchFeedback,
     onBuy: options.onBuy,
     onCancel: options.onCancel
@@ -153,6 +161,8 @@ function createBuyQuantityModalContent(options: {
   disableQuantityButtonsAtOne: boolean;
   coinAssetPathByType: Record<CoinType, string>;
   quantityPrice: (price: Price, quantity: number) => Price;
+  walletCanAfford: (price: Price) => boolean;
+  developerGodMode: boolean;
   attachTouchFeedback: (button: HTMLButtonElement) => void;
   onBuy: (quantity: number) => void;
   onCancel: () => void;
@@ -161,6 +171,8 @@ function createBuyQuantityModalContent(options: {
   let selectedQuantity = Phaser.Math.Clamp(Math.floor(options.initialQuantity), 1, maxQuantity);
   const quantityText = htmlElement("strong", "aq-sell-qty-value", [formatNumber(selectedQuantity)]);
   const totalText = htmlElement("p", "aq-modal-line aq-modal-price-line aq-sell-qty-total");
+  let buyButton: HTMLButtonElement | undefined;
+  const canBuySelectedQuantity = () => options.developerGodMode || options.walletCanAfford(options.quantityPrice(options.price, selectedQuantity));
   const renderTotalPrice = () => {
     totalText.replaceChildren(htmlElement("span", "", ["Total"]));
     for (const [coinType, amount] of priceComponents(options.quantityPrice(options.price, selectedQuantity))) {
@@ -171,6 +183,9 @@ function createBuyQuantityModalContent(options: {
     selectedQuantity = Phaser.Math.Clamp(Math.floor(selectedQuantity), 1, maxQuantity);
     quantityText.textContent = formatNumber(selectedQuantity);
     renderTotalPrice();
+    if (buyButton) {
+      buyButton.disabled = !canBuySelectedQuantity();
+    }
   };
   const setQuantity = (quantity: number) => {
     selectedQuantity = quantity;
@@ -196,7 +211,21 @@ function createBuyQuantityModalContent(options: {
       totalText
     ],
     actions: [
-      { label: options.buyLabel, fill: 0x356a35, action: () => options.onBuy(selectedQuantity) },
+      {
+        label: options.buyLabel,
+        fill: 0x356a35,
+        disabled: !canBuySelectedQuantity(),
+        onCreate: (button) => {
+          buyButton = button;
+          buyButton.disabled = !canBuySelectedQuantity();
+        },
+        action: () => {
+          if (!canBuySelectedQuantity()) {
+            return;
+          }
+          options.onBuy(selectedQuantity);
+        }
+      },
       { label: "Cancel", fill: 0x254d68, action: options.onCancel }
     ]
   };

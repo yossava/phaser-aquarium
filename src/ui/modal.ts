@@ -4,6 +4,8 @@ export type ModalAction = {
   label: string;
   fill: number;
   action: () => void;
+  disabled?: boolean;
+  onCreate?: (button: HTMLButtonElement) => void;
 };
 
 export function createModalShell(options: {
@@ -98,10 +100,13 @@ function createModalButton(
   attachTouchFeedback: ((button: HTMLButtonElement) => void) | undefined,
   afterAction: (() => void) | undefined
 ): HTMLButtonElement {
-  return createHtmlButton(action.label, `aq-modal-button ${modalButtonTone(action.fill)}`, action.action, {
+  const button = createHtmlButton(action.label, `aq-modal-button ${modalButtonTone(action.fill)}`, action.action, {
+    disabled: action.disabled,
     attachTouchFeedback,
     afterClick: afterAction
   });
+  action.onCreate?.(button);
+  return button;
 }
 
 function modalButtonTone(fill: number): string {

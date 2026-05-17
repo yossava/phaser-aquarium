@@ -1288,7 +1288,7 @@ canvas {
   }
 
   .aq-main-menu-status-grid {
-    @apply mb-3 grid grid-cols-5 gap-1.5;
+    @apply mb-3 grid grid-cols-3 gap-1.5;
   }
 
   .aq-main-menu-status-card {

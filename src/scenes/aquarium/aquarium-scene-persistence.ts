@@ -196,7 +196,8 @@ function applyOfflineFishProduction(
     return;
   }
 
-  const targetCalories = (currentFish.fullCaloriesNeed() / 3600) * elapsedSeconds;
+  const paceMultiplier = scene.activeProductionPaceMultiplier();
+  const targetCalories = (currentFish.fullCaloriesNeed() / 3600) * elapsedSeconds * paceMultiplier;
   const convertedCalories = Math.min(currentFish.currentFullnessCalories(), targetCalories);
   const amount = Math.floor(currentFish.coinProductionValueForCalories(convertedCalories));
   if (amount <= 0) {

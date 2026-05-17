@@ -154,7 +154,8 @@ export const hudIconAssetPathByKey: Record<string, string> = {
   "ui-icon-total-wealth": "/assets/ui/icon-total-wealth.png",
   "ui-icon-food-status": "/assets/ui/icon-food-status.png",
   "ui-icon-clean-status": "/assets/ui/icon-clean-status.png",
-  "ui-icon-happy-status": "/assets/ui/icon-happy-status.png"
+  "ui-icon-happy-status": "/assets/ui/icon-happy-status.png",
+  "ui-icon-time-status": "/assets/ui/icon-time-status.png"
 };
 export const coinGlowTextureKey = "coin-glow";
 export const coinGlowAssetPath = "/assets/ui/coin-glow.png";

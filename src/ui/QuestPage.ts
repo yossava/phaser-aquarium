@@ -6,6 +6,7 @@ export function createQuestList(
   goals: DailyQuestItem[],
   claimedGoalIds: string[],
   foodNameForId: (foodTypeId: string) => string,
+  fishNameForId: (fishTypeId: string) => string,
   createButton: PageButtonFactory,
   onClaim: (goalId: string, complete: boolean) => void
 ): HTMLElement {
@@ -22,7 +23,7 @@ export function createQuestList(
     const status = htmlElement("span", "aq-quest-status", [claimed ? "Done" : goal.complete ? "Ready" : "Todo"]);
     const body = htmlElement("div", "aq-quest-body", [
       htmlElement("h3", "aq-quest-title", [goal.label]),
-      htmlElement("p", "aq-quest-reward", [`Reward ${formatDailyQuestReward(goal.reward, foodNameForId)}`])
+      htmlElement("p", "aq-quest-reward", [`Reward ${formatDailyQuestReward(goal.reward, foodNameForId, fishNameForId)}`])
     ]);
     row.append(
       status,

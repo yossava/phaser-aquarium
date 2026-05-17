@@ -191,6 +191,8 @@ export class AquariumSceneStoreController {
       owned,
       coinAssetPathByType,
       quantityPrice: (price, quantity) => adapter.quantityPrice(price, quantity),
+      walletCanAfford: (price) => canAfford(adapter.wallet(), price),
+      developerGodMode: adapter.developerGodMode(),
       attachTouchFeedback: (button) => adapter.attachTouchFeedback(button),
       onBuy: (quantity) => this.buyFish(fishType, quantity),
       onCancel: () => adapter.closeModal()
@@ -260,6 +262,8 @@ export class AquariumSceneStoreController {
       maxQuantity: maxFoodBuyQuantity,
       coinAssetPathByType,
       quantityPrice: (price, quantity) => adapter.quantityPrice(price, quantity),
+      walletCanAfford: (price) => canAfford(adapter.wallet(), price),
+      developerGodMode: adapter.developerGodMode(),
       attachTouchFeedback: (button) => adapter.attachTouchFeedback(button),
       onBuy: (quantity) => this.buyFood(foodType, quantity),
       onCancel: () => adapter.closeModal()

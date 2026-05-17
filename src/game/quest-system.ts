@@ -4,7 +4,8 @@ import { timeCurrentFoodTypeId } from "./food-system";
 
 export type DailyQuestReward =
   | { kind: "coins"; price: Price }
-  | { kind: "food"; foodTypeId: FoodTypeId; quantity: number };
+  | { kind: "food"; foodTypeId: FoodTypeId; quantity: number }
+  | { kind: "fish"; fishTypeId: string; quantity: number };
 
 export type DailyQuestItem = {
   id: string;
@@ -63,6 +64,7 @@ export type BuildDailyQuestItemsInput = {
   hasAutoFoodBuyer: boolean;
   foodDispenserPrice: Price;
   questReward: DailyQuestReward;
+  fishQuestReward: DailyQuestReward;
   actionCount: (action: string) => number;
   fishPurchaseCount: (coinType?: CoinType) => number;
 };
@@ -110,12 +112,14 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
   const sickCarePriority = input.sickFishCount > 0 ? 120 : 20;
   const hungryCarePriority = input.hungryFishCount > 0 ? 95 : 35;
   const cleaningPriority = input.cleanliness < 55 ? 82 : input.cleanliness < 75 ? 58 : 24;
+  const cleanTankPriority = Math.max(cleaningPriority, input.activeDecorationCount <= 0 ? 43 : 19);
   const stockingPriority = input.feedableFoodInventory <= 0 ? 88 : 36;
   const medicinePriority = input.sickFishCount > 0 && input.medicineInventory <= 0 ? 118 : 22;
   const reward = input.questReward;
   const timeCurrentReward: DailyQuestReward = { kind: "food", foodTypeId: timeCurrentFoodTypeId, quantity: 1 };
   return [
     { id: "play-time-current", label: "Spend time with the tank", complete: actionCount("play-time-current") > 0, reward: timeCurrentReward, priority: 125 },
+    { id: "use-time-current", label: "Use Time Current", complete: actionCount("use-time-current") > 0, reward, priority: 124 },
     { id: "buy-medicine", label: input.sickFishCount > 0 ? "Buy medicine for a sick fish" : "Buy medicine", complete: actionCount("buy-medicine") > 0, reward, priority: medicinePriority },
     { id: "medicine", label: "Heal a sick fish with medicine", complete: actionCount("medicine") > 0, reward, priority: sickCarePriority + (input.medicineInventory > 0 ? 10 : 0) },
     { id: "buy-food", label: input.feedableFoodInventory <= 0 ? "Restock fish food" : "Buy another food", complete: actionCount("buy-food") > 0, reward, priority: stockingPriority },
@@ -123,8 +127,9 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
     { id: "feed", label: input.hungryFishCount > 0 ? "Feed a hungry fish" : "Feed a fish", complete: actionCount("feed") > 0, reward, priority: hungryCarePriority },
     { id: "buy-growth-tonic", label: "Buy Growth Tonic", complete: actionCount("buy-growth-tonic") > 0, reward, priority: 24 },
     { id: "use-growth-tonic", label: "Use Growth Tonic", complete: actionCount("use-growth-tonic") > 0, reward, priority: 23 },
-    { id: "clean", label: input.cleanliness < 75 ? "Clean the dirty tank" : "Clean the tank", complete: actionCount("clean") > 0, reward, priority: cleaningPriority },
+    { id: "clean", label: input.cleanliness < 75 ? "Clean the dirty tank" : "Clean the tank", complete: actionCount("clean") > 0, reward, priority: cleanTankPriority },
     { id: "coin", label: `Collect ${formatNumber(1)} coin`, complete: actionCount("coin") > 0, reward, priority: input.coinDropCount > 0 ? 76 : 52 },
+    { id: "coin-combo-10", label: "Do a 10x coin combo", complete: actionCount("coin-combo-10") > 0, reward: input.fishQuestReward, priority: input.coinDropCount > 0 ? 75 : 51 },
     { id: "magnet-coin", label: "Let Coin Magnet collect a coin", complete: actionCount("magnet-coin") > 0, reward, priority: input.hasCoinMagnet && input.coinDropCount > 0 ? 70 : 17 },
     { id: "sell-rare-coins", label: "Convert rare coins", complete: actionCount("sell-rare-coins") > 0, reward, priority: input.rareCoinCount > 0 ? 64 : 13 },
     { id: "sell-super-rare-coins", label: "Convert super rare coins", complete: actionCount("sell-super-rare-coins") > 0, reward, priority: input.superRareCoinCount > 0 ? 63 : 12 },
@@ -132,12 +137,14 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
     { id: "buy-rare-fish", label: "Buy a rare fish", complete: input.fishPurchaseCount("rare") > 0, reward, priority: 20 },
     { id: "buy-super-fish", label: "Buy a super rare fish", complete: input.fishPurchaseCount("superRare") > 0, reward, priority: 19 },
     { id: "place-fish", label: "Drag a fish into the tank", complete: actionCount("place-fish") > 0 || input.activeFishCount > 0, reward, priority: input.activeFishCount <= 0 ? 90 : 38 },
+    { id: "pop-fish-bubble", label: "Tap a delivery fish bubble", complete: actionCount("pop-fish-bubble") > 0, reward, priority: input.activeFishCount <= 0 ? 86 : 37 },
     { id: "move-fish", label: "Move a fish", complete: actionCount("move-fish") > 0, reward, priority: input.activeFishCount > 0 ? 31 : 9 },
     { id: "sell-active-fish", label: "Sell a tank fish", complete: actionCount("sell-active-fish") > 0, reward, priority: input.activeFishCount > 1 ? 29 : 7 },
     { id: "sell-stored-fish", label: "Sell a stored fish", complete: actionCount("sell-stored-fish") > 0, reward, priority: input.storedFishCount > 0 ? 28 : 6 },
     { id: "breed-fish", label: "Breed fish", complete: actionCount("breed-fish") > 0, reward, priority: input.activeFishCount >= 2 ? 27 : 5 },
     { id: "fuse-fish", label: "Fuse two fish", complete: actionCount("fuse-fish") > 0, reward, priority: input.activeFishCount + input.storedFishCount >= 2 ? 33 : 5 },
     { id: "premium-fusion", label: "Create a premium fusion result", complete: actionCount("premium-fusion") > 0, reward, priority: 11 },
+    { id: "buy-another-fish", label: "Buy another fish", complete: input.fishPurchaseCount() > 1, reward, priority: input.activeFishCount > 0 ? 41 : 18 },
     { id: "buy-decoration", label: "Buy a decoration", complete: actionCount("buy-decoration") > 0, reward, priority: input.activeDecorationCount <= 0 ? 42 : 18 },
     { id: "buy-rare-decoration", label: "Buy a rare decoration", complete: actionCount("buy-rare-decoration") > 0, reward, priority: 17 },
     { id: "buy-super-rare-decoration", label: "Buy a super rare decoration", complete: actionCount("buy-super-rare-decoration") > 0, reward, priority: 16 },
@@ -163,7 +170,7 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
     { id: "use-seabed", label: "Change tank seabed", complete: actionCount("use-seabed") > 0, reward, priority: 18 },
     { id: "tint-cosmetic", label: "Adjust tank cosmetic tint", complete: actionCount("tint-cosmetic") > 0, reward, priority: 14 },
     { id: "rename-tank", label: "Rename a tank", complete: actionCount("rename-tank") > 0, reward, priority: 10 },
-    { id: "prize-game", label: "Play Treasure Spin", complete: actionCount("prize-game") > 0, reward, priority: 24 },
+    { id: "prize-game", label: "Play Treasure Spin", complete: actionCount("prize-game") > 0, reward, priority: cleanTankPriority + 1 },
     { id: "watch-ad", label: "Watch a rewarded ad", complete: actionCount("watch-ad") > 0, reward, priority: 21 },
     { id: "claim-ad", label: "Claim an ad reward", complete: actionCount("claim-ad") > 0, reward, priority: 20 },
     { id: "claim-food-ad", label: "Claim a food ad reward", complete: actionCount("claim-food-ad") > 0, reward, priority: 12 },
@@ -178,12 +185,20 @@ export function coinQuestReward(price: Price): DailyQuestReward {
   return { kind: "coins", price };
 }
 
-export function formatDailyQuestReward(reward: DailyQuestReward, foodNameForId: (foodTypeId: FoodTypeId) => string): string {
+export function formatDailyQuestReward(
+  reward: DailyQuestReward,
+  foodNameForId: (foodTypeId: FoodTypeId) => string,
+  fishNameForId: (fishTypeId: string) => string = () => "Fish"
+): string {
   if (reward.kind === "coins") {
     return formatPrice(reward.price);
   }
 
   const quantity = Math.max(1, Math.floor(reward.quantity));
+  if (reward.kind === "fish") {
+    return `${fishNameForId(reward.fishTypeId)} x${formatNumber(quantity)}`;
+  }
+
   return `${foodNameForId(reward.foodTypeId)} x${formatNumber(quantity)}`;
 }
 
