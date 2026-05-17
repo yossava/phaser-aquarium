@@ -481,6 +481,11 @@ async function runRegression(cdp, appUrl) {
     (current) => current.wallet.common < goldfishWalletBefore && current.fishCount === 1 && current.placementMode === "none",
     "Buying a goldfish should add it directly to the tank."
   );
+  state = await waitFor(
+    cdp,
+    (current) => current.fish[0]?.textureKey?.startsWith("fish-goldfish"),
+    "Bought goldfish texture did not finish lazy-loading."
+  );
   const goldfishPrice = goldfishWalletBefore - state.wallet.common;
   assert(state.maxFishCapacity === 4, "Level 1 tank should support 4 fish slots.");
   assert(
@@ -504,11 +509,16 @@ async function runRegression(cdp, appUrl) {
   );
   assert(state.fishTypeCount >= 90, "Fish catalog should include the expanded generated fish set.");
   assert(state.visibleFishCatalogCount >= 30, "Common fish catalog should show the expanded common fish set.");
+  const visibleFishPreviewStates = state.visibleFishCatalogPreviewStates ?? [];
+  const revealedFishPreviewStates = visibleFishPreviewStates.filter((preview) => preview.revealed);
+  const lockedFishPreviewStates = visibleFishPreviewStates.filter((preview) => !preview.revealed);
   assert(
-    state.visibleFishCatalogPreviewTextures.length === state.visibleFishCatalogCount &&
-      state.visibleFishCatalogPreviewTextures[0] === "fish-goldfish" &&
-      state.visibleFishCatalogPreviewTextures.every((textureKey) => textureKey.startsWith("fish-")),
-    "Every visible fish store card should resolve to a fish preview texture."
+    visibleFishPreviewStates.length === state.visibleFishCatalogCount &&
+      visibleFishPreviewStates[0]?.id === "goldfish" &&
+      revealedFishPreviewStates.length === 8 &&
+      revealedFishPreviewStates.every((preview) => preview.textureKey.startsWith("fish-")) &&
+      lockedFishPreviewStates.every((preview) => preview.requiredLevel > state.tankLevel),
+    "Current tank level fish should resolve to real previews while higher-level fish remain gated."
   );
   await captureNamedScreenshot(cdp, "fish-store-card-images.png");
   assert(state.totalWealth > state.wallet.common, "Total wealth should include wallet and owned tank assets.");

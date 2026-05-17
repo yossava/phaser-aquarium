@@ -44,6 +44,12 @@ export type AquariumTestSnapshot = {
   helperCreatureTypeCount: number;
   visibleFishCatalogCount: number;
   visibleFishCatalogPreviewTextures: string[];
+  visibleFishCatalogPreviewStates: Array<{
+    id: string;
+    requiredLevel: number;
+    textureKey: string;
+    revealed: boolean;
+  }>;
   visibleStoreCatalogCount: number;
   assetCoverage: {
     fish: number;

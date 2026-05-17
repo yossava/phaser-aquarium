@@ -4,6 +4,7 @@ import { tankBounds } from "../game/constants";
 import { foodDispenserInventoryKey } from "../game/dispenser-system";
 import { earn, formatNumber } from "../game/economy";
 import { clearSave, loadGame, mapToRecord } from "../game/save";
+import { fishShopRequiredLevel } from "../game/store-catalog";
 import { fishFoodTintFor } from "../game/visuals";
 import { FoodPellet } from "../objects/FoodPellet";
 import type { CoinType, FishGender, FoodTypeId, StoreTab } from "../types/mechanics";
@@ -90,6 +91,15 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       helperCreatureTypeCount: helperCreatureTypes.length,
       visibleFishCatalogCount: scene.visibleFishCatalog().length,
       visibleFishCatalogPreviewTextures: scene.visibleFishCatalog().map((fishType: any) => scene.fishCatalogPreviewTextureKey(fishType)),
+      visibleFishCatalogPreviewStates: scene.visibleFishCatalog().map((fishType: any) => {
+        const requiredLevel = fishShopRequiredLevel(fishType);
+        return {
+          id: fishType.id,
+          requiredLevel,
+          textureKey: scene.fishCatalogPreviewTextureKey(fishType),
+          revealed: scene.developerGodMode || requiredLevel <= scene.tankLevel
+        };
+      }),
       visibleStoreCatalogCount: scene.visibleStoreCatalogCount(),
       assetCoverage: scene.assetCoverageSnapshot(),
       dirtyTankOverlay: {
