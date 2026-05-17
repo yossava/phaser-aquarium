@@ -437,6 +437,7 @@ import { createAquariumPrizeControllerHost } from "./aquarium-prize-adapter";
 import { createAquariumFusionAdapter } from "./aquarium-fusion-adapter";
 import { AquariumTextureLoader } from "./aquarium-texture-loader";
 import { AquariumFoodController } from "./aquarium-food-controller";
+import { createAquariumFoodControllerHost } from "./aquarium-food-adapter";
 import { AquariumCareController, createAquariumCareControllerAdapter } from "./aquarium-care-controller";
 
 export class AquariumSceneCore extends Phaser.Scene {
@@ -1900,74 +1901,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private aquariumFoodController(): AquariumFoodController {
-    this.aquariumFoodRuntimeController ??= new AquariumFoodController({
-      scene: this,
-      getWallet: () => this.wallet,
-      isDeveloperGodMode: () => this.developerGodMode,
-      getFoods: () => this.foods,
-      getFoodInventory: (foodTypeId) => this.getFoodInventory(foodTypeId),
-      setFoodInventory: (foodTypeId, amount) => this.foodInventory.set(foodTypeId, amount),
-      getTotalFeedableFoodInventory: () => this.getTotalFeedableFoodInventory(),
-      getCareFoodTarget: (foodTypeId) => this.careFoodTargetFish.get(foodTypeId),
-      clearCareFoodTarget: (foodTypeId) => this.careFoodTargetFish.delete(foodTypeId),
-      activeFish: () => this.activeFish(),
-      setSelectedFoodTypeId: (foodTypeId) => {
-        this.selectedFoodTypeId = foodTypeId;
-      },
-      setPlacementMode: (mode) => {
-        this.placementMode = mode;
-      },
-      getCleanliness: () => this.cleanliness,
-      setCleanliness: (cleanliness) => {
-        this.cleanliness = cleanliness;
-      },
-      getTankLayer: () => this.tankLayer,
-      tankViewScaleForLevel: () => this.tankViewScaleForLevel(),
-      screenToTankPoint: (x, y) => this.screenToTankPoint(x, y),
-      getFoodDispenserElement: () => this.foodDispenserElement,
-      getFoodDispenserY: () => this.foodDispenserY,
-      hasFoodDispenser: () => this.hasFoodDispenser(),
-      getNextFoodDispenseAt: () => this.nextFoodDispenseAt,
-      setNextFoodDispenseAt: (time) => {
-        this.nextFoodDispenseAt = time;
-      },
-      hasAutoFoodBuyer: () => this.hasAutoFoodBuyer(),
-      getNextAutoFoodBuyerPurchaseAt: () => this.nextAutoFoodBuyerPurchaseAt,
-      setNextAutoFoodBuyerPurchaseAt: (time) => {
-        this.nextAutoFoodBuyerPurchaseAt = time;
-      },
-      autoFoodBuyerTankPosition: () => this.autoFoodBuyerTankPosition(),
-      quantityPrice: (price, quantity) => this.quantityPrice(price, quantity),
-      priceWealth: (price) => this.priceWealth(price),
-      hasCoinMagnet: () => this.hasCoinMagnet(),
-      coinMagnetRemainingMinutes: () => this.coinMagnetRemainingMinutes(),
-      autoFoodBuyerRemainingMinutes: () => this.autoFoodBuyerRemainingMinutes(),
-      getCoinMagnetWasActive: () => this.coinMagnetWasActive,
-      setCoinMagnetWasActive: (active) => {
-        this.coinMagnetWasActive = active;
-      },
-      getCoinMagnetDisplayedMinutes: () => this.coinMagnetDisplayedMinutes,
-      setCoinMagnetDisplayedMinutes: (minutes) => {
-        this.coinMagnetDisplayedMinutes = minutes;
-      },
-      getAutoFoodBuyerWasActive: () => this.autoFoodBuyerWasActive,
-      setAutoFoodBuyerWasActive: (active) => {
-        this.autoFoodBuyerWasActive = active;
-      },
-      getAutoFoodBuyerDisplayedMinutes: () => this.autoFoodBuyerDisplayedMinutes,
-      setAutoFoodBuyerDisplayedMinutes: (minutes) => {
-        this.autoFoodBuyerDisplayedMinutes = minutes;
-      },
-      deleteDecorationInventory: (inventoryKey) => this.decorationInventory.delete(inventoryKey),
-      clearMagnetCollectingCoins: () => this.magnetCollectingCoins.clear(),
-      floatText: (message, x, y, color) => this.floatText(message, x, y, color),
-      floatTankText: (message, x, y, color) => this.floatTankText(message, x, y, color),
-      recordDailyQuestAction: (action) => this.recordDailyQuestAction(action),
-      createFoodDock: () => this.createFoodDock(),
-      refreshUi: (renderControls?: boolean) => this.refreshUi(renderControls),
-      refreshStoreOverlay: () => this.storeOverlay?.refresh(),
-      saveNow: () => this.saveNow()
-    });
+    this.aquariumFoodRuntimeController ??= new AquariumFoodController(createAquariumFoodControllerHost(this));
     return this.aquariumFoodRuntimeController;
   }
 
