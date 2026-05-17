@@ -570,6 +570,8 @@ export class AquariumSceneCore extends Phaser.Scene {
   private fishJoystickKnob?: HTMLSpanElement;
   private fishJoystickPointerId?: number;
   private fishJoystickControlledFish?: Fish;
+  private fishJoystickBubbleCooldown = 0;
+  private activeFishJoystickBubbles = new Set<Phaser.GameObjects.Arc>();
   private magnetCollectingCoins = new Set<CoinDrop>();
   private coinMagnetPreviousCoinY = new Map<CoinDrop, number>();
   private coinMagnetWasActive = false;
@@ -1747,7 +1749,10 @@ export class AquariumSceneCore extends Phaser.Scene {
     if (selected?.tankLevel === this.tankLevel) {
       return selected;
     }
-    return this.activeFish()[0];
+    return this.activeFish().reduce<Fish | undefined>(
+      (youngest, fish) => (!youngest || fish.ageSeconds < youngest.ageSeconds ? fish : youngest),
+      undefined
+    );
   }
 
   private updateFishJoystickFromPointer(event: PointerEvent): void {
@@ -1782,6 +1787,10 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.fishJoystickKnob?.style.setProperty("--joystick-y", "0px");
   }
 
+  private controlledFish(): Fish | undefined {
+    return this.fishJoystickControlledFish?.isJoystickControlled() ? this.fishJoystickControlledFish : undefined;
+  }
+
   private collectCoinsHitByControlledFish(): void {
     const fish = this.fishJoystickControlledFish;
     if (!fish || !fish.isJoystickControlled() || fish.tankLevel !== this.tankLevel || !this.canManuallyCollectTankCoins()) {
@@ -1800,6 +1809,47 @@ export class AquariumSceneCore extends Phaser.Scene {
     if (hitCoin) {
       this.collectCoin(hitCoin, false);
     }
+  }
+
+  private updateControlledFishBubbleTrail(deltaSeconds: number): void {
+    const fish = this.fishJoystickControlledFish;
+    if (!fish || !fish.isJoystickControlled() || fish.tankLevel !== this.tankLevel || !fish.sprite.visible) {
+      this.fishJoystickBubbleCooldown = 0;
+      return;
+    }
+
+    this.fishJoystickBubbleCooldown = Math.max(0, this.fishJoystickBubbleCooldown - deltaSeconds);
+    if (this.fishJoystickBubbleCooldown > 0 || this.activeFishJoystickBubbles.size >= 18) {
+      return;
+    }
+
+    this.fishJoystickBubbleCooldown = Phaser.Math.FloatBetween(0.045, 0.085);
+    const bubble = this.add.circle(
+      fish.sprite.x - fish.facing * fish.sprite.displayWidth * 0.34 + Phaser.Math.Between(-4, 4),
+      fish.sprite.y + Phaser.Math.Between(-6, 7),
+      Phaser.Math.FloatBetween(2.4, 4.4),
+      0xffffff,
+      0.58
+    );
+    bubble
+      .setStrokeStyle(2, 0xffffff, 0.86)
+      .setDepth(10)
+      .setAlpha(0.72);
+    this.tankLayer.add(bubble);
+    this.activeFishJoystickBubbles.add(bubble);
+    this.tweens.add({
+      targets: bubble,
+      x: bubble.x - fish.facing * Phaser.Math.Between(12, 24),
+      y: Math.max(tankBounds.top + 18, bubble.y - Phaser.Math.Between(18, 42)),
+      alpha: 0,
+      scale: Phaser.Math.FloatBetween(1.6, 2.35),
+      duration: Phaser.Math.Between(560, 900),
+      ease: "Sine.easeOut",
+      onComplete: () => {
+        this.activeFishJoystickBubbles.delete(bubble);
+        bubble.destroy();
+      }
+    });
   }
 
   private visibleInventoryDockItems(): InventoryDockItem[] {
@@ -1970,6 +2020,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.fishJoystickElement?.remove();
     this.fishJoystickElement = undefined;
     this.fishJoystickKnob = undefined;
+    this.activeFishJoystickBubbles.forEach((bubble) => bubble.destroy());
+    this.activeFishJoystickBubbles.clear();
     this.htmlPageOverlay?.remove();
     this.htmlPageOverlay = undefined;
     this.coinComboOverlay?.remove();

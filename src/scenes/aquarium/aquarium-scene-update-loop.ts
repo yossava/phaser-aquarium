@@ -48,11 +48,13 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.updateTankCleanliness(progressDeltaSeconds, tankFish.length);
   scene.updateDirtyTankOverlay();
   const foodAssignments = scene.assignFoodsToFish(tankFish);
+  const controlledFish = scene.controlledFish();
   const fishToRemove: any[] = [];
   for (const currentFish of tankFish) {
-    updateFish(scene, currentFish, foodAssignments.get(currentFish) ?? [], deltaSeconds, progressDeltaSeconds, fishToRemove, activitySpeedMultiplier);
+    updateFish(scene, currentFish, foodAssignments.get(currentFish) ?? [], deltaSeconds, progressDeltaSeconds, fishToRemove, activitySpeedMultiplier, controlledFish);
   }
   scene.collectCoinsHitByControlledFish();
+  scene.updateControlledFishBubbleTrail(deltaSeconds);
 
   removeDeadFish(scene, fishToRemove);
   runAutosave(scene, deltaSeconds);
@@ -66,11 +68,12 @@ function updateFish(
   deltaSeconds: number,
   progressDeltaSeconds: number,
   fishToRemove: any[],
-  activitySpeedMultiplier = 1
+  activitySpeedMultiplier = 1,
+  controlledFish?: any
 ): void {
   const previousAgeStage = currentFish.ageStage;
   const previousState = currentFish.state;
-  const eatenFood = currentFish.update(deltaSeconds, assignedFoods, progressDeltaSeconds);
+  const eatenFood = currentFish.update(deltaSeconds, assignedFoods, progressDeltaSeconds, controlledFish);
   if (currentFish.ageStage !== previousAgeStage) {
     scene.saveNow();
   }

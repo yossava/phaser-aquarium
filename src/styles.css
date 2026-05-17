@@ -2758,8 +2758,8 @@ canvas {
 
   .aq-fish-joystick {
     @apply pointer-events-auto fixed z-40 grid place-items-center rounded-full border border-white/25 bg-sky-100/10;
-    width: clamp(86px, 24vw, 112px);
-    height: clamp(86px, 24vw, 112px);
+    width: clamp(70px, 19vw, 88px);
+    height: clamp(70px, 19vw, 88px);
     right: calc((100vw - var(--aq-stage-width)) / 2 + 12px);
     bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px));
     touch-action: none;
@@ -2775,13 +2775,7 @@ canvas {
   }
 
   .aq-fish-joystick-ring {
-    @apply absolute rounded-full border border-cyan-50/30;
-    width: 72%;
-    height: 72%;
-    background:
-      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0 18%, transparent 19%),
-      linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.12) 49% 51%, transparent 52%),
-      linear-gradient(0deg, transparent 48%, rgba(255, 255, 255, 0.12) 49% 51%, transparent 52%);
+    display: none;
   }
 
   .aq-fish-joystick-knob {

@@ -56,6 +56,9 @@ const baseTextureHeight = 48;
 const idleSwimFrequency = 3.4;
 const chaseSwimFrequency = 7.2;
 const fishMovementSpeedMultiplier = 0.62;
+const joystickAvoidDistance = gameWidth * 0.34;
+const joystickAvoidSpeedMultiplier = 4.8;
+const joystickAvoidCooldownMs = 15_000;
 const fishRestChanceAtTarget = 0.42;
 const minFishRestMs = 1800;
 const maxFishRestMs = 5200;
@@ -128,6 +131,7 @@ export class Fish {
   private previousManualDragPosition = new Phaser.Math.Vector2();
   private lastManualDragPosition = new Phaser.Math.Vector2();
   private nextOffscreenVisitAt = 0;
+  private joystickAvoidCooldownUntil = 0;
   private offscreenVisitState: OffscreenVisitState = "none";
   private offscreenVisitHiddenUntil = 0;
   private pendingFacing?: number;
@@ -181,7 +185,8 @@ export class Fish {
   public update(
     deltaSeconds: number,
     foods: FoodPellet[],
-    progressDeltaSeconds = deltaSeconds
+    progressDeltaSeconds = deltaSeconds,
+    avoidFish?: Fish
   ): { food: FoodPellet; accepted: boolean; reason?: "tooSmall"; consumedCalories: number; neededMealCalories: number } | undefined {
     this.ageSeconds += progressDeltaSeconds;
     this.updateAgeStage();
@@ -242,6 +247,38 @@ export class Fish {
       this.updateStateEmoji();
       this.maybeUpdateStatusBars();
       return undefined;
+    }
+
+    if (
+      avoidFish &&
+      avoidFish !== this &&
+      avoidFish.tankLevel === this.tankLevel &&
+      avoidFish.isJoystickControlled() &&
+      !escapingFromDrag &&
+      this.scene.time.now >= this.joystickAvoidCooldownUntil
+    ) {
+      const away = new Phaser.Math.Vector2(this.sprite.x - avoidFish.sprite.x, this.sprite.y - avoidFish.sprite.y);
+      const avoidDistance = Math.max(joystickAvoidDistance, (this.sprite.displayWidth + avoidFish.sprite.displayWidth) * 0.42);
+      if (away.lengthSq() < avoidDistance * avoidDistance) {
+        away.set((this.sprite.x - avoidFish.sprite.x) < 0 ? -1 : 1, 0);
+        this.restUntil = 0;
+        this.hasRestedAtTarget = false;
+        this.offscreenVisitState = "none";
+        const fleeSpeed = this.type.speed * this.movementSizeMultiplier() * fishMovementSpeedMultiplier * joystickAvoidSpeedMultiplier;
+        this.steerTowardVelocity(away.x * fleeSpeed, away.y * fleeSpeed, deltaSeconds, 6.4);
+        this.sprite.x = Phaser.Math.Clamp(this.sprite.x, this.minimumMovementX(), this.maximumMovementX());
+        this.sprite.y = Phaser.Math.Clamp(this.sprite.y, tankBounds.top + 26, tankBounds.bottom - 26);
+        this.target.set(this.sprite.x + away.x * 90, this.sprite.y + away.y * 90);
+        if (Math.abs(away.x) > 0.14) {
+          this.requestFacing(away.x >= 0 ? 1 : -1);
+        }
+        this.joystickAvoidCooldownUntil = this.scene.time.now + joystickAvoidCooldownMs;
+        this.setStateTint();
+        this.animateSwimming(deltaSeconds, fleeSpeed, true, false);
+        this.updateStateEmoji();
+        this.maybeUpdateStatusBars();
+        return undefined;
+      }
     }
 
     const visitingOffscreen = offscreenVisitState !== "none";
