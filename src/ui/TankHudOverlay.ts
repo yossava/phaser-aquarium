@@ -9,6 +9,7 @@ export type TankMenuItem = {
   y: number;
   icon: string;
   onClick: () => void;
+  badge?: string;
 };
 
 export type HtmlHudOverlayElements = {
@@ -70,10 +71,11 @@ export function createTankMenuOverlay(input: {
       icon.classList.add("aq-tank-menu-icon-small");
     }
     bubble.append(icon);
-    if (item.id === "menu" && input.tankDirty) {
+    const badgeLabel = item.badge ?? (item.id === "menu" && input.tankDirty ? "!" : undefined);
+    if (badgeLabel) {
       const badge = document.createElement("span");
       badge.className = "aq-tank-menu-badge";
-      badge.textContent = "!";
+      badge.textContent = badgeLabel;
       bubble.append(badge);
     }
     button.append(bubble, htmlElement("span", "aq-tank-menu-label", [item.label]));

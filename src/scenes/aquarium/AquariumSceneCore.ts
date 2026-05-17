@@ -544,6 +544,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private autoFoodBuyerWasActive = false;
   private autoFoodBuyerDisplayedMinutes = 0;
   private tankMenuOverlay?: HTMLDivElement;
+  private tankMenuOverlayStateKey = "";
   private htmlPageOverlay?: HTMLDivElement;
   private htmlPageOverlayScrollTop = 0;
   private htmlPageOverlayRenderKey = "";
@@ -1142,10 +1143,12 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
-    if (this.tankMenuOverlay && this.tankMenuOverlay.dataset.version !== tankMenuVersion) {
+    const nextStateKey = `${tankMenuVersion}:${this.isTankDirty()}:${this.dailyGoalUnclaimedCount()}`;
+    if (this.tankMenuOverlay && (this.tankMenuOverlay.dataset.version !== tankMenuVersion || this.tankMenuOverlayStateKey !== nextStateKey)) {
       this.destroyTankMenuOverlay();
     }
     this.tankMenuOverlay ??= this.createTankMenuOverlay();
+    this.tankMenuOverlayStateKey = nextStateKey;
     this.tankMenuOverlay.classList.remove("hidden");
   }
 
@@ -1161,6 +1164,14 @@ export class AquariumSceneCore extends Phaser.Scene {
           y: tankMenuButtonY,
           icon: menuIconAssetPathByKey["ui-menu"],
           onClick: () => this.openScreen("menu")
+        },
+        {
+          id: "goals",
+          label: "Quest",
+          y: tankMenuButtonY + 86,
+          icon: menuIconAssetPathByKey["ui-goals"],
+          badge: this.dailyGoalUnclaimedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnclaimedCount()) : undefined,
+          onClick: () => this.openScreen("goals")
         }
       ],
       attachTouchFeedback: (element, releaseOnLeave) => this.attachTouchFeedback(element, releaseOnLeave)
@@ -1735,6 +1746,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private destroyTankMenuOverlay(): void {
     this.tankMenuOverlay?.remove();
     this.tankMenuOverlay = undefined;
+    this.tankMenuOverlayStateKey = "";
   }
 
   private destroyHtmlGameInterface(): void {
@@ -1821,7 +1833,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.scene.resume("AquariumScene");
     this.scene.setVisible(true, "AquariumScene");
     this.scene.setActive(true, "AquariumScene");
-    const returnToMainMenu = closingScreen !== "tank" && closingScreen !== "menu";
+    const returnToMainMenu = closingScreen !== "tank" && closingScreen !== "menu" && closingScreen !== "goals";
     this.cancelPendingFusion();
     this.prizeSpinInProgress = false;
     this.destroyPrizeSpinContainer();
@@ -1993,7 +2005,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       { id: "games", label: "Games", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openScreen("games") },
       { id: "album", label: "Inventory", icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
       { id: "tanks", label: "Customize Tank", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openMakeupMode() },
-      { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnfinishedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnfinishedCount()) : undefined },
+      { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnclaimedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnclaimedCount()) : undefined },
       { id: "settings", label: "Settings", icon: menuIconAssetPathByKey["ui-settings"], action: () => this.openScreen("settings") }
     ];
     const statusItems: Array<{ icon: string; label: string; value: string; action?: () => void; badge?: string }> = [
@@ -2907,7 +2919,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private appendGoalsPage(content: HTMLElement): void {
     appendGoalsPageContent({
       content,
-      goals: this.visibleDailyQuestItems(),
+      goals: this.questPageItems(),
       claimedGoalIds: this.dailyGoals.claimed,
       rewardedAdOptions: this.rewardedAdOptions(),
       rewardedAd: this.rewardedAd,
@@ -2916,6 +2928,17 @@ export class AquariumSceneCore extends Phaser.Scene {
       startRewardedAd: (kind) => this.startRewardedAd(kind),
       claimRewardedAd: (kind) => this.claimRewardedAd(kind)
     });
+  }
+
+  private questPageItems(): DailyQuestItem[] {
+    const quests = this.dailyQuestItems();
+    const previousActiveIds = this.dailyGoals.activeQuestIds?.join("|") ?? "";
+    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, quests);
+    const nextActiveIds = this.dailyGoals.activeQuestIds?.join("|") ?? "";
+    if (previousActiveIds !== nextActiveIds) {
+      this.saveNow();
+    }
+    return quests;
   }
 
   private prizeController(): AquariumPrizeController {
@@ -5310,8 +5333,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     });
   }
 
-  private dailyGoalUnfinishedCount(): number {
-    return this.visibleDailyQuestItems().length;
+  private dailyGoalUnclaimedCount(): number {
+    return this.dailyQuestItems().filter((quest) => quest.complete && !this.dailyGoals.claimed.includes(quest.id)).length;
   }
 
   private visibleDailyQuestItems(): DailyQuestItem[] {

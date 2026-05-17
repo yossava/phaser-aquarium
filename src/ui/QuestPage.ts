@@ -15,7 +15,8 @@ export function createQuestList(
     return list;
   }
 
-  goals.forEach((goal) => {
+  const sortedGoals = [...goals].sort((left, right) => questSortRank(left, claimedGoalIds) - questSortRank(right, claimedGoalIds));
+  sortedGoals.forEach((goal) => {
     const claimed = claimedGoalIds.includes(goal.id);
     const row = htmlElement("article", `aq-quest-row ${claimed ? "is-muted" : ""} ${goal.complete && !claimed ? "is-ready" : ""}`);
     const status = htmlElement("span", "aq-quest-status", [claimed ? "Done" : goal.complete ? "Ready" : "Todo"]);
@@ -32,6 +33,14 @@ export function createQuestList(
   });
 
   return list;
+}
+
+function questSortRank(goal: DailyQuestItem, claimedGoalIds: string[]): number {
+  if (claimedGoalIds.includes(goal.id)) {
+    return 2;
+  }
+
+  return goal.complete ? 1 : 0;
 }
 
 function questAction(
