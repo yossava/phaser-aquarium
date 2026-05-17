@@ -1,11 +1,11 @@
-import { formatPrice } from "../game/economy";
-import type { DailyQuestItem } from "../game/quest-system";
+import { formatDailyQuestReward, type DailyQuestItem } from "../game/quest-system";
 import { htmlElement } from "./dom";
 import { createPageEmptyCard, type PageButtonFactory } from "./PageOverlay";
 
 export function createQuestList(
   goals: DailyQuestItem[],
   claimedGoalIds: string[],
+  foodNameForId: (foodTypeId: string) => string,
   createButton: PageButtonFactory,
   onClaim: (goalId: string, complete: boolean) => void
 ): HTMLElement {
@@ -22,7 +22,7 @@ export function createQuestList(
     const status = htmlElement("span", "aq-quest-status", [claimed ? "Done" : goal.complete ? "Ready" : "Todo"]);
     const body = htmlElement("div", "aq-quest-body", [
       htmlElement("h3", "aq-quest-title", [goal.label]),
-      htmlElement("p", "aq-quest-reward", [`Reward ${formatPrice(goal.reward)}`])
+      htmlElement("p", "aq-quest-reward", [`Reward ${formatDailyQuestReward(goal.reward, foodNameForId)}`])
     ]);
     row.append(
       status,
@@ -36,11 +36,15 @@ export function createQuestList(
 }
 
 function questSortRank(goal: DailyQuestItem, claimedGoalIds: string[]): number {
+  if (goal.complete && !claimedGoalIds.includes(goal.id)) {
+    return 0;
+  }
+
   if (claimedGoalIds.includes(goal.id)) {
     return 2;
   }
 
-  return goal.complete ? 1 : 0;
+  return 1;
 }
 
 function questAction(

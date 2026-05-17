@@ -162,7 +162,7 @@ export function planCoinInventorySale(coinType: "rare" | "superRare", count: num
   sellValue: number;
   nextCount: number;
 } {
-  const sellQuantity = clampSellQuantity(quantity, count);
+  const sellQuantity = Math.max(0, Math.min(Math.max(0, count), quantity === undefined ? count : Math.round(Math.max(0, quantity) * 1000) / 1000));
   return {
     sellQuantity,
     sellValue: coinSellValue(coinType, sellQuantity),

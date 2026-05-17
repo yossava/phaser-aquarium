@@ -40,6 +40,10 @@ export function formatNumber(value: number): string {
     }
   }
 
+  if (absoluteValue > 0 && absoluteValue < 1 && hasFraction) {
+    return `${sign}${absoluteValue.toFixed(3).replace(/0+$/, "").replace(/\.$/, "")}`;
+  }
+
   if (absoluteValue > 0 && absoluteValue < 100 && hasFraction) {
     return `${sign}${absoluteValue.toFixed(1).replace(/\.0$/, "")}`;
   }

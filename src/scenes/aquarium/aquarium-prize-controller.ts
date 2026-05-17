@@ -105,6 +105,7 @@ export class AquariumPrizeController {
     this.host.setActiveScreen("prize");
     this.host.setPlacementMode({ kind: "none" });
     this.setPrizeMachine(beginPrizeMachineSession(this.prizeMachine(), this.host.runtimeSessionId));
+    this.syncDefaultPrizeBet();
     this.host.closeModal();
     this.host.hideStoreOverlay();
     this.host.hideHtmlPageOverlay();
@@ -202,6 +203,21 @@ export class AquariumPrizeController {
 
   public currentPrizeBetAmounts(): PrizeMachineBetAmount[] {
     return [...fixedPrizeBetAmounts];
+  }
+
+  private syncDefaultPrizeBet(): void {
+    if (this.host.getSelectedBetIndex() !== undefined) {
+      return;
+    }
+
+    const betAmounts = this.currentPrizeBetAmounts();
+    const targetBet = Math.max(1, this.host.getWallet().common / 100);
+    const closestBet = betAmounts.reduce((closest, bet) => Math.abs(bet - targetBet) < Math.abs(closest - targetBet) ? bet : closest, betAmounts[0] ?? 1);
+    const selection = selectPrizeBetAmount(this.prizeMachine(), betAmounts, closestBet);
+    this.setPrizeMachine(selection.state);
+    if (selection.selectedBetIndex !== undefined) {
+      this.host.setSelectedBetIndex(selection.selectedBetIndex);
+    }
   }
 
   public currentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {

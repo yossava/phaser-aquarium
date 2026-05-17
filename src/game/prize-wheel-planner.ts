@@ -226,12 +226,8 @@ export class PrizeWheelPlanner {
   }
 
   private rareCoinCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
-    if (this.input.selectedBetAmount < this.input.rareCoinWealthValue) {
-      return [];
-    }
-
     const unitValue = this.input.coinSellValue("rare");
-    const amount = this.quantityForTarget(unitValue, targetValue, lane);
+    const amount = this.coinAmountForTarget("rare", unitValue, targetValue, lane);
     const value = this.input.coinSellValue("rare", amount);
     return [{
       key: `rare:${amount}`,
@@ -249,12 +245,8 @@ export class PrizeWheelPlanner {
   }
 
   private superRareCoinCandidates(targetValue: number, lane: "loss" | "win"): PrizeSegmentCandidate[] {
-    if (this.input.selectedBetAmount < this.input.superRareCoinWealthValue) {
-      return [];
-    }
-
     const unitValue = this.input.coinSellValue("superRare");
-    const amount = this.quantityForTarget(unitValue, targetValue, lane);
+    const amount = this.coinAmountForTarget("superRare", unitValue, targetValue, lane);
     const value = this.input.coinSellValue("superRare", amount);
     return [{
       key: `superRare:${amount}`,
@@ -324,6 +316,21 @@ export class PrizeWheelPlanner {
     return sorted[0] ?? estimatedQuantity;
   }
 
+  private coinAmountForTarget(coinType: "rare" | "superRare", unitValue: number, targetValue: number, lane: "loss" | "win"): number {
+    const safeUnitValue = Math.max(1, unitValue);
+    const step = 0.001;
+    const estimatedAmount = Math.max(step, Math.round((targetValue / safeUnitValue) / step) * step);
+    const amounts = Array.from({ length: 11 }, (_, offset) => Math.max(step, estimatedAmount + (offset - 5) * step));
+    const sorted = [...new Set(amounts.map((amount) => Math.round(amount * 1000) / 1000))].sort((first, second) => {
+      const firstValue = this.input.coinSellValue(coinType, first);
+      const secondValue = this.input.coinSellValue(coinType, second);
+      const firstValid = this.valueMatchesLane(firstValue, lane) ? 0 : 1;
+      const secondValid = this.valueMatchesLane(secondValue, lane) ? 0 : 1;
+      return firstValid - secondValid || Math.abs(firstValue - targetValue) - Math.abs(secondValue - targetValue);
+    });
+    return sorted[0] ?? estimatedAmount;
+  }
+
   private valueMatchesLane(value: number, lane: "loss" | "win", betAmount = this.input.selectedBetAmount): boolean {
     const safeBet = Math.max(1, betAmount);
     if (lane === "loss") {
@@ -354,10 +361,10 @@ export class PrizeWheelPlanner {
 
   private prepareSegmentReward(segment: PrizeWheelSegment, segmentIndex: number): PreparedPrizeMachineReward {
     if (segment.kind === "rare") {
-      return { kind: "rare", amount: Math.max(1, segment.rareAmount ?? 1), segmentIndex };
+      return { kind: "rare", amount: Math.max(0.001, segment.rareAmount ?? 1), segmentIndex };
     }
     if (segment.kind === "superRare") {
-      return { kind: "superRare", amount: Math.max(1, segment.superRareAmount ?? 1), segmentIndex };
+      return { kind: "superRare", amount: Math.max(0.001, segment.superRareAmount ?? 1), segmentIndex };
     }
     if (segment.kind === "rareFish") {
       const fishType = fishTypes.find((candidate) => candidate.id === segment.fishTypeId) ?? fishTypes[0];

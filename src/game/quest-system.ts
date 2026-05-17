@@ -1,11 +1,16 @@
-import type { CoinType, Price, Rarity, Wallet } from "../types/mechanics";
+import type { CoinType, FoodTypeId, Price, Rarity, Wallet } from "../types/mechanics";
 import { formatNumber, formatPrice } from "./economy";
+import { timeCurrentFoodTypeId } from "./food-system";
+
+export type DailyQuestReward =
+  | { kind: "coins"; price: Price }
+  | { kind: "food"; foodTypeId: FoodTypeId; quantity: number };
 
 export type DailyQuestItem = {
   id: string;
   label: string;
   complete: boolean;
-  reward: Price;
+  reward: DailyQuestReward;
   priority?: number;
 };
 
@@ -57,7 +62,7 @@ export type BuildDailyQuestItemsInput = {
   hasCoinMagnet: boolean;
   hasAutoFoodBuyer: boolean;
   foodDispenserPrice: Price;
-  questReward: Price;
+  questReward: DailyQuestReward;
   actionCount: (action: string) => number;
   fishPurchaseCount: (coinType?: CoinType) => number;
 };
@@ -108,7 +113,9 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
   const stockingPriority = input.feedableFoodInventory <= 0 ? 88 : 36;
   const medicinePriority = input.sickFishCount > 0 && input.medicineInventory <= 0 ? 118 : 22;
   const reward = input.questReward;
+  const timeCurrentReward: DailyQuestReward = { kind: "food", foodTypeId: timeCurrentFoodTypeId, quantity: 1 };
   return [
+    { id: "play-time-current", label: "Spend time with the tank", complete: actionCount("play-time-current") > 0, reward: timeCurrentReward, priority: 125 },
     { id: "buy-medicine", label: input.sickFishCount > 0 ? "Buy medicine for a sick fish" : "Buy medicine", complete: actionCount("buy-medicine") > 0, reward, priority: medicinePriority },
     { id: "medicine", label: "Heal a sick fish with medicine", complete: actionCount("medicine") > 0, reward, priority: sickCarePriority + (input.medicineInventory > 0 ? 10 : 0) },
     { id: "buy-food", label: input.feedableFoodInventory <= 0 ? "Restock fish food" : "Buy another food", complete: actionCount("buy-food") > 0, reward, priority: stockingPriority },
@@ -165,6 +172,19 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
     { id: "claim-coin-ad", label: "Claim a coin ad reward", complete: actionCount("claim-coin-ad") > 0, reward, priority: 12 },
     { id: "sell-food", label: "Sell food inventory", complete: actionCount("sell-food") > 0, reward, priority: input.totalFoodInventory > 0 ? 27 : 6 }
   ].sort((first, second) => (second.priority ?? 0) - (first.priority ?? 0));
+}
+
+export function coinQuestReward(price: Price): DailyQuestReward {
+  return { kind: "coins", price };
+}
+
+export function formatDailyQuestReward(reward: DailyQuestReward, foodNameForId: (foodTypeId: FoodTypeId) => string): string {
+  if (reward.kind === "coins") {
+    return formatPrice(reward.price);
+  }
+
+  const quantity = Math.max(1, Math.floor(reward.quantity));
+  return `${foodNameForId(reward.foodTypeId)} x${formatNumber(quantity)}`;
 }
 
 export function ensureActiveDailyQuestItems(goals: DailyGoalsState, quests: DailyQuestItem[], limit = 3): DailyGoalsState {

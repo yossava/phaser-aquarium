@@ -24,6 +24,7 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
 
   scene.updateTimedUtilities();
   scene.updateTimeCurrent(deltaSeconds);
+  scene.updateDailyQuestPlaytime(deltaSeconds);
   const activitySpeedMultiplier = scene.tankActivitySpeedMultiplier();
   const progressDeltaSeconds = deltaSeconds * activitySpeedMultiplier;
 

@@ -281,7 +281,7 @@ export function calculateOfflineSeconds(savedAt: number, now = Date.now()): numb
 function sanitizeWallet(wallet: Partial<Wallet>): Wallet {
   const result = createEmptyWallet();
   for (const coinType of coinTypes) {
-    result[coinType] = Math.max(0, Math.round(sanitizeNumber(wallet[coinType], 0) * 10) / 10);
+    result[coinType] = Math.max(0, Math.round(sanitizeNumber(wallet[coinType], 0) * 1000) / 1000);
   }
   return result;
 }
