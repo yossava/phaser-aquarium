@@ -1787,10 +1787,6 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.fishJoystickKnob?.style.setProperty("--joystick-y", "0px");
   }
 
-  private controlledFish(): Fish | undefined {
-    return this.fishJoystickControlledFish?.isJoystickControlled() ? this.fishJoystickControlledFish : undefined;
-  }
-
   private collectCoinsHitByControlledFish(): void {
     const fish = this.fishJoystickControlledFish;
     if (!fish || !fish.isJoystickControlled() || fish.tankLevel !== this.tankLevel || !this.canManuallyCollectTankCoins()) {

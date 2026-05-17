@@ -131,7 +131,7 @@ export const autoFoodBuyerPurchaseCooldownMs = 3500;
 export const autoFoodBuyerPurchaseQuantity = 10;
 export const coinMagnetAttractDurationMs = 260;
 export const coinMagnetAttractScale = 0.44;
-export const coinMagnetRayYOffset = -30;
+export const coinMagnetRayYOffset = -40;
 export const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
   rare: "/assets/ui/icon-rare-coin.png",
