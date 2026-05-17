@@ -106,7 +106,7 @@ export class AquariumFoodController {
       Phaser.Math.Clamp(x, tankBounds.left + 18, tankBounds.right - 18),
       Phaser.Math.Clamp(y, tankBounds.top + 18, tankBounds.bottom - 18),
       foodType,
-      { reservedCalories, targetFish }
+      { reservedCalories, targetFish, medicineActsAsFood: foodType.id === "medicine" && !this.host.activeFish().some((fish) => fish.state === "ill" || fish.health < 82) }
     );
     if (targetFish) {
       this.host.clearCareFoodTarget(foodType.id);

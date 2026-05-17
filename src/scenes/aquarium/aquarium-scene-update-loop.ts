@@ -93,14 +93,17 @@ function updateFish(
 }
 
 function handleEatenFood(scene: AquariumSceneUpdateTarget, currentFish: any, eatenFood: any): void {
-  const ateMedicine = eatenFood.accepted && eatenFood.food.foodType.id === "medicine";
+  const ateMedicine = eatenFood.accepted && eatenFood.food.foodType.id === "medicine" && !eatenFood.food.medicineActsAsFood;
+  const ateMedicineAsFood = eatenFood.accepted && eatenFood.food.foodType.id === "medicine" && eatenFood.food.medicineActsAsFood;
   const ateAgeBoost = eatenFood.accepted && eatenFood.food.foodType.id === "ageBoost";
   const ateProductionBoost = eatenFood.accepted && eatenFood.food.foodType.id === productionBoostFoodTypeId;
   if (eatenFood.accepted) {
     scene.playSfx(fishEatSoundKey, { volume: 0.18 });
   }
   if (eatenFood.accepted && !ateMedicine && !ateAgeBoost && !ateProductionBoost) {
-    scene.recordDailyQuestAction("feed");
+    if (!ateMedicineAsFood) {
+      scene.recordDailyQuestAction("feed");
+    }
     scene.showMissedFoodEmotes(eatenFood.food, currentFish);
     if (currentFish.nextCoinDropAt <= scene.time.now) {
       currentFish.postponeCoinProduction(scene.time.now, Phaser.Math.Between(fishCoinProductionMinDelayMs, fishCoinProductionMaxDelayMs));

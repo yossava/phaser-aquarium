@@ -261,7 +261,9 @@ export class Fish {
         : 0;
       if (accepted) {
         this.hunger = Phaser.Math.Clamp(this.hunger - this.hungerReductionFromCalories(consumedCalories), overfullHungerFloor, 100);
-        this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
+        if (!closestFood.medicineActsAsFood) {
+          this.health = Phaser.Math.Clamp(this.health + 12, 0, 100);
+        }
         this.happyEmojiUntil = this.scene.time.now + happyEmojiDurationMs;
       } else {
         this.health = Phaser.Math.Clamp(this.health - 8, 0, 100);
@@ -1175,6 +1177,9 @@ export class Fish {
     }
 
     if (food.foodType.id === "medicine") {
+      if (food.medicineActsAsFood) {
+        return this.state !== "ill" && this.hunger > minimumHungerToEatMore;
+      }
       return this.state === "ill" || this.health < 82;
     }
 

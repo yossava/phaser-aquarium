@@ -32,7 +32,15 @@ export class FoodPellet {
     x: number,
     y: number,
     public readonly foodType: FoodType,
-    options: { velocityX?: number; velocityY?: number; displayScale?: number; reservedCalories?: number; source?: "manual" | "dispenser"; targetFish?: Fish } = {}
+    options: {
+      velocityX?: number;
+      velocityY?: number;
+      displayScale?: number;
+      reservedCalories?: number;
+      source?: "manual" | "dispenser";
+      targetFish?: Fish;
+      medicineActsAsFood?: boolean;
+    } = {}
   ) {
     const textureKey = this.textureKey(scene);
     this.sprite = scene.add.image(x, y, textureKey);
@@ -41,6 +49,7 @@ export class FoodPellet {
     this.reservedCalories = Phaser.Math.Clamp(options.reservedCalories ?? foodType.calories, 0, foodType.calories);
     this.source = options.source ?? "manual";
     this.targetFish = options.targetFish;
+    this.medicineActsAsFood = options.medicineActsAsFood ?? false;
     if (foodType.id !== "medicine") {
       this.sprite.setTint(this.tintForFood());
     }
@@ -55,6 +64,7 @@ export class FoodPellet {
 
   public readonly source: "manual" | "dispenser";
   public readonly targetFish?: Fish;
+  public readonly medicineActsAsFood: boolean;
 
   public get nutrition(): number {
     return this.reservedCalories;

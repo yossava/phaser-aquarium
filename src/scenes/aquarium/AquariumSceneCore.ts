@@ -84,6 +84,7 @@ import {
 import { gameFontFamily } from "../../game/fonts";
 import {
   fishProductionThresholdForLevel,
+  levelProgressToNext,
   maxDynamicProductionPaceMultiplier,
   rawTankDisplayLevelFromProduction,
   targetActiveHoursForDisplayLevel,
@@ -135,6 +136,7 @@ import {
   isCalorieTrackedFood as isCalorieTrackedFoodModel,
   isDroppableFood as isDroppableFoodModel,
   setFoodBuyQuantityValue,
+  ageBoostFoodTypeId,
   timeCurrentFoodTypeId,
   totalFeedableFoodInventory as totalFeedableFoodInventoryModel
 } from "../../game/food-system";
@@ -378,6 +380,7 @@ import {
   algaeParticleThreshold,
   algaeParticleTintColor,
   automatedCoinCollectFeeRate,
+  autoFoodBuyerDurationMs,
   backgroundMusicKey,
   backgroundMusicPath,
   cleanBubbleTintColor,
@@ -392,6 +395,7 @@ import {
   coinGlowTextureKey,
   coinMagnetAttractDurationMs,
   coinMagnetAttractScale,
+  coinMagnetDurationMs,
   coinMagnetRayYOffset,
   decorationTrashZone,
   dirtyTankOverlayMaxAlpha,
@@ -3047,6 +3051,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     const mismatchMultiplier = Math.max(0, 1 - result.mismatchCount * 0.05);
     const rewardCommonCoins = Math.max(0, Math.floor(result.caughtCount * productionPerMinute * mismatchMultiplier));
     earn(this.wallet, "common", rewardCommonCoins);
+    this.recordDailyQuestAction("fish-stack-game");
     this.recordDailyQuestAction("prize-game");
     this.saveNow();
     this.returnFromShellBalanceGame();
@@ -3707,6 +3712,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     const commonSellValue = this.activeFishSellValue(fishToSell);
     this.fish.splice(index, 1);
     earn(this.wallet, "common", commonSellValue);
+    this.recordDailyQuestAction("sell-fish");
     this.recordDailyQuestAction("sell-active-fish");
     this.floatText(`Sold ${fishToSell.type.name} +C${formatNumber(commonSellValue)}`, toastX, toastY, "#ffe67a");
     fishToSell.destroy();
@@ -3750,6 +3756,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     }
     this.removeStoredFish(fishTypeId, salePlan.sellQuantity);
     earn(this.wallet, "common", salePlan.sellValue);
+    this.recordDailyQuestAction("sell-fish");
     this.recordDailyQuestAction("sell-stored-fish");
     this.floatText(`Sold ${fishType.name} x${formatNumber(salePlan.sellQuantity)} +C${formatNumber(salePlan.sellValue)}`, toastX, toastY, "#ffe67a");
     this.closeModal();
@@ -4585,6 +4592,9 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.applyCoinComboState(result.state);
     if (result.state.count >= 10 && this.dailyQuestActionCount("coin-combo-10") <= 0) {
       this.recordDailyQuestAction("coin-combo-10");
+    }
+    if (result.state.count >= 20 && this.dailyQuestActionCount("coin-combo-20") <= 0) {
+      this.recordDailyQuestAction("coin-combo-20");
     }
 
     if (result.showMessage) {
@@ -5554,6 +5564,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       rareCoinCount: this.wallet.rare,
       superRareCoinCount: this.wallet.superRare,
       coinDropCount: this.coinDrops.length,
+      tankLevelProgressRatio: levelProgressToNext(this.tankDisplayLevel(), this.fishProductionTotal()).ratio,
       cleanliness: this.cleanliness,
       hasFoodDispenser: this.hasFoodDispenser(),
       hasCoinMagnet: this.hasCoinMagnet(),
@@ -5918,12 +5929,44 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
+    if (reward.kind === "utility") {
+      const utility = tankUtilityInfoModel(reward.utilityId);
+      if (!utility) {
+        return;
+      }
+      const quantity = Math.max(1, Math.floor(reward.quantity));
+      if (utility.id === "coin-magnet") {
+        this.decorationInventory.set(utility.inventoryKey, Math.max(this.coinMagnetExpiresAt(), Date.now()) + coinMagnetDurationMs * quantity);
+        this.coinMagnetWasActive = false;
+      } else if (utility.id === "auto-food-buyer") {
+        this.decorationInventory.set(utility.inventoryKey, Math.max(this.autoFoodBuyerExpiresAt(), Date.now()) + autoFoodBuyerDurationMs * quantity);
+        this.autoFoodBuyerWasActive = false;
+      } else {
+        this.decorationInventory.set(utility.inventoryKey, 1);
+      }
+      this.recentInventoryDockItemKey = `utility:${utility.id}`;
+      return;
+    }
+
     const quantity = Math.max(1, Math.floor(reward.quantity));
     this.foodInventory.set(reward.foodTypeId, this.getFoodInventory(reward.foodTypeId) + quantity);
     this.recentInventoryDockItemKey = `food:${reward.foodTypeId}`;
+    if (reward.foodTypeId === ageBoostFoodTypeId && reward.assignTo === "oldest-active-fish") {
+      const oldestFish = this.oldestActiveFish();
+      if (oldestFish) {
+        this.careFoodTargetFish.set(reward.foodTypeId, oldestFish);
+      }
+    }
     if (this.isDroppableFood(reward.foodTypeId)) {
       this.selectedFoodTypeId = reward.foodTypeId;
     }
+  }
+
+  private oldestActiveFish(): Fish | undefined {
+    return this.activeFish().reduce<Fish | undefined>(
+      (oldest, fish) => (!oldest || fish.ageSeconds > oldest.ageSeconds ? fish : oldest),
+      undefined
+    );
   }
 
   private questRewardImageUrl(reward: DailyQuestReward): string {
@@ -5935,6 +5978,10 @@ export class AquariumSceneCore extends Phaser.Scene {
       return `/assets/fish/${reward.fishTypeId}.png`;
     }
 
+    if (reward.kind === "utility") {
+      return this.tankUtilityIconPath(reward.utilityId);
+    }
+
     return foodAssetPath(reward.foodTypeId);
   }
 
@@ -5942,7 +5989,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     return formatDailyQuestReward(
       reward,
       (foodTypeId) => this.foodTypeById(foodTypeId)?.name ?? "Reward",
-      (fishTypeId) => fishTypes.find((fishType) => fishType.id === fishTypeId)?.name ?? "Fish"
+      (fishTypeId) => fishTypes.find((fishType) => fishType.id === fishTypeId)?.name ?? "Fish",
+      (utilityId) => tankUtilityInfoModel(utilityId)?.name ?? "Tool"
     );
   }
 
