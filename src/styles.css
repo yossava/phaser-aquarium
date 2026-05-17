@@ -2756,6 +2756,52 @@ canvas {
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.72);
   }
 
+  .aq-fish-joystick {
+    @apply pointer-events-auto fixed z-40 grid place-items-center rounded-full border border-white/25 bg-sky-100/10;
+    width: clamp(86px, 24vw, 112px);
+    height: clamp(86px, 24vw, 112px);
+    right: calc((100vw - var(--aq-stage-width)) / 2 + 12px);
+    bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px));
+    touch-action: none;
+    box-shadow:
+      inset 0 2px 8px rgba(255, 255, 255, 0.16),
+      0 8px 18px rgba(0, 19, 36, 0.2);
+    backdrop-filter: blur(4px);
+    opacity: 0.74;
+  }
+
+  .aq-fish-joystick.hidden {
+    display: none;
+  }
+
+  .aq-fish-joystick-ring {
+    @apply absolute rounded-full border border-cyan-50/30;
+    width: 72%;
+    height: 72%;
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1) 0 18%, transparent 19%),
+      linear-gradient(90deg, transparent 48%, rgba(255, 255, 255, 0.12) 49% 51%, transparent 52%),
+      linear-gradient(0deg, transparent 48%, rgba(255, 255, 255, 0.12) 49% 51%, transparent 52%);
+  }
+
+  .aq-fish-joystick-knob {
+    @apply absolute rounded-full border border-white/45 bg-cyan-100/55;
+    --joystick-x: 0px;
+    --joystick-y: 0px;
+    width: 36%;
+    height: 36%;
+    transform: translate(var(--joystick-x), var(--joystick-y));
+    box-shadow:
+      inset 0 3px 0 rgba(255, 255, 255, 0.32),
+      0 4px 10px rgba(0, 36, 56, 0.24);
+    transition: transform 90ms ease;
+  }
+
+  .aq-fish-joystick.is-active .aq-fish-joystick-knob {
+    @apply bg-emerald-100/60;
+    transition: none;
+  }
+
   .aq-food-button {
     @apply pointer-events-auto flex flex-col items-center border-0 bg-transparent p-0 text-white;
     width: clamp(58px, 16.5vw, 76px);

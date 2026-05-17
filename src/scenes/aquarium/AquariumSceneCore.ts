@@ -566,6 +566,10 @@ export class AquariumSceneCore extends Phaser.Scene {
   private htmlFoodDock?: HTMLDivElement;
   private htmlFoodDragCleanup?: HtmlDragCleanup;
   private htmlDockDragging = false;
+  private fishJoystickElement?: HTMLDivElement;
+  private fishJoystickKnob?: HTMLSpanElement;
+  private fishJoystickPointerId?: number;
+  private fishJoystickControlledFish?: Fish;
   private magnetCollectingCoins = new Set<CoinDrop>();
   private coinMagnetPreviousCoinY = new Map<CoinDrop, number>();
   private coinMagnetWasActive = false;
@@ -1254,6 +1258,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.syncTankMenuOverlay();
     this.syncHtmlHud();
     this.syncHtmlFoodDock();
+    this.syncFishJoystick();
   }
 
   private shouldShowTankScene(): boolean {
@@ -1669,6 +1674,134 @@ export class AquariumSceneCore extends Phaser.Scene {
     return dock;
   }
 
+  private syncFishJoystick(): void {
+    const activeFish = this.activeFish();
+    if (this.activeScreen !== "tank" || activeFish.length === 0 || this.modal) {
+      this.clearFishJoystickControl();
+      this.fishJoystickElement?.classList.add("hidden");
+      return;
+    }
+
+    this.fishJoystickElement ??= this.createFishJoystick();
+    this.fishJoystickElement.classList.remove("hidden");
+  }
+
+  private createFishJoystick(): HTMLDivElement {
+    const joystick = htmlElement("div", "aq-fish-joystick", [
+      htmlElement("span", "aq-fish-joystick-ring"),
+      htmlElement("span", "aq-fish-joystick-knob")
+    ]) as HTMLDivElement;
+    joystick.setAttribute("role", "button");
+    joystick.setAttribute("aria-label", "Fish joystick");
+    joystick.setAttribute("tabindex", "0");
+    this.fishJoystickKnob = joystick.querySelector(".aq-fish-joystick-knob") ?? undefined;
+
+    const start = (event: PointerEvent) => {
+      if (!event.isPrimary || this.activeScreen !== "tank") {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this.fishJoystickPointerId = event.pointerId;
+      this.fishJoystickControlledFish = this.joystickFish();
+      if (!this.fishJoystickControlledFish) {
+        return;
+      }
+      this.selectedFishIndex = this.fish.indexOf(this.fishJoystickControlledFish);
+      try {
+        joystick.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture can fail if the pointer is already being released.
+      }
+      joystick.classList.add("is-active");
+      this.updateFishJoystickFromPointer(event);
+    };
+    const move = (event: PointerEvent) => {
+      if (event.pointerId !== this.fishJoystickPointerId) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this.updateFishJoystickFromPointer(event);
+    };
+    const end = (event: PointerEvent) => {
+      if (event.pointerId !== this.fishJoystickPointerId) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      this.clearFishJoystickControl();
+    };
+
+    joystick.addEventListener("pointerdown", start);
+    joystick.addEventListener("pointermove", move);
+    joystick.addEventListener("pointerup", end);
+    joystick.addEventListener("pointercancel", end);
+    joystick.addEventListener("lostpointercapture", () => this.clearFishJoystickControl());
+    document.body.appendChild(joystick);
+    return joystick;
+  }
+
+  private joystickFish(): Fish | undefined {
+    const selected = this.selectedFishIndex !== undefined ? this.fish[this.selectedFishIndex] : undefined;
+    if (selected?.tankLevel === this.tankLevel) {
+      return selected;
+    }
+    return this.activeFish()[0];
+  }
+
+  private updateFishJoystickFromPointer(event: PointerEvent): void {
+    const joystick = this.fishJoystickElement;
+    const fish = this.fishJoystickControlledFish;
+    if (!joystick || !fish || fish.tankLevel !== this.tankLevel || !this.fish.includes(fish)) {
+      this.clearFishJoystickControl();
+      return;
+    }
+
+    const rect = joystick.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const radius = Math.max(1, Math.min(rect.width, rect.height) * 0.36);
+    const deltaX = event.clientX - centerX;
+    const deltaY = event.clientY - centerY;
+    const distance = Math.hypot(deltaX, deltaY);
+    const strength = Math.min(1, distance / radius);
+    const directionX = distance > 0 ? (deltaX / distance) * strength : 0;
+    const directionY = distance > 0 ? (deltaY / distance) * strength : 0;
+    fish.setJoystickDirection(directionX, directionY);
+    this.fishJoystickKnob?.style.setProperty("--joystick-x", `${directionX * 24}px`);
+    this.fishJoystickKnob?.style.setProperty("--joystick-y", `${directionY * 24}px`);
+  }
+
+  private clearFishJoystickControl(): void {
+    this.fishJoystickControlledFish?.clearJoystickDirection();
+    this.fishJoystickControlledFish = undefined;
+    this.fishJoystickPointerId = undefined;
+    this.fishJoystickElement?.classList.remove("is-active");
+    this.fishJoystickKnob?.style.setProperty("--joystick-x", "0px");
+    this.fishJoystickKnob?.style.setProperty("--joystick-y", "0px");
+  }
+
+  private collectCoinsHitByControlledFish(): void {
+    const fish = this.fishJoystickControlledFish;
+    if (!fish || !fish.isJoystickControlled() || fish.tankLevel !== this.tankLevel || !this.canManuallyCollectTankCoins()) {
+      return;
+    }
+
+    const hitCoin = this.coinDrops.find((coin) => {
+      const hitRadius = Math.max(
+        24,
+        fish.sprite.displayWidth * 0.34,
+        fish.sprite.displayHeight * 0.34,
+        coin.sprite.displayWidth * 0.42
+      );
+      return Phaser.Math.Distance.Between(fish.sprite.x, fish.sprite.y, coin.sprite.x, coin.sprite.y) <= hitRadius;
+    });
+    if (hitCoin) {
+      this.collectCoin(hitCoin, false);
+    }
+  }
+
   private visibleInventoryDockItems(): InventoryDockItem[] {
     return buildInventoryDockItems({
       fishMenuIcon: fishMenuIconAssetPath,
@@ -1833,6 +1966,10 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.gameHudOverlay = undefined;
     this.htmlFoodDock?.remove();
     this.htmlFoodDock = undefined;
+    this.clearFishJoystickControl();
+    this.fishJoystickElement?.remove();
+    this.fishJoystickElement = undefined;
+    this.fishJoystickKnob = undefined;
     this.htmlPageOverlay?.remove();
     this.htmlPageOverlay = undefined;
     this.coinComboOverlay?.remove();
