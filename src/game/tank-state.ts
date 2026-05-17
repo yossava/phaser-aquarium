@@ -101,6 +101,54 @@ export function ensureTankState(
   return state;
 }
 
+export function capturedTankState(input: {
+  previousState: TankRuntimeState;
+  wallet: Wallet;
+  foodInventory: TankRuntimeState["foodInventory"];
+  fishInventory: TankRuntimeState["fishInventory"];
+  fishInventoryAges: TankRuntimeState["fishInventoryAges"];
+  decorationInventory: TankRuntimeState["decorationInventory"];
+  creatureInventory: TankRuntimeState["creatureInventory"];
+  cleanliness: number;
+  cleanedAt: number;
+  maxDisplayLevel: number;
+}): TankRuntimeState {
+  return {
+    wallet: input.wallet,
+    foodInventory: input.foodInventory,
+    fishInventory: input.fishInventory,
+    fishInventoryAges: input.fishInventoryAges,
+    decorationInventory: input.decorationInventory,
+    creatureInventory: input.creatureInventory,
+    backgroundInventory: input.previousState.backgroundInventory,
+    seabedInventory: input.previousState.seabedInventory,
+    backgroundBlueTints: input.previousState.backgroundBlueTints,
+    seabedBlueTints: input.previousState.seabedBlueTints,
+    selectedBackgroundId: input.previousState.selectedBackgroundId,
+    selectedSeabedId: input.previousState.selectedSeabedId,
+    cleanliness: input.cleanliness,
+    cleanedAt: input.cleanedAt,
+    maxDisplayLevel: input.maxDisplayLevel,
+    fishProductionTotal: input.previousState.fishProductionTotal
+  };
+}
+
+export function tankStateSelection(state: TankRuntimeState): Pick<
+  TankRuntimeState,
+  "wallet" | "foodInventory" | "fishInventory" | "fishInventoryAges" | "decorationInventory" | "creatureInventory" | "cleanliness" | "cleanedAt"
+> {
+  return {
+    wallet: state.wallet,
+    foodInventory: state.foodInventory,
+    fishInventory: state.fishInventory,
+    fishInventoryAges: state.fishInventoryAges,
+    decorationInventory: state.decorationInventory,
+    creatureInventory: state.creatureInventory,
+    cleanliness: state.cleanliness,
+    cleanedAt: state.cleanedAt
+  };
+}
+
 export function cosmeticInventoryFromRecord(
   source: Record<string, number> | undefined,
   level: number,

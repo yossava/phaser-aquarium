@@ -196,6 +196,55 @@ export function tankCosmetics(category: TankCosmeticCategory): TankCosmetic[] {
   return category === "background" ? tankBackgroundCosmetics : tankSeabedCosmetics;
 }
 
+export function currentTankTheme(level: number): TankThemeTexturePair {
+  return tankThemeTexturePairs[Math.abs(Math.floor(level - 2)) % tankThemeTexturePairs.length];
+}
+
+export function defaultTankCosmeticId(level: number): string {
+  return level <= 1 ? "home" : currentTankTheme(level).id;
+}
+
+export function tankThemeTint(level: number): number {
+  if (level <= 1) {
+    return 0xffffff;
+  }
+
+  const tintPalette = [0xffffff, 0xfff5ee, 0xe8fff2, 0xf1fbff, 0xdce9ff, 0xfff0dd];
+  return tintPalette[Math.abs(Math.floor(level - 2)) % tintPalette.length];
+}
+
+function clampRatio(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function linear(from: number, to: number, amount: number): number {
+  return from + (to - from) * amount;
+}
+
+export function mixRgb(from: number, to: number, ratio: number): number {
+  const amount = clampRatio(ratio);
+  const fromR = (from >> 16) & 0xff;
+  const fromG = (from >> 8) & 0xff;
+  const fromB = from & 0xff;
+  const toR = (to >> 16) & 0xff;
+  const toG = (to >> 8) & 0xff;
+  const toB = to & 0xff;
+  const r = Math.round(linear(fromR, toR, amount));
+  const g = Math.round(linear(fromG, toG, amount));
+  const b = Math.round(linear(fromB, toB, amount));
+  return (r << 16) | (g << 8) | b;
+}
+
+export function tankCosmeticTint(input: {
+  category: TankCosmeticCategory;
+  level: number;
+  blueTintColor: number;
+  blueTintIntensity: number;
+}): number {
+  const baseTint = input.category === "background" ? tankThemeTint(input.level) : 0xffffff;
+  return mixRgb(baseTint, input.blueTintColor, input.blueTintIntensity / 100);
+}
+
 export function tankCosmeticImageUrl(asset: TankCosmetic): string | undefined {
   if (asset.textureKey === aquariumBackgroundTextureKey) {
     return aquariumBackgroundAssetPath;
