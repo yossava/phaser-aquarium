@@ -54,10 +54,10 @@ export class HelperCreature {
     this.sprite.setVisible(visible);
   }
 
-  public update(deltaSeconds: number, coins: CoinDrop[], foods: FoodPellet[]): HelperCreatureAction | undefined {
-    this.coinCooldown = Math.max(0, this.coinCooldown - deltaSeconds);
-    this.cleanupCooldown = Math.max(0, this.cleanupCooldown - deltaSeconds);
-    this.tankCleanCooldown = Math.max(0, this.tankCleanCooldown - deltaSeconds);
+  public update(deltaSeconds: number, coins: CoinDrop[], foods: FoodPellet[], progressDeltaSeconds = deltaSeconds): HelperCreatureAction | undefined {
+    this.coinCooldown = Math.max(0, this.coinCooldown - progressDeltaSeconds);
+    this.cleanupCooldown = Math.max(0, this.cleanupCooldown - progressDeltaSeconds);
+    this.tankCleanCooldown = Math.max(0, this.tankCleanCooldown - progressDeltaSeconds);
     this.wanderCooldown = Math.max(0, this.wanderCooldown - deltaSeconds);
 
     const coin = this.closestSettledCoin(coins);

@@ -36,10 +36,12 @@ const foodEconomy: Partial<Record<FoodType["id"], { calories: number; price: Pri
   medicine: { calories: 10, price: { coinType: "common", amount: 10 }, densityLevel: 1 },
   ageBoost: { calories: 1, price: { coinType: "common", amount: 1000 }, densityLevel: 1 },
   productionBoost: { calories: 1, price: { coinType: "common", amount: 250 }, densityLevel: 1 },
+  timeCurrent: { calories: 1, price: { coinType: "common", amount: 100 }, densityLevel: 1 },
   creature: { calories: 58, price: { coinType: "common", amount: 12 }, densityLevel: 1 }
 };
 const supplyFoodAssetIdById: Partial<Record<FoodType["id"], string>> = {
-  productionBoost: "medicine"
+  productionBoost: "medicine",
+  timeCurrent: "timeCurrent"
 };
 const supplyFoodIds = new Set<string>(Object.keys(foodEconomy));
 const foodAssetIdById = new Map<string, string>();
@@ -66,6 +68,9 @@ function supplyFoodPrice(foodTypeId: FoodType["id"]): Price {
   }
   if (foodTypeId === "ageBoost") {
     return { coinType: "common", amount: roundEconomyCommonPrice(fishProductionDeltaForShopLevel(2) * 0.8) };
+  }
+  if (foodTypeId === "timeCurrent") {
+    return { coinType: "common", amount: roundEconomyCommonPrice(fishProductionDeltaForShopLevel(1) * 0.4) };
   }
   return { coinType: "common", amount: roundEconomyCommonPrice(fishProductionDeltaForShopLevel(1) * 0.05) };
 }

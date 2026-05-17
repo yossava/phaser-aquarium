@@ -65,6 +65,7 @@ export type BuildDailyQuestItemsInput = {
 export const fishPurchaseWindowMs = 60 * 60 * 1000;
 export const growthTonicPurchaseWindowMs = 60 * 60 * 1000;
 export const productionBoostPurchaseWindowMs = 30 * 60 * 1000;
+export const timeCurrentPurchaseWindowMs = 60 * 60 * 1000;
 export const rewardedAdDurationMs = 30_000;
 export const rewardedAdCooldownMs = 10 * 60 * 1000;
 
@@ -284,6 +285,18 @@ export function oldestRecentProductionBoostPurchase(goals: DailyGoalsState, now 
 
 export function recordProductionBoostPurchase(goals: DailyGoalsState, now = Date.now()): DailyGoalsState {
   return { ...goals, claimed: [...goals.claimed, `production-boost-buy:${now}:${randomId()}`] };
+}
+
+export function recentTimeCurrentPurchaseCount(goals: DailyGoalsState, now = Date.now()): number {
+  return timestampsForPrefix(goals, "time-current-buy:", 1, now, timeCurrentPurchaseWindowMs).length;
+}
+
+export function oldestRecentTimeCurrentPurchase(goals: DailyGoalsState, now = Date.now()): number | undefined {
+  return timestampsForPrefix(goals, "time-current-buy:", 1, now, timeCurrentPurchaseWindowMs)[0];
+}
+
+export function recordTimeCurrentPurchase(goals: DailyGoalsState, now = Date.now()): DailyGoalsState {
+  return { ...goals, claimed: [...goals.claimed, `time-current-buy:${now}:${randomId()}`] };
 }
 
 export function recordFishPurchase(goals: DailyGoalsState, rarity: Rarity, now = Date.now()): DailyGoalsState {

@@ -123,6 +123,7 @@ import {
   isCalorieTrackedFood as isCalorieTrackedFoodModel,
   isDroppableFood as isDroppableFoodModel,
   setFoodBuyQuantityValue,
+  timeCurrentFoodTypeId,
   totalFeedableFoodInventory as totalFeedableFoodInventoryModel
 } from "../../game/food-system";
 import {
@@ -225,20 +226,24 @@ import {
   oldestRecentFishPurchase,
   oldestRecentGrowthTonicPurchase,
   oldestRecentProductionBoostPurchase,
+  oldestRecentTimeCurrentPurchase,
   productionBoostPurchaseWindowMs,
   rareQuestReward as questRareReward,
   recentFishPurchaseCount as questRecentFishPurchaseCount,
   recentGrowthTonicPurchaseCount as questRecentGrowthTonicPurchaseCount,
   recentProductionBoostPurchaseCount as questRecentProductionBoostPurchaseCount,
+  recentTimeCurrentPurchaseCount as questRecentTimeCurrentPurchaseCount,
   recordDailyQuestAction as recordDailyQuestActionModel,
   recordFishPurchase as recordFishPurchaseModel,
   recordGrowthTonicPurchase as recordGrowthTonicPurchaseModel,
   recordProductionBoostPurchase as recordProductionBoostPurchaseModel,
+  recordTimeCurrentPurchase as recordTimeCurrentPurchaseModel,
   rewardedAdCoinReward as questRewardedAdCoinReward,
   rewardedAdCooldownMs,
   rewardedAdDurationMs,
   rewardedAdRemainingSeconds,
   superRareQuestReward as questSuperRareReward,
+  timeCurrentPurchaseWindowMs,
   todayFishPurchaseCount as questTodayFishPurchaseCount,
   visibleDailyQuestItems as visibleDailyQuestItemsModel,
   type DailyGoalsState,
@@ -405,6 +410,8 @@ import {
   tankMenuButtonY,
   tankMenuVersion,
   tankUpgradePrices,
+  timeCurrentDurationSeconds,
+  timeCurrentSpeedMultiplier,
   type AdjustableSound,
   type AppScreen,
   type CompatibilitySummary,
@@ -514,6 +521,8 @@ export class AquariumSceneCore extends Phaser.Scene {
   private gameHudCommonText?: HTMLSpanElement;
   private gameHudRareText?: HTMLSpanElement;
   private gameHudSuperRareText?: HTMLSpanElement;
+  private timeCurrentElement?: HTMLDivElement;
+  private timeCurrentText?: HTMLSpanElement;
   private foodDispenserText?: HTMLSpanElement;
   private foodDispenserElement?: HTMLDivElement;
   private coinMagnetText?: HTMLSpanElement;
@@ -1198,6 +1207,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.gameHudCommonText!.textContent = formatNumber(this.wallet.common);
     this.gameHudRareText!.textContent = formatNumber(this.wallet.rare);
     this.gameHudSuperRareText!.textContent = formatNumber(this.wallet.superRare);
+    this.syncTimeCurrentIndicator();
     if (this.foodDispenserText) {
       this.foodDispenserText.textContent = this.foodBadgeLabel(this.getTotalDispenserInventory());
     }
@@ -1218,6 +1228,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       coinMagnetIconPath,
       autoFoodBuyerIconPath: autoFoodBuyerAssetPath,
       foodDispenserIconPath: foodDispenserAssetPath,
+      timeCurrentIconPath: foodAssetPath(timeCurrentFoodTypeId),
       attachTouchFeedback: (element, releaseOnLeave) => this.attachTouchFeedback(element, releaseOnLeave),
       prepareInfoTarget: (element, title, lines) => this.prepareHudInfoTarget(element, title, lines),
       bindCoinMagnetDrag: (element) => this.bindCoinMagnetDrag(element),
@@ -1228,6 +1239,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.gameHudCommonText = hud.commonText;
     this.gameHudRareText = hud.rareText;
     this.gameHudSuperRareText = hud.superRareText;
+    this.timeCurrentElement = hud.timeCurrentElement;
+    this.timeCurrentText = hud.timeCurrentText;
     this.coinMagnetElement = hud.coinMagnetElement;
     this.coinMagnetText = hud.coinMagnetText;
     this.autoFoodBuyerElement = hud.autoFoodBuyerElement;
@@ -1236,6 +1249,22 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.foodDispenserText = hud.foodDispenserText;
     document.body.appendChild(hud.overlay);
     return hud.overlay;
+  }
+
+  private syncTimeCurrentIndicator(): void {
+    if (!this.timeCurrentElement || !this.timeCurrentText) {
+      return;
+    }
+
+    const remainingSeconds = this.timeCurrentRemainingSeconds();
+    if (remainingSeconds <= 0) {
+      this.timeCurrentElement.classList.add("hidden");
+      this.timeCurrentText.textContent = "";
+      return;
+    }
+
+    this.timeCurrentElement.classList.remove("hidden");
+    this.timeCurrentText.textContent = compactDurationLabelModel(remainingSeconds, formatNumber);
   }
 
   private syncCoinMagnetPosition(): void {
@@ -1631,6 +1660,10 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private placeDockItemAt(item: InventoryDockItem, x: number, y: number): void {
     if (item.kind === "food") {
+      if (item.id === timeCurrentFoodTypeId) {
+        this.useTimeCurrentBoost();
+        return;
+      }
       this.dropFoodAt(item.id, x, y);
       return;
     }
@@ -1866,10 +1899,14 @@ export class AquariumSceneCore extends Phaser.Scene {
 
     const ageBoostAvailable = this.canBuyGrowthTonicThisHour();
     const productionBoostAvailable = this.canBuyProductionBoostNow();
+    const timeCurrentAvailable = this.canBuyTimeCurrentNow();
     const fishAvailable = this.canBuyAnotherFishThisHour();
     const cooldownKey = [
       ageBoostAvailable,
       productionBoostAvailable,
+      timeCurrentAvailable,
+      this.timeCurrentPurchaseRestockLabel(),
+      this.getFoodInventory(timeCurrentFoodTypeId),
       fishAvailable,
       this.recentFishPurchaseCount(),
       this.hourlyFishPurchaseLimit()
@@ -1939,6 +1976,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       meta: this.pageScreenMeta(),
       closeButton: this.htmlButton("X CLOSE", "aq-page-close", () => this.closePage()),
       appendMainMenuPage: (content) => this.appendMainMenuPage(content),
+      appendGamesPage: (content) => this.appendGamesPage(content),
       appendAlbumPage: (content) => this.appendAlbumPage(content),
       appendGoalsPage: (content) => this.appendGoalsPage(content),
       appendSettingsPage: (content) => this.appendSettingsPage(content)
@@ -1952,8 +1990,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private appendMainMenuPage(content: HTMLElement): void {
     const items: Array<{ id: string; label: string; icon: string; action: () => void; badge?: string }> = [
       { id: "shop", label: "Shop", icon: menuIconAssetPathByKey["ui-shop"], action: () => this.openScreen("store") },
-      { id: "game", label: "Game", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openPrizeMachineArcade() },
-      { id: "shell-balance", label: "Fish Stack", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openShellBalanceGame() },
+      { id: "games", label: "Games", icon: menuIconAssetPathByKey["ui-game"], action: () => this.openScreen("games") },
       { id: "album", label: "Inventory", icon: menuIconAssetPathByKey["ui-book"], action: () => this.openScreen("album") },
       { id: "tanks", label: "Customize Tank", icon: menuIconAssetPathByKey["ui-tanks"], action: () => this.openMakeupMode() },
       { id: "goals", label: "Quest", icon: menuIconAssetPathByKey["ui-goals"], action: () => this.openScreen("goals"), badge: this.dailyGoalUnfinishedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnfinishedCount()) : undefined },
@@ -1973,6 +2010,25 @@ export class AquariumSceneCore extends Phaser.Scene {
       production: this.fishProductionTotal(),
       createButton: (label, className, onClick, disabled) => this.htmlButton(label, className, onClick, disabled)
     });
+  }
+
+  private appendGamesPage(content: HTMLElement): void {
+    const grid = htmlElement("div", "aq-main-menu-grid");
+    grid.append(
+      this.createDrillMenuCard(
+        menuIconAssetPathByKey["ui-game"],
+        "Treasure Spin",
+        "Spin for fish, coins, helpers, and supplies.",
+        () => this.openPrizeMachineArcade()
+      ),
+      this.createDrillMenuCard(
+        menuIconAssetPathByKey["ui-game"],
+        "Fish Stack",
+        "Stack fish and balance the tower for rewards.",
+        () => this.openShellBalanceGame()
+      )
+    );
+    content.append(grid);
   }
 
   private createDrillMenuCard(icon: string, label: string, description: string, action: () => void): HTMLButtonElement {
@@ -2804,6 +2860,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     return createFoodInventoryRowView({
       ...row,
       createButton: (label, className, onClick, disabled) => this.htmlButton(label, className, onClick, disabled),
+      useLabel: foodType.id === timeCurrentFoodTypeId ? "Use" : undefined,
+      onUse: foodType.id === timeCurrentFoodTypeId ? () => this.useTimeCurrentBoost() : undefined,
       onSell: () => this.showFoodSellConfirmation(foodType.id)
     });
   }
@@ -4153,7 +4211,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return true;
   }
 
-  private updateFishCoinProduction(fish: Fish): void {
+  private updateFishCoinProduction(fish: Fish, activitySpeedMultiplier = 1): void {
     updateFishCoinProductionModel({
       fish,
       now: this.time.now,
@@ -4161,7 +4219,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       maxCoinDrops,
       minDelayMs: fishCoinProductionMinDelayMs,
       maxDelayMs: fishCoinProductionMaxDelayMs,
-      activeProductionPaceMultiplier: this.activeProductionPaceMultiplier(),
+      activeProductionPaceMultiplier: this.activeProductionPaceMultiplier() * Phaser.Math.Clamp(activitySpeedMultiplier, 0.001, timeCurrentSpeedMultiplier),
       randomBetween: (min, max) => Phaser.Math.Between(min, max),
       addFishProductionTotal: (tankLevel, value) => this.addFishProductionTotal(tankLevel, value),
       createCoinDrop: (x, y, value, coinType, isMega, options) => {
@@ -4528,7 +4586,10 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private getCareStatusLabel(): string {
-    return `Food ${formatNumber(this.getTotalFoodInventory())}   Clean ${formatNumber(Math.round(this.cleanliness))}%   Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%`;
+    const boostLabel = this.timeCurrentRemainingSeconds() > 0
+      ? `   Current x${formatNumber(timeCurrentSpeedMultiplier)} ${compactDurationLabelModel(this.timeCurrentRemainingSeconds(), formatNumber)}`
+      : "";
+    return `Food ${formatNumber(this.getTotalFoodInventory())}   Clean ${formatNumber(Math.round(this.cleanliness))}%   Happy ${formatNumber(Math.round(this.calculateTankHappiness()))}%${boostLabel}`;
   }
 
   private tankHudSnapshotText(): string {
@@ -4589,6 +4650,11 @@ export class AquariumSceneCore extends Phaser.Scene {
     if (foodType.id === "ageBoost") {
       return "Boost";
     }
+    if (foodType.id === timeCurrentFoodTypeId) {
+      return this.timeCurrentRemainingSeconds() > 0
+        ? `x${formatNumber(timeCurrentSpeedMultiplier)} ${compactDurationLabelModel(this.timeCurrentRemainingSeconds(), formatNumber)}`
+        : "Current";
+    }
     if (foodType.id === "creature") {
       return "Creature";
     }
@@ -4627,6 +4693,42 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private isCalorieTrackedFood(foodTypeId: FoodTypeId): boolean {
     return isCalorieTrackedFoodModel(foodTypeId);
+  }
+
+  private timeCurrentRemainingSeconds(level = this.tankLevel): number {
+    return Math.max(0, this.ensureTankState(level).timeCurrentRemainingSeconds ?? 0);
+  }
+
+  private tankActivitySpeedMultiplier(): number {
+    return this.timeCurrentRemainingSeconds() > 0 ? timeCurrentSpeedMultiplier : 1;
+  }
+
+  private updateTimeCurrent(deltaSeconds: number): void {
+    const state = this.ensureTankState(this.tankLevel);
+    if ((state.timeCurrentRemainingSeconds ?? 0) <= 0) {
+      state.timeCurrentRemainingSeconds = 0;
+      return;
+    }
+
+    state.timeCurrentRemainingSeconds = Math.max(0, state.timeCurrentRemainingSeconds - Math.max(0, deltaSeconds));
+  }
+
+  private useTimeCurrentBoost(): void {
+    if (this.getFoodInventory(timeCurrentFoodTypeId) <= 0) {
+      this.floatText("No Time Current left", toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    const state = this.ensureTankState(this.tankLevel);
+    this.foodInventory.set(timeCurrentFoodTypeId, Math.max(0, this.getFoodInventory(timeCurrentFoodTypeId) - 1));
+    state.timeCurrentRemainingSeconds = Math.max(0, state.timeCurrentRemainingSeconds ?? 0) + timeCurrentDurationSeconds;
+    this.recentInventoryDockItemKey = `food:${timeCurrentFoodTypeId}`;
+    this.recordDailyQuestAction("use-time-current");
+    this.floatText(`Time Current x${formatNumber(timeCurrentSpeedMultiplier)} active`, toastX, toastY, "#8be9ff");
+    this.closeModal();
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
   }
 
   private getFishInventory(fishTypeId: string): number {
@@ -5123,9 +5225,9 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.aquariumFoodController().foodDispenserThrowVelocity(outlet);
   }
 
-  private updateHelperCreatures(deltaSeconds: number, activeHelpers = this.activeHelperCreatures()): void {
+  private updateHelperCreatures(deltaSeconds: number, activeHelpers = this.activeHelperCreatures(), progressDeltaSeconds = deltaSeconds): void {
     for (const helper of activeHelpers) {
-      const action = helper.update(deltaSeconds, this.coinDrops, this.foods);
+      const action = helper.update(deltaSeconds, this.coinDrops, this.foods, progressDeltaSeconds);
 
       if (!action) {
         continue;
@@ -5444,6 +5546,30 @@ export class AquariumSceneCore extends Phaser.Scene {
   private recordProductionBoostPurchase(): void {
     this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
     this.dailyGoals = recordProductionBoostPurchaseModel(this.dailyGoals);
+  }
+
+  private recentTimeCurrentPurchaseCount(now = Date.now()): number {
+    return questRecentTimeCurrentPurchaseCount(this.dailyGoals, now);
+  }
+
+  private canBuyTimeCurrentNow(): boolean {
+    return this.recentTimeCurrentPurchaseCount() === 0;
+  }
+
+  private timeCurrentPurchaseRestockLabel(now = Date.now()): string {
+    const oldestRecentPurchase = oldestRecentTimeCurrentPurchase(this.dailyGoals, now);
+
+    if (!oldestRecentPurchase) {
+      return "1h restock";
+    }
+
+    const remainingSeconds = Math.ceil((oldestRecentPurchase + timeCurrentPurchaseWindowMs - now) / 1000);
+    return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+  }
+
+  private recordTimeCurrentPurchase(): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
+    this.dailyGoals = recordTimeCurrentPurchaseModel(this.dailyGoals);
   }
 
   private recordFishPurchase(fishType: FishType): void {

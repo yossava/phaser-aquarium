@@ -2451,6 +2451,37 @@ canvas {
       linear-gradient(180deg, rgba(255, 132, 104, 0.36), rgba(168, 40, 30, 0.35) 48%, rgba(78, 11, 9, 0.52));
   }
 
+  .aq-time-current-indicator {
+    @apply pointer-events-auto absolute left-1/2 z-[4] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-cyan-100/65 bg-sky-950/48 px-2 py-1 text-cyan-50;
+    top: max(48px, calc(env(safe-area-inset-top) + 46px));
+    min-width: clamp(98px, 27vw, 122px);
+    justify-content: center;
+    font-size: clamp(11px, 3vw, 14px);
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 2px 2px rgba(0, 36, 58, 0.72);
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 0.26),
+      inset 0 -8px 16px rgba(0, 92, 130, 0.28),
+      0 4px 12px rgba(0, 31, 52, 0.28);
+    backdrop-filter: blur(3px);
+  }
+
+  .aq-time-current-indicator::before {
+    @apply absolute inset-0 -z-10 rounded-full content-[''];
+    background: linear-gradient(135deg, rgba(106, 236, 255, 0.34), rgba(26, 142, 216, 0.24) 45%, rgba(92, 255, 205, 0.22));
+  }
+
+  .aq-time-current-indicator img {
+    @apply h-7 w-7 shrink-0 object-contain;
+    filter: drop-shadow(0 2px 3px rgba(0, 28, 45, 0.48));
+  }
+
+  .aq-time-current-indicator strong,
+  .aq-time-current-indicator span {
+    @apply relative z-10 whitespace-nowrap;
+  }
+
   .aq-game-wallet-chip span,
   .aq-game-wealth-chip span {
     @apply whitespace-nowrap;
@@ -2566,6 +2597,17 @@ canvas {
       min-height: clamp(20px, 5.4vw, 25px);
       padding-left: clamp(16px, 4.2vw, 21px);
       padding-right: 5px;
+    }
+
+    .aq-time-current-indicator {
+      top: max(42px, calc(env(safe-area-inset-top) + 40px));
+      min-width: 94px;
+      padding: 4px 7px;
+      font-size: 11px;
+    }
+
+    .aq-time-current-indicator img {
+      @apply h-6 w-6;
     }
 
     .aq-tank-menu-button,
@@ -2779,6 +2821,12 @@ canvas {
   .aq-food-button:active .aq-food-button-count,
   .aq-food-button.is-touching .aq-food-button-count {
     transform: scale(1.08);
+  }
+
+  .aq-card-copy.aq-card-copy-full {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
   }
 
   .aq-food-drag-ghost {

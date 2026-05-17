@@ -178,23 +178,24 @@ export class Fish {
 
   public update(
     deltaSeconds: number,
-    foods: FoodPellet[]
+    foods: FoodPellet[],
+    progressDeltaSeconds = deltaSeconds
   ): { food: FoodPellet; accepted: boolean; reason?: "tooSmall"; consumedCalories: number; neededMealCalories: number } | undefined {
-    this.ageSeconds += deltaSeconds;
+    this.ageSeconds += progressDeltaSeconds;
     this.updateAgeStage();
 
     const isMedicated = this.scene.time.now < this.medicatedUntil;
 
-    this.updateContinuousHungerTimer(deltaSeconds);
+    this.updateContinuousHungerTimer(progressDeltaSeconds);
 
     if (this.hunger > severeHungerDamageThreshold && this.canBecomeSickFromHunger() && !isMedicated) {
-      this.health = Phaser.Math.Clamp(this.health - 4.5 * deltaSeconds, 0, 100);
+      this.health = Phaser.Math.Clamp(this.health - 4.5 * progressDeltaSeconds, 0, 100);
     } else {
-      this.health = Phaser.Math.Clamp(this.health + (isMedicated ? 4 : 2.5) * deltaSeconds, 0, 100);
+      this.health = Phaser.Math.Clamp(this.health + (isMedicated ? 4 : 2.5) * progressDeltaSeconds, 0, 100);
     }
 
     this.updateCareState();
-    this.updateFatalCareTimer(deltaSeconds);
+    this.updateFatalCareTimer(progressDeltaSeconds);
     this.setVisualScale(this.desiredAgeScale());
     this.statusIndicatorElapsed += deltaSeconds;
 

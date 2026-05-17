@@ -35,6 +35,8 @@ type AquariumStoreAdapterScene = {
   growthTonicPurchaseRestockLabel(): string;
   canBuyProductionBoostNow(): boolean;
   productionBoostPurchaseRestockLabel(): string;
+  canBuyTimeCurrentNow(): boolean;
+  timeCurrentPurchaseRestockLabel(): string;
   activeFish(): Fish[];
   maxFishCapacityForLevel(): number;
   getFishInventory(fishTypeId: string): number;
@@ -76,6 +78,7 @@ type AquariumStoreAdapterScene = {
   closePage(): void;
   recordGrowthTonicPurchase(): void;
   recordProductionBoostPurchase(): void;
+  recordTimeCurrentPurchase(): void;
   priceIconRow(price: Price, label: string): HTMLElement;
   htmlButton(label: string, className: string, onClick: () => void, disabled?: boolean): HTMLButtonElement;
 };
@@ -96,6 +99,8 @@ export function createAquariumStoreAdapter(scene: AquariumStoreAdapterScene): St
     growthTonicPurchaseRestockLabel: () => scene.growthTonicPurchaseRestockLabel(),
     canBuyProductionBoostNow: () => scene.canBuyProductionBoostNow(),
     productionBoostPurchaseRestockLabel: () => scene.productionBoostPurchaseRestockLabel(),
+    canBuyTimeCurrentNow: () => scene.canBuyTimeCurrentNow(),
+    timeCurrentPurchaseRestockLabel: () => scene.timeCurrentPurchaseRestockLabel(),
     activeFish: () => scene.activeFish(),
     fishCapacity: () => scene.maxFishCapacityForLevel(),
     allFish: () => scene.fish,
@@ -153,6 +158,7 @@ export function createAquariumStoreAdapter(scene: AquariumStoreAdapterScene): St
     closePage: () => scene.closePage(),
     recordGrowthTonicPurchase: () => scene.recordGrowthTonicPurchase(),
     recordProductionBoostPurchase: () => scene.recordProductionBoostPurchase(),
+    recordTimeCurrentPurchase: () => scene.recordTimeCurrentPurchase(),
     setCareFoodTargetFish: (foodTypeId, fish) => scene.careFoodTargetFish.set(foodTypeId, fish),
     priceIconRow: (price, label) => scene.priceIconRow(price, label),
     fishIndex: (fish) => scene.fish.indexOf(fish),

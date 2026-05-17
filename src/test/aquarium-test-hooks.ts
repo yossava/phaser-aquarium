@@ -43,6 +43,8 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       foodInventoryByType: scene.foodInventoryRecord(),
       fishInventoryByType: mapToRecord(scene.fishInventory),
       fishDeliveryBubbleCount: scene.fishDeliveryBubbles?.bubbles.length ?? 0,
+      timeCurrentRemainingSeconds: scene.timeCurrentRemainingSeconds(),
+      tankActivitySpeedMultiplier: scene.tankActivitySpeedMultiplier(),
       foodBuyQuantities: scene.foodBuyQuantityRecord(),
       creatureInventoryByType: mapToRecord(scene.creatureInventory),
       activeScreen: scene.activeScreen,
@@ -363,6 +365,9 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
 
       scene.prizeController().awardPrizeMachineRareFish(fishType);
       scene.refreshUi();
+    },
+    useTimeCurrentForTest: () => {
+      scene.useTimeCurrentBoost();
     },
     saveNow: () => {
       scene.saveNow();

@@ -6,7 +6,7 @@ export type PageScreenMeta = {
   icon: string;
 };
 
-export type PageOverlayScreen = "menu" | "album" | "goals" | "settings";
+export type PageOverlayScreen = "menu" | "games" | "album" | "goals" | "settings";
 export type PageOverlayHiddenScreen = "tank" | "store" | "prize" | "makeup";
 export type PageOverlayAppScreen = PageOverlayScreen | PageOverlayHiddenScreen;
 
@@ -41,6 +41,7 @@ export type PageShellContentInput = {
   meta: PageScreenMeta;
   closeButton: HTMLButtonElement;
   appendMainMenuPage: (content: HTMLElement) => void;
+  appendGamesPage: (content: HTMLElement) => void;
   appendAlbumPage: (content: HTMLElement) => void;
   appendGoalsPage: (content: HTMLElement) => void;
   appendSettingsPage: (content: HTMLElement) => void;
@@ -52,6 +53,11 @@ export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
       title: "Menu",
       subtitle: "Choose where to go",
       icon: "/assets/ui/menu/menu_tank_hub_icon.png"
+    },
+    games: {
+      title: "Games",
+      subtitle: "Play mini games",
+      icon: "/assets/ui/menu/menu_game_shell.png"
     },
     album: {
       title: "Inventory",
@@ -87,7 +93,7 @@ export function createPageOverlayRoot(): HTMLDivElement {
 }
 
 export function shouldShowPageOverlay(screen: PageOverlayAppScreen): screen is PageOverlayScreen {
-  return screen === "menu" || screen === "album" || screen === "goals" || screen === "settings";
+  return screen === "menu" || screen === "games" || screen === "album" || screen === "goals" || screen === "settings";
 }
 
 export function hidePageOverlay(overlay: HTMLDivElement | undefined): void {
@@ -132,6 +138,9 @@ export function createPageShellContent(input: PageShellContentInput): HTMLElemen
   if (input.activeScreen === "menu") {
     content.classList.add("aq-page-content-main-menu");
     input.appendMainMenuPage(content);
+  } else if (input.activeScreen === "games") {
+    content.classList.add("aq-page-content-main-menu");
+    input.appendGamesPage(content);
   } else if (input.activeScreen === "album") {
     input.appendAlbumPage(content);
   } else if (input.activeScreen === "goals") {

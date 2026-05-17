@@ -58,6 +58,8 @@ export function createFoodInventoryRow(input: {
   imageUrl: string;
   imageFilter: string;
   createButton: (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
+  useLabel?: string;
+  onUse?: () => void;
   onSell: () => void;
 }): HTMLElement {
   const row = htmlElement("article", "aq-album-row food");
@@ -65,12 +67,17 @@ export function createFoodInventoryRow(input: {
   image.style.filter = input.imageFilter;
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [input.foodType.name]),
-    htmlElement("p", "aq-album-row-meta", [`Owned x${input.countLabel} | ${formatNumber(input.foodType.calories)} cal each`]),
+    htmlElement("p", "aq-album-row-meta", [
+      input.onUse ? `Owned x${input.countLabel} | Supply item` : `Owned x${input.countLabel} | ${formatNumber(input.foodType.calories)} cal each`
+    ]),
     htmlElement("p", "aq-album-row-copy", [`Sell all for C${formatNumber(input.sellValue)}`])
   ]);
   row.append(
     image,
     body,
+    ...(input.onUse && input.useLabel
+      ? [input.createButton(input.useLabel, "aq-page-button aq-album-row-button", input.onUse)]
+      : []),
     input.createButton(`Sell C${formatNumber(input.sellValue)}`, "aq-page-button aq-page-button-danger aq-album-row-button", input.onSell)
   );
   return row;

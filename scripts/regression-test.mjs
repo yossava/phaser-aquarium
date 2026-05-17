@@ -13,7 +13,7 @@ const fishCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "fish
 const foodCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "food-types.json"), "utf8"));
 const decorationCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "decoration-types.json"), "utf8"));
 const helperCatalog = JSON.parse(readFileSync(path.join(root, "src", "data", "helper-creature-types.json"), "utf8"));
-const supplyFoodIds = new Set(["medicine", "ageBoost"]);
+const supplyFoodIds = new Set(["medicine", "ageBoost", "productionBoost", "timeCurrent"]);
 const hiddenFoodIds = new Set(["creature"]);
 const catalogCountByCoin = (items, coinType) => items.filter((item) => item.price.coinType === coinType).length;
 const visibleFishFoodCatalogCount = 7 * 4;
@@ -539,6 +539,25 @@ async function runRegression(cdp, appUrl) {
   assert(state.fish[0].statusBars.rarityStars === 0, "Fish should not render above-fish rarity star badges in the tank.");
   assert(!state.fish[0].statusBars.fullyGrown, "New fish should not show the fully grown marker.");
   assert(!state.fish[0].statusBars.emojiVisible && !state.fish[0].statusBars.emojiBubbleVisible, "Happy emoji should not show until the fish eats.");
+  await evaluate(cdp, "window.__aquariumTest.addFood('timeCurrent', 1)");
+  state = await waitFor(
+    cdp,
+    (current) => current.foodInventoryByType.timeCurrent === 1,
+    "Time Current should be stored as an inventory supply."
+  );
+  const boostedAgeBefore = state.fish[0].ageSeconds;
+  await evaluate(cdp, "window.__aquariumTest.useTimeCurrentForTest()");
+  state = await waitFor(
+    cdp,
+    (current) =>
+      current.tankActivitySpeedMultiplier === 2 &&
+      current.timeCurrentRemainingSeconds > 590 &&
+      current.foodInventoryByType.timeCurrent === undefined,
+    "Using Time Current should consume one item and activate x2 tank speed."
+  );
+  await delay(500);
+  state = await snapshot(cdp);
+  assert(state.fish[0].ageSeconds - boostedAgeBefore > 0.7, "Time Current should speed up active fish age progression.");
   const prizeFishInventoryBefore = state.fishInventoryByType.angelfish ?? 0;
   const prizeFishBubbleCountBefore = state.fishDeliveryBubbleCount;
   await evaluate(cdp, "window.__aquariumTest.awardPrizeFishForTest('angelfish')");

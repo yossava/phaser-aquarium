@@ -13,6 +13,7 @@ import {
   storedFishSellValue,
   tankUtilitySellValue
 } from "./economy-values";
+import { timeCurrentFoodTypeId } from "./food-system";
 import type { DecorationType, FishType, FoodType, FoodTypeId, Price } from "../types/mechanics";
 import type { DecorationSize } from "./tank-catalog";
 
@@ -84,7 +85,7 @@ export function planFoodPurchase(input: {
   maxFoodBuyQuantity: number;
   isCalorieTrackedFood: (foodTypeId: FoodTypeId) => boolean;
 }): FoodPurchasePlan {
-  const buyQuantity = input.foodType.id === "ageBoost"
+  const buyQuantity = input.foodType.id === "ageBoost" || input.foodType.id === timeCurrentFoodTypeId
     ? 1
     : clampStoreQuantity(input.requestedQuantity, input.maxFoodBuyQuantity);
   return {

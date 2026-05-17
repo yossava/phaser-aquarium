@@ -6,7 +6,7 @@ import type { CoinType, FishType, FoodTypeId, HelperCreatureType, Price, Wallet 
 import type { DecorationSize } from "../../game/tank-catalog";
 import type { PrizeMachineBetAmount } from "../../game/prize-machine";
 
-export type AppScreen = "tank" | "menu" | "store" | "album" | "goals" | "prize" | "makeup" | "settings";
+export type AppScreen = "tank" | "menu" | "games" | "store" | "album" | "goals" | "prize" | "makeup" | "settings";
 
 export const fixedPrizeBetAmounts: readonly PrizeMachineBetAmount[] = [
   1,
@@ -91,6 +91,8 @@ export const coinComboMaxProductionMultiplier = 1 + (coinComboMaxCount * coinCom
 export const coinComboIdleTimeoutMs = 10_000;
 export const coinComboRewardTextDurationMs = 3000;
 export const hudStatusSyncIntervalSeconds = 0.25;
+export const timeCurrentDurationSeconds = 10 * 60;
+export const timeCurrentSpeedMultiplier = 2;
 export const helperCreatureDropSpeed = 142;
 export const helperCreatureSeabedY = tankBounds.bottom - 36;
 export const tankCosmeticBlueTintColor = 0x0b4f8f;

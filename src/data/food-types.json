@@ -156,6 +156,19 @@
     "densityLevel": 1
   },
   {
+    "id": "timeCurrent",
+    "name": "Time Current",
+    "rarity": "common",
+    "price": {
+      "coinType": "common",
+      "amount": 100
+    },
+    "nutrition": 1,
+    "acceptedByDefault": true,
+    "calories": 1,
+    "densityLevel": 1
+  },
+  {
     "id": "creature",
     "name": "Creature Food",
     "rarity": "common",

@@ -5,7 +5,7 @@ import {
 } from "../../game/dispenser-system";
 import { toastX, toastY } from "../../game/constants";
 import { canAfford, formatNumber, formatPrice } from "../../game/economy";
-import { productionBoostFoodTypeId } from "../../game/food-system";
+import { productionBoostFoodTypeId, timeCurrentFoodTypeId } from "../../game/food-system";
 import { fishShopRequiredLevel, buildStoreOverlayState } from "../../game/store-catalog";
 import {
   growthTonicPriceForFishType,
@@ -54,6 +54,8 @@ export type StoreControllerAdapter = {
   growthTonicPurchaseRestockLabel: () => string;
   canBuyProductionBoostNow: () => boolean;
   productionBoostPurchaseRestockLabel: () => string;
+  canBuyTimeCurrentNow: () => boolean;
+  timeCurrentPurchaseRestockLabel: () => string;
   activeFish: () => Fish[];
   fishCapacity: () => number;
   allFish: () => Fish[];
@@ -102,6 +104,7 @@ export type StoreControllerAdapter = {
   closePage: () => void;
   recordGrowthTonicPurchase: () => void;
   recordProductionBoostPurchase: () => void;
+  recordTimeCurrentPurchase: () => void;
   setCareFoodTargetFish: (foodTypeId: FoodTypeId, fish: Fish) => void;
   priceIconRow: (price: Price, label: string) => HTMLElement;
   fishIndex: (fish: Fish) => number;
@@ -131,6 +134,8 @@ export class AquariumSceneStoreController {
       ageBoostRestockLabel: adapter.growthTonicPurchaseRestockLabel(),
       productionBoostPurchaseAvailable: adapter.canBuyProductionBoostNow(),
       productionBoostRestockLabel: adapter.productionBoostPurchaseRestockLabel(),
+      timeCurrentPurchaseAvailable: adapter.canBuyTimeCurrentNow(),
+      timeCurrentRestockLabel: adapter.timeCurrentPurchaseRestockLabel(),
       fishCount: adapter.activeFish().length,
       fishCapacity: adapter.fishCapacity(),
       getFishOwned: (fishTypeId) =>
@@ -244,6 +249,11 @@ export class AquariumSceneStoreController {
       return;
     }
 
+    if (foodType.id === timeCurrentFoodTypeId) {
+      this.buyTimeCurrent(foodType);
+      return;
+    }
+
     const modalContent = createFoodBuyQuantityModalContent({
       foodType,
       initialQuantity,
@@ -270,6 +280,11 @@ export class AquariumSceneStoreController {
       return;
     }
 
+    if (foodType.id === timeCurrentFoodTypeId) {
+      this.buyTimeCurrent(foodType);
+      return;
+    }
+
     const purchasePlan = planFoodPurchase({
       foodType,
       requestedQuantity: quantity,
@@ -283,7 +298,45 @@ export class AquariumSceneStoreController {
       isDroppableFood: (foodTypeId) => adapter.isDroppableFood(foodTypeId),
       setSelectedFoodTypeId: (foodTypeId) => adapter.setSelectedFoodTypeId(foodTypeId),
       closePage: () => adapter.closePage(),
-      recordGrowthTonicPurchase: () => adapter.recordGrowthTonicPurchase()
+      recordGrowthTonicPurchase: () => adapter.recordGrowthTonicPurchase(),
+      recordTimeCurrentPurchase: () => adapter.recordTimeCurrentPurchase()
+    }, foodType, purchasePlan);
+  }
+
+  buyTimeCurrent(foodType: FoodType): void {
+    const adapter = this.adapter;
+    if (!adapter.developerGodMode() && adapter.getFoodInventory(foodType.id) > 0) {
+      adapter.floatText("Use owned Time Current first", toastX, toastY, "#d7f4ff");
+      adapter.refreshStoreOverlay();
+      return;
+    }
+
+    if (!adapter.developerGodMode() && !adapter.canBuyTimeCurrentNow()) {
+      adapter.floatText(adapter.timeCurrentPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
+      adapter.refreshStoreOverlay();
+      return;
+    }
+
+    const purchasePlan = planFoodPurchase({
+      foodType,
+      requestedQuantity: 1,
+      maxFoodBuyQuantity: 1,
+      isCalorieTrackedFood: (foodTypeId) => adapter.isCalorieTrackedFood(foodTypeId)
+    });
+    if (!adapter.developerGodMode() && !canAfford(adapter.wallet(), purchasePlan.totalPrice)) {
+      adapter.floatText(`Need ${formatPrice(purchasePlan.totalPrice)}`, toastX, toastY, "#ffb0a8");
+      return;
+    }
+
+    executeFoodPurchase({
+      ...this.storePurchaseAdapter(),
+      getFoodInventory: (foodTypeId) => adapter.getFoodInventory(foodTypeId),
+      setFoodInventory: (foodTypeId, amount) => adapter.setFoodInventory(foodTypeId, amount),
+      isDroppableFood: (foodTypeId) => adapter.isDroppableFood(foodTypeId),
+      setSelectedFoodTypeId: (foodTypeId) => adapter.setSelectedFoodTypeId(foodTypeId),
+      closePage: () => adapter.closePage(),
+      recordGrowthTonicPurchase: () => adapter.recordGrowthTonicPurchase(),
+      recordTimeCurrentPurchase: () => adapter.recordTimeCurrentPurchase()
     }, foodType, purchasePlan);
   }
 

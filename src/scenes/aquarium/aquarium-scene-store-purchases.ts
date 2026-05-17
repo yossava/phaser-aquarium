@@ -5,6 +5,7 @@ import {
   type FishPurchasePlan,
   type FoodPurchasePlan
 } from "../../game/store-transactions";
+import { timeCurrentFoodTypeId } from "../../game/food-system";
 import { decorationSizes, type DecorationSize, type TankCosmetic } from "../../game/tank-catalog";
 import type { TankUtilityId } from "../../game/dispenser-system";
 import type { TankRuntimeState } from "../../game/tank-state";
@@ -55,6 +56,7 @@ type FoodPurchaseAdapter = StorePurchaseSceneAdapter & {
   setSelectedFoodTypeId: (foodTypeId: FoodType["id"]) => void;
   closePage: () => void;
   recordGrowthTonicPurchase: () => void;
+  recordTimeCurrentPurchase: () => void;
 };
 
 type DecorationPurchaseAdapter = StorePurchaseSceneAdapter & {
@@ -165,6 +167,10 @@ export function executeFoodPurchase(adapter: FoodPurchaseAdapter, foodType: Food
   if (foodType.id === "ageBoost") {
     adapter.recordGrowthTonicPurchase();
     adapter.recordDailyQuestAction("buy-growth-tonic");
+  }
+  if (foodType.id === timeCurrentFoodTypeId) {
+    adapter.recordTimeCurrentPurchase();
+    adapter.recordDailyQuestAction("buy-time-current");
   }
   adapter.recordDailyQuestAction(foodType.id === "medicine" ? "buy-medicine" : "buy-food");
   adapter.setRecentInventoryDockItemKey(`food:${foodType.id}`);

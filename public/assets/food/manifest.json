@@ -70,6 +70,13 @@
       "height": 96,
       "source": "assets/generated/source/food/event_source.png",
       "processing": "image-generated raster source, chroma-key removed, cropped, padded, resized"
+    },
+    {
+      "file": "/assets/food/timeCurrent.png",
+      "width": 96,
+      "height": 96,
+      "source": "assets/generated/source/food/time_current_source.png",
+      "processing": "create-assets imagegen raster source, magenta chroma-key removed, resized"
     }
   ]
 }

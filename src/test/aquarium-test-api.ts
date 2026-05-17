@@ -9,6 +9,8 @@ export type AquariumTestSnapshot = {
   foodInventoryByType: Record<string, number>;
   fishInventoryByType: Record<string, number>;
   fishDeliveryBubbleCount: number;
+  timeCurrentRemainingSeconds: number;
+  tankActivitySpeedMultiplier: number;
   foodBuyQuantities: Record<string, number>;
   creatureInventoryByType: Record<string, number>;
   activeScreen: string;
@@ -178,6 +180,7 @@ export type AquariumTestApi = {
   forceProductionDrop: (index: number) => void;
   forceFishAge: (index: number, ageSeconds: number) => void;
   awardPrizeFishForTest: (fishTypeId: string) => void;
+  useTimeCurrentForTest: () => void;
   saveNow: () => void;
   clearSave: () => void;
   backdateSave: (seconds: number) => void;

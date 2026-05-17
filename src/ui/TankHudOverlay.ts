@@ -17,6 +17,8 @@ export type HtmlHudOverlayElements = {
   commonText: HTMLSpanElement;
   rareText: HTMLSpanElement;
   superRareText: HTMLSpanElement;
+  timeCurrentElement: HTMLDivElement;
+  timeCurrentText: HTMLSpanElement;
   coinMagnetElement: HTMLDivElement;
   coinMagnetText: HTMLSpanElement;
   autoFoodBuyerElement: HTMLDivElement;
@@ -85,6 +87,7 @@ export function createHtmlHudOverlay(input: {
   coinMagnetIconPath: string;
   autoFoodBuyerIconPath: string;
   foodDispenserIconPath: string;
+  timeCurrentIconPath: string;
   attachTouchFeedback: TouchFeedback;
   prepareInfoTarget: (element: HTMLElement, title: string, lines: string[]) => void;
   bindCoinMagnetDrag: (element: HTMLElement) => void;
@@ -124,6 +127,7 @@ export function createHtmlHudOverlay(input: {
     "They come from special quests, ads, events, and late progression rewards."
   ]);
 
+  const timeCurrent = createTimeCurrentIndicator(input.timeCurrentIconPath, input.prepareInfoTarget);
   panel.append(summary, wallet);
   const coinMagnet = createTankSideTool("aq-tank-side-tool aq-coin-magnet-tool", input.coinMagnetIconPath, "Coin magnet", "aq-coin-magnet-count");
   const autoFoodBuyer = createTankSideTool(
@@ -142,13 +146,15 @@ export function createHtmlHudOverlay(input: {
   input.bindAutoFoodBuyerDrag(autoFoodBuyer.element);
   input.bindFoodDispenserDrag(foodDispenser.element);
 
-  overlay.append(panel, autoFoodBuyer.element, coinMagnet.element, foodDispenser.element);
+  overlay.append(panel, timeCurrent.element, autoFoodBuyer.element, coinMagnet.element, foodDispenser.element);
   return {
     overlay,
     levelText,
     commonText,
     rareText,
     superRareText,
+    timeCurrentElement: timeCurrent.element,
+    timeCurrentText: timeCurrent.text,
     coinMagnetElement: coinMagnet.element,
     coinMagnetText: coinMagnet.text,
     autoFoodBuyerElement: autoFoodBuyer.element,
@@ -176,6 +182,29 @@ function createHudChip(
   chip.append(icon, text);
   parent.append(chip);
   return text;
+}
+
+function createTimeCurrentIndicator(
+  iconSrc: string,
+  prepareInfoTarget: (element: HTMLElement, title: string, lines: string[]) => void
+): {
+  element: HTMLDivElement;
+  text: HTMLSpanElement;
+} {
+  const element = document.createElement("div");
+  element.className = "aq-time-current-indicator hidden";
+  prepareInfoTarget(element, "Time Current", [
+    "The active tank is running faster while this current is flowing.",
+    "Fish grow, produce, get hungry, and tank activity all move at the boosted pace."
+  ]);
+  const icon = document.createElement("img");
+  icon.src = iconSrc;
+  icon.alt = "";
+  icon.draggable = false;
+  const multiplier = htmlElement("strong", "", ["x2"]);
+  const text = document.createElement("span");
+  element.append(icon, multiplier, text);
+  return { element, text };
 }
 
 function createTankSideTool(className: string, iconSrc: string, alt: string, countClassName: string): {

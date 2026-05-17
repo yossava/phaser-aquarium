@@ -23,6 +23,9 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   }
 
   scene.updateTimedUtilities();
+  scene.updateTimeCurrent(deltaSeconds);
+  const activitySpeedMultiplier = scene.tankActivitySpeedMultiplier();
+  const progressDeltaSeconds = deltaSeconds * activitySpeedMultiplier;
 
   scene.foods.forEach((food: any) => food.update(deltaSeconds));
   scene.removeExpiredFood();
@@ -40,13 +43,13 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.updateFoodDispenser(tankFish);
   scene.updatePendingHelperCreatureDrops(deltaSeconds);
   scene.fishDeliveryBubbles?.update(deltaSeconds, now);
-  scene.updateHelperCreatures(deltaSeconds, activeHelpers);
-  scene.updateTankCleanliness(deltaSeconds, tankFish.length);
+  scene.updateHelperCreatures(deltaSeconds, activeHelpers, progressDeltaSeconds);
+  scene.updateTankCleanliness(progressDeltaSeconds, tankFish.length);
   scene.updateDirtyTankOverlay();
   const foodAssignments = scene.assignFoodsToFish(tankFish);
   const fishToRemove: any[] = [];
   for (const currentFish of tankFish) {
-    updateFish(scene, currentFish, foodAssignments.get(currentFish) ?? [], deltaSeconds, fishToRemove);
+    updateFish(scene, currentFish, foodAssignments.get(currentFish) ?? [], deltaSeconds, progressDeltaSeconds, fishToRemove, activitySpeedMultiplier);
   }
 
   removeDeadFish(scene, fishToRemove);
@@ -59,11 +62,13 @@ function updateFish(
   currentFish: any,
   assignedFoods: any[],
   deltaSeconds: number,
-  fishToRemove: any[]
+  progressDeltaSeconds: number,
+  fishToRemove: any[],
+  activitySpeedMultiplier = 1
 ): void {
   const previousAgeStage = currentFish.ageStage;
   const previousState = currentFish.state;
-  const eatenFood = currentFish.update(deltaSeconds, assignedFoods);
+  const eatenFood = currentFish.update(deltaSeconds, assignedFoods, progressDeltaSeconds);
   if (currentFish.ageStage !== previousAgeStage) {
     scene.saveNow();
   }
@@ -76,10 +81,10 @@ function updateFish(
   }
 
   if (scene.cleanliness < 35 && currentFish.hunger > 72) {
-    currentFish.health = Phaser.Math.Clamp(currentFish.health - 1.8 * deltaSeconds, 0, 100);
+    currentFish.health = Phaser.Math.Clamp(currentFish.health - 1.8 * progressDeltaSeconds, 0, 100);
   }
 
-  scene.updateFishCoinProduction(currentFish);
+  scene.updateFishCoinProduction(currentFish, activitySpeedMultiplier);
 
   if (currentFish.isDeadFromNeglect()) {
     fishToRemove.push(currentFish);

@@ -155,6 +155,11 @@ export class StoreOverlay {
       fishPurchasesInWindow: state.fishPurchasesInWindow,
       fishPurchaseHourlyLimit: state.fishPurchaseHourlyLimit,
       ageBoostPurchaseAvailable: state.ageBoostPurchaseAvailable,
+      ageBoostRestockLabel: state.ageBoostRestockLabel,
+      productionBoostPurchaseAvailable: state.productionBoostPurchaseAvailable,
+      productionBoostRestockLabel: state.productionBoostRestockLabel,
+      timeCurrentPurchaseAvailable: state.timeCurrentPurchaseAvailable,
+      timeCurrentRestockLabel: state.timeCurrentRestockLabel,
       fishCount: state.fishCount,
       fishCapacity: state.fishCapacity,
       fishOwned: recordEntries(state.fishOwned),
@@ -297,16 +302,23 @@ export class StoreOverlay {
   private foodCard(food: FoodType, state: StoreOverlayState): HTMLElement {
     const isAgeBoost = food.id === "ageBoost";
     const isProductionBoost = food.id === "productionBoost";
+    const isTimeCurrent = food.id === "timeCurrent";
     const fishPricedSupply = isAgeBoost || isProductionBoost;
     const affordable = state.developerGodMode || fishPricedSupply || canAfford(state.wallet, food.price);
     const blockedByCooldown = !state.developerGodMode && isAgeBoost && !state.ageBoostPurchaseAvailable;
     const blockedByProductionBoostCooldown = !state.developerGodMode && isProductionBoost && !state.productionBoostPurchaseAvailable;
-    const buyLabel = fishPricedSupply ? "Select Fish" : this.activeTab === "supply" ? "Buy Medicine" : "Buy Food";
+    const blockedByTimeCurrentCooldown = !state.developerGodMode && isTimeCurrent && !state.timeCurrentPurchaseAvailable;
+    const blockedByTimeCurrentOwned = !state.developerGodMode && isTimeCurrent && (state.foodOwned[food.id] ?? 0) > 0;
+    const buyLabel = fishPricedSupply ? "Select Fish" : this.activeTab === "supply" ? `Buy ${isTimeCurrent ? "Boost" : "Supply"}` : "Buy Food";
     const card = createStoreBaseCard(food.rarity);
     const buttonLabel = blockedByCooldown
       ? state.ageBoostRestockLabel
       : blockedByProductionBoostCooldown
         ? state.productionBoostRestockLabel
+      : blockedByTimeCurrentOwned
+        ? "Use owned first"
+      : blockedByTimeCurrentCooldown
+        ? state.timeCurrentRestockLabel
       : affordable
         ? buyLabel
         : `Need ${formatPrice(food.price)}`;
@@ -324,9 +336,14 @@ export class StoreOverlay {
           div("aq-card-title", [food.name]),
           fishPricedSupply ? div("aq-store-price-badge", ["By fish"]) : createStorePriceBadge(food.price)
         ]),
-        div("aq-food-cal-pill", [`${formatNumber(food.calories)} cal`]),
-        ...(supplyExplanation ? [div("aq-card-copy", [supplyExplanation])] : []),
-        button(buttonLabel, "aq-buy w-full", () => this.actions.buyFood(food, 1), !affordable || blockedByCooldown || blockedByProductionBoostCooldown)
+        div("aq-food-cal-pill", [isTimeCurrent ? "x2 speed · 10m" : `${formatNumber(food.calories)} cal`]),
+        ...(supplyExplanation ? [div(`aq-card-copy ${isTimeCurrent ? "aq-card-copy-full" : ""}`, [supplyExplanation])] : []),
+        button(
+          buttonLabel,
+          "aq-buy w-full",
+          () => this.actions.buyFood(food, 1),
+          !affordable || blockedByCooldown || blockedByProductionBoostCooldown || blockedByTimeCurrentCooldown || blockedByTimeCurrentOwned
+        )
       ])
     );
     return card;
@@ -341,6 +358,9 @@ export class StoreOverlay {
     }
     if (foodId === "productionBoost") {
       return "Pick a fish to boost coin production for 30s.";
+    }
+    if (foodId === "timeCurrent") {
+      return "Doubles tank speed for 10 minutes. Age, production, hunger, and care move faster.";
     }
     return undefined;
   }

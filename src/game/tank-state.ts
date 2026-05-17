@@ -21,6 +21,7 @@ export type TankRuntimeState = {
   cleanedAt: number;
   maxDisplayLevel: number;
   fishProductionTotal: number;
+  timeCurrentRemainingSeconds: number;
 };
 
 export type TankStateConfig = {
@@ -72,7 +73,8 @@ export function createDefaultTankState(level: number, config: TankStateConfig, n
     cleanliness: 100,
     cleanedAt: now,
     maxDisplayLevel: 1,
-    fishProductionTotal: 0
+    fishProductionTotal: 0,
+    timeCurrentRemainingSeconds: 0
   };
 }
 
@@ -98,6 +100,7 @@ export function ensureTankState(
   state.selectedSeabedId ??= fallbackCosmeticId;
   state.maxDisplayLevel = Math.max(1, Math.floor(state.maxDisplayLevel ?? 1));
   state.fishProductionTotal = Math.max(0, Math.floor(state.fishProductionTotal ?? 0));
+  state.timeCurrentRemainingSeconds = Math.max(0, state.timeCurrentRemainingSeconds ?? 0);
   return state;
 }
 
@@ -129,7 +132,8 @@ export function capturedTankState(input: {
     cleanliness: input.cleanliness,
     cleanedAt: input.cleanedAt,
     maxDisplayLevel: input.maxDisplayLevel,
-    fishProductionTotal: input.previousState.fishProductionTotal
+    fishProductionTotal: input.previousState.fishProductionTotal,
+    timeCurrentRemainingSeconds: input.previousState.timeCurrentRemainingSeconds
   };
 }
 
@@ -185,7 +189,8 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       cleanliness: clamp(value.cleanliness ?? 100, 0, 100),
       cleanedAt: value.cleanedAt ?? Date.now(),
       maxDisplayLevel: Math.max(1, Math.floor(value.maxDisplayLevel ?? 1)),
-      fishProductionTotal: Math.max(0, Math.floor(value.fishProductionTotal ?? 0))
+      fishProductionTotal: Math.max(0, Math.floor(value.fishProductionTotal ?? 0)),
+      timeCurrentRemainingSeconds: Math.max(0, value.timeCurrentRemainingSeconds ?? 0)
     });
   }
 
@@ -206,7 +211,8 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       cleanliness: saved.tank.cleanliness,
       cleanedAt: saved.tank.cleanedAt,
       maxDisplayLevel: 1,
-      fishProductionTotal: 0
+      fishProductionTotal: 0,
+      timeCurrentRemainingSeconds: 0
     });
   }
 
@@ -237,7 +243,8 @@ export function tankStatesRecord(
       cleanliness: state.cleanliness,
       cleanedAt: state.cleanedAt,
       maxDisplayLevel: Math.max(1, maxDisplayLevelFor(level, state)),
-      fishProductionTotal: Math.max(0, Math.floor(state.fishProductionTotal ?? 0))
+      fishProductionTotal: Math.max(0, Math.floor(state.fishProductionTotal ?? 0)),
+      timeCurrentRemainingSeconds: Math.max(0, state.timeCurrentRemainingSeconds ?? 0)
     };
   }
   return result;
