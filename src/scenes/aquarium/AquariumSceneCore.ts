@@ -27,14 +27,12 @@ import {
   foodDispenserPelletScale,
   foodDispenserPositionStorageKey,
   foodDispenserPrice,
-  isTankUtilityId,
   legacyFoodDispenserPositionStorageKey,
   loadUtilityPositionY,
   ownedTankUtilityInventoryCards as ownedTankUtilityInventoryCardsModel,
   planAutoFoodBuyerPurchase,
   planFoodDispenserDrop,
   saveUtilityPositionY,
-  tankUtilityStoreDefinitions,
   tankUtilityInfo as tankUtilityInfoModel,
   type TankUtilityId,
   utilityExpiresAt
@@ -78,7 +76,6 @@ import {
   type FishFusionSource
 } from "../../game/fish-fusion";
 import {
-  addStoredFish as addStoredFishModel,
   consumeFishFusionSources as consumeFishFusionSourcesModel,
   getStoredFishCount as getStoredFishCountModel,
   removeStoredFish as removeStoredFishModel,
@@ -140,7 +137,6 @@ import {
   isCalorieTrackedFood as isCalorieTrackedFoodModel,
   isDroppableFood as isDroppableFoodModel,
   medianMealCaloriesNeeded as medianMealCaloriesNeededModel,
-  productionBoostFoodTypeId,
   recommendedFoodName,
   refundedFoodInventory,
   reserveFoodForDrop as reserveFoodForDropModel,
@@ -191,11 +187,8 @@ import {
 import { tankAccentColor as tankAccentColorModel, tankSummary as tankSummaryModel } from "../../game/tank-inventory";
 import { calculateTankNetWorth as calculateTankNetWorthModel } from "../../game/tank-wealth";
 import {
-  activeHelperCreatureCountWithPending as activeHelperCreatureCountWithPendingModel,
   defaultDecorationDepth,
   fitDecorationDisplay as fitDecorationDisplayModel,
-  fitPendingHelperCreatureDrop as fitPendingHelperCreatureDropModel,
-  helperCreatureDropSpawn,
   moveDecorationWithinTank,
   randomFishPlacement as randomFishPlacementModel,
   tankDecorationDepthFromOrder as tankDecorationDepthFromOrderModel
@@ -289,35 +282,14 @@ import {
   selectRewardedAdHelperReward
 } from "../../game/rewarded-ad-rewards";
 import {
-  beginPrizeMachineSession,
   createDefaultPrizeMachineState,
-  normalizePrizeMachineState,
-  recordPrizeMachineSpin,
-  recordPrizeMachineWin,
   type PrizeMachineBetAmount,
-  type PrizeMachineConfig,
   type PrizeMachineState
 } from "../../game/prize-machine";
-import type { PrizeWheelPlanner } from "../../game/prize-wheel-planner";
 import {
-  prizeWheelIconTextureKeys,
-  type PrizeWheelSegment
+  prizeWheelIconTextureKeys
 } from "../../game/prize-machine-wheel";
 import {
-  awardPreparedPrizeMachineReward,
-  commonPrizeResult,
-  createPrizeWheelPlannerForAquarium,
-  currentPrizeBetAmount as currentPrizeBetAmountModel,
-  currentPrizeMachineConfig as currentPrizeMachineConfigModel,
-  foodPrizeInventoryAmount,
-  nextPrizeFishForRarity,
-  selectPrizeBetAmount,
-  setPrizeMachineResultState,
-  syncPrizeBetAmount
-} from "../../game/prize-machine-flow";
-import {
-  buildStoreOverlayState,
-  fishShopRequiredLevel,
   matchesStoreCoinFilter as matchesStoreCoinFilterModel,
   visibleDecorationCatalog as visibleDecorationCatalogModel,
   visibleFishCatalog as visibleFishCatalogModel,
@@ -330,13 +302,9 @@ import {
 import {
   clampSellQuantity,
   decorationSaleValue as decorationSaleValueModel,
-  growthTonicPriceForFishType,
   planCoinInventorySale,
-  planFishPurchase,
   planFoodInventorySale,
-  planFoodPurchase,
   planStoredFishSale,
-  productionBoostPriceForFishType,
   utilitySaleValue
 } from "../../game/store-transactions";
 import {
@@ -380,12 +348,6 @@ import {
   syncMakeupOverlay as syncMakeupOverlayView
 } from "../../ui/MakeupOverlay";
 import { createCommonCoinValueRow, createMakeupCostElement, createPriceIconRow, createWalletIconRow } from "../../ui/PriceRows";
-import { createPrizeBetGrid } from "../../ui/PrizeBetModal";
-import {
-  createPrizeMachineArcadeSpinner,
-  playPrizeMachineArcadeSpin,
-  prizeMachinePointerActionAt
-} from "../../ui/PrizeMachineArcade";
 import { appendGoalsPageContent } from "../../ui/GoalsPage";
 import { createLevelCompletionRewardShell, createPrizeCelebrationShell } from "../../ui/RewardModals";
 import { createRewardedAdModalView, syncRewardedAdModalView } from "../../ui/RewardedAdFlow";
@@ -419,12 +381,6 @@ import {
   createTankLevelInventoryCard,
   createTankUtilityInventoryCard
 } from "../../ui/TankInventoryCards";
-import {
-  createFishBuyQuantityModalContent,
-  createFoodBuyQuantityModalContent,
-  createGrowthTonicFishModalContent,
-  createProductionBoostFishModalContent
-} from "../../ui/store/StorePurchaseModals";
 import { createHtmlButton, htmlElement, htmlImage, shouldSuppressHtmlClick } from "../../ui/dom";
 import { createModalShell, type ModalAction } from "../../ui/modal";
 import type { AquariumTestSnapshot } from "../../test/aquarium-test-api";
@@ -434,7 +390,6 @@ import { ShellBalanceScene, ShellBalanceSceneKey, type ShellBalanceResult } from
 import {
   algaeParticleThreshold,
   algaeParticleTintColor,
-  autoFoodBuyerDurationMs,
   autoFoodBuyerPurchaseCooldownMs,
   autoFoodBuyerPurchaseQuantity,
   automatedCoinCollectFeeRate,
@@ -452,7 +407,6 @@ import {
   coinGlowTextureKey,
   coinMagnetAttractDurationMs,
   coinMagnetAttractScale,
-  coinMagnetDurationMs,
   coinMagnetRayYOffset,
   decorationTrashZone,
   dirtyTankOverlayMaxAlpha,
@@ -463,18 +417,12 @@ import {
   fishHungrySoundKey,
   fishHungrySoundPath,
   fishMenuIconAssetPath,
-  fixedPrizeBetAmounts,
   foodDockTopBelowMenu,
-  helperCreatureDropDisplayWidths,
-  helperCreatureDropSpeed,
-  helperCreatureSeabedY,
   hudIconAssetPathByKey,
   hudTopAssetPathByKey,
   inventoryDockPageSize,
   maxActiveFishPerTank,
   maxCoinDrops,
-  maxDecorations,
-  maxFishBuyQuantity,
   maxFishCatalogLevel,
   maxFoodBuyQuantity,
   maxFoodDrops,
@@ -482,9 +430,7 @@ import {
   maxOwnedTanks,
   menuIconAssetPathByKey,
   overfullHungerFloor,
-  prizeHighlightSoundKey,
   prizeHighlightSoundPath,
-  prizeRewardSoundKey,
   prizeRewardSoundPath,
   storeTankNames,
   storeTankStarterWallets,
@@ -509,17 +455,16 @@ import {
   restoreAquariumSceneSave,
   saveAquariumSceneNow
 } from "./aquarium-scene-persistence";
+import { AquariumEntityController } from "./aquarium-entity-controller";
 import {
-  closeStoreAfterPurchase as closeStoreAfterPurchaseAdapter,
   executeDecorationPurchase,
-  executeFishPurchase,
-  executeFoodPurchase,
   executeHelperCreaturePurchase,
   executeTankCosmeticPurchase,
-  executeTankCosmeticUse,
-  executeTankUtilityPurchase
+  executeTankCosmeticUse
 } from "./aquarium-scene-store-purchases";
+import { AquariumSceneStoreController } from "./aquarium-scene-store-controller";
 import { runAquariumSceneUpdate } from "./aquarium-scene-update-loop";
+import { AquariumPrizeController } from "./aquarium-prize-controller";
 
 export class AquariumSceneCore extends Phaser.Scene {
   private readonly prizeMachineRuntimeSessionId = Date.now();
@@ -543,6 +488,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private helperCreatures: HelperCreature[] = [];
   private pendingHelperCreatureDrops: PendingHelperCreatureDrop[] = [];
   private fishDeliveryBubbles?: FishDeliveryBubbleManager;
+  private aquariumEntityController?: AquariumEntityController;
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -618,6 +564,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private htmlPageOverlayScrollTop = 0;
   private htmlPageOverlayRenderKey = "";
   private storeOverlay?: StoreOverlay;
+  private storeController?: AquariumSceneStoreController;
   private modal?: HTMLDivElement;
   private modalTitle?: string;
   private makeupOverlay?: HTMLDivElement;
@@ -2077,48 +2024,96 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private storeOverlayState(): StoreOverlayState {
-    return buildStoreOverlayState({
-      wallet: { ...this.wallet },
-      wealth: this.calculateTankNetWorth(),
-      activeTankName: this.getTankName(this.tankLevel),
-      activeTankLevel: this.tankDisplayLevel(),
-      activeTankSlot: this.tankLevel,
-      developerGodMode: this.developerGodMode,
-      fishPurchasesInWindow: this.recentFishPurchaseCount(),
-      fishPurchaseHourlyLimit: this.hourlyFishPurchaseLimit(),
-      fishPurchaseRestockLabel: this.fishPurchaseRestockLabel(),
-      ageBoostPurchaseAvailable: this.canBuyGrowthTonicThisHour(),
-      ageBoostRestockLabel: this.growthTonicPurchaseRestockLabel(),
-      productionBoostPurchaseAvailable: this.canBuyProductionBoostNow(),
-      productionBoostRestockLabel: this.productionBoostPurchaseRestockLabel(),
-      fishCount: this.activeFish().length,
-      fishCapacity: this.maxFishCapacityForLevel(),
-      getFishOwned: (fishTypeId) =>
-        this.fish.filter((currentFish) => currentFish.type.id === fishTypeId).length +
-        this.getFishInventory(fishTypeId),
-      getFoodOwned: (foodType) => this.foodInventoryDisplayCount(foodType),
+    return this.aquariumStoreController().storeOverlayState();
+  }
+
+  private aquariumStoreController(): AquariumSceneStoreController {
+    this.storeController ??= new AquariumSceneStoreController({
+      wallet: () => this.wallet,
+      wealth: () => this.calculateTankNetWorth(),
+      activeScreen: () => this.activeScreen,
+      activeTankName: () => this.getTankName(this.tankLevel),
+      activeTankLevel: () => this.tankDisplayLevel(),
+      activeTankSlot: () => this.tankLevel,
+      developerGodMode: () => this.developerGodMode,
+      recentFishPurchaseCount: () => this.recentFishPurchaseCount(),
+      hourlyFishPurchaseLimit: () => this.hourlyFishPurchaseLimit(),
+      fishPurchaseRestockLabel: () => this.fishPurchaseRestockLabel(),
+      canBuyGrowthTonicThisHour: () => this.canBuyGrowthTonicThisHour(),
+      growthTonicPurchaseRestockLabel: () => this.growthTonicPurchaseRestockLabel(),
+      canBuyProductionBoostNow: () => this.canBuyProductionBoostNow(),
+      productionBoostPurchaseRestockLabel: () => this.productionBoostPurchaseRestockLabel(),
+      activeFish: () => this.activeFish(),
+      fishCapacity: () => this.maxFishCapacityForLevel(),
+      allFish: () => this.fish,
+      getFishInventory: (fishTypeId) => this.getFishInventory(fishTypeId),
+      getFoodInventory: (foodTypeId) => this.getFoodInventory(foodTypeId),
+      getFoodBuyQuantity: (foodTypeId) => this.getFoodBuyQuantity(foodTypeId),
+      foodInventoryDisplayCount: (foodType) => this.foodInventoryDisplayCount(foodType),
       getHelperOwned: (helperTypeId) =>
         this.helperCreatures.filter((helper) => helper.type.id === helperTypeId).length +
         this.getCreatureInventory(helperTypeId),
-      tankCosmetics: {
-        background: this.tankCosmetics("background"),
-        seabed: this.tankCosmetics("seabed")
-      },
+      tankCosmetics: (category) => this.tankCosmetics(category),
       ownsTankCosmetic: (asset) => this.ownsTankCosmetic(asset),
       selectedTankCosmeticId: (category) => this.selectedTankCosmeticId(category),
       tankCosmeticImageUrl: (asset) => this.tankCosmeticImageUrl(asset),
       colorToHex: (color) => this.hexColor(color),
       tankCosmeticBlueTintIntensity: (category, id) => this.tankCosmeticBlueTintIntensity(category, id),
-      decorationSizeOrder,
-      decorationSizeLabel: (size) => decorationSizes[size].label,
       getDecorationInventory: (decorationTypeId, size) => this.getDecorationInventory(decorationTypeId, size),
       decorationVariantPrice: (decorationType, size) => this.decorationVariantPrice(decorationType, size),
-      utilityDefinitions: tankUtilityStoreDefinitions({
-        hasFoodDispenser: this.hasFoodDispenser(),
-        hasCoinMagnet: this.hasCoinMagnet(),
-        hasAutoFoodBuyer: this.hasAutoFoodBuyer()
-      })
+      hasFoodDispenser: () => this.hasFoodDispenser(),
+      hasCoinMagnet: () => this.hasCoinMagnet(),
+      hasAutoFoodBuyer: () => this.hasAutoFoodBuyer(),
+      closeModal: () => this.closeModal(),
+      returnToTankScreen: () => this.returnToTankScreen(),
+      refreshStoreOverlay: () => this.storeOverlay?.refresh(),
+      refreshUi: (renderControls?: boolean) => this.refreshUi(renderControls),
+      createFoodDock: () => this.createFoodDock(),
+      saveNow: () => this.saveNow(),
+      spendPrice: (price) => this.spendPrice(price),
+      floatText: (message, x, y, color) => this.floatText(message, x, y, color),
+      setRecentInventoryDockItemKey: (key) => {
+        this.recentInventoryDockItemKey = key;
+      },
+      setPlacementMode: (mode) => {
+        this.placementMode = mode;
+      },
+      recordDailyQuestAction: (action) => this.recordDailyQuestAction(action),
+      ensureFishTexturesLoaded: (fishType) => this.ensureFishTexturesLoaded(fishType),
+      quantityPrice: (price, quantity) => this.quantityPrice(price, quantity),
+      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
+      showModal: (title, lines, actions, bodyElements) => this.showModal(title, lines, actions, bodyElements),
+      fishDeliveryTankBubbleCount: () =>
+        this.fishDeliveryBubbles?.bubbles.filter((pending) => pending.destination === "tank").length ?? 0,
+      addFishToInventory: (fishType, quantity, showBubble) => this.addFishToInventory(fishType, quantity, showBubble),
+      recordFishPurchase: (fishType) => this.recordFishPurchase(fishType),
+      randomFishPlacement: () => this.randomFishPlacement(),
+      spawnFishTankBubble: (fishType, x, y) => this.spawnFishTankBubble(fishType, x, y),
+      spawnFishInventoryBubble: (fishType, quantity) => this.spawnFishInventoryBubble(fishType, quantity),
+      selectedFoodType: () => this.getSelectedFoodType(),
+      isCalorieTrackedFood: (foodTypeId) => this.isCalorieTrackedFood(foodTypeId),
+      setFoodInventory: (foodTypeId, amount) => this.foodInventory.set(foodTypeId, amount),
+      isDroppableFood: (foodTypeId) => this.isDroppableFood(foodTypeId),
+      setSelectedFoodTypeId: (foodTypeId) => {
+        this.selectedFoodTypeId = foodTypeId;
+      },
+      closePage: () => this.closePage(),
+      recordGrowthTonicPurchase: () => this.recordGrowthTonicPurchase(),
+      recordProductionBoostPurchase: () => this.recordProductionBoostPurchase(),
+      setCareFoodTargetFish: (foodTypeId, fish) => this.careFoodTargetFish.set(foodTypeId, fish),
+      priceIconRow: (price, label) => this.priceIconRow(price, label),
+      fishIndex: (fish) => this.fish.indexOf(fish),
+      createButton: (label, className, onClick, disabled = false) => this.htmlButton(label, className, onClick, disabled),
+      now: () => this.time.now,
+      setDecorationInventory: (key, value) => this.decorationInventory.set(key, value),
+      setCoinMagnetWasActive: (value) => {
+        this.coinMagnetWasActive = value;
+      },
+      setAutoFoodBuyerWasActive: (value) => {
+        this.autoFoodBuyerWasActive = value;
+      }
     });
+    return this.storeController;
   }
 
   private renderTabControls(): void {
@@ -3144,19 +3139,88 @@ export class AquariumSceneCore extends Phaser.Scene {
     });
   }
 
+  private prizeController(): AquariumPrizeController {
+    return new AquariumPrizeController({
+      scene: this,
+      runtimeSessionId: this.prizeMachineRuntimeSessionId,
+      getActiveScreen: () => this.activeScreen,
+      setActiveScreen: (screen) => {
+        this.activeScreen = screen;
+      },
+      setPlacementMode: (mode) => {
+        this.placementMode = mode;
+      },
+      hasModal: () => Boolean(this.modal),
+      closeModal: () => this.closeModal(),
+      closePage: () => this.closePage(),
+      hideStoreOverlay: () => this.storeOverlay?.hide(),
+      hideHtmlPageOverlay: () => this.hideHtmlPageOverlay(),
+      hideHtmlPageOverlayClass: () => this.htmlPageOverlay?.classList.add("hidden"),
+      createFoodDock: () => this.createFoodDock(),
+      syncHtmlGameInterface: () => this.syncHtmlGameInterface(),
+      showModal: (title, lines, actions, content) => this.showModal(title, lines, actions, content),
+      pageButtonFactory: () => this.pageButtonFactory(),
+      floatText: (message, x, y, color) => this.floatText(message, x, y, color),
+      playSfx: (key, config) => this.playSfx(key, config),
+      saveNow: () => this.saveNow(),
+      recordDailyQuestAction: (action) => this.recordDailyQuestAction(action),
+      spendPrice: (price) => this.spendPrice(price),
+      priceWealth: (price) => this.priceWealth(price),
+      getWallet: () => this.wallet,
+      isDeveloperGodMode: () => this.developerGodMode,
+      getPrizeMachine: () => this.prizeMachine,
+      setPrizeMachine: (state) => {
+        this.prizeMachine = state;
+      },
+      getSelectedBetIndex: () => this.prizeMachineSelectedBetIndex,
+      setSelectedBetIndex: (index) => {
+        this.prizeMachineSelectedBetIndex = index;
+      },
+      getSpinContainer: () => this.prizeSpinContainer,
+      setSpinContainer: (container) => {
+        this.prizeSpinContainer = container;
+      },
+      isSpinInProgress: () => this.prizeSpinInProgress,
+      setSpinInProgress: (inProgress) => {
+        this.prizeSpinInProgress = inProgress;
+      },
+      getFish: () => this.fish,
+      getFishInventory: () => this.fishInventory,
+      textureExists: (textureKey) => this.textures.exists(textureKey),
+      ensureFishTexturesLoaded: (fishType) => this.ensureFishTexturesLoaded(fishType),
+      isDroppableFood: (foodTypeId) => this.isDroppableFood(foodTypeId),
+      isCalorieTrackedFood: (foodTypeId) => this.isCalorieTrackedFood(foodTypeId),
+      foodTextureKey: (foodTypeId) => this.foodTextureKey(foodTypeId),
+      foodSellValue: (foodType, storedAmount) => this.foodSellValue(foodType, storedAmount),
+      decorationSellValue: (decorationType, size, count) => this.decorationSellValue(decorationType, size, count),
+      decorationVariantPrice: (decorationType, size) => this.decorationVariantPrice(decorationType, size),
+      coinSellValue: (coinType, count) => this.coinSellValue(coinType, count),
+      storedFishSellValue: (fishType) => this.storedFishSellValue(fishType),
+      sanitizeDecorationSize: (size) => this.sanitizeDecorationSize(size),
+      addFishToInventory: (fishType) => this.addFishToInventory(fishType),
+      setPrizeCommonFish: (fishType) => {
+        this.prizeCommonFish = fishType;
+      },
+      setPrizeRareFish: (fishType) => {
+        this.prizeRareFish = fishType;
+      },
+      getFoodInventory: (foodTypeId) => this.getFoodInventory(foodTypeId),
+      setFoodInventory: (foodTypeId, amount) => {
+        this.foodInventory.set(foodTypeId, amount);
+      },
+      setRecentInventoryDockItemKey: (key) => {
+        this.recentInventoryDockItemKey = key;
+      },
+      decorationInventoryKey: (decorationTypeId, size) => this.decorationInventoryKey(decorationTypeId, size),
+      addDecorationInventory: (inventoryKey, amount) => {
+        this.decorationInventory.set(inventoryKey, (this.decorationInventory.get(inventoryKey) ?? 0) + amount);
+      },
+      showPrizeCelebration: (title, imageUrl, detail) => this.showPrizeCelebration(title, imageUrl, detail)
+    });
+  }
+
   private openPrizeMachineArcade(): void {
-    this.activeScreen = "prize";
-    this.placementMode = { kind: "none" };
-    this.prizeMachine = beginPrizeMachineSession(this.prizeMachine, this.prizeMachineRuntimeSessionId, Math.random);
-    this.closeModal();
-    this.storeOverlay?.hide();
-    this.hideHtmlPageOverlay();
-    this.createFoodDock();
-    this.syncHtmlGameInterface();
-    this.prizeCommonFish = this.nextPrizeFish("common");
-    this.prizeRareFish = this.nextPrizeRareFish();
-    this.ensurePrizeWheelFishTexturesLoaded();
-    this.showPrizeMachineSpinner();
+    this.prizeController().openPrizeMachineArcade();
   }
 
   private openShellBalanceGame(): void {
@@ -3260,285 +3324,63 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private showPrizeMachineSpinner(): void {
-    this.destroyPrizeSpinContainer();
-    this.prizeSpinInProgress = false;
-    const betAmounts = this.currentPrizeBetAmounts();
-    const selectedBetAmount = this.syncCurrentPrizeBetAmount(betAmounts);
-    this.prizeSpinContainer = createPrizeMachineArcadeSpinner({
-      scene: this,
-      config: this.currentPrizeMachineConfig(),
-      segments: this.createPrizeWheelSegments(),
-      commonCoins: this.wallet.common,
-      selectedBetAmount,
-      actions: {
-        onSpin: () => this.spinPrizeMachine(),
-        onOpenBetPicker: () => this.showPrizeBetModal(),
-        onClose: () => this.closePage()
-      }
-    });
+    this.prizeController().showPrizeMachineSpinner();
   }
 
   private selectPrizeMachineBet(betAmount: PrizeMachineBetAmount): void {
-    if (this.prizeSpinInProgress) {
-      return;
-    }
-
-    const selection = selectPrizeBetAmount(this.prizeMachine, this.currentPrizeBetAmounts(), betAmount);
-    if (selection.selectedBetIndex !== undefined) {
-      this.prizeMachineSelectedBetIndex = selection.selectedBetIndex;
-    }
-    this.closeModal();
-    this.prizeMachine = selection.state;
-    this.ensurePrizeWheelFishTexturesLoaded();
-    this.showPrizeMachineSpinner();
-    this.saveNow();
+    this.prizeController().selectPrizeMachineBet(betAmount);
   }
 
   private showPrizeBetModal(): void {
-    if (this.prizeSpinInProgress) {
-      return;
-    }
-
-    const selectedBetAmount = this.syncCurrentPrizeBetAmount();
-    const grid = createPrizeBetGrid({
-      betAmounts: this.currentPrizeBetAmounts(),
-      selectedBetAmount,
-      createButton: this.pageButtonFactory(),
-      onSelect: (betAmount) => this.selectPrizeMachineBet(betAmount)
-    });
-
-    this.showModal(
-      "Select Bet",
-      [],
-      [{ label: "Cancel", fill: 0x254d68, action: () => this.closeModal() }],
-      [grid]
-    );
+    this.prizeController().showPrizeBetModal();
   }
 
   private handleNativePrizePointer(designX: number, designY: number): boolean {
-    if (this.activeScreen !== "prize" || this.modal || !this.prizeSpinContainer) {
-      return false;
-    }
-
-    const action = prizeMachinePointerActionAt(designX, designY, this.prizeSpinInProgress);
-    if (action === "close") {
-      this.closePage();
-      return true;
-    }
-
-    if (action === "spin") {
-      this.spinPrizeMachine();
-      return true;
-    }
-
-    if (action === "bet") {
-      this.showPrizeBetModal();
-      return true;
-    }
-
-    return false;
+    return this.prizeController().handleNativePrizePointer(designX, designY);
   }
 
-  private currentPrizeMachineConfig(): PrizeMachineConfig {
-    return currentPrizeMachineConfigModel(this.prizeMachine, this.currentPrizeBetAmounts(), this.prizeMachineSelectedBetIndex);
+  private currentPrizeMachineConfig() {
+    return this.prizeController().currentPrizeMachineConfig();
   }
 
   private currentPrizeBetAmounts(): PrizeMachineBetAmount[] {
-    return [...fixedPrizeBetAmounts];
+    return this.prizeController().currentPrizeBetAmounts();
   }
 
   private currentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {
-    return currentPrizeBetAmountModel(this.prizeMachine, betAmounts, this.prizeMachineSelectedBetIndex);
+    return this.prizeController().currentPrizeBetAmount(betAmounts);
   }
 
   private syncCurrentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {
-    const result = syncPrizeBetAmount(this.prizeMachine, betAmounts, this.prizeMachineSelectedBetIndex);
-    this.prizeMachine = result.state;
-    return result.selectedBetAmount;
+    return this.prizeController().syncCurrentPrizeBetAmount(betAmounts);
   }
 
   private spinPrizeMachine(): void {
-    if (this.prizeSpinInProgress) {
-      return;
-    }
-
-    this.syncCurrentPrizeBetAmount();
-    const config = this.currentPrizeMachineConfig();
-    if (!this.spendPrice(config.spinCost)) {
-      this.floatText(`Need ${formatPrice(config.spinCost)}`, toastX, toastY, "#ffb0a8");
-      if (!this.prizeSpinContainer) {
-        this.closePage();
-      }
-      return;
-    }
-
-    this.prizeMachine = recordPrizeMachineSpin(this.prizeMachine, this.priceWealth(config.spinCost));
-    const prizePlanner = this.createPrizeWheelPlanner();
-    const segments = prizePlanner.createSegments();
-    const preparedReward = prizePlanner.choosePreparedReward(segments);
-    const preparedRewardValue = prizePlanner.rewardResaleValue(preparedReward);
-    this.prizeSpinInProgress = true;
-    this.htmlPageOverlay?.classList.add("hidden");
-    this.destroyPrizeSpinContainer();
-    let rewardApplied = false;
-    const applyPrizeReward = () => {
-      if (rewardApplied) {
-        return;
-      }
-      rewardApplied = true;
-      this.prizeSpinInProgress = false;
-      this.awardPrizeMachinePreparedReward(preparedReward);
-      this.prizeMachine = recordPrizeMachineWin(
-        this.prizeMachine,
-        preparedRewardValue,
-        prizePlanner.rewardKey(preparedReward)
-      );
-
-      this.recordDailyQuestAction("prize-game");
-      this.createFoodDock();
-      this.saveNow();
-    };
-    const resultBetAmounts = this.currentPrizeBetAmounts();
-    const resultSelectedBetAmount = this.currentPrizeBetAmount(resultBetAmounts);
-    this.prizeSpinContainer = playPrizeMachineArcadeSpin({
-      scene: this,
-      config,
-      segments,
-      resultIndex: preparedReward.segmentIndex,
-      commonCoins: this.wallet.common,
-      selectedBetAmount: resultSelectedBetAmount,
-      actions: {
-        onRewardReady: applyPrizeReward,
-        onOpenBetPicker: () => {
-          applyPrizeReward();
-          this.showPrizeBetModal();
-        },
-        onSpinAgain: () => {
-          applyPrizeReward();
-          this.syncCurrentPrizeBetAmount();
-          const nextConfig = this.currentPrizeMachineConfig();
-          if (!this.developerGodMode && !canAfford(this.wallet, nextConfig.spinCost)) {
-            this.floatText(`Need ${formatPrice(nextConfig.spinCost)}`, toastX, toastY, "#ffb0a8");
-            return;
-          }
-          this.destroyPrizeSpinContainer();
-          this.spinPrizeMachine();
-        },
-        onClose: () => {
-          applyPrizeReward();
-          this.closePage();
-        },
-        getCommonCoins: () => this.wallet.common,
-        getSelectedBetAmount: () => this.syncCurrentPrizeBetAmount(),
-        onHighlight: () => this.playSfx(prizeHighlightSoundKey, { volume: 0.12 }),
-        onStop: () => this.playSfx(prizeRewardSoundKey, { volume: 0.18 })
-      }
-    });
+    this.prizeController().spinPrizeMachine();
   }
 
-  private createPrizeWheelPlanner(): PrizeWheelPlanner {
-    return createPrizeWheelPlannerForAquarium({
-      prizeMachine: this.prizeMachine,
-      fish: this.fish,
-      fishInventory: this.fishInventory,
-      textureExists: (textureKey) => this.textures.exists(textureKey),
-      isDroppableFood: (foodTypeId) => this.isDroppableFood(foodTypeId),
-      isCalorieTrackedFood: (foodTypeId) => this.isCalorieTrackedFood(foodTypeId),
-      foodTextureKey: (foodTypeId) => this.foodTextureKey(foodTypeId),
-      foodSellValue: (foodType, storedAmount) => this.foodSellValue(foodType, storedAmount),
-      decorationSellValue: (decorationType, size, count) => this.decorationSellValue(decorationType, size, count),
-      decorationVariantPrice: (decorationType, size) => this.decorationVariantPrice(decorationType, size),
-      priceWealth: (price) => this.priceWealth(price),
-      coinSellValue: (coinType, count) => this.coinSellValue(coinType, count),
-      storedFishSellValue: (fishType) => this.storedFishSellValue(fishType),
-      sanitizeDecorationSize: (size) => this.sanitizeDecorationSize(size)
-    });
+  private createPrizeWheelPlanner() {
+    return this.prizeController().createPrizeWheelPlanner();
   }
 
-  private createPrizeWheelSegments(): PrizeWheelSegment[] {
-    return this.createPrizeWheelPlanner().createSegments();
+  private createPrizeWheelSegments() {
+    return this.prizeController().createPrizeWheelSegments();
   }
 
   private ensurePrizeWheelFishTexturesLoaded(): void {
-    this.createPrizeWheelPlanner()
-      .fishPrizePool()
-      .slice(0, 8)
-      .forEach((fishType) => this.ensureFishTexturesLoaded(fishType));
-  }
-
-  private awardPrizeMachinePreparedReward(reward: Parameters<typeof awardPreparedPrizeMachineReward>[0]): void {
-    awardPreparedPrizeMachineReward(reward, {
-      rare: (amount) => this.awardPrizeMachineRare(amount),
-      superRare: (amount) => this.awardPrizeMachineSuperRare(amount),
-      rareFish: (fishType) => this.awardPrizeMachineRareFish(fishType),
-      common: (amount) => this.awardPrizeMachineCommon(amount),
-      food: (foodType, quantity) => this.awardPrizeMachineFood(foodType, quantity),
-      decoration: (decorationType, size) => this.awardPrizeMachineDecoration(decorationType, size)
-    });
+    this.prizeController().ensurePrizeWheelFishTexturesLoaded();
   }
 
   private destroyPrizeSpinContainer(): void {
-    this.prizeSpinContainer?.destroy(true);
-    this.prizeSpinContainer = undefined;
-  }
-
-  private awardPrizeMachineRare(amount: number): void {
-    earn(this.wallet, "rare", amount);
-    this.setPrizeMachineResult("rare", `R${formatNumber(amount)} Prize!`, "Rare coins dropped from the spinner.");
-    this.showPrizeCelebration("Rare Coin!", "/assets/ui/shop/coin_icon_rare.png", `You won R${formatNumber(amount)}.`);
-  }
-
-  private awardPrizeMachineSuperRare(amount: number): void {
-    earn(this.wallet, "superRare", amount);
-    this.setPrizeMachineResult("superRare", `SR${formatNumber(amount)} Prize!`, "Super rare diamonds dropped from the spinner.");
-    this.showPrizeCelebration("Super Rare!", "/assets/ui/shop/coin_icon_super_rare.png", `You won SR${formatNumber(amount)}.`);
-  }
-
-  private awardPrizeMachineRareFish(fishType: FishType): void {
-    this.addFishToInventory(fishType);
-    this.setPrizeMachineResult("rareFish", `${fishType.name} Prize!`, "The fish is floating in a bubble.");
-    this.showPrizeCelebration(`${fishType.name}!`, `/assets/fish/${fishType.id}.png`, "A fish is floating in your tank bubble.");
-    if (fishType.rarity === "common") {
-      this.prizeCommonFish = this.nextPrizeFish("common");
-    } else {
-      this.prizeRareFish = this.nextPrizeRareFish();
-    }
-  }
-
-  private awardPrizeMachineFood(foodType: FoodType, quantity: number): void {
-    const amount = foodPrizeInventoryAmount(foodType, quantity, (foodTypeId) => this.isCalorieTrackedFood(foodTypeId));
-    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + amount);
-    this.recentInventoryDockItemKey = `food:${foodType.id}`;
-    this.setPrizeMachineResult("food", `Food Prize: ${foodType.name}`, `+${formatNumber(amount)} cal food.`);
-  }
-
-  private awardPrizeMachineDecoration(decorationType: DecorationType, size: DecorationSize): void {
-    const inventoryKey = this.decorationInventoryKey(decorationType.id, size);
-    this.decorationInventory.set(inventoryKey, (this.decorationInventory.get(inventoryKey) ?? 0) + 1);
-    this.recentInventoryDockItemKey = `decoration:${decorationType.id}:${size}`;
-    this.setPrizeMachineResult(
-      "decoration",
-      `${decorationType.name} ${decorationSizes[size].label} Prize!`,
-      "The decoration is waiting in your Inventory."
-    );
-  }
-
-  private awardPrizeMachineCommon(amount: number): void {
-    earn(this.wallet, "common", amount);
-    const result = commonPrizeResult(amount);
-    this.setPrizeMachineResult("common", result.title, result.detail);
-  }
-
-  private setPrizeMachineResult(kind: Parameters<typeof setPrizeMachineResultState>[1], title: string, detail: string): void {
-    this.prizeMachine = setPrizeMachineResultState(this.prizeMachine, kind, title, detail);
+    this.prizeController().destroyPrizeSpinContainer();
   }
 
   private nextPrizeRareFish(): FishType {
-    return this.nextPrizeFish("rare");
+    return this.prizeController().nextPrizeRareFish();
   }
 
   private nextPrizeFish(rarity: Rarity): FishType {
-    return nextPrizeFishForRarity(rarity, this.fish, this.fishInventory);
+    return this.prizeController().nextPrizeFish(rarity);
   }
 
   private rewardedAdOptions(): RewardedAdOption[] {
@@ -3903,7 +3745,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private closeStoreAfterPurchase(): void {
-    closeStoreAfterPurchaseAdapter(this.storePurchaseAdapter());
+    this.aquariumStoreController().closeStoreAfterPurchase();
   }
 
   private storePurchaseAdapter() {
@@ -3940,302 +3782,43 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private showFishBuyQuantityModal(fishType: FishType): void {
-    const requiredLevel = fishShopRequiredLevel(fishType);
-    if (!this.developerGodMode && requiredLevel > this.tankDisplayLevel()) {
-      this.floatText(`Needs tank L${formatNumber(requiredLevel)}`, toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const remainingHourlyBuys = this.developerGodMode
-      ? maxFishBuyQuantity
-      : Math.max(0, this.hourlyFishPurchaseLimit() - this.recentFishPurchaseCount());
-    if (remainingHourlyBuys <= 0) {
-      this.floatText(`Fish shop ${this.fishPurchaseRestockLabel().toLowerCase()}`, toastX, toastY, "#ffdd8a");
-      return;
-    }
-
-    this.ensureFishTexturesLoaded(fishType);
-    const maxQuantity = Math.max(1, Math.min(maxFishBuyQuantity, remainingHourlyBuys));
-    const owned = this.fish.filter((fish) => fish.type.id === fishType.id).length + this.getFishInventory(fishType.id);
-    const modalContent = createFishBuyQuantityModalContent({
-      fishType,
-      maxQuantity,
-      owned,
-      coinAssetPathByType,
-      quantityPrice: (price, quantity) => this.quantityPrice(price, quantity),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      onBuy: (quantity) => this.buyFish(fishType, quantity),
-      onCancel: () => this.closeModal()
-    });
-
-    this.showModal(
-      fishType.name,
-      [],
-      modalContent.actions,
-      modalContent.bodyElements
-    );
+    this.aquariumStoreController().showFishBuyQuantityModal(fishType);
   }
 
   private buyFish(fishType: FishType, quantity = 1): void {
-    const requiredLevel = fishShopRequiredLevel(fishType);
-    if (!this.developerGodMode && requiredLevel > this.tankDisplayLevel()) {
-      this.floatText(`Needs tank L${formatNumber(requiredLevel)}`, toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const remainingHourlyBuys = this.developerGodMode
-      ? maxFishBuyQuantity
-      : Math.max(0, this.hourlyFishPurchaseLimit() - this.recentFishPurchaseCount());
-    if (remainingHourlyBuys <= 0) {
-      this.floatText(`Fish shop ${this.fishPurchaseRestockLabel().toLowerCase()}`, toastX, toastY, "#ffdd8a");
-      return;
-    }
-
-    const pendingTankDeliveries = this.fishDeliveryBubbles?.bubbles.filter((pending) => pending.destination === "tank").length ?? 0;
-    const purchasePlan = planFishPurchase({
-      fishType,
-      requestedQuantity: quantity,
-      maxFishBuyQuantity,
-      remainingHourlyBuys,
-      fishCapacity: this.maxFishCapacityForLevel(),
-      activeFishCount: this.activeFish().length,
-      pendingTankDeliveries
-    });
-    if (!this.developerGodMode && !canAfford(this.wallet, purchasePlan.totalPrice)) {
-      this.floatText(`Need ${formatPrice(purchasePlan.totalPrice)}`, toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    executeFishPurchase({
-      ...this.storePurchaseAdapter(),
-      addFishToInventory: (type, count, showBubble) => this.addFishToInventory(type, count, showBubble),
-      recordFishPurchase: (type) => this.recordFishPurchase(type),
-      randomFishPlacement: () => this.randomFishPlacement(),
-      spawnFishTankBubble: (type, x, y) => this.spawnFishTankBubble(type, x, y),
-      spawnFishInventoryBubble: (type, count) => this.spawnFishInventoryBubble(type, count)
-    }, fishType, purchasePlan);
+    this.aquariumStoreController().buyFish(fishType, quantity);
   }
 
   private showFoodBuyQuantityModal(foodType: FoodType, initialQuantity = this.getFoodBuyQuantity(foodType.id)): void {
-    if (foodType.id === "ageBoost") {
-      this.showGrowthTonicFishModal(foodType);
-      return;
-    }
-
-    if (foodType.id === productionBoostFoodTypeId) {
-      this.showProductionBoostFishModal(foodType);
-      return;
-    }
-
-    if (!this.developerGodMode && foodType.id === "ageBoost" && !this.canBuyGrowthTonicThisHour()) {
-      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      this.storeOverlay?.refresh();
-      return;
-    }
-
-    const maxQuantity = foodType.id === "ageBoost" ? 1 : maxFoodBuyQuantity;
-    const modalContent = createFoodBuyQuantityModalContent({
-      foodType,
-      initialQuantity,
-      maxQuantity,
-      coinAssetPathByType,
-      quantityPrice: (price, quantity) => this.quantityPrice(price, quantity),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      onBuy: (quantity) => this.buyFood(foodType, quantity),
-      onCancel: () => this.closeModal()
-    });
-
-    this.showModal(
-      foodType.name,
-      [],
-      modalContent.actions,
-      modalContent.bodyElements
-    );
+    this.aquariumStoreController().showFoodBuyQuantityModal(foodType, initialQuantity);
   }
 
   private buyFood(foodType = this.getSelectedFoodType(), quantity = this.getFoodBuyQuantity(foodType.id)): void {
-    if (foodType.id === "ageBoost") {
-      this.showGrowthTonicFishModal(foodType);
-      return;
-    }
-
-    if (foodType.id === productionBoostFoodTypeId) {
-      this.showProductionBoostFishModal(foodType);
-      return;
-    }
-
-    if (!this.developerGodMode && foodType.id === "ageBoost" && !this.canBuyGrowthTonicThisHour()) {
-      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      this.storeOverlay?.refresh();
-      return;
-    }
-
-    const purchasePlan = planFoodPurchase({
-      foodType,
-      requestedQuantity: quantity,
-      maxFoodBuyQuantity,
-      isCalorieTrackedFood: (foodTypeId) => this.isCalorieTrackedFood(foodTypeId)
-    });
-    executeFoodPurchase({
-      ...this.storePurchaseAdapter(),
-      getFoodInventory: (foodTypeId) => this.getFoodInventory(foodTypeId),
-      setFoodInventory: (foodTypeId, amount) => this.foodInventory.set(foodTypeId, amount),
-      isDroppableFood: (foodTypeId) => this.isDroppableFood(foodTypeId),
-      setSelectedFoodTypeId: (foodTypeId) => {
-        this.selectedFoodTypeId = foodTypeId;
-      },
-      closePage: () => this.closePage(),
-      recordGrowthTonicPurchase: () => this.recordGrowthTonicPurchase()
-    }, foodType, purchasePlan);
+    this.aquariumStoreController().buyFood(foodType, quantity);
   }
 
   private showGrowthTonicFishModal(foodType: FoodType): void {
-    if (!this.developerGodMode && !this.canBuyGrowthTonicThisHour()) {
-      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      this.storeOverlay?.refresh();
-      return;
-    }
-
-    const candidates = this.activeFish();
-    if (candidates.length === 0) {
-      this.floatText("No fish to grow", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const bodyElements = createGrowthTonicFishModalContent({
-      candidates,
-      walletCanAfford: (price) => canAfford(this.wallet, price),
-      developerGodMode: this.developerGodMode,
-      priceForFish: (fish) => this.growthTonicPriceForFish(fish),
-      priceIconRow: (price, label) => this.priceIconRow(price, label),
-      fishIndex: (fish) => this.fish.indexOf(fish),
-      createButton: (label, className, onClick, disabled = false) => this.htmlButton(label, className, onClick, disabled),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      onBuy: (fish) => this.buyGrowthTonicForFish(foodType, fish),
-      onCancel: () => this.closeModal()
-    });
-
-    this.showModal(
-      "Growth Tonic",
-      [],
-      [],
-      bodyElements
-    );
+    this.aquariumStoreController().showGrowthTonicFishModal(foodType);
   }
 
   private growthTonicPriceForFish(fish: Fish): Price {
-    return growthTonicPriceForFishType(fish.type);
+    return this.aquariumStoreController().growthTonicPriceForFish(fish);
   }
 
   private buyGrowthTonicForFish(foodType: FoodType, fish: Fish): void {
-    if (!this.activeFish().includes(fish)) {
-      this.floatText("Fish not found", toastX, toastY, "#ffb0a8");
-      return;
-    }
-    if (!this.developerGodMode && !this.canBuyGrowthTonicThisHour()) {
-      this.floatText(this.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      this.storeOverlay?.refresh();
-      return;
-    }
-
-    const price = this.growthTonicPriceForFish(fish);
-    if (!this.spendPrice(price)) {
-      return;
-    }
-
-    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + 1);
-    this.careFoodTargetFish.set(foodType.id, fish);
-    this.recordGrowthTonicPurchase();
-    this.recordDailyQuestAction("buy-growth-tonic");
-    this.recentInventoryDockItemKey = `food:${foodType.id}`;
-    this.placementMode = { kind: "none" };
-    this.floatText(`Growth tonic docked`, toastX, toastY, "#d9c2ff");
-    this.closeModal();
-    this.storeOverlay?.refresh();
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
-    this.closeStoreAfterPurchase();
+    this.aquariumStoreController().buyGrowthTonicForFish(foodType, fish);
   }
 
   private showProductionBoostFishModal(foodType: FoodType): void {
-    if (!this.developerGodMode && !this.canBuyProductionBoostNow()) {
-      this.floatText(this.productionBoostPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      this.storeOverlay?.refresh();
-      return;
-    }
-
-    const candidates = this.activeFish();
-    if (candidates.length === 0) {
-      this.floatText("No fish to boost", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const availableFish = candidates.filter((fish) => fish.productionBoostUntil <= this.time.now);
-    if (availableFish.length === 0) {
-      this.floatText("All fish already boosted", toastX, toastY, "#d7f4ff");
-      return;
-    }
-
-    const bodyElements = createProductionBoostFishModalContent({
-      candidates,
-      availableFish,
-      now: this.time.now,
-      walletCanAfford: (price) => canAfford(this.wallet, price),
-      developerGodMode: this.developerGodMode,
-      priceForFish: (fish) => this.productionBoostPriceForFish(fish),
-      fishIndex: (fish) => this.fish.indexOf(fish),
-      createButton: (label, className, onClick, disabled = false) => this.htmlButton(label, className, onClick, disabled),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      onBuy: (fish) => this.buyProductionBoostForFish(foodType, fish),
-      onCancel: () => this.closeModal()
-    });
-
-    this.showModal(
-      "Production Boost",
-      [],
-      [],
-      bodyElements
-    );
+    this.aquariumStoreController().showProductionBoostFishModal(foodType);
   }
 
   private productionBoostPriceForFish(fish: Fish): Price {
-    return productionBoostPriceForFishType(fish.type);
+    return this.aquariumStoreController().productionBoostPriceForFish(fish);
   }
 
   private buyProductionBoostForFish(foodType: FoodType, fish: Fish): void {
-    if (!this.activeFish().includes(fish)) {
-      this.floatText("Fish not found", toastX, toastY, "#ffb0a8");
-      return;
-    }
-    if (!this.developerGodMode && !this.canBuyProductionBoostNow()) {
-      this.floatText(this.productionBoostPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      this.storeOverlay?.refresh();
-      return;
-    }
-    if (fish.productionBoostUntil > this.time.now) {
-      this.floatText("Already boosted", toastX, toastY, "#d7f4ff");
-      return;
-    }
-
-    const price = this.productionBoostPriceForFish(fish);
-    if (!this.spendPrice(price)) {
-      return;
-    }
-
-    this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + 1);
-    this.careFoodTargetFish.set(foodType.id, fish);
-    this.recordProductionBoostPurchase();
-    this.recordDailyQuestAction("buy-production-boost");
-    this.recentInventoryDockItemKey = `food:${foodType.id}`;
-    this.placementMode = { kind: "none" };
-    this.floatText(`Production boost docked`, toastX, toastY, "#ffd34d");
-    this.closeModal();
-    this.storeOverlay?.refresh();
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
-    this.closeStoreAfterPurchase();
+    this.aquariumStoreController().buyProductionBoostForFish(foodType, fish);
   }
 
   private dropFoodAt(foodTypeId: FoodTypeId, x: number, y: number): void {
@@ -4313,34 +3896,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private buyTankUtility(utilityId: string): void {
-    if (!isTankUtilityId(utilityId)) {
-      return;
-    }
-
-    const utility = tankUtilityInfoModel(utilityId);
-    if (!utility) {
-      return;
-    }
-
-    executeTankUtilityPurchase({
-      ...this.storePurchaseAdapter(),
-      hasFoodDispenser: () => this.hasFoodDispenser(),
-      hasCoinMagnet: () => this.hasCoinMagnet(),
-      hasAutoFoodBuyer: () => this.hasAutoFoodBuyer(),
-      setDecorationInventory: (key, value) => this.decorationInventory.set(key, value),
-      setCoinMagnetWasActive: (value) => {
-        this.coinMagnetWasActive = value;
-      },
-      setAutoFoodBuyerWasActive: (value) => {
-        this.autoFoodBuyerWasActive = value;
-      }
-    }, {
-      utilityId,
-      utilityPrice: utility.price,
-      now: Date.now(),
-      coinMagnetDurationMs,
-      autoFoodBuyerDurationMs
-    });
+    this.aquariumStoreController().buyTankUtility(utilityId);
   }
 
   private buyHelperCreature(creatureType: HelperCreatureType): void {
@@ -4832,85 +4388,72 @@ export class AquariumSceneCore extends Phaser.Scene {
     });
   }
 
+  private entityController(): AquariumEntityController {
+    this.aquariumEntityController ??= new AquariumEntityController({
+      scene: this,
+      input: this.input,
+      tankLayer: () => this.tankLayer,
+      tankLevel: () => this.tankLevel,
+      activeScreen: () => this.activeScreen,
+      fish: () => this.fish,
+      placedDecorations: () => this.placedDecorations,
+      airStoneBubblePool: () => this.airStoneBubblePool,
+      activeAirStoneBubbles: () => this.activeAirStoneBubbles,
+      helperCreatures: () => this.helperCreatures,
+      pendingHelperCreatureDrops: () => this.pendingHelperCreatureDrops,
+      fishInventory: () => this.fishInventory,
+      fishDeliveryBubbles: () => this.fishDeliveryBubbles,
+      draggedFish: () => this.draggedFish,
+      setDraggedFish: (fish) => {
+        this.draggedFish = fish;
+      },
+      setSelectedFishIndex: (index) => {
+        this.selectedFishIndex = index;
+      },
+      setPlacementMode: (mode) => {
+        this.placementMode = mode;
+      },
+      setCreatureInventory: (creatureTypeId, count) => {
+        this.creatureInventory.set(creatureTypeId, count);
+      },
+      setAutosaveElapsed: (elapsed) => {
+        this.autosaveElapsed = elapsed;
+      },
+      ensureFishTexturesLoaded: (type, onLoad) => this.ensureFishTexturesLoaded(type, onLoad),
+      pointerDesignPoint: (pointer) => this.pointerDesignPoint(pointer),
+      screenToTankPoint: (x, y) => this.screenToTankPoint(x, y),
+      activeFish: () => this.activeFish(),
+      maxFishCapacityForLevel: () => this.maxFishCapacityForLevel(),
+      activeFishAtTankPoint: (x, y) => this.activeFishAtTankPoint(x, y),
+      showTankFullText: (x, y) => this.showTankFullText(x, y),
+      takeStoredFishAge: (fishTypeId) => this.takeStoredFishAge(fishTypeId),
+      removeStoredFish: (fishTypeId) => this.removeStoredFish(fishTypeId),
+      storeFish: (fish) => this.storeFish(fish),
+      recordDailyQuestAction: (action) => this.recordDailyQuestAction(action),
+      floatText: (message, x, y, color) => this.floatText(message, x, y, color),
+      floatTankText: (message, x, y, color) => this.floatTankText(message, x, y, color),
+      closeModal: () => this.closeModal(),
+      refreshUi: () => this.refreshUi(),
+      createFoodDock: () => this.createFoodDock(),
+      saveNow: () => this.saveNow(),
+      fishBubbleManager: () => this.fishBubbleManager(),
+      getDecorationInventory: (decorationTypeId, size) => this.getDecorationInventory(decorationTypeId, size),
+      consumeStoredDecoration: (decorationTypeId, size) => this.consumeStoredDecoration(decorationTypeId, size),
+      activeDecorations: () => this.activeDecorations(),
+      fitDecorationDisplay: (image, decoration, size) => this.fitDecorationDisplay(image, decoration, size),
+      getCreatureInventory: (creatureTypeId) => this.getCreatureInventory(creatureTypeId),
+      activeHelperCreatures: () => this.activeHelperCreatures(),
+      tankViewScaleForLevel: () => this.tankViewScaleForLevel()
+    });
+    return this.aquariumEntityController;
+  }
+
   private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number; ageSeconds?: number } = {}): Fish {
-    const placedFish = new Fish(this, type, x, y, options);
-    if (options.ageSeconds && options.ageSeconds > 0) {
-      placedFish.setAgeSeconds(options.ageSeconds);
-    }
-    this.ensureFishTexturesLoaded(type, () => placedFish.refreshTextureIfAvailable());
-    placedFish.addToContainer(this.tankLayer);
-    placedFish.setTankVisible(placedFish.tankLevel === this.tankLevel);
-    placedFish.sprite.setInteractive({ useHandCursor: true, draggable: true });
-    this.input.setDraggable(placedFish.sprite, true);
-    placedFish.sprite.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      this.selectedFishIndex = this.fish.indexOf(placedFish);
-    });
-    placedFish.sprite.on("dragstart", (_pointer: Phaser.Input.Pointer) => {
-      if (this.activeScreen !== "tank" || placedFish.tankLevel !== this.tankLevel) {
-        return;
-      }
-
-      this.draggedFish = placedFish;
-      this.selectedFishIndex = this.fish.indexOf(placedFish);
-      placedFish.beginManualDrag();
-      placedFish.sprite.setDepth(14);
-    });
-    placedFish.sprite.on("drag", (pointer: Phaser.Input.Pointer) => {
-      if (this.draggedFish !== placedFish || this.activeScreen !== "tank") {
-        return;
-      }
-
-      const pointerPoint = this.pointerDesignPoint(pointer);
-      const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
-      placedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
-    });
-    placedFish.sprite.on("dragend", (pointer: Phaser.Input.Pointer) => {
-      if (this.draggedFish !== placedFish) {
-        return;
-      }
-
-      const pointerPoint = this.pointerDesignPoint(pointer);
-      if (this.activeScreen === "tank" && tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
-        const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
-        placedFish.moveManuallyTo(tankPoint.x, tankPoint.y);
-      }
-      placedFish.endManualDrag();
-      placedFish.sprite.setDepth(8);
-      this.draggedFish = undefined;
-      this.recordDailyQuestAction("move-fish");
-      this.saveNow();
-    });
-    this.fish.push(placedFish);
-    return placedFish;
+    return this.entityController().addFishToTank(type, x, y, options);
   }
 
   private placeFishWithCompatibility(type: FishType, x: number, y: number): void {
-    const exchangeTarget = this.activeFish().length >= this.maxFishCapacityForLevel()
-      ? this.activeFishAtTankPoint(x, y)
-      : undefined;
-    if (this.activeFish().length >= this.maxFishCapacityForLevel() && !exchangeTarget) {
-      this.showTankFullText(x, y);
-      return;
-    }
-
-    const storedAgeSeconds = this.takeStoredFishAge(type.id);
-    this.removeStoredFish(type.id);
-    if (exchangeTarget) {
-      this.storeFish(exchangeTarget);
-    }
-    this.spawnFishTankBubble(type, x, y, {
-      ageSeconds: storedAgeSeconds,
-      exchangeTarget
-    });
-    this.recordDailyQuestAction("place-fish");
-
-    this.floatTankText(exchangeTarget ? `${type.name} ready to swap` : `${type.name} ready`, x, y - 34, "#ffffff");
-    this.placementMode = { kind: "none" };
-    this.closeModal();
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
+    this.entityController().placeFishWithCompatibility(type, x, y);
   }
 
   private showTankFullText(x = toastX, y = toastY): void {
@@ -4922,19 +4465,12 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private addFishToInventory(fishType: FishType, quantity = 1, showBubble = true): void {
-    const safeQuantity = addStoredFishModel({
-      fishInventory: this.fishInventory,
-      fishTypeId: fishType.id,
-      quantity
-    });
     this.recentInventoryDockItemKey = "fish-menu:fish-menu";
-    if (showBubble) {
-      this.spawnFishInventoryBubble(fishType, safeQuantity);
-    }
+    this.entityController().addFishToInventory(fishType, quantity, showBubble);
   }
 
   private spawnFishInventoryBubble(fishType: FishType, quantity = 1): void {
-    this.fishBubbleManager().spawnInventory(fishType, quantity);
+    this.entityController().spawnFishInventoryBubble(fishType, quantity);
   }
 
   private spawnFishTankBubble(
@@ -4943,52 +4479,23 @@ export class AquariumSceneCore extends Phaser.Scene {
     y: number,
     options: { ageSeconds?: number; exchangeTarget?: Fish; consumesInventory?: boolean } = {}
   ): void {
-    this.fishBubbleManager().spawnTank(fishType, x, y, options);
+    this.entityController().spawnFishTankBubble(fishType, x, y, options);
   }
 
   private pendingFishBubbleAtPointer(designX: number, designY: number): PendingFishBubble | undefined {
-    if (this.activeScreen !== "tank") {
-      return undefined;
-    }
-
-    const tankPoint = this.screenToTankPoint(designX, designY);
-    return this.fishDeliveryBubbles?.atTankPoint(tankPoint.x, tankPoint.y, this.tankViewScaleForLevel());
+    return this.entityController().pendingFishBubbleAtPointer(designX, designY);
   }
 
   private popFishInventoryBubble(pending: PendingFishBubble): void {
-    this.fishDeliveryBubbles?.pop(pending);
+    this.entityController().popFishInventoryBubble(pending);
   }
 
   private handleFishBubblePop(pending: PendingFishBubble): void {
-    if (pending.destination === "tank") {
-      this.releaseFishTankBubble(pending);
-    } else {
-      this.floatTankText(
-        pending.quantity > 1 ? `${pending.type.name} x${formatNumber(pending.quantity)} in inventory` : `${pending.type.name} in inventory`,
-        pending.container.x,
-        pending.container.y - 38,
-        "#d7f4ff"
-      );
-    }
+    this.entityController().handleFishBubblePop(pending);
   }
 
   private releaseFishTankBubble(pending: PendingFishBubble): void {
-    const x = pending.container.x;
-    const y = pending.container.y;
-    if (pending.consumesInventory) {
-      this.removeStoredFish(pending.type.id);
-    }
-    if (pending.exchangeTarget && this.fish.includes(pending.exchangeTarget)) {
-      this.storeFish(pending.exchangeTarget);
-    }
-    this.addFishToTank(pending.type, x, y, {
-      tankLevel: this.tankLevel,
-      ageSeconds: pending.ageSeconds
-    });
-    this.floatTankText(`${pending.type.name} moved in`, x, y - 38, "#ffffff");
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
+    this.entityController().releaseFishTankBubble(pending);
   }
 
   private randomFishPlacement(): Phaser.Math.Vector2 {
@@ -5003,12 +4510,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     tankLevel = this.tankLevel,
     depth = defaultDecorationDepth(y)
   ): void {
-    const image = this.add.image(x, y, decoration.texture).setDepth(depth);
-    this.fitDecorationDisplay(image, decoration, size);
-    this.tankLayer.add(image);
-    const placedDecoration = { typeId: decoration.id, size, image, tankLevel };
-    image.setVisible(placedDecoration.tankLevel === this.tankLevel);
-    this.placedDecorations.push(placedDecoration);
+    this.entityController().addDecorationToTank(decoration, x, y, size, tankLevel, depth);
   }
 
   private tankDecorationDepthFromOrder(index: number): number {
@@ -5016,23 +4518,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private placeDecorationFromInventory(decoration: DecorationType, size: DecorationSize, x: number, y: number): void {
-    if (this.getDecorationInventory(decoration.id, size) <= 0) {
-      this.floatText("Buy one first", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    if (this.activeDecorations().length >= maxDecorations) {
-      this.floatText("Decor full", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    this.consumeStoredDecoration(decoration.id, size);
-    this.addDecorationToTank(decoration, x, y, size);
-    this.recordDailyQuestAction("place-decoration");
-    this.placementMode = { kind: "none" };
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
+    this.entityController().placeDecorationFromInventory(decoration, size, x, y);
   }
 
   private fitDecorationDisplay(image: Phaser.GameObjects.Image, decoration: DecorationType, size: DecorationSize = "m"): void {
@@ -5040,66 +4526,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private updateAirStoneBubbles(deltaSeconds: number, activeDecorations: PlacedDecoration[]): void {
-    if (this.activeScreen === "makeup") {
-      return;
-    }
-
-    if (this.activeAirStoneBubbles.size >= 16) {
-      return;
-    }
-
-    for (const decoration of activeDecorations) {
-      if (decoration.typeId !== "air-stone" || !decoration.image.visible) {
-        continue;
-      }
-
-      decoration.bubbleCooldown = Math.max(0, (decoration.bubbleCooldown ?? 0) - deltaSeconds);
-      if (decoration.bubbleCooldown > 0) {
-        continue;
-      }
-
-      decoration.bubbleCooldown = Phaser.Math.FloatBetween(0.4, 0.85);
-      this.spawnAirStoneBubble(decoration);
-    }
+    this.entityController().updateAirStoneBubbles(deltaSeconds, activeDecorations);
   }
 
   private spawnAirStoneBubble(decoration: PlacedDecoration): void {
-    const startX = decoration.image.x + Phaser.Math.Between(-8, 8);
-    const startY = decoration.image.y - decoration.image.displayHeight * 0.24 + Phaser.Math.Between(-3, 4);
-    const radius = Phaser.Math.FloatBetween(1.5, 3.2);
-    const reusedBubble = this.airStoneBubblePool.pop();
-    const bubble = reusedBubble ?? this.add.circle(0, 0, 2.4, 0xd7f4ff, 0.34);
-    if (!reusedBubble) {
-      this.tankLayer.add(bubble);
-    }
-    bubble
-      .setPosition(startX, startY)
-      .setScale(radius / 2.4)
-      .setAlpha(0.34)
-      .setVisible(true)
-      .setActive(true)
-      .setFillStyle(0xd7f4ff, 0.34)
-      .setStrokeStyle(1, 0xffffff, 0.42)
-      .setDepth(Math.max(6, decoration.image.depth + 1));
-    this.activeAirStoneBubbles.add(bubble);
-    this.tweens.add({
-      targets: bubble,
-      x: startX + Phaser.Math.Between(-10, 10),
-      y: Math.max(tankBounds.top + 22, startY - Phaser.Math.Between(86, 148)),
-      alpha: 0,
-      scale: Phaser.Math.FloatBetween(1.15, 1.55),
-      duration: Phaser.Math.Between(1700, 2800),
-      ease: "Sine.easeOut",
-      onComplete: () => {
-        this.activeAirStoneBubbles.delete(bubble);
-        bubble.setVisible(false).setActive(false);
-        if (this.airStoneBubblePool.length < 16) {
-          this.airStoneBubblePool.push(bubble);
-        } else {
-          bubble.destroy();
-        }
-      }
-    });
+    this.entityController().spawnAirStoneBubble(decoration);
   }
 
   private bindDecorationPointerGuard(decoration: PlacedDecoration): void {
@@ -5181,111 +4612,31 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private addHelperCreatureToTank(creatureType: HelperCreatureType, x: number, y = tankBounds.bottom - 36, targetX = x, tankLevel = this.tankLevel): HelperCreature {
-    const yBounds = { min: tankBounds.bottom - 48, max: tankBounds.bottom - 28 };
-    const helper = new HelperCreature(
-      this,
-      creatureType,
-      Phaser.Math.Clamp(x, tankBounds.left + 24, tankBounds.right - 24),
-      Phaser.Math.Clamp(y, yBounds.min, yBounds.max),
-      { tankLevel }
-    );
-    helper.restoreProgress(targetX);
-    helper.addToContainer(this.tankLayer);
-    helper.setTankVisible(helper.tankLevel === this.tankLevel);
-    helper.sprite.on("pointerdown", (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
-      event.stopPropagation();
-      this.floatTankText(
-        creatureType.name,
-        helper.sprite.x,
-        helper.sprite.y - 24,
-        "#d7f4ff"
-      );
-    });
-    this.helperCreatures.push(helper);
-    return helper;
+    return this.entityController().addHelperCreatureToTank(creatureType, x, y, targetX, tankLevel);
   }
 
   private dropHelperCreatureFromInventory(creatureType: HelperCreatureType, x: number, y: number): void {
-    if (this.getCreatureInventory(creatureType.id) <= 0) {
-      this.floatText("Hire one first", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    if (this.activeHelperCreatureCountWithPending() >= maxHelperCreatures) {
-      this.floatText("Helpers full in this tank", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    this.creatureInventory.set(creatureType.id, Math.max(0, this.getCreatureInventory(creatureType.id) - 1));
-    this.recordDailyQuestAction("place-helper");
-    this.createPendingHelperCreatureDrop(creatureType, x, y);
-    this.floatTankText(`${creatureType.name} dropped`, x, y - 24, "#d7f4ff");
-    this.placementMode = { kind: "none" };
-    this.refreshUi();
-    this.createFoodDock();
+    this.entityController().dropHelperCreatureFromInventory(creatureType, x, y);
   }
 
   private activeHelperCreatureCountWithPending(): number {
-    return activeHelperCreatureCountWithPendingModel({
-      helpers: this.activeHelperCreatures(),
-      pendingDrops: this.pendingHelperCreatureDrops,
-      tankLevel: this.tankLevel
-    });
+    return this.entityController().activeHelperCreatureCountWithPending();
   }
 
   private createPendingHelperCreatureDrop(creatureType: HelperCreatureType, x: number, y: number): void {
-    const drop: PendingHelperCreatureDrop = helperCreatureDropSpawn({
-      creatureType,
-      x,
-      y,
-      tankLevel: this.tankLevel,
-      seabedY: helperCreatureSeabedY,
-      createImage: (imageX, imageY, texture) => this.add.image(imageX, imageY, texture)
-    });
-    drop.sprite.setDepth(9);
-    drop.sprite.setVisible(drop.tankLevel === this.tankLevel);
-    this.fitPendingHelperCreatureDrop(drop, this.tankViewScaleForLevel());
-    this.tankLayer.add(drop.sprite);
-    this.pendingHelperCreatureDrops.push(drop);
-    this.autosaveElapsed = 0;
+    this.entityController().createPendingHelperCreatureDrop(creatureType, x, y);
   }
 
   private updatePendingHelperCreatureDrops(deltaSeconds: number): void {
-    if (this.pendingHelperCreatureDrops.length === 0) {
-      return;
-    }
-
-    const landedDrops: PendingHelperCreatureDrop[] = [];
-    for (const drop of this.pendingHelperCreatureDrops) {
-      drop.sprite.y = Math.min(helperCreatureSeabedY, drop.sprite.y + helperCreatureDropSpeed * deltaSeconds);
-      if (drop.sprite.y >= helperCreatureSeabedY - 0.5) {
-        landedDrops.push(drop);
-      }
-    }
-
-    for (const drop of landedDrops) {
-      this.landPendingHelperCreatureDrop(drop);
-    }
+    this.entityController().updatePendingHelperCreatureDrops(deltaSeconds);
   }
 
   private landPendingHelperCreatureDrop(drop: PendingHelperCreatureDrop): void {
-    const index = this.pendingHelperCreatureDrops.indexOf(drop);
-    if (index < 0) {
-      return;
-    }
-
-    this.pendingHelperCreatureDrops.splice(index, 1);
-    const x = drop.sprite.x;
-    const y = helperCreatureSeabedY;
-    drop.sprite.destroy();
-    const helper = this.addHelperCreatureToTank(drop.type, x, y, drop.targetX, drop.tankLevel);
-    this.floatTankText(`${drop.type.name} active`, helper.sprite.x, tankBounds.bottom - 62, "#a8ffb0");
-    this.refreshUi();
-    this.saveNow();
+    this.entityController().landPendingHelperCreatureDrop(drop);
   }
 
   private fitPendingHelperCreatureDrop(drop: PendingHelperCreatureDrop, tankViewScale: number): void {
-    fitPendingHelperCreatureDropModel(drop, tankViewScale, helperCreatureDropDisplayWidths);
+    this.entityController().fitPendingHelperCreatureDrop(drop, tankViewScale);
   }
 
   private restoreSavedGame(): void {
