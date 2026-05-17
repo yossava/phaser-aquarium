@@ -26,6 +26,25 @@ export type TankUtilityInfo = {
   inventoryKey: string;
 };
 
+export type TankUtilityStoreDefinition = {
+  id: TankUtilityId;
+  name: string;
+  description: string;
+  durationLabel?: string;
+  icon: string;
+  owned: boolean;
+  price: Price;
+};
+
+export type TankUtilityInventoryCardData = {
+  id: TankUtilityId;
+  name: string;
+  icon: string;
+  meta: string;
+  copy: string;
+  price: Price;
+};
+
 export const tankUtilities: Record<TankUtilityId, TankUtilityInfo> = {
   "food-dispenser": {
     name: "Food Dispenser",
@@ -64,6 +83,83 @@ export function utilityExpiresAt(inventory: Map<string, number>, inventoryKey: s
 
 export function activeUtilityRemainingMinutes(expiresAt: number, now = Date.now()): number {
   return Math.max(1, Math.ceil(Math.max(0, expiresAt - now) / 60_000));
+}
+
+export function tankUtilityStoreDefinitions(input: {
+  hasFoodDispenser: boolean;
+  hasCoinMagnet: boolean;
+  hasAutoFoodBuyer: boolean;
+}): TankUtilityStoreDefinition[] {
+  return [
+    {
+      id: "food-dispenser",
+      name: "Food Dispenser",
+      description: "Mounts on the tank edge and automatically dispenses owned fish food.",
+      icon: foodDispenserAssetPath,
+      owned: input.hasFoodDispenser,
+      price: foodDispenserPrice
+    },
+    {
+      id: "coin-magnet",
+      name: "Coin Magnet",
+      description: "Mounts on the tank edge and pulls coins that fall through its invisible line.",
+      durationLabel: "30m",
+      icon: coinMagnetIconPath,
+      owned: input.hasCoinMagnet,
+      price: coinMagnetPrice
+    },
+    {
+      id: "auto-food-buyer",
+      name: "Auto Food Buyer",
+      description: "Buys a needed food serving when the dispenser is out.",
+      durationLabel: "30m",
+      icon: autoFoodBuyerAssetPath,
+      owned: input.hasAutoFoodBuyer,
+      price: autoFoodBuyerPrice
+    }
+  ];
+}
+
+export function ownedTankUtilityInventoryCards(input: {
+  hasFoodDispenser: boolean;
+  hasCoinMagnet: boolean;
+  hasAutoFoodBuyer: boolean;
+  foodDispenserFoodLabel: string;
+  coinMagnetMinutesLabel: string;
+  autoFoodBuyerMinutesLabel: string;
+}): TankUtilityInventoryCardData[] {
+  const cards: TankUtilityInventoryCardData[] = [];
+  if (input.hasFoodDispenser) {
+    cards.push({
+      id: "food-dispenser",
+      name: "Food Dispenser",
+      icon: foodDispenserAssetPath,
+      meta: `Food ${input.foodDispenserFoodLabel}`,
+      copy: "Drag on the tank edge to reposition. Dispenses owned fish food automatically.",
+      price: foodDispenserPrice
+    });
+  }
+  if (input.hasCoinMagnet) {
+    cards.push({
+      id: "coin-magnet",
+      name: "Coin Magnet",
+      icon: coinMagnetIconPath,
+      meta: `${input.coinMagnetMinutesLabel}m active`,
+      copy: "Pulls coins that fall through its tank line.",
+      price: coinMagnetPrice
+    });
+  }
+  if (input.hasAutoFoodBuyer) {
+    cards.push({
+      id: "auto-food-buyer",
+      name: "Auto Food Buyer",
+      icon: autoFoodBuyerAssetPath,
+      meta: `${input.autoFoodBuyerMinutesLabel}m active`,
+      copy: "Buys food automatically while active.",
+      price: autoFoodBuyerPrice
+    });
+  }
+  return cards;
 }
 
 export function loadUtilityPositionY(input: {

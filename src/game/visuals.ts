@@ -83,3 +83,30 @@ export function rarityStarCount(rarity: Rarity): number {
 export function rarityTintFor(rarity: Rarity): number {
   return rarityVisualsByType[rarity].tint;
 }
+
+export function rarityLabel(rarity: Rarity): string {
+  return rarityVisualsByType[rarity].label;
+}
+
+export function rarityStarsLabel(rarity: Rarity): string {
+  return "*".repeat(rarityStarCount(rarity));
+}
+
+export function rarityForPrice(price: { coinType: Rarity; rareAmount?: number; superRareAmount?: number }): Rarity {
+  if ((price.superRareAmount ?? 0) > 0 || price.coinType === "superRare") {
+    return "superRare";
+  }
+  if ((price.rareAmount ?? 0) > 0 || price.coinType === "rare") {
+    return "rare";
+  }
+  return "common";
+}
+
+export function rarityIconPath(rarity: Rarity): string {
+  const iconByRarity: Record<Rarity, string> = {
+    common: "/assets/ui/shop/common_star_badge.png",
+    rare: "/assets/ui/shop/rare_star_badge.png",
+    superRare: "/assets/ui/shop/super_rare_star_badge.png"
+  };
+  return iconByRarity[rarity];
+}
