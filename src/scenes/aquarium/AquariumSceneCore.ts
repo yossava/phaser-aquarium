@@ -66,17 +66,11 @@ import {
   findBreedMate as findBreedMateModel
 } from "../../game/fish-breeding";
 import {
-  createFishFusionSources,
-  fishFusionChancesFor as fishFusionChancesForModel,
-  fishFusionCostFor as fishFusionCostForModel,
-  fishFusionResultTypes as fishFusionResultTypesModel,
-  fishFusionSourceSellValue as fishFusionSourceSellValueModel,
   fusionAgeLabel as fusionAgeLabelModel,
   type FishFusionChances,
   type FishFusionSource
 } from "../../game/fish-fusion";
 import {
-  consumeFishFusionSources as consumeFishFusionSourcesModel,
   getStoredFishCount as getStoredFishCountModel,
   removeStoredFish as removeStoredFishModel,
   storeActiveFish as storeActiveFishModel,
@@ -233,12 +227,10 @@ import {
 } from "../../input/tank-hit-testing";
 import {
   bindTankSideToolDrag as bindTankSideToolDragInput,
-  capturePointerSafely,
-  releasePointerSafely,
   startHtmlPointerDrag,
   type HtmlDragCleanup
 } from "../../input/html-drag";
-import { installNativeCanvasInputFallback as installNativeCanvasInputFallbackAdapter } from "../../input/native-canvas-input";
+import { installAquariumNativeCanvasInputFallback } from "../../input/aquarium-native-canvas-input-adapter";
 import { handleTankPointer as handleTankPointerInput } from "../../input/tank-pointer";
 import {
   buildDailyQuestItems,
@@ -328,11 +320,6 @@ import {
   type PageScreenMeta
 } from "../../ui/PageOverlay";
 import { appendAlbumPage as appendAlbumPageView, createFishAlbumRow, createInventoryCategoryGrid as createInventoryCategoryGridView } from "../../ui/AlbumPage";
-import {
-  createFishFusionModal,
-  createFusionFishPickerModal,
-  createInventoryFusionPage
-} from "../../ui/FusionFlow";
 import {
   appendInventoryItemSection,
   createCoinInventoryRow as createCoinInventoryRowView,
@@ -468,6 +455,8 @@ import { createAquariumStoreAdapter } from "./aquarium-store-adapter";
 import { runAquariumSceneUpdate } from "./aquarium-scene-update-loop";
 import { AquariumPrizeController } from "./aquarium-prize-controller";
 import { createAquariumPrizeControllerHost } from "./aquarium-prize-adapter";
+import { createAquariumFusionAdapter } from "./aquarium-fusion-adapter";
+import { AquariumTextureLoader } from "./aquarium-texture-loader";
 
 export class AquariumSceneCore extends Phaser.Scene {
   private readonly prizeMachineRuntimeSessionId = Date.now();
@@ -582,9 +571,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private nativeDraggedFish?: Fish;
   private nativeDraggedDecoration?: PlacedDecoration;
   private phaserDraggedDecoration?: PlacedDecoration;
-  private pendingTextureLoads = new Set<string>();
-  private pendingFishTextureLoads = new Set<string>();
-  private fishTextureLoadCallbacks = new Map<string, Set<() => void>>();
+  private textureLoader = new AquariumTextureLoader(this, (fishType) => this.createFishAnimation(fishType));
   private coinComboCount = 0;
   private coinComboCollectedValue = 0;
   private coinComboLastClaimedAt = 0;
@@ -943,93 +930,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private ensureTextureLoaded(textureKey: string, assetPath: string | undefined, onLoad: () => void): boolean {
-    if (this.textures.exists(textureKey)) {
-      return true;
-    }
-
-    if (!assetPath || this.pendingTextureLoads.has(textureKey)) {
-      return false;
-    }
-
-    this.pendingTextureLoads.add(textureKey);
-    const completeEvent = `filecomplete-image-${textureKey}`;
-    const cleanupListeners = () => {
-      this.load.off(completeEvent, finish);
-      this.load.off(Phaser.Loader.Events.COMPLETE, finish);
-      this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, fail);
-    };
-    const finish = () => {
-      if (!this.pendingTextureLoads.has(textureKey)) {
-        return;
-      }
-      cleanupListeners();
-      this.pendingTextureLoads.delete(textureKey);
-      if (this.textures.exists(textureKey)) {
-        onLoad();
-      }
-    };
-    const fail = () => {
-      cleanupListeners();
-      this.pendingTextureLoads.delete(textureKey);
-    };
-    this.load.once(completeEvent, finish);
-    this.load.once(Phaser.Loader.Events.COMPLETE, finish);
-    this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, fail);
-    this.load.image(textureKey, assetPath);
-
-    const loader = this.load as unknown as { isLoading?: () => boolean };
-    if (!loader.isLoading?.()) {
-      this.load.start();
-    }
-
-    return false;
+    return this.textureLoader.ensureTextureLoaded(textureKey, assetPath, onLoad);
   }
 
   private ensureFishTexturesLoaded(fishType: FishType, onLoad?: () => void): boolean {
-    const staticKey = `fish-${fishType.id}`;
-    const swimKey = `fish-${fishType.id}-swim`;
-    const texturesReady = this.textures.exists(staticKey) && this.textures.exists(swimKey);
-    if (texturesReady) {
-      this.createFishAnimation(fishType);
-      onLoad?.();
-      return true;
-    }
-
-    if (onLoad) {
-      const callbacks = this.fishTextureLoadCallbacks.get(fishType.id) ?? new Set<() => void>();
-      callbacks.add(onLoad);
-      this.fishTextureLoadCallbacks.set(fishType.id, callbacks);
-    }
-
-    if (this.pendingFishTextureLoads.has(fishType.id)) {
-      return false;
-    }
-
-    this.pendingFishTextureLoads.add(fishType.id);
-    if (!this.textures.exists(staticKey)) {
-      this.load.image(staticKey, `/assets/fish/${fishType.id}.png`);
-    }
-    if (!this.textures.exists(swimKey)) {
-      this.load.spritesheet(swimKey, `/assets/fish/${fishType.id}-swim.webp`, {
-        frameWidth: 256,
-        frameHeight: 160
-      });
-    }
-
-    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
-      this.pendingFishTextureLoads.delete(fishType.id);
-      this.createFishAnimation(fishType);
-      const callbacks = this.fishTextureLoadCallbacks.get(fishType.id);
-      this.fishTextureLoadCallbacks.delete(fishType.id);
-      callbacks?.forEach((callback) => callback());
-    });
-
-    const loader = this.load as unknown as { isLoading?: () => boolean };
-    if (!loader.isLoading?.()) {
-      this.load.start();
-    }
-
-    return false;
+    return this.textureLoader.ensureFishTexturesLoaded(fishType, onLoad);
   }
 
   private createDirtyTankOverlay(): Phaser.GameObjects.Rectangle {
@@ -2871,79 +2776,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private appendInventoryFusionTab(content: HTMLElement): void {
-    content.append(createInventoryFusionPage({
-      sources: this.fishFusionSources(),
-      selectedKeys: () => this.fusionPreviewSourceKeys,
-      setSelectedKeys: (keys) => {
-        this.fusionPreviewSourceKeys = keys;
-      },
-      pageResult: () => this.fusionPageResult,
-      setPageResult: (result) => {
-        this.fusionPageResult = result;
-      },
-      reducedMotion: () => this.settings.reducedMotion,
-      showFishPicker: (slotIndex, sources) => this.showFusionFishPicker(slotIndex, sources),
-      isPageFusionCurrent: (token, outputStage) => token === this.fusionRunToken && this.activeScreen === "album" && document.body.contains(outputStage),
-      afterFusionSuccess: ({ resultLabel, resultType, inheritedAge, fusionCost }) => {
-        this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
-        this.floatText(`${resultType.name} moved to inventory`, toastX, toastY, "#a8ffb0");
-        this.createFoodDock();
-        this.saveNow();
-        this.refreshStatus();
-        this.syncHtmlGameInterface();
-        this.showPrizeCelebration(
-          `Fusion ${resultLabel}!`,
-          `/assets/fish/${resultType.id}.png`,
-          `${resultType.name} inventory | ${this.fusionAgeLabel(inheritedAge)}`,
-          "Close",
-          () => this.closePage()
-        );
-      },
-      ageLabel: (seconds) => this.fusionAgeLabel(seconds),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      resultTypesFor: (sources) => this.fishFusionResultTypes(sources),
-      chancesFor: (sources, hasPremium) => this.fishFusionChancesFor(sources, hasPremium),
-      costFor: (sources) => this.fishFusionCostFor(sources),
-      canUseGodMode: () => this.developerGodMode,
-      wallet: () => this.wallet,
-      floatText: (message, color) => this.floatText(message, toastX, toastY, color),
-      areSourcesAvailable: (sources) => this.areFishFusionSourcesAvailable(sources),
-      spendPrice: (price) => this.spendPrice(price),
-      applyFusionResult: ({ selected, resultType, inheritedAge }) => {
-        this.captureActiveTankState();
-        this.consumeFishFusionSources(selected);
-        this.addFishToInventory(resultType);
-        this.addStoredFishAge(resultType.id, inheritedAge);
-        this.ensureFishTexturesLoaded(resultType);
-      },
-      nextFusionToken: () => ++this.fusionRunToken,
-      setPendingFusionTimer: (timer) => {
-        this.pendingFusionTimer = timer;
-      }
-    }));
+    createAquariumFusionAdapter(this).appendInventoryFusionTab(content);
   }
 
   private showFusionFishPicker(slotIndex: 0 | 1, sources: FishFusionSource[]): void {
-    this.closeModal();
-    this.modalTitle = "Choose Fish";
-    const shell = createFusionFishPickerModal({
-      slotIndex,
-      sources,
-      selectedKeys: () => this.fusionPreviewSourceKeys,
-      setSelectedKeys: (keys) => {
-        this.fusionPreviewSourceKeys = keys;
-      },
-      setPageResult: (result) => {
-        this.fusionPageResult = result;
-      },
-      ageLabel: (seconds) => this.fusionAgeLabel(seconds),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      closeModal: () => this.closeModal(),
-      syncHtmlPageOverlay: () => this.syncHtmlPageOverlay()
-    });
-    document.body.appendChild(shell);
-    this.modal = shell;
-    this.syncCoinDropVisibilityAndInput();
+    createAquariumFusionAdapter(this).showFusionFishPicker(slotIndex, sources);
   }
 
   private appendInventoryFoodTab(content: HTMLElement): void {
@@ -4169,68 +4006,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private installNativeCanvasInputFallback(): void {
-    this.nativeCanvasInputCleanup = installNativeCanvasInputFallbackAdapter({
-      canvas: this.game.canvas,
-      activeScreen: () => this.activeScreen,
-      htmlDockDragging: () => this.htmlDockDragging,
-      designPointFromEvent: (event) => this.clientPointToDesignPoint(event.clientX, event.clientY),
-      screenToTankPoint: (designX, designY) => this.screenToTankPoint(designX, designY),
-      capturePointer: capturePointerSafely,
-      releasePointer: releasePointerSafely,
-      decorationTrashZone,
-      handlePrizePointer: (designX, designY) => this.handleNativePrizePointer(designX, designY),
-      makeupDecorationAtPointer: (designX, designY) => this.makeupDecorationAtPointer(designX, designY),
-      selectMakeupDecoration: (decoration) => this.selectMakeupDecoration(decoration),
-      beginMakeupDecorationDrag: (decoration) => {
-        this.nativeMakeupDraggedDecoration = decoration;
-        this.makeupDraggedDecoration = decoration;
-        decoration.image.setAlpha(0.72).setDepth(20);
-      },
-      updateMakeupDecorationDragAtDesignPoint: (point) => this.updateMakeupDecorationDragAtDesignPoint(point),
-      endMakeupDecorationDrag: () => {
-        this.nativeMakeupDraggedDecoration = undefined;
-        this.endMakeupDecorationDrag();
-      },
-      fishBubbleAtPointer: (designX, designY) => this.pendingFishBubbleAtPointer(designX, designY),
-      popFishBubble: (pending) => this.popFishInventoryBubble(pending),
-      coinAtPointer: (designX, designY) => this.coinAtPointer(designX, designY),
-      collectCoin: (coin, automated) => this.collectCoin(coin, automated),
-      fishAtPointer: (designX, designY) => this.fishAtPointer(designX, designY),
-      setNativeDraggedFish: (fish) => {
-        this.nativeDraggedFish = fish;
-      },
-      setDraggedFish: (fish) => {
-        this.draggedFish = fish;
-      },
-      selectFish: (fish) => {
-        this.selectedFishIndex = this.fish.indexOf(fish);
-      },
-      decorationAtPointer: (designX, designY) => this.decorationAtPointer(designX, designY),
-      beginDecorationDrag: (decoration) => {
-        this.phaserDraggedDecoration = undefined;
-        this.nativeDraggedDecoration = decoration;
-        this.draggedDecoration = decoration;
-        decoration.image.setAlpha(0.78);
-        decoration.image.setDepth(9);
-        this.showDecorationTrashTarget(true);
-      },
-      setNativeDraggedDecoration: (decoration) => {
-        this.nativeDraggedDecoration = decoration;
-      },
-      setDraggedDecoration: (decoration) => {
-        this.draggedDecoration = decoration;
-      },
-      clearPhaserDraggedDecoration: () => {
-        this.phaserDraggedDecoration = undefined;
-      },
-      moveDecoration: (decoration, tankX, tankY) => this.moveDecoration(decoration, tankX, tankY),
-      trashDecoration: (decoration) => this.trashDecoration(decoration),
-      showDecorationTrashTarget: (show) => this.showDecorationTrashTarget(show),
-      highlightDecorationTrashTarget: (active) => this.highlightDecorationTrashTarget(active),
-      bringMakeupDecorationToTop: (decoration) => this.tankLayer.bringToTop(decoration.image),
-      saveNow: () => this.saveNow(),
-      recordDailyQuestAction: (action) => this.recordDailyQuestAction(action)
-    });
+    this.nativeCanvasInputCleanup = installAquariumNativeCanvasInputFallback(this);
   }
 
   private entityController(): AquariumEntityController {
@@ -6054,111 +5830,35 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private showFishFusionModal(preselectedKeys: Iterable<string> = []): void {
-    const sources = this.fishFusionSources();
-    if (sources.length < 2) {
-      this.floatText("Need 2 fish", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    this.closeModal();
-    this.modalTitle = "Fusion";
-    const shell = createFishFusionModal({
-      sources,
-      preselectedKeys,
-      reducedMotion: () => this.settings.reducedMotion,
-      closeModal: () => this.closeModal(),
-      isModalFusionCurrent: (token, shellElement) => token === this.fusionRunToken && this.modal === shellElement && document.body.contains(shellElement),
-      afterFusionSuccess: ({ resultLabel, resultType, inheritedAge, fusionCost }) => {
-        this.recordDailyQuestAction("fuse-fish");
-        if (resultLabel === "Premium") {
-          this.recordDailyQuestAction("premium-fusion");
-        }
-        this.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
-        this.floatText(`${resultType.name} moved to inventory`, toastX, toastY, "#a8ffb0");
-        this.createFoodDock();
-        this.refreshUi();
-        this.saveNow();
-      },
-      ageLabel: (seconds) => this.fusionAgeLabel(seconds),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      resultTypesFor: (sources) => this.fishFusionResultTypes(sources),
-      chancesFor: (sources, hasPremium) => this.fishFusionChancesFor(sources, hasPremium),
-      costFor: (sources) => this.fishFusionCostFor(sources),
-      canUseGodMode: () => this.developerGodMode,
-      wallet: () => this.wallet,
-      floatText: (message, color) => this.floatText(message, toastX, toastY, color),
-      areSourcesAvailable: (sources) => this.areFishFusionSourcesAvailable(sources),
-      spendPrice: (price) => this.spendPrice(price),
-      applyFusionResult: ({ selected, resultType, inheritedAge }) => {
-        this.captureActiveTankState();
-        this.consumeFishFusionSources(selected);
-        this.addFishToInventory(resultType);
-        this.addStoredFishAge(resultType.id, inheritedAge);
-        this.ensureFishTexturesLoaded(resultType);
-      },
-      nextFusionToken: () => ++this.fusionRunToken,
-      setPendingFusionTimer: (timer) => {
-        this.pendingFusionTimer = timer;
-      }
-    });
-    if (!shell) {
-      return;
-    }
-    document.body.appendChild(shell);
-    this.modal = shell;
-    this.syncCoinDropVisibilityAndInput();
+    createAquariumFusionAdapter(this).showFishFusionModal(preselectedKeys);
   }
 
   private fishFusionSources(): FishFusionSource[] {
-    return createFishFusionSources({
-      activeFish: this.activeFish(),
-      fishInventory: this.fishInventory,
-      storedFishAgesFor: (fishTypeId) => this.storedFishAgesFor(fishTypeId)
-    });
+    return createAquariumFusionAdapter(this).fishFusionSources();
   }
 
   private fishFusionResultTypes(sources: FishFusionSource[]): { normal?: FishType; premium?: FishType } {
-    return fishFusionResultTypesModel({
-      sources,
-      ownedFishTypeIds: this.ownedFishTypeIds(),
-      activeFish: this.fish,
-      activeFishSellValue: (fish) => this.activeFishSellValue(fish),
-      storedFishSellValue: (fishType) => this.storedFishSellValue(fishType),
-      priceWealth: (price) => this.priceWealth(price)
-    });
+    return createAquariumFusionAdapter(this).fishFusionResultTypes(sources);
   }
 
   private fishFusionSourceSellValue(source: FishFusionSource): number {
-    return fishFusionSourceSellValueModel(source, {
-      activeFish: this.fish,
-      activeFishSellValue: (fish) => this.activeFishSellValue(fish),
-      storedFishSellValue: (fishType) => this.storedFishSellValue(fishType)
-    });
+    return createAquariumFusionAdapter(this).fishFusionSourceSellValue(source);
   }
 
   private fishFusionCostFor(sources: FishFusionSource[]): Price {
-    return fishFusionCostForModel(sources, (source) => this.fishFusionSourceSellValue(source));
+    return createAquariumFusionAdapter(this).fishFusionCostFor(sources);
   }
 
   private areFishFusionSourcesAvailable(sources: FishFusionSource[]): boolean {
-    const availableKeys = new Set(this.fishFusionSources().map((source) => source.key));
-    return sources.every((source) => availableKeys.has(source.key));
+    return createAquariumFusionAdapter(this).areFishFusionSourcesAvailable(sources);
   }
 
   private fishFusionChancesFor(sources: FishFusionSource[], hasPremium: boolean): FishFusionChances {
-    return fishFusionChancesForModel(sources, hasPremium);
+    return createAquariumFusionAdapter(this).fishFusionChancesFor(sources, hasPremium);
   }
 
   private consumeFishFusionSources(sources: FishFusionSource[]): void {
-    consumeFishFusionSourcesModel({
-      sources,
-      activeFish: this.fish,
-      fishInventory: this.fishInventory,
-      getFishInventory: (fishTypeId) => this.getFishInventory(fishTypeId),
-      storedFishAgesFor: (fishTypeId) => this.storedFishAgesFor(fishTypeId),
-      setStoredFishAges: (fishTypeId, ages) => this.setStoredFishAges(fishTypeId, ages),
-      trimStoredFishAges: (fishTypeId) => this.trimStoredFishAges(fishTypeId)
-    });
+    createAquariumFusionAdapter(this).consumeFishFusionSources(sources);
   }
 
   private ownedFishTypeIds(): Set<string> {
