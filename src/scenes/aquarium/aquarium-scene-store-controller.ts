@@ -23,8 +23,7 @@ import {
 } from "../../ui/store/StorePurchaseModals";
 import type { StoreOverlayState } from "../../ui/StoreOverlay";
 import type { ModalAction } from "../../ui/modal";
-import type { DecorationType, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Wallet } from "../../types/mechanics";
-import type { TankUtilityId } from "../../game/dispenser-system";
+import type { DecorationType, FishType, FoodType, FoodTypeId, Price, Wallet } from "../../types/mechanics";
 import type { AppScreen, PlacementMode } from "./aquarium-scene-config";
 import {
   autoFoodBuyerDurationMs,
@@ -245,17 +244,10 @@ export class AquariumSceneStoreController {
       return;
     }
 
-    if (!adapter.developerGodMode() && foodType.id === "ageBoost" && !adapter.canBuyGrowthTonicThisHour()) {
-      adapter.floatText(adapter.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      adapter.refreshStoreOverlay();
-      return;
-    }
-
-    const maxQuantity = foodType.id === "ageBoost" ? 1 : maxFoodBuyQuantity;
     const modalContent = createFoodBuyQuantityModalContent({
       foodType,
       initialQuantity,
-      maxQuantity,
+      maxQuantity: maxFoodBuyQuantity,
       coinAssetPathByType,
       quantityPrice: (price, quantity) => adapter.quantityPrice(price, quantity),
       attachTouchFeedback: (button) => adapter.attachTouchFeedback(button),
@@ -275,12 +267,6 @@ export class AquariumSceneStoreController {
 
     if (foodType.id === productionBoostFoodTypeId) {
       this.showProductionBoostFishModal(foodType);
-      return;
-    }
-
-    if (!adapter.developerGodMode() && foodType.id === "ageBoost" && !adapter.canBuyGrowthTonicThisHour()) {
-      adapter.floatText(adapter.growthTonicPurchaseRestockLabel(), toastX, toastY, "#ffdd8a");
-      adapter.refreshStoreOverlay();
       return;
     }
 

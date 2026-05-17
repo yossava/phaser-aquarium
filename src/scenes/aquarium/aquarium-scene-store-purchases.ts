@@ -1,4 +1,4 @@
-import { formatNumber, formatPrice } from "../../game/economy";
+import { formatNumber } from "../../game/economy";
 import {
   planTankUtilityPurchase,
   tankUtilityAlreadyOwnedToast,
