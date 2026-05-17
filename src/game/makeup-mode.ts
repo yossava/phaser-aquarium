@@ -38,6 +38,248 @@ export function makeupDecorationDisplayDepth(index: number): number {
   return 11 + index * 0.05;
 }
 
+export function createMakeupDraft(input: {
+  backgroundIndex: number;
+  seabedIndex: number;
+  backgroundTintById: Map<string, number>;
+  seabedTintById: Map<string, number>;
+}): MakeupDraft {
+  return {
+    section: undefined,
+    backgroundIndex: Math.max(0, input.backgroundIndex),
+    seabedIndex: Math.max(0, input.seabedIndex),
+    backgroundTintById: new Map(input.backgroundTintById),
+    seabedTintById: new Map(input.seabedTintById),
+    selectedDecorationTypeIndex: 0,
+    selectedSize: "m",
+    decorations: []
+  };
+}
+
+export function makeupSelectedCosmetic(
+  draft: MakeupDraft | undefined,
+  category: "background" | "seabed",
+  cosmetics: TankCosmetic[]
+): TankCosmetic {
+  const index = category === "background" ? draft?.backgroundIndex ?? 0 : draft?.seabedIndex ?? 0;
+  return cosmetics[index] ?? cosmetics[0]!;
+}
+
+export function setMakeupSection(draft: MakeupDraft | undefined, section: MakeupSection | undefined): boolean {
+  if (!draft) {
+    return false;
+  }
+  draft.section = section;
+  return true;
+}
+
+export function setMakeupCosmeticIndex(input: {
+  draft: MakeupDraft | undefined;
+  category: "background" | "seabed";
+  index: number;
+  cosmetics: TankCosmetic[];
+}): boolean {
+  if (!input.draft || !input.cosmetics[input.index]) {
+    return false;
+  }
+  if (input.category === "background") {
+    input.draft.backgroundIndex = input.index;
+  } else {
+    input.draft.seabedIndex = input.index;
+  }
+  return true;
+}
+
+export function cycleMakeupCosmetic(input: {
+  draft: MakeupDraft | undefined;
+  category: "background" | "seabed";
+  direction: number;
+  cosmetics: TankCosmetic[];
+}): boolean {
+  if (!input.draft || input.cosmetics.length === 0) {
+    return false;
+  }
+  const current = input.category === "background" ? input.draft.backgroundIndex : input.draft.seabedIndex;
+  const next = (current + input.direction + input.cosmetics.length) % input.cosmetics.length;
+  return setMakeupCosmeticIndex({ ...input, index: next });
+}
+
+export function setMakeupBlueTint(input: {
+  draft: MakeupDraft | undefined;
+  category: "background" | "seabed";
+  selectedAssetId: string;
+  intensity: number;
+}): boolean {
+  if (!input.draft) {
+    return false;
+  }
+  const normalizedIntensity = Math.round(Math.max(0, Math.min(100, input.intensity)));
+  const tintMap = input.category === "background" ? input.draft.backgroundTintById : input.draft.seabedTintById;
+  if (normalizedIntensity > 0) {
+    tintMap.set(input.selectedAssetId, normalizedIntensity);
+  } else {
+    tintMap.delete(input.selectedAssetId);
+  }
+  return true;
+}
+
+export function cycleMakeupDecorationType(input: {
+  draft: MakeupDraft | undefined;
+  direction: number;
+  decorationTypeCount: number;
+}): boolean {
+  if (!input.draft || input.decorationTypeCount <= 0) {
+    return false;
+  }
+  input.draft.selectedDecorationTypeIndex = (
+    input.draft.selectedDecorationTypeIndex +
+    input.direction +
+    input.decorationTypeCount
+  ) % input.decorationTypeCount;
+  return true;
+}
+
+export function setMakeupDecorationTypeIndex(input: {
+  draft: MakeupDraft | undefined;
+  index: number;
+  decorationTypeCount: number;
+}): boolean {
+  if (!input.draft || input.index < 0 || input.index >= input.decorationTypeCount) {
+    return false;
+  }
+  input.draft.selectedDecorationTypeIndex = input.index;
+  return true;
+}
+
+export function selectedMakeupDecoration(draft: MakeupDraft | undefined): MakeupDecorationDraft | undefined {
+  return draft?.selectedDecorationIndex !== undefined ? draft.decorations[draft.selectedDecorationIndex] : undefined;
+}
+
+export function clearSelectedMakeupDecoration(draft: MakeupDraft | undefined): boolean {
+  if (!draft || draft.selectedDecorationIndex === undefined) {
+    return false;
+  }
+  draft.selectedDecorationIndex = undefined;
+  return true;
+}
+
+export function setMakeupDecorationSize(input: {
+  draft: MakeupDraft | undefined;
+  size: DecorationSize;
+}): MakeupDecorationDraft | undefined {
+  if (!input.draft) {
+    return undefined;
+  }
+  input.draft.selectedSize = input.size;
+  const selectedDecoration = selectedMakeupDecoration(input.draft);
+  if (selectedDecoration) {
+    selectedDecoration.size = input.size;
+  }
+  return selectedDecoration;
+}
+
+export function selectMakeupDecoration(input: {
+  draft: MakeupDraft | undefined;
+  decoration: MakeupDecorationDraft;
+}): boolean {
+  if (!input.draft) {
+    return false;
+  }
+  const index = input.draft.decorations.indexOf(input.decoration);
+  if (index < 0) {
+    return false;
+  }
+  input.draft.section = "decor";
+  input.draft.selectedDecorationIndex = index;
+  input.draft.selectedSize = input.decoration.size;
+  return true;
+}
+
+export function moveMakeupDecoration(input: {
+  decoration: MakeupDecorationDraft | undefined;
+  x: number;
+  y: number;
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}): boolean {
+  if (!input.decoration) {
+    return false;
+  }
+  input.decoration.x = Math.max(input.minX, Math.min(input.maxX, input.x));
+  input.decoration.y = Math.max(input.minY, Math.min(input.maxY, input.y));
+  input.decoration.image.setPosition(input.decoration.x, input.decoration.y);
+  return true;
+}
+
+export function makeupDecorationAtPoint(input: {
+  draft: MakeupDraft | undefined;
+  tankX: number;
+  tankY: number;
+}): MakeupDecorationDraft | undefined {
+  if (input.draft?.section !== "decor") {
+    return undefined;
+  }
+  return input.draft.decorations
+    .filter((decoration) => {
+      const radiusX = Math.max(34, decoration.image.displayWidth * 0.58);
+      const radiusY = Math.max(34, decoration.image.displayHeight * 0.58);
+      return Math.abs(input.tankX - decoration.x) <= radiusX && Math.abs(input.tankY - decoration.y) <= radiusY;
+    })
+    .sort((first, second) => second.depth - first.depth || second.y - first.y)[0];
+}
+
+export function moveSelectedMakeupDecorationDepth(input: {
+  draft: MakeupDraft | undefined;
+  direction: number;
+}): boolean {
+  if (!input.draft || input.draft.selectedDecorationIndex === undefined) {
+    return false;
+  }
+  const currentIndex = input.draft.selectedDecorationIndex;
+  const nextIndex = Math.max(0, Math.min(input.draft.decorations.length - 1, currentIndex + input.direction));
+  if (nextIndex === currentIndex) {
+    return false;
+  }
+  const [decoration] = input.draft.decorations.splice(currentIndex, 1);
+  if (!decoration) {
+    return false;
+  }
+  input.draft.decorations.splice(nextIndex, 0, decoration);
+  input.draft.selectedDecorationIndex = nextIndex;
+  return true;
+}
+
+export function syncMakeupDecorationDepths(input: {
+  draft: MakeupDraft | undefined;
+  draggedDecoration?: MakeupDecorationDraft;
+  bringToTop: (image: Phaser.GameObjects.Image) => void;
+}): void {
+  input.draft?.decorations.forEach((decoration, index) => {
+    decoration.depth = index;
+    if (decoration !== input.draggedDecoration) {
+      decoration.image.setDepth(makeupDecorationDisplayDepth(index));
+    }
+    input.bringToTop(decoration.image);
+  });
+}
+
+export function removeSelectedMakeupDecoration(draft: MakeupDraft | undefined): MakeupDecorationDraft | undefined {
+  if (!draft || draft.selectedDecorationIndex === undefined) {
+    return undefined;
+  }
+  const [removed] = draft.decorations.splice(draft.selectedDecorationIndex, 1);
+  draft.selectedDecorationIndex = undefined;
+  return removed;
+}
+
+export function destroyMakeupDraft(draft: MakeupDraft | undefined): void {
+  for (const decoration of draft?.decorations ?? []) {
+    decoration.image.destroy();
+  }
+}
+
 export function priceComponentAmount(price: Price, coinType: CoinType): number {
   if (price.coinType === coinType) {
     return price.amount;

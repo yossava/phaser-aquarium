@@ -72,12 +72,29 @@ import {
 } from "../game/level-progression";
 import {
   addPriceToWallet as addPriceToWalletModel,
+  clearSelectedMakeupDecoration,
+  createMakeupDraft as createMakeupDraftModel,
+  cycleMakeupCosmetic as cycleMakeupCosmeticModel,
+  cycleMakeupDecorationType as cycleMakeupDecorationTypeModel,
   decorationSizeUpgradePrice as decorationSizeUpgradePriceModel,
+  destroyMakeupDraft as destroyMakeupDraftModel,
   makeupDecorationCostEntries as makeupDecorationCostEntriesModel,
+  makeupDecorationAtPoint,
   makeupDecorationDisplayDepth,
   makeupPurchaseLines as makeupPurchaseLinesModel,
+  makeupSelectedCosmetic as makeupSelectedCosmeticModel,
   makeupTotalCost as makeupTotalCostModel,
+  moveMakeupDecoration,
+  moveSelectedMakeupDecorationDepth as moveSelectedMakeupDecorationDepthModel,
   priceComponentAmount as priceComponentAmountModel,
+  removeSelectedMakeupDecoration as removeSelectedMakeupDecorationModel,
+  selectMakeupDecoration as selectMakeupDecorationModel,
+  setMakeupBlueTint as setMakeupBlueTintModel,
+  setMakeupCosmeticIndex as setMakeupCosmeticIndexModel,
+  setMakeupDecorationSize as setMakeupDecorationSizeModel,
+  setMakeupDecorationTypeIndex as setMakeupDecorationTypeIndexModel,
+  setMakeupSection as setMakeupSectionModel,
+  syncMakeupDecorationDepths as syncMakeupDecorationDepthsModel,
   walletToPrice as walletToPriceModel,
   type MakeupDecorationDraft,
   type MakeupDraft,
@@ -2813,16 +2830,12 @@ export class AquariumScene extends Phaser.Scene {
   private createMakeupDraft(): MakeupDraft {
     const backgroundIndex = Math.max(0, this.tankCosmetics("background").findIndex((asset) => asset.id === this.selectedTankCosmeticId("background")));
     const seabedIndex = Math.max(0, this.tankCosmetics("seabed").findIndex((asset) => asset.id === this.selectedTankCosmeticId("seabed")));
-    const draft: MakeupDraft = {
-      section: undefined,
+    const draft = createMakeupDraftModel({
       backgroundIndex,
       seabedIndex,
       backgroundTintById: new Map(this.tankCosmeticBlueTintInventory("background")),
-      seabedTintById: new Map(this.tankCosmeticBlueTintInventory("seabed")),
-      selectedDecorationTypeIndex: 0,
-      selectedSize: "m",
-      decorations: []
-    };
+      seabedTintById: new Map(this.tankCosmeticBlueTintInventory("seabed"))
+    });
     const activeDecorations = [...this.activeDecorations()].sort((first, second) => first.image.depth - second.image.depth);
     for (const [index, placedDecoration] of activeDecorations.entries()) {
       const decorationType = decorationTypes.find((item) => item.id === placedDecoration.typeId);
@@ -2912,11 +2925,10 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private setMakeupSection(section: MakeupSection | undefined): void {
-    if (!this.makeupDraft) {
+    if (!setMakeupSectionModel(this.makeupDraft, section)) {
       return;
     }
 
-    this.makeupDraft.section = section;
     this.syncMakeupOverlay();
   }
 
@@ -2941,70 +2953,48 @@ export class AquariumScene extends Phaser.Scene {
       return;
     }
 
-    this.makeupDraft.selectedDecorationIndex = undefined;
+    clearSelectedMakeupDecoration(this.makeupDraft);
     this.makeupDecorationSettingsElement = undefined;
     this.syncMakeupOverlay();
   }
 
   private makeupSelectedCosmetic(category: TankCosmeticCategory): TankCosmetic {
-    const cosmetics = this.tankCosmetics(category);
-    const index = category === "background" ? this.makeupDraft?.backgroundIndex ?? 0 : this.makeupDraft?.seabedIndex ?? 0;
-    return cosmetics[index] ?? cosmetics[0]!;
+    return makeupSelectedCosmeticModel(this.makeupDraft, category, this.tankCosmetics(category));
   }
 
   private setMakeupCosmeticIndex(category: TankCosmeticCategory, index: number, restoreScrollLeft?: number): void {
-    if (!this.makeupDraft) {
-      return;
-    }
-
     const cosmetics = this.tankCosmetics(category);
-    if (!cosmetics[index]) {
+    if (!setMakeupCosmeticIndexModel({ draft: this.makeupDraft, category, index, cosmetics })) {
       return;
     }
 
     if (category === "background") {
       this.makeupBackgroundScrollLeft = restoreScrollLeft ?? this.makeupBackgroundScrollLeft;
-      this.makeupDraft.backgroundIndex = index;
       this.layoutTankBackground();
     } else {
-      this.makeupDraft.seabedIndex = index;
       this.layoutTankFloor();
     }
     this.syncMakeupOverlay();
   }
 
   private cycleMakeupCosmetic(category: TankCosmeticCategory, direction: number): void {
-    if (!this.makeupDraft) {
-      return;
-    }
-
     const cosmetics = this.tankCosmetics(category);
-    if (cosmetics.length === 0) {
+    if (!cycleMakeupCosmeticModel({ draft: this.makeupDraft, category, direction, cosmetics })) {
       return;
     }
 
     if (category === "background") {
-      this.makeupDraft.backgroundIndex = (this.makeupDraft.backgroundIndex + direction + cosmetics.length) % cosmetics.length;
       this.layoutTankBackground();
     } else {
-      this.makeupDraft.seabedIndex = (this.makeupDraft.seabedIndex + direction + cosmetics.length) % cosmetics.length;
       this.layoutTankFloor();
     }
     this.syncMakeupOverlay();
   }
 
   private setMakeupBlueTint(category: TankCosmeticCategory, intensity: number): void {
-    if (!this.makeupDraft) {
-      return;
-    }
-
     const selectedAsset = this.makeupSelectedCosmetic(category);
-    const normalizedIntensity = Math.round(Phaser.Math.Clamp(intensity, 0, 100));
-    const tintMap = category === "background" ? this.makeupDraft.backgroundTintById : this.makeupDraft.seabedTintById;
-    if (normalizedIntensity > 0) {
-      tintMap.set(selectedAsset.id, normalizedIntensity);
-    } else {
-      tintMap.delete(selectedAsset.id);
+    if (!setMakeupBlueTintModel({ draft: this.makeupDraft, category, selectedAssetId: selectedAsset.id, intensity })) {
+      return;
     }
 
     if (category === "background") {
@@ -3015,33 +3005,28 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private cycleMakeupDecoration(direction: number): void {
-    if (!this.makeupDraft || decorationTypes.length === 0) {
+    if (!cycleMakeupDecorationTypeModel({ draft: this.makeupDraft, direction, decorationTypeCount: decorationTypes.length })) {
       return;
     }
 
-    this.makeupDraft.selectedDecorationTypeIndex = (this.makeupDraft.selectedDecorationTypeIndex + direction + decorationTypes.length) % decorationTypes.length;
     this.syncMakeupOverlay();
   }
 
   private setMakeupDecorationTypeIndex(index: number, restoreScrollLeft = this.makeupDecorScrollLeft): void {
-    if (!this.makeupDraft || !decorationTypes[index]) {
+    if (!setMakeupDecorationTypeIndexModel({ draft: this.makeupDraft, index, decorationTypeCount: decorationTypes.length })) {
       return;
     }
 
     this.makeupDecorScrollLeft = restoreScrollLeft;
-    this.makeupDraft.selectedDecorationTypeIndex = index;
     this.syncMakeupOverlay();
   }
 
   private setMakeupDecorationSize(size: DecorationSize): void {
+    const selectedDecoration = setMakeupDecorationSizeModel({ draft: this.makeupDraft, size });
     if (!this.makeupDraft) {
       return;
     }
-
-    this.makeupDraft.selectedSize = size;
-    const selectedDecoration = this.makeupDraft.selectedDecorationIndex !== undefined ? this.makeupDraft.decorations[this.makeupDraft.selectedDecorationIndex] : undefined;
     if (selectedDecoration) {
-      selectedDecoration.size = size;
       const decorationType = decorationTypes.find((item) => item.id === selectedDecoration.typeId);
       if (decorationType) {
         this.fitDecorationDisplay(selectedDecoration.image, decorationType, size);
@@ -3073,7 +3058,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private createMakeupDecorationDraft(decoration: DecorationType, size: DecorationSize, x: number, y: number, depth = 0, original?: { originalTypeId: string; originalSize: DecorationSize }): MakeupDecorationDraft {
-    const image = this.add.image(x, y, decoration.texture).setDepth(this.makeupDecorationDisplayDepth(depth)).setAlpha(0.9);
+    const image = this.add.image(x, y, decoration.texture).setDepth(makeupDecorationDisplayDepth(depth)).setAlpha(0.9);
     this.fitDecorationDisplay(image, decoration, size);
     image.setInteractive({ useHandCursor: true });
     this.tankLayer.add(image);
@@ -3090,15 +3075,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private selectMakeupDecoration(decoration: MakeupDecorationDraft): void {
-    if (!this.makeupDraft) {
-      return;
-    }
-
-    const index = this.makeupDraft.decorations.indexOf(decoration);
-    if (index >= 0) {
-      this.makeupDraft.section = "decor";
-      this.makeupDraft.selectedDecorationIndex = index;
-      this.makeupDraft.selectedSize = decoration.size;
+    if (selectMakeupDecorationModel({ draft: this.makeupDraft, decoration })) {
       this.syncMakeupOverlay();
     }
   }
@@ -3118,26 +3095,29 @@ export class AquariumScene extends Phaser.Scene {
     }
 
     const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
-    const decoration = this.makeupDraggedDecoration;
-    decoration.x = Phaser.Math.Clamp(tankPoint.x, tankBounds.left + 24, tankBounds.right - 24);
-    decoration.y = Phaser.Math.Clamp(tankPoint.y, tankBounds.top + 118, tankBounds.bottom - 30);
-    decoration.image.setPosition(decoration.x, decoration.y);
+    moveMakeupDecoration({
+      decoration: this.makeupDraggedDecoration,
+      x: tankPoint.x,
+      y: tankPoint.y,
+      minX: tankBounds.left + 24,
+      maxX: tankBounds.right - 24,
+      minY: tankBounds.top + 118,
+      maxY: tankBounds.bottom - 30
+    });
     this.updateMakeupDecorationSettingsPosition();
   }
 
   private makeupDecorationAtPointer(designX: number, designY: number): MakeupDecorationDraft | undefined {
-    if (this.activeScreen !== "makeup" || this.makeupDraft?.section !== "decor") {
+    if (this.activeScreen !== "makeup") {
       return undefined;
     }
 
     const tankPoint = this.screenToTankPoint(designX, designY);
-    return this.makeupDraft.decorations
-      .filter((decoration) => {
-        const radiusX = Math.max(34, decoration.image.displayWidth * 0.58);
-        const radiusY = Math.max(34, decoration.image.displayHeight * 0.58);
-        return Math.abs(tankPoint.x - decoration.x) <= radiusX && Math.abs(tankPoint.y - decoration.y) <= radiusY;
-      })
-      .sort((first, second) => second.depth - first.depth || second.y - first.y)[0];
+    return makeupDecorationAtPoint({
+      draft: this.makeupDraft,
+      tankX: tankPoint.x,
+      tankY: tankPoint.y
+    });
   }
 
   private endMakeupDecorationDrag(): void {
@@ -3152,52 +3132,28 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private moveSelectedMakeupDecorationDepth(direction: number): void {
-    if (!this.makeupDraft || this.makeupDraft.selectedDecorationIndex === undefined) {
+    if (!moveSelectedMakeupDecorationDepthModel({ draft: this.makeupDraft, direction })) {
       return;
     }
-
-    const currentIndex = this.makeupDraft.selectedDecorationIndex;
-    const nextIndex = Phaser.Math.Clamp(currentIndex + direction, 0, this.makeupDraft.decorations.length - 1);
-    if (nextIndex === currentIndex) {
-      return;
-    }
-
-    const [decoration] = this.makeupDraft.decorations.splice(currentIndex, 1);
-    if (!decoration) {
-      return;
-    }
-    this.makeupDraft.decorations.splice(nextIndex, 0, decoration);
-    this.makeupDraft.selectedDecorationIndex = nextIndex;
     this.syncMakeupDecorationDepths();
     this.syncMakeupOverlay();
   }
 
   private syncMakeupDecorationDepths(draft = this.makeupDraft): void {
-    if (!draft) {
-      return;
-    }
-
-    draft.decorations.forEach((decoration, index) => {
-      decoration.depth = index;
-      if (decoration !== this.makeupDraggedDecoration) {
-        decoration.image.setDepth(makeupDecorationDisplayDepth(index));
-      }
-      this.tankLayer.bringToTop(decoration.image);
+    syncMakeupDecorationDepthsModel({
+      draft,
+      draggedDecoration: this.makeupDraggedDecoration,
+      bringToTop: (image) => this.tankLayer.bringToTop(image)
     });
   }
 
-  private makeupDecorationDisplayDepth(index: number): number {
-    return makeupDecorationDisplayDepth(index);
-  }
-
   private removeSelectedMakeupDecoration(): void {
-    if (!this.makeupDraft || this.makeupDraft.selectedDecorationIndex === undefined) {
+    const removed = removeSelectedMakeupDecorationModel(this.makeupDraft);
+    if (!removed) {
       return;
     }
 
-    const [removed] = this.makeupDraft.decorations.splice(this.makeupDraft.selectedDecorationIndex, 1);
-    removed?.image.destroy();
-    this.makeupDraft.selectedDecorationIndex = undefined;
+    removed.image.destroy();
     this.syncMakeupDecorationDepths();
     this.syncMakeupOverlay();
   }
@@ -3389,9 +3345,7 @@ export class AquariumScene extends Phaser.Scene {
   }
 
   private destroyMakeupDraft(): void {
-    for (const decoration of this.makeupDraft?.decorations ?? []) {
-      decoration.image.destroy();
-    }
+    destroyMakeupDraftModel(this.makeupDraft);
     this.makeupDraft = undefined;
   }
 
