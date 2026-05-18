@@ -2090,7 +2090,6 @@ export class AquariumSceneCore extends Phaser.Scene {
     }
 
     this.storeOverlay?.hide();
-    this.renderTabControls();
     this.refreshUi(false);
   }
 
