@@ -3041,7 +3041,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     const board = htmlElement("section", "aq-fish-transfer-board", [
       htmlElement("div", "aq-fish-transfer-header", [
         htmlElement("h2", "aq-page-section-title", ["Fish"]),
-        htmlElement("p", "aq-fish-transfer-copy", ["Drag fish between Inventory and In Tank."])
+        htmlElement("p", "aq-fish-transfer-copy", ["Use arrow buttons to move fish between Inventory and In Tank."])
       ])
     ]);
     const tankZone = this.createFishTransferZone({
@@ -3098,13 +3098,13 @@ export class AquariumSceneCore extends Phaser.Scene {
       badge: "Tank",
       meta: `${fish.gender} | ${fish.ageLabel()} | ${this.rarityLabel(fish.type.rarity)}`,
       detail: fish.productionSummary(),
+      transferLabel: "<- To Inventory",
+      transferDisabled: false,
+      onTransfer: () => this.storeFishByIndex(index),
       actionLabel: `Sell C${formatNumber(this.activeFishSellValue(fish))}`,
       actionClassName: "aq-page-button aq-page-button-danger aq-fish-transfer-action",
       onAction: () => this.showSellConfirmation(index)
     });
-    card.dataset.fishSource = "tank";
-    card.dataset.fishIndex = `${index}`;
-    this.bindFishTransferDrag(card);
     return card;
   }
 
@@ -3117,13 +3117,13 @@ export class AquariumSceneCore extends Phaser.Scene {
       badge: `x${formatNumber(count)}`,
       meta: `Inventory | ${this.rarityLabel(fishType.rarity)}${ageCopy}`,
       detail: `Sell one for C${formatNumber(this.storedFishSellValue(fishType))}`,
+      transferLabel: "To Tank ->",
+      transferDisabled: this.activeFish().length >= this.maxFishCapacityForLevel(),
+      onTransfer: () => this.moveStoredFishToTankFromInventoryPage(fishType.id),
       actionLabel: `Sell C${formatNumber(this.storedFishSellValue(fishType))}`,
       actionClassName: "aq-page-button aq-page-button-danger aq-fish-transfer-action",
       onAction: () => this.showStoredFishSellConfirmation(fishType.id)
     });
-    card.dataset.fishSource = "inventory";
-    card.dataset.fishTypeId = fishType.id;
-    this.bindFishTransferDrag(card);
     return card;
   }
 
@@ -3132,6 +3132,9 @@ export class AquariumSceneCore extends Phaser.Scene {
     badge: string;
     meta: string;
     detail: string;
+    transferLabel: string;
+    transferDisabled: boolean;
+    onTransfer: () => void;
     actionLabel: string;
     actionClassName: string;
     onAction: () => void;
@@ -3146,75 +3149,12 @@ export class AquariumSceneCore extends Phaser.Scene {
         htmlElement("p", "", [input.meta]),
         htmlElement("small", "", [input.detail])
       ]),
-      this.htmlButton(input.actionLabel, input.actionClassName, input.onAction)
+      htmlElement("div", "aq-fish-transfer-actions", [
+        this.htmlButton(input.transferLabel, "aq-page-button aq-page-button-good aq-fish-transfer-action", input.onTransfer, input.transferDisabled),
+        this.htmlButton(input.actionLabel, input.actionClassName, input.onAction)
+      ])
     ]);
     return card;
-  }
-
-  private bindFishTransferDrag(card: HTMLElement): void {
-    card.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0 || event.target instanceof HTMLElement && event.target.closest("button")) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      const pointerId = event.pointerId;
-      card.setPointerCapture(pointerId);
-      const ghost = card.cloneNode(true) as HTMLElement;
-      ghost.classList.add("aq-fish-transfer-ghost");
-      ghost.querySelectorAll("button").forEach((button) => button.remove());
-      document.body.appendChild(ghost);
-      card.classList.add("is-dragging");
-
-      let activeDropZone: HTMLElement | undefined;
-      const moveGhost = (clientX: number, clientY: number) => {
-        ghost.style.transform = `translate(${clientX + 8}px, ${clientY + 8}px)`;
-        activeDropZone?.classList.remove("is-drop-target");
-        activeDropZone = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-fish-drop-zone]") ?? undefined;
-        activeDropZone?.classList.add("is-drop-target");
-      };
-      const cleanup = () => {
-        activeDropZone?.classList.remove("is-drop-target");
-        card.classList.remove("is-dragging");
-        ghost.remove();
-        card.releasePointerCapture(pointerId);
-      };
-      const onMove = (moveEvent: PointerEvent) => {
-        if (moveEvent.pointerId !== pointerId) {
-          return;
-        }
-        moveEvent.preventDefault();
-        moveGhost(moveEvent.clientX, moveEvent.clientY);
-      };
-      const onUp = (upEvent: PointerEvent) => {
-        if (upEvent.pointerId !== pointerId) {
-          return;
-        }
-        upEvent.preventDefault();
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onUp);
-        document.removeEventListener("pointercancel", onUp);
-        const targetZone = activeDropZone?.dataset.fishDropZone;
-        cleanup();
-        this.handleFishTransferDrop(card, targetZone);
-      };
-      moveGhost(event.clientX, event.clientY);
-      document.addEventListener("pointermove", onMove, { passive: false });
-      document.addEventListener("pointerup", onUp, { passive: false });
-      document.addEventListener("pointercancel", onUp, { passive: false });
-    });
-  }
-
-  private handleFishTransferDrop(card: HTMLElement, targetZone: string | undefined): void {
-    const source = card.dataset.fishSource;
-    if (source === "tank" && targetZone === "inventory") {
-      this.storeFishByIndex(Number(card.dataset.fishIndex));
-      return;
-    }
-    if (source === "inventory" && targetZone === "tank") {
-      this.moveStoredFishToTankFromInventoryPage(card.dataset.fishTypeId);
-    }
   }
 
   private moveStoredFishToTankFromInventoryPage(fishTypeId: string | undefined): void {
