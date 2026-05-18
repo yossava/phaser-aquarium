@@ -14,6 +14,10 @@
   --aq-viewport-width: 100vw;
   --aq-viewport-height: 100dvh;
   --aq-stage-width: var(--aq-viewport-width);
+  --aq-tank-frame-left: calc((var(--aq-viewport-width) - var(--aq-stage-width)) / 2);
+  --aq-tank-frame-top: 0px;
+  --aq-tank-frame-width: var(--aq-stage-width);
+  --aq-tank-frame-height: var(--aq-viewport-height);
   --aq-game-font: "Baloo 2", "Trebuchet MS", sans-serif;
   --aq-hud-edge-inset: 10px;
   --aq-hud-scale: 1;
@@ -2296,10 +2300,11 @@ canvas {
   }
 
   .aq-tank-menu {
-    @apply fixed left-1/2 top-0 z-40 pointer-events-none;
-    width: var(--aq-stage-width);
-    height: var(--aq-viewport-height);
-    transform: translateX(-50%);
+    @apply fixed z-40 pointer-events-none;
+    left: var(--aq-tank-frame-left);
+    top: var(--aq-tank-frame-top);
+    width: var(--aq-tank-frame-width);
+    height: var(--aq-tank-frame-height);
   }
 
   .aq-tank-menu-button {
@@ -2392,10 +2397,11 @@ canvas {
   }
 
   .aq-game-hud {
-    @apply pointer-events-none fixed left-1/2 top-0 z-30;
-    width: var(--aq-stage-width);
-    height: var(--aq-viewport-height);
-    transform: translateX(-50%);
+    @apply pointer-events-none fixed z-30;
+    left: var(--aq-tank-frame-left);
+    top: var(--aq-tank-frame-top);
+    width: var(--aq-tank-frame-width);
+    height: var(--aq-tank-frame-height);
   }
 
   .aq-coin-combo {
@@ -2865,8 +2871,8 @@ canvas {
     @apply pointer-events-none fixed top-0 z-40 flex flex-col items-end gap-[10px] overflow-y-auto pb-4 pl-2 pt-1;
     --food-dock-top: 286px;
     width: min(24vw, 100px);
-    max-height: calc(var(--aq-viewport-height) - var(--food-dock-top) - 8px);
-    right: calc((var(--aq-viewport-width) - var(--aq-stage-width)) / 2);
+    max-height: calc(var(--aq-tank-frame-height) - var(--food-dock-top) - 8px);
+    right: calc(var(--aq-viewport-width) - (var(--aq-tank-frame-left) + var(--aq-tank-frame-width)));
     transform: translate(calc(-1 * var(--aq-hud-edge-inset)), var(--food-dock-top)) scale(var(--aq-dock-scale));
     transform-origin: top right;
     scrollbar-width: none;
@@ -2894,7 +2900,7 @@ canvas {
     @apply pointer-events-auto fixed z-40 grid place-items-center rounded-full border border-white/15 bg-sky-100/5;
     width: clamp(70px, 19vw, 88px);
     height: clamp(70px, 19vw, 88px);
-    left: calc((var(--aq-viewport-width) - var(--aq-stage-width)) / 2 + var(--aq-stage-width) / 2);
+    left: calc(var(--aq-tank-frame-left) + var(--aq-tank-frame-width) / 2);
     bottom: max(132px, calc(env(safe-area-inset-bottom) + 120px));
     transform: translateX(-50%);
     touch-action: none;

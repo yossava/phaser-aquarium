@@ -1063,6 +1063,25 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private refreshVisibleTankViewport(): void {
     setTankViewportBoundsFromCanvas(this.game.canvas);
+    this.syncTankFrameCssVars();
+  }
+
+  private syncTankFrameCssVars(): void {
+    const canvas = this.game.canvas;
+    const rect = canvas.getBoundingClientRect();
+    const viewportWidth = Math.max(1, window.innerWidth);
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const frameLeft = Phaser.Math.Clamp(rect.left, 0, viewportWidth);
+    const frameTop = Phaser.Math.Clamp(rect.top, 0, viewportHeight);
+    const frameRight = Phaser.Math.Clamp(rect.right, 0, viewportWidth);
+    const frameBottom = Phaser.Math.Clamp(rect.bottom, 0, viewportHeight);
+    const frameWidth = Math.max(1, frameRight - frameLeft);
+    const frameHeight = Math.max(1, frameBottom - frameTop);
+    const rootStyle = document.documentElement.style;
+    rootStyle.setProperty("--aq-tank-frame-left", `${Math.round(frameLeft)}px`);
+    rootStyle.setProperty("--aq-tank-frame-top", `${Math.round(frameTop)}px`);
+    rootStyle.setProperty("--aq-tank-frame-width", `${Math.round(frameWidth)}px`);
+    rootStyle.setProperty("--aq-tank-frame-height", `${Math.round(frameHeight)}px`);
   }
 
   private layoutTankBackground(): void {
@@ -1070,11 +1089,18 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
+    this.refreshVisibleTankViewport();
     const scale = Math.max(0.01, this.tankViewScaleForLevel());
-    const screenCompensatedWidth = tankBounds.width / scale;
-    const screenCompensatedHeight = tankBounds.height / scale;
+    const visibleLeft = Math.min(tankBounds.left, tankViewportBounds.left);
+    const visibleTop = Math.min(tankBounds.top, tankViewportBounds.top);
+    const visibleRight = Math.max(tankBounds.right, tankViewportBounds.right);
+    const visibleBottom = Math.max(tankBounds.bottom, tankViewportBounds.bottom);
+    const visualCenterX = (visibleLeft + visibleRight) / 2;
+    const visualCenterY = (visibleTop + visibleBottom) / 2;
+    const screenCompensatedWidth = Math.max(tankBounds.width, visibleRight - visibleLeft) / scale;
+    const screenCompensatedHeight = Math.max(tankBounds.height, visibleBottom - visibleTop) / scale;
     const selectedBackgroundId = this.renderTankCosmeticId("background");
-    this.tankBackground.setPosition(tankBounds.centerX, tankBounds.centerY);
+    this.tankBackground.setPosition(visualCenterX, visualCenterY);
     if (this.tankBackground instanceof Phaser.GameObjects.Image) {
       const textureKeys = this.themedTankTextureKeys();
       const textureKey = this.textures.exists(textureKeys.backgroundKey) ? textureKeys.backgroundKey : aquariumBackgroundTextureKey;
@@ -1089,8 +1115,8 @@ export class AquariumSceneCore extends Phaser.Scene {
 
     this.layoutTankBlueTintOverlay(
       this.tankBackgroundBlueTintOverlay,
-      tankBounds.centerX,
-      tankBounds.centerY,
+      visualCenterX,
+      visualCenterY,
       screenCompensatedWidth,
       screenCompensatedHeight,
       this.renderTankCosmeticBlueTintIntensity("background", selectedBackgroundId),
@@ -1252,6 +1278,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private syncHtmlGameInterface(): void {
+    this.syncTankFrameCssVars();
     this.syncTankSceneVisibility();
     this.syncTankMenuOverlay();
     this.syncHtmlHud();
