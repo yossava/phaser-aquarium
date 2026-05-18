@@ -2339,7 +2339,7 @@ canvas {
   }
 
   .aq-tank-menu-button-plain {
-    width: clamp(46px, calc(var(--aq-tank-frame-width) / 100 * 13), 56px);
+    width: clamp(58px, 16.5%, 76px);
   }
 
   .aq-tank-menu-bubble {
@@ -2355,7 +2355,7 @@ canvas {
 
   .aq-tank-menu-bubble-plain {
     @apply rounded-full;
-    width: 100%;
+    width: clamp(46px, calc(var(--aq-tank-frame-width) / 100 * 13), 56px);
     background:
       radial-gradient(circle at 40% 32%, rgba(255, 255, 255, 0.5), rgba(198, 246, 255, 0.2) 35%, rgba(61, 194, 235, 0.28) 72%, rgba(0, 92, 143, 0.32));
     box-shadow:
