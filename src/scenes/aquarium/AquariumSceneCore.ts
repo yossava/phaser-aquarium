@@ -368,6 +368,7 @@ import {
   createTankUtilityInventoryCard
 } from "../../ui/TankInventoryCards";
 import { createHtmlButton, htmlElement, htmlImage, shouldSuppressHtmlClick } from "../../ui/dom";
+import { installMobileGameTouchFeedback, removeWithModalExit } from "../../ui/dom-motion";
 import { createModalShell, type ModalAction } from "../../ui/modal";
 import type { AquariumTestSnapshot } from "../../test/aquarium-test-api";
 import { installAquariumTestHooks } from "../../test/aquarium-test-hooks";
@@ -1986,15 +1987,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private attachTouchFeedback(element: HTMLElement, releaseOnLeave = false): void {
-    const press = () => element.classList.add("is-touching");
-    const release = () => element.classList.remove("is-touching");
-    element.addEventListener("pointerdown", press);
-    element.addEventListener("pointerup", release);
-    element.addEventListener("pointercancel", release);
-    if (releaseOnLeave) {
-      element.addEventListener("pointerleave", release);
-    }
-    element.addEventListener("blur", release);
+    installMobileGameTouchFeedback(element, releaseOnLeave, releaseOnLeave);
   }
 
   private cancelHtmlFoodDrag(): void {
@@ -2028,7 +2021,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.nativeCanvasInputCleanup = undefined;
     this.cancelPendingFusion();
     this.cancelHtmlFoodDrag();
-    this.closeModal();
+    this.closeModal(true);
     this.destroyMakeupDraft();
     this.makeupOverlay?.remove();
     this.makeupOverlay = undefined;
@@ -2079,7 +2072,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.tankMenuDrillOpen = false;
       this.tankMenuPage = 1;
     }
-    this.closeModal();
+    this.closeModal(true);
     this.syncCoinDropVisibilityAndInput();
     this.createScreenNav();
     this.createFoodDock();
@@ -6659,7 +6652,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private showModal(title: string, lines: string[], actions: ModalAction[], bodyElements?: HTMLElement[]): void {
-    this.closeModal();
+    this.closeModal(true);
     this.modalTitle = title;
 
     const shell = createModalShell({
@@ -6680,7 +6673,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private showPrizeCelebration(title: string, imageUrl: string, detail: string, buttonLabel = "Awesome", onClose?: () => void): void {
-    this.closeModal();
+    this.closeModal(true);
     this.modalTitle = title;
     const shell = createPrizeCelebrationShell({
       title,
@@ -6731,9 +6724,16 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.fusionRunToken += 1;
   }
 
-  private closeModal(): void {
+  private closeModal(immediate = false): void {
     this.cancelPendingFusion();
-    this.modal?.remove();
+    const modal = this.modal;
+    if (modal) {
+      if (immediate) {
+        modal.remove();
+      } else {
+        removeWithModalExit(modal);
+      }
+    }
     this.modal = undefined;
     this.modalTitle = undefined;
     this.rewardedAdCountdownText = undefined;

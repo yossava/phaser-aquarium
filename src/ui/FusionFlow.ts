@@ -16,6 +16,7 @@ import {
 } from "./FusionPage";
 import { createPageEmptyCard } from "./PageOverlay";
 import { createHtmlButton, htmlElement, htmlImage } from "./dom";
+import { playModalEnter } from "./dom-motion";
 
 export type FishFusionPageResult = {
   label: string;
@@ -441,6 +442,7 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
     htmlElement("div", "aq-modal-actions", [fuseButton, closeButton])
   ]);
   shell.append(panel);
+  playModalEnter(shell);
   updateSelection();
   return shell;
 }

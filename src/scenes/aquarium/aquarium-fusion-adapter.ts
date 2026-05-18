@@ -41,7 +41,7 @@ type AquariumFusionScene = {
   areFishFusionSourcesAvailable?(sources: FishFusionSource[]): boolean;
   attachTouchFeedback(button: HTMLButtonElement): void;
   captureActiveTankState(): void;
-  closeModal(): void;
+  closeModal(immediate?: boolean): void;
   closePage(): void;
   createFoodDock(): void;
   ensureFishTexturesLoaded(fishType: FishType): boolean;
@@ -193,7 +193,7 @@ export function createAquariumFusionAdapter(scene: AquariumSceneCore): AquariumF
     },
 
     showFusionFishPicker(slotIndex, fishSources) {
-      aquariumScene.closeModal();
+      aquariumScene.closeModal(true);
       aquariumScene.modalTitle = "Choose Fish";
       const shell = createFusionFishPickerModal({
         slotIndex,
@@ -222,7 +222,7 @@ export function createAquariumFusionAdapter(scene: AquariumSceneCore): AquariumF
         return;
       }
 
-      aquariumScene.closeModal();
+      aquariumScene.closeModal(true);
       aquariumScene.modalTitle = "Fusion";
       const shell = createFishFusionModal({
         ...baseFlow(),

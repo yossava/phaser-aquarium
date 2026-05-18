@@ -1,5 +1,6 @@
 import { formatNumber } from "../game/economy";
 import { htmlElement, htmlImage, createHtmlButton } from "./dom";
+import { playModalEnter } from "./dom-motion";
 import type { FishFusionSource } from "../game/fish-fusion";
 import type { FishType } from "../types/mechanics";
 
@@ -211,6 +212,7 @@ export function createFusionFishPickerShell(input: {
       htmlElement("div", "aq-modal-actions single", [closeButton])
     ])
   );
+  playModalEnter(shell);
   return shell;
 }
 

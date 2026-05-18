@@ -1,3 +1,5 @@
+import { installMobileGameTouchFeedback, playPageTransition as playMobileGamePageTransition } from "./dom-motion";
+
 export function htmlElement<K extends keyof HTMLElementTagNameMap>(
   tagName: K,
   className = "",
@@ -53,6 +55,7 @@ export function playHtmlPageTransition(root: HTMLElement, reducedMotion = false)
   root.classList.remove("aq-html-page-enter");
   void root.offsetWidth;
   root.classList.add("aq-html-page-enter");
+  playMobileGamePageTransition(root, reducedMotion);
   window.setTimeout(() => root.classList.remove("aq-html-page-enter"), 260);
 }
 
@@ -126,15 +129,5 @@ export function createHtmlButton(
 }
 
 function attachDefaultTouchFeedback(button: HTMLButtonElement): void {
-  const press = (): void => {
-    if (!button.disabled) {
-      button.classList.add("is-touching");
-    }
-  };
-  const release = (): void => button.classList.remove("is-touching");
-  button.addEventListener("pointerdown", press);
-  button.addEventListener("pointerup", release);
-  button.addEventListener("pointercancel", release);
-  button.addEventListener("pointerleave", release);
-  button.addEventListener("blur", release);
+  installMobileGameTouchFeedback(button, true);
 }

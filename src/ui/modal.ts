@@ -1,4 +1,5 @@
 import { createHtmlButton, htmlElement, htmlImage } from "./dom";
+import { playModalEnter } from "./dom-motion";
 
 export type ModalAction = {
   label: string;
@@ -43,6 +44,7 @@ export function createModalShell(options: {
   }
 
   shell.append(panel);
+  playModalEnter(shell);
   return shell;
 }
 
@@ -92,6 +94,7 @@ export function createRewardedAdModalShell(options: {
   );
 
   shell.append(panel);
+  playModalEnter(shell);
   return { shell, countdownText, claimButton };
 }
 

@@ -1,5 +1,6 @@
 import { formatNumber } from "../game/economy";
 import { htmlElement, htmlImage } from "./dom";
+import { playModalEnter } from "./dom-motion";
 import type { FishType } from "../types/mechanics";
 
 export function createPrizeCelebrationShell(input: {
@@ -64,5 +65,6 @@ function modalShell(className: string): HTMLDivElement {
   shell.addEventListener("pointerdown", stopEvent);
   shell.addEventListener("pointerup", stopEvent);
   shell.addEventListener("click", stopEvent);
+  playModalEnter(shell);
   return shell;
 }
