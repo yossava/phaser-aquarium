@@ -4,16 +4,16 @@ import { gameHeight, gameWidth, maxRenderScale } from "../game/constants";
 import { formatNumber } from "../game/economy";
 import { gameFontFamily } from "../game/fonts";
 
-export const ShellBalanceSceneKey = "ShellBalanceScene";
+export const ReefDropSceneKey = "ReefDropScene";
 
-export type ShellBalanceResult = {
+export type ReefDropResult = {
   score: number;
   caughtCount: number;
   mismatchCount: number;
 };
 
-type ShellBalanceSceneData = {
-  onComplete?: (result: ShellBalanceResult) => void;
+type ReefDropSceneData = {
+  onComplete?: (result: ReefDropResult) => void;
   onCancel?: () => void;
   productionPerMinute?: number;
 };
@@ -58,7 +58,6 @@ const brickTextureKey = "stack-target-brick";
 const brickWidth = 92;
 const brickHeight = 22;
 const movingBrickCount = 4;
-const brickLevels = [0.34, 0.48, 0.62, 0.76];
 const brickSweepSpeed = 1.38;
 const brickCorrectFlashColor = 0x54ff76;
 const brickWrongFlashColor = 0xff4d55;
@@ -69,7 +68,7 @@ const doneButtonY = 44 + topSafeOffset;
 const commonCoinIconPath = "/assets/ui/icon-common-coin.png";
 const coinCollectSoundKey = "sfx-coin-collect";
 const helperPieceScale = 1.28;
-const rewardPerHitMultiplier = 0.5;
+const rewardPerHitMultiplier = 0.2;
 const gameDurationMs = 120000;
 const helperVisualOriginYById: Record<string, number> = {
   "auto-cleaner": 0.25,
@@ -93,8 +92,8 @@ const brickHelperYOffsetById: Record<string, number> = {
 };
 const stackHelperTypes = helperCreatureTypes.filter((helperType) => helperType.id !== "shrimp");
 
-export class ShellBalanceScene extends Phaser.Scene {
-  private onComplete?: (result: ShellBalanceResult) => void;
+export class ReefDropScene extends Phaser.Scene {
+  private onComplete?: (result: ReefDropResult) => void;
   private onCancel?: () => void;
   private pieces: StackPiece[] = [];
   private activePiece?: StackPiece;
@@ -119,7 +118,7 @@ export class ShellBalanceScene extends Phaser.Scene {
 
   constructor() {
     super({
-      key: ShellBalanceSceneKey,
+      key: ReefDropSceneKey,
       physics: {
         matter: {
           debug: false,
@@ -129,7 +128,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     });
   }
 
-  init(data: ShellBalanceSceneData): void {
+  init(data: ReefDropSceneData): void {
     this.onComplete = data.onComplete;
     this.onCancel = data.onCancel;
     this.productionPerMinute = Math.max(0, data.productionPerMinute ?? 0);
@@ -341,7 +340,7 @@ export class ShellBalanceScene extends Phaser.Scene {
     }
 
     this.movingBricks = brickSources.map((source, index) => {
-      const y = Math.round(gameHeight * brickLevels[index]);
+      const y = Math.round(Phaser.Math.Linear(dropGuideY + 70, floorTopY - brickHeight / 2, index / Math.max(1, brickSources.length - 1)));
       const minX = brickWidth / 2 + 14;
       const maxX = gameWidth - brickWidth / 2 - 14;
       const startX = Phaser.Math.Linear(minX, maxX, (index + 1) / (brickSources.length + 1));
@@ -421,7 +420,7 @@ export class ShellBalanceScene extends Phaser.Scene {
       stroke: "#062840",
       strokeThickness: 6
     };
-    this.add.text(22, 25 + topSafeOffset, "Fish Stack", titleStyle);
+    this.add.text(22, 25 + topSafeOffset, "Reef Drop", titleStyle);
 
     const statStyle: Phaser.Types.GameObjects.Text.TextStyle = {
       fontFamily: gameFontFamily,

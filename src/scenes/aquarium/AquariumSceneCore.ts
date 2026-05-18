@@ -372,7 +372,7 @@ import { createModalShell, type ModalAction } from "../../ui/modal";
 import type { AquariumTestSnapshot } from "../../test/aquarium-test-api";
 import { installAquariumTestHooks } from "../../test/aquarium-test-hooks";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../../types/mechanics";
-import { ShellBalanceScene, ShellBalanceSceneKey, type ShellBalanceResult } from "../ShellBalanceScene";
+import { ReefDropScene, ReefDropSceneKey, type ReefDropResult } from "../ReefDropScene";
 import {
   algaeParticleThreshold,
   algaeParticleTintColor,
@@ -2101,7 +2101,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private closePage(): void {
     const closingScreen = this.activeScreen;
-    this.removeShellBalanceScene();
+    this.removeReefDropScene();
     this.scene.resume("AquariumScene");
     this.scene.setVisible(true, "AquariumScene");
     this.scene.setActive(true, "AquariumScene");
@@ -2134,7 +2134,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private returnToTankScreen(): void {
-    this.removeShellBalanceScene();
+    this.removeReefDropScene();
     this.scene.resume("AquariumScene");
     this.scene.setVisible(true, "AquariumScene");
     this.scene.setActive(true, "AquariumScene");
@@ -2312,9 +2312,9 @@ export class AquariumSceneCore extends Phaser.Scene {
       ),
       this.createDrillMenuCard(
         menuIconAssetPathByKey["ui-game"],
-        "Fish Stack",
-        "Stack fish and balance the tower for rewards.",
-        () => this.openShellBalanceGame()
+        "Reef Drop",
+        "Drop helpers onto matching reef bricks for rewards.",
+        () => this.openReefDropGame()
       )
     );
     content.append(grid);
@@ -3328,7 +3328,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.prizeController().openPrizeMachineArcade();
   }
 
-  private openShellBalanceGame(): void {
+  private openReefDropGame(): void {
     this.placementMode = { kind: "none" };
     this.activeScreen = "prize";
     this.closeModal();
@@ -3339,27 +3339,27 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.gameHudOverlay?.classList.add("hidden");
     this.htmlFoodDock?.classList.add("hidden");
     this.destroyPrizeSpinContainer();
-    this.hideShellBalanceSceneImmediately();
-    this.scene.remove(ShellBalanceSceneKey);
-    this.scene.add(ShellBalanceSceneKey, ShellBalanceScene, false);
-    this.scene.launch(ShellBalanceSceneKey, {
+    this.hideReefDropSceneImmediately();
+    this.scene.remove(ReefDropSceneKey);
+    this.scene.add(ReefDropSceneKey, ReefDropScene, false);
+    this.scene.launch(ReefDropSceneKey, {
       productionPerMinute: this.activeFishProductionPerMinute(),
-      onComplete: (result: ShellBalanceResult) => this.completeShellBalanceGame(result),
-      onCancel: () => this.returnFromShellBalanceGame()
+      onComplete: (result: ReefDropResult) => this.completeReefDropGame(result),
+      onCancel: () => this.returnFromReefDropGame()
     });
-    this.scene.bringToTop(ShellBalanceSceneKey);
+    this.scene.bringToTop(ReefDropSceneKey);
     this.time.delayedCall(0, () => this.scene.pause("AquariumScene"));
   }
 
-  private completeShellBalanceGame(result: ShellBalanceResult): void {
+  private completeReefDropGame(result: ReefDropResult): void {
     const productionPerMinute = this.activeFishProductionPerMinute();
     const mismatchMultiplier = Math.max(0, 1 - result.mismatchCount * 0.05);
     const rewardCommonCoins = Math.max(0, Math.floor(result.caughtCount * productionPerMinute * mismatchMultiplier));
     earn(this.wallet, "common", rewardCommonCoins);
-    this.recordDailyQuestAction("fish-stack-game");
+    this.recordDailyQuestAction("reef-drop-game");
     this.recordDailyQuestAction("prize-game");
     this.saveNow();
-    this.returnFromShellBalanceGame();
+    this.returnFromReefDropGame();
   }
 
   private activeFishProductionPerMinute(): number {
@@ -3394,8 +3394,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     return Math.max(0, ...activeAges, ...storedAges);
   }
 
-  private returnFromShellBalanceGame(): void {
-    this.removeShellBalanceScene();
+  private returnFromReefDropGame(): void {
+    this.removeReefDropScene();
     this.scene.resume("AquariumScene");
     this.scene.setVisible(true, "AquariumScene");
     this.scene.setActive(true, "AquariumScene");
@@ -3405,47 +3405,47 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.syncHtmlPageOverlay();
   }
 
-  private hideShellBalanceSceneImmediately(): void {
-    let shellScene: Phaser.Scene;
+  private hideReefDropSceneImmediately(): void {
+    let reefDropScene: Phaser.Scene;
     try {
-      shellScene = this.scene.get(ShellBalanceSceneKey);
+      reefDropScene = this.scene.get(ReefDropSceneKey);
     } catch {
       return;
     }
-    if (!shellScene) {
+    if (!reefDropScene) {
       return;
     }
-    shellScene.input.enabled = false;
-    shellScene.tweens.killAll();
-    shellScene.time.removeAllEvents();
-    [...shellScene.children.getChildren()].forEach((child) => {
+    reefDropScene.input.enabled = false;
+    reefDropScene.tweens.killAll();
+    reefDropScene.time.removeAllEvents();
+    [...reefDropScene.children.getChildren()].forEach((child) => {
       (child as Phaser.GameObjects.GameObject & { setVisible?: (value: boolean) => unknown }).setVisible?.(false);
       child.destroy();
     });
-    shellScene.children.removeAll(true);
-    shellScene.cameras.cameras.forEach((camera) => {
+    reefDropScene.children.removeAll(true);
+    reefDropScene.cameras.cameras.forEach((camera) => {
       camera.visible = false;
     });
-    shellScene.sys.setVisible(false);
-    shellScene.sys.setActive(false);
+    reefDropScene.sys.setVisible(false);
+    reefDropScene.sys.setActive(false);
   }
 
-  private removeShellBalanceScene(): void {
-    let shellScene: Phaser.Scene;
+  private removeReefDropScene(): void {
+    let reefDropScene: Phaser.Scene;
     try {
-      shellScene = this.scene.get(ShellBalanceSceneKey);
+      reefDropScene = this.scene.get(ReefDropSceneKey);
     } catch {
       return;
     }
-    if (!shellScene) {
+    if (!reefDropScene) {
       return;
     }
-    this.hideShellBalanceSceneImmediately();
-    this.scene.setVisible(false, ShellBalanceSceneKey);
-    this.scene.setActive(false, ShellBalanceSceneKey);
-    this.scene.sleep(ShellBalanceSceneKey);
-    this.scene.stop(ShellBalanceSceneKey);
-    this.scene.remove(ShellBalanceSceneKey);
+    this.hideReefDropSceneImmediately();
+    this.scene.setVisible(false, ReefDropSceneKey);
+    this.scene.setActive(false, ReefDropSceneKey);
+    this.scene.sleep(ReefDropSceneKey);
+    this.scene.stop(ReefDropSceneKey);
+    this.scene.remove(ReefDropSceneKey);
   }
 
   private showPrizeMachineSpinner(): void {

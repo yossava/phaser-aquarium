@@ -3,7 +3,7 @@ import "./styles.css";
 import { gameHeight, gameWidth, renderScaleForDevice, shouldUseLowPowerMode } from "./game/constants";
 import { loadGameFonts } from "./game/fonts";
 import { AquariumScene } from "./scenes/AquariumScene";
-import { ShellBalanceScene } from "./scenes/ShellBalanceScene";
+import { ReefDropScene } from "./scenes/ReefDropScene";
 
 await loadGameFonts();
 
@@ -34,7 +34,7 @@ new Phaser.Game({
     target: lowPowerMode ? 45 : 60,
     min: 20
   },
-  scene: [AquariumScene, ShellBalanceScene],
+  scene: [AquariumScene, ReefDropScene],
   physics: {
     default: "arcade",
     matter: {

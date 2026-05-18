@@ -2330,11 +2330,11 @@ canvas {
 
   .aq-tank-menu-button {
     @apply pointer-events-auto absolute flex flex-col items-center border-0 bg-transparent p-0 text-white;
-    left: var(--aq-hud-edge-inset);
+    right: var(--aq-hud-edge-inset);
     width: clamp(58px, 16.5%, 76px);
     touch-action: manipulation;
     transform: scale(var(--aq-menu-scale));
-    transform-origin: top left;
+    transform-origin: top right;
     transition: opacity 150ms ease, transform 170ms ease, visibility 170ms ease;
   }
 
@@ -2486,7 +2486,7 @@ canvas {
   }
 
   .aq-game-level-badge::before {
-    @apply text-[0.62em] uppercase tracking-normal text-cyan-100/85 content-['Lv'];
+    @apply tracking-normal text-cyan-100/85 content-['Lv'];
   }
 
   .aq-game-level-badge span {
@@ -2898,9 +2898,9 @@ canvas {
     --food-dock-frame-offset: 286px;
     width: calc(clamp(46px, calc(var(--aq-tank-frame-width) / 100 * 13), 56px) + 8px);
     max-height: calc(var(--aq-tank-frame-height) - var(--food-dock-frame-offset) - 8px);
-    right: calc(var(--aq-viewport-width) - (var(--aq-tank-frame-left) + var(--aq-tank-frame-width)));
-    transform: translateX(calc(-1 * var(--aq-hud-edge-inset))) scale(var(--aq-dock-scale));
-    transform-origin: top right;
+    left: var(--aq-tank-frame-left);
+    transform: translateX(var(--aq-hud-edge-inset)) scale(var(--aq-dock-scale));
+    transform-origin: top left;
     scrollbar-width: none;
   }
 

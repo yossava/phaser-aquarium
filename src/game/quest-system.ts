@@ -179,7 +179,7 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
     { id: "tint-cosmetic", label: "Adjust tank cosmetic tint", complete: actionCount("tint-cosmetic") > 0, reward, priority: 14 },
     { id: "rename-tank", label: "Rename a tank", complete: actionCount("rename-tank") > 0, reward, priority: 10 },
     { id: "prize-game", label: "Play Treasure Spin", complete: actionCount("prize-game") > 0, reward, priority: cleanTankPriority + 1 },
-    { id: "fish-stack-game", label: "Play Fish Stack", complete: actionCount("fish-stack-game") > 0, reward: input.questReward, priority: cleanTankPriority },
+    { id: "reef-drop-game", label: "Play Reef Drop", complete: actionCount("reef-drop-game") > 0, reward: input.questReward, priority: cleanTankPriority },
     { id: "watch-ad", label: "Watch a rewarded ad", complete: actionCount("watch-ad") > 0, reward, priority: 21 },
     { id: "claim-ad", label: "Claim an ad reward", complete: actionCount("claim-ad") > 0, reward, priority: 20 },
     { id: "claim-food-ad", label: "Claim a food ad reward", complete: actionCount("claim-food-ad") > 0, reward, priority: 12 },
