@@ -526,6 +526,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private tankMenuPage = 1;
   private inventoryTab: InventoryTab = "fish";
   private inventoryDrillOpen = false;
+  private pageReturnScreen?: AppScreen;
   private fishCatalogLevel = 1;
   private selectedFishIndex?: number;
   private tankLayer!: Phaser.GameObjects.Container;
@@ -2065,6 +2066,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private openScreen(screen: Exclude<AppScreen, "tank">): void {
+    this.pageReturnScreen = undefined;
     this.activeScreen = screen;
     this.placementMode = { kind: "none" };
     if (screen === "album") {
@@ -2095,6 +2097,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.tankMenuDrillOpen = false;
     this.tankMenuPage = 1;
     this.openScreen("album");
+    this.pageReturnScreen = "tank";
     this.inventoryTab = "fish";
     this.inventoryDrillOpen = true;
     this.syncHtmlPageOverlay();
@@ -2106,6 +2109,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.scene.resume("AquariumScene");
     this.scene.setVisible(true, "AquariumScene");
     this.scene.setActive(true, "AquariumScene");
+    const explicitReturnScreen = this.pageReturnScreen;
+    this.pageReturnScreen = undefined;
     const returnToMainMenu = closingScreen !== "tank" && closingScreen !== "menu" && closingScreen !== "goals";
     this.cancelPendingFusion();
     this.prizeSpinInProgress = false;
@@ -2115,7 +2120,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.makeupOverlay?.classList.add("hidden");
       this.makeupDraggedDecoration = undefined;
     }
-    this.activeScreen = returnToMainMenu ? "menu" : "tank";
+    this.activeScreen = explicitReturnScreen ?? (returnToMainMenu ? "menu" : "tank");
     this.tankMenuDrillOpen = false;
     this.inventoryDrillOpen = false;
     this.tankMenuPage = 1;

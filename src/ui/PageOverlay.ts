@@ -111,14 +111,16 @@ export function syncPageOverlay(input: PageOverlaySyncInput): PageOverlaySyncRes
     };
   }
 
-  const overlay = input.overlay ?? input.createOverlay();
+  const existingOverlay = input.overlay;
+  const overlay = existingOverlay ?? input.createOverlay();
+  const wasHidden = !existingOverlay || overlay.classList.contains("hidden") || overlay.childElementCount === 0;
   const previousKey = input.renderKey;
   const scrollTop = capturePageScrollTop(overlay);
   const nextKey = input.getRenderKey();
   overlay.className = "aq-page-shell";
   overlay.classList.remove("hidden");
   overlay.replaceChildren(input.createPage());
-  if (previousKey !== nextKey) {
+  if (wasHidden || previousKey !== nextKey) {
     playHtmlPageTransition(overlay, input.reducedMotion);
   }
   installHtmlInputShield(overlay);
