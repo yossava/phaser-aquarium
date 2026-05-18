@@ -1035,6 +1035,112 @@ canvas {
     @apply grid w-full grid-cols-2 gap-1;
   }
 
+  .aq-fish-transfer-board {
+    @apply flex flex-col gap-2;
+  }
+
+  .aq-fish-transfer-header {
+    @apply flex items-end justify-between gap-2;
+  }
+
+  .aq-fish-transfer-copy {
+    @apply mb-2 max-w-[52%] text-right text-[11px] font-extrabold leading-tight text-cyan-100/72;
+  }
+
+  .aq-fish-transfer-zones {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .aq-fish-transfer-zone {
+    @apply min-h-[420px] rounded-2xl border-2 border-cyan-100/20 bg-sky-950/28 p-2 transition-colors;
+  }
+
+  .aq-fish-transfer-zone.is-drop-target {
+    @apply border-yellow-200 bg-cyan-700/45;
+  }
+
+  .aq-fish-transfer-zone-head {
+    @apply mb-2 flex items-center justify-between gap-2 rounded-xl bg-cyan-950/45 px-2 py-1.5;
+  }
+
+  .aq-fish-transfer-zone-head strong {
+    @apply truncate text-sm font-black leading-none text-white;
+  }
+
+  .aq-fish-transfer-zone-head span {
+    @apply shrink-0 rounded-full bg-sky-500 px-2 py-0.5 text-xs font-black leading-none text-white;
+  }
+
+  .aq-fish-transfer-list {
+    @apply grid gap-2;
+  }
+
+  .aq-fish-transfer-list:has(.aq-fish-transfer-card) .aq-fish-transfer-empty {
+    @apply hidden;
+  }
+
+  .aq-fish-transfer-empty {
+    @apply flex min-h-[116px] flex-col items-center justify-center rounded-xl border border-dashed border-cyan-100/28 px-2 text-center;
+  }
+
+  .aq-fish-transfer-empty strong {
+    @apply text-sm font-black leading-tight text-white;
+  }
+
+  .aq-fish-transfer-empty span {
+    @apply mt-1 text-[11px] font-bold leading-tight text-cyan-100/68;
+  }
+
+  .aq-fish-transfer-card {
+    @apply grid touch-none select-none grid-cols-[54px_minmax(0,1fr)] gap-2 rounded-xl border border-cyan-100/22 bg-sky-800/90 p-2 text-left shadow-none transition-opacity;
+    box-shadow:
+      inset 0 2px 4px rgba(255, 255, 255, 0.12),
+      inset 0 -8px 18px rgba(0, 45, 92, 0.22);
+  }
+
+  .aq-fish-transfer-card.is-dragging {
+    @apply opacity-40;
+  }
+
+  .aq-fish-transfer-image-wrap {
+    @apply relative flex h-[54px] w-[54px] items-center justify-center rounded-xl bg-cyan-100/12;
+  }
+
+  .aq-fish-transfer-image {
+    @apply h-10 w-12 object-contain drop-shadow-lg;
+  }
+
+  .aq-fish-transfer-badge {
+    @apply absolute -bottom-1 -right-1 rounded-full border border-white/70 bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white;
+  }
+
+  .aq-fish-transfer-card-body {
+    @apply min-w-0;
+  }
+
+  .aq-fish-transfer-card-body h3 {
+    @apply truncate text-sm font-black leading-tight text-white;
+  }
+
+  .aq-fish-transfer-card-body p {
+    @apply mt-0.5 truncate text-[11px] font-extrabold leading-tight text-cyan-100/78;
+  }
+
+  .aq-fish-transfer-card-body small {
+    @apply mt-0.5 line-clamp-2 text-[10px] font-bold leading-tight text-cyan-50/78;
+  }
+
+  .aq-fish-transfer-action {
+    @apply col-span-2 min-h-8 w-full px-1.5 py-1 text-[11px];
+  }
+
+  .aq-fish-transfer-ghost {
+    @apply pointer-events-none fixed left-0 top-0 z-[10000] w-[min(210px,44vw)] rotate-2 opacity-95;
+    margin: 0;
+    transform-origin: left top;
+    filter: drop-shadow(0 12px 18px rgba(0, 20, 44, 0.38));
+  }
+
   .aq-fusion-page {
     @apply flex flex-col overflow-hidden rounded-[22px] border border-sky-500/60 bg-[#062f68] pb-4;
     box-shadow: none;
