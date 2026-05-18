@@ -1682,7 +1682,14 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
-    this.htmlFoodDock.style.setProperty("--food-dock-top", `${foodDockTopBelowMenu}px`);
+    const rect = this.game.canvas.getBoundingClientRect();
+    const viewportHeight = Math.max(1, window.innerHeight);
+    const frameTop = Phaser.Math.Clamp(rect.top, 0, viewportHeight);
+    const frameBottom = Phaser.Math.Clamp(rect.bottom, 0, viewportHeight);
+    const frameHeight = Math.max(1, frameBottom - frameTop);
+    const frameOffset = (foodDockTopBelowMenu / gameHeight) * frameHeight;
+    this.htmlFoodDock.style.setProperty("--food-dock-screen-top", `${Math.round(frameTop + frameOffset)}px`);
+    this.htmlFoodDock.style.setProperty("--food-dock-frame-offset", `${Math.round(frameOffset)}px`);
   }
 
   private createHtmlFoodDock(): HTMLDivElement {

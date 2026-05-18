@@ -2329,13 +2329,17 @@ canvas {
   }
 
   .aq-tank-menu-button {
-    @apply pointer-events-auto absolute flex -translate-y-1/2 flex-col items-center border-0 bg-transparent p-0 text-white;
+    @apply pointer-events-auto absolute flex flex-col items-center border-0 bg-transparent p-0 text-white;
     left: var(--aq-hud-edge-inset);
     width: clamp(58px, 16.5%, 76px);
     touch-action: manipulation;
-    transform: translateY(-50%) scale(var(--aq-menu-scale));
-    transform-origin: center left;
+    transform: scale(var(--aq-menu-scale));
+    transform-origin: top left;
     transition: opacity 150ms ease, transform 170ms ease, visibility 170ms ease;
+  }
+
+  .aq-tank-menu-button-plain {
+    width: clamp(46px, calc(var(--aq-tank-frame-width) / 100 * 13), 56px);
   }
 
   .aq-tank-menu-bubble {
@@ -2351,7 +2355,7 @@ canvas {
 
   .aq-tank-menu-bubble-plain {
     @apply rounded-full;
-    width: 86%;
+    width: 100%;
     background:
       radial-gradient(circle at 40% 32%, rgba(255, 255, 255, 0.5), rgba(198, 246, 255, 0.2) 35%, rgba(61, 194, 235, 0.28) 72%, rgba(0, 92, 143, 0.32));
     box-shadow:
@@ -2387,7 +2391,7 @@ canvas {
   }
 
   .aq-tank-menu-bubble img.aq-tank-menu-icon-small {
-    @apply h-[86%] w-[86%];
+    @apply h-[76%] w-[76%];
   }
 
   .aq-tank-menu-button-plain .aq-tank-menu-bubble img {
@@ -2889,12 +2893,13 @@ canvas {
   }
 
   .aq-food-dock {
-    @apply pointer-events-none fixed top-0 z-40 flex flex-col items-end gap-[10px] overflow-y-auto pb-4 pl-2 pt-1;
-    --food-dock-top: 286px;
-    width: min(24vw, 100px);
-    max-height: calc(var(--aq-tank-frame-height) - var(--food-dock-top) - 8px);
+    @apply pointer-events-none fixed z-40 flex flex-col items-end gap-[10px] overflow-y-auto pb-4 pl-2 pr-1 pt-1;
+    top: var(--food-dock-screen-top, var(--aq-tank-frame-top));
+    --food-dock-frame-offset: 286px;
+    width: calc(clamp(46px, calc(var(--aq-tank-frame-width) / 100 * 13), 56px) + 8px);
+    max-height: calc(var(--aq-tank-frame-height) - var(--food-dock-frame-offset) - 8px);
     right: calc(var(--aq-viewport-width) - (var(--aq-tank-frame-left) + var(--aq-tank-frame-width)));
-    transform: translate(calc(-1 * var(--aq-hud-edge-inset)), var(--food-dock-top)) scale(var(--aq-dock-scale));
+    transform: translateX(calc(-1 * var(--aq-hud-edge-inset))) scale(var(--aq-dock-scale));
     transform-origin: top right;
     scrollbar-width: none;
   }
@@ -2904,7 +2909,7 @@ canvas {
   }
 
   .aq-food-dock-pager {
-    @apply pointer-events-auto grid w-[clamp(58px,16.5vw,76px)] grid-cols-[1fr_auto_1fr] items-center gap-1 rounded-full bg-sky-950/42 p-1;
+    @apply pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 rounded-full bg-sky-950/42 p-1;
   }
 
   .aq-food-dock-page-button {
@@ -2969,12 +2974,12 @@ canvas {
 
   .aq-food-button {
     @apply pointer-events-auto flex flex-col items-center border-0 bg-transparent p-0 text-white;
-    width: clamp(58px, 16.5vw, 76px);
+    width: clamp(46px, calc(var(--aq-tank-frame-width) / 100 * 13), 56px);
     touch-action: none;
   }
 
   .aq-food-button-bubble {
-    @apply relative flex aspect-square w-[76%] items-center justify-center rounded-full;
+    @apply relative flex aspect-square w-[clamp(46px,calc(var(--aq-tank-frame-width)/100*13),56px)] items-center justify-center rounded-full;
     transition: transform 90ms ease, filter 90ms ease, box-shadow 90ms ease;
     background:
       radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02) 52%, rgba(180, 244, 255, 0.35) 76%, rgba(255, 255, 255, 0.2));
@@ -2995,7 +3000,7 @@ canvas {
   }
 
   .aq-food-button-bubble img {
-    @apply h-[86%] w-[86%] object-contain drop-shadow-lg;
+    @apply h-[76%] w-[76%] object-contain drop-shadow-lg;
     transition: transform 90ms ease;
   }
 
