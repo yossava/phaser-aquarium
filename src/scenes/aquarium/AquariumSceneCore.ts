@@ -1385,7 +1385,8 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
-    const y = this.coinMagnetRayY();
+    const magnetPoint = this.coinMagnetRayPoint();
+    const y = magnetPoint.y;
     this.coinMagnetRay.setVisible(true);
     this.coinMagnetRay.lineStyle(16, 0x55ff8a, 0.04);
     this.coinMagnetRay.beginPath();
@@ -4635,7 +4636,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
-    const position = new Phaser.Math.Vector2(tankBounds.left, this.coinMagnetRayY());
+    const position = this.coinMagnetRayPoint();
     for (const coin of this.coinDrops) {
       const previousY = this.coinMagnetPreviousCoinY.get(coin) ?? coin.sprite.y;
       this.coinMagnetPreviousCoinY.set(coin, coin.sprite.y);
@@ -4713,7 +4714,30 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private coinMagnetRayY(): number {
-    return Phaser.Math.Clamp(this.coinMagnetTankPosition().y + coinMagnetRayYOffset, this.foodDispenserMinY(), this.foodDispenserMaxY());
+    return this.coinMagnetRayPoint().y;
+  }
+
+  private coinMagnetRayPoint(): Phaser.Math.Vector2 {
+    const icon = this.coinMagnetElement?.querySelector("img");
+    const iconRect = icon?.getBoundingClientRect();
+    const canvasRect = this.game.canvas.getBoundingClientRect();
+    if (iconRect && iconRect.width > 0 && iconRect.height > 0 && canvasRect.width > 0 && canvasRect.height > 0) {
+      const rayClientX = iconRect.left + iconRect.width * 0.18;
+      const rayClientY = iconRect.top + iconRect.height * 0.22;
+      const designX = ((rayClientX - canvasRect.left) / canvasRect.width) * gameWidth;
+      const designY = ((rayClientY - canvasRect.top) / canvasRect.height) * gameHeight;
+      const tankPoint = this.screenToTankPoint(designX, designY);
+      return new Phaser.Math.Vector2(
+        Phaser.Math.Clamp(tankPoint.x, tankBounds.left, tankBounds.right),
+        Phaser.Math.Clamp(tankPoint.y, this.foodDispenserMinY(), this.foodDispenserMaxY())
+      );
+    }
+
+    const fallback = this.coinMagnetTankPosition();
+    return new Phaser.Math.Vector2(
+      fallback.x,
+      Phaser.Math.Clamp(fallback.y + coinMagnetRayYOffset, this.foodDispenserMinY(), this.foodDispenserMaxY())
+    );
   }
 
   private autoFoodBuyerTankPosition(): Phaser.Math.Vector2 {

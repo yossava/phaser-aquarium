@@ -130,7 +130,7 @@ export const productionBoostDurationMs = 30 * 1000;
 export const autoFoodBuyerPurchaseCooldownMs = 3500;
 export const autoFoodBuyerPurchaseQuantity = 10;
 export const coinMagnetAttractDurationMs = 260;
-export const coinMagnetAttractScale = 0.44;
+export const coinMagnetAttractScale = 0.08;
 export const coinMagnetRayYOffset = -40;
 export const coinAssetPathByType: Record<CoinType, string> = {
   common: "/assets/ui/icon-common-coin.png",
