@@ -60,14 +60,15 @@
 html,
 body {
   width: 100%;
-  height: 100%;
+  height: var(--aq-viewport-height);
   margin: 0;
   overflow: hidden;
   background: #071b2a;
 }
 
 #app {
-  position: relative;
+  position: fixed;
+  inset: 0;
   width: var(--aq-stage-width);
   height: var(--aq-viewport-height);
   margin: 0 auto;
@@ -2297,7 +2298,7 @@ canvas {
   .aq-tank-menu {
     @apply fixed left-1/2 top-0 z-40 pointer-events-none;
     width: var(--aq-stage-width);
-    height: 100dvh;
+    height: var(--aq-viewport-height);
     transform: translateX(-50%);
   }
 
@@ -2393,7 +2394,7 @@ canvas {
   .aq-game-hud {
     @apply pointer-events-none fixed left-1/2 top-0 z-30;
     width: var(--aq-stage-width);
-    height: 100dvh;
+    height: var(--aq-viewport-height);
     transform: translateX(-50%);
   }
 
@@ -2864,8 +2865,8 @@ canvas {
     @apply pointer-events-none fixed top-0 z-40 flex flex-col items-end gap-[10px] overflow-y-auto pb-4 pl-2 pt-1;
     --food-dock-top: 286px;
     width: min(24vw, 100px);
-    max-height: calc(100dvh - var(--food-dock-top) - 8px);
-    right: calc((100vw - var(--aq-stage-width)) / 2);
+    max-height: calc(var(--aq-viewport-height) - var(--food-dock-top) - 8px);
+    right: calc((var(--aq-viewport-width) - var(--aq-stage-width)) / 2);
     transform: translate(calc(-1 * var(--aq-hud-edge-inset)), var(--food-dock-top)) scale(var(--aq-dock-scale));
     transform-origin: top right;
     scrollbar-width: none;
@@ -2893,7 +2894,7 @@ canvas {
     @apply pointer-events-auto fixed z-40 grid place-items-center rounded-full border border-white/15 bg-sky-100/5;
     width: clamp(70px, 19vw, 88px);
     height: clamp(70px, 19vw, 88px);
-    left: calc((100vw - var(--aq-stage-width)) / 2 + var(--aq-stage-width) / 2);
+    left: calc((var(--aq-viewport-width) - var(--aq-stage-width)) / 2 + var(--aq-stage-width) / 2);
     bottom: max(132px, calc(env(safe-area-inset-bottom) + 120px));
     transform: translateX(-50%);
     touch-action: none;

@@ -43,7 +43,7 @@ new Phaser.Game({
   },
   scale: {
     mode: Phaser.Scale.ENVELOP,
-    autoCenter: Phaser.Scale.CENTER_HORIZONTALLY
+    autoCenter: Phaser.Scale.CENTER_BOTH
   }
 });
 
