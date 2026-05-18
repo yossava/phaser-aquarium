@@ -114,6 +114,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   private gameEndsAt = 0;
   private nativeTapCleanup?: () => void;
   private resultClaimBounds?: Phaser.Geom.Rectangle;
+  private cameraZoom = 1;
 
   constructor() {
     super({
@@ -205,20 +206,57 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private configureCameraForHighDpi(): void {
-    const renderScale = this.currentRenderScale();
+    const { zoom, scrollX, scrollY } = this.visibleViewportCameraState();
+    this.cameraZoom = zoom;
     this.cameras.main.setOrigin(0, 0);
-    this.cameras.main.setZoom(renderScale);
-    this.cameras.main.setScroll(0, 0);
+    this.cameras.main.setZoom(zoom);
+    this.cameras.main.setScroll(scrollX, scrollY);
     this.cameras.main.setBackgroundColor("#083b5c");
   }
 
   private currentRenderScale(): number {
-    return Phaser.Math.Clamp(this.scale.gameSize.width / gameWidth, 1, maxRenderScale);
+    return this.cameraZoom;
+  }
+
+  private visibleViewportCameraState(): { zoom: number; scrollX: number; scrollY: number } {
+    const canvas = this.game.canvas;
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      const fallbackZoom = Phaser.Math.Clamp(this.scale.gameSize.width / gameWidth, 1, maxRenderScale);
+      return { zoom: fallbackZoom, scrollX: 0, scrollY: 0 };
+    }
+
+    const viewportLeft = 0;
+    const viewportTop = 0;
+    const viewportRight = window.innerWidth;
+    const viewportBottom = window.innerHeight;
+    const visibleCssLeft = Phaser.Math.Clamp(viewportLeft - rect.left, 0, rect.width);
+    const visibleCssTop = Phaser.Math.Clamp(viewportTop - rect.top, 0, rect.height);
+    const visibleCssRight = Phaser.Math.Clamp(viewportRight - rect.left, 0, rect.width);
+    const visibleCssBottom = Phaser.Math.Clamp(viewportBottom - rect.top, 0, rect.height);
+    const cssToCanvasX = canvas.width / rect.width;
+    const cssToCanvasY = canvas.height / rect.height;
+    const visibleCanvasLeft = visibleCssLeft * cssToCanvasX;
+    const visibleCanvasTop = visibleCssTop * cssToCanvasY;
+    const visibleCanvasWidth = Math.max(1, (visibleCssRight - visibleCssLeft) * cssToCanvasX);
+    const visibleCanvasHeight = Math.max(1, (visibleCssBottom - visibleCssTop) * cssToCanvasY);
+    const zoom = Phaser.Math.Clamp(
+      Math.min(visibleCanvasWidth / gameWidth, visibleCanvasHeight / gameHeight),
+      0.5,
+      maxRenderScale
+    );
+    const marginX = Math.max(0, (visibleCanvasWidth - gameWidth * zoom) / 2);
+    const marginY = Math.max(0, (visibleCanvasHeight - gameHeight * zoom) / 2);
+    return {
+      zoom,
+      scrollX: -((visibleCanvasLeft + marginX) / zoom),
+      scrollY: -((visibleCanvasTop + marginY) / zoom)
+    };
   }
 
   private pointerDesignPoint(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
-    const renderScale = this.currentRenderScale();
-    return new Phaser.Math.Vector2(pointer.x / renderScale, pointer.y / renderScale);
+    const camera = this.cameras.main;
+    return new Phaser.Math.Vector2(pointer.x / this.currentRenderScale() + camera.scrollX, pointer.y / this.currentRenderScale() + camera.scrollY);
   }
 
   private createBackdrop(): void {
@@ -535,9 +573,11 @@ export class ShellBalanceScene extends Phaser.Scene {
 
   private clientDesignPoint(clientX: number, clientY: number): Phaser.Math.Vector2 {
     const rect = this.game.canvas.getBoundingClientRect();
+    const camera = this.cameras.main;
+    const zoom = this.currentRenderScale();
     return new Phaser.Math.Vector2(
-      (clientX - rect.left) * (gameWidth / rect.width),
-      (clientY - rect.top) * (gameHeight / rect.height)
+      ((clientX - rect.left) * (this.game.canvas.width / rect.width)) / zoom + camera.scrollX,
+      ((clientY - rect.top) * (this.game.canvas.height / rect.height)) / zoom + camera.scrollY
     );
   }
 

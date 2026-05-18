@@ -11,6 +11,9 @@ export function playButtonPressMotion(element: MotionTarget, compact = false): v
   if (shouldReduceDomMotion() || element.hasAttribute("disabled")) {
     return;
   }
+  if (element.classList.contains("aq-tank-menu-button")) {
+    return;
+  }
 
   element.getAnimations().forEach((animation) => {
     if (animation instanceof Animation && animation.id === "aq-button-press") {
