@@ -2,7 +2,7 @@ import Phaser from "phaser";
 
 export const gameWidth = 430;
 export const gameHeight = 844;
-export const maxRenderScale = 2;
+export const maxRenderScale = 3;
 export const tankViewportBounds = new Phaser.Geom.Rectangle(0, 0, gameWidth, gameHeight);
 export const tankBounds = new Phaser.Geom.Rectangle(0, 0, gameWidth, gameHeight);
 export const controlPanelTop = 62;
@@ -20,7 +20,7 @@ export function deviceMemoryGb(): number | undefined {
 
 export function shouldUseLowPowerMode(): boolean {
   const memory = deviceMemoryGb();
-  if (memory !== undefined && memory <= 4) {
+  if (memory !== undefined && memory <= 2) {
     return true;
   }
 
@@ -29,7 +29,7 @@ export function shouldUseLowPowerMode(): boolean {
 
 export function renderScaleForDevice(devicePixelRatio = typeof window === "undefined" ? 1 : window.devicePixelRatio): number {
   const memory = deviceMemoryGb();
-  const deviceCap = memory !== undefined && memory <= 2 ? 1 : shouldUseLowPowerMode() ? 1.5 : maxRenderScale;
+  const deviceCap = memory !== undefined && memory <= 2 ? 1.5 : maxRenderScale;
   return Math.min(deviceCap, maxRenderScale, Math.max(1, devicePixelRatio || 1));
 }
 
