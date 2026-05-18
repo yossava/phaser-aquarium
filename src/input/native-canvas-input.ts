@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { tankViewportBounds } from "../game/constants";
-import type { PendingFishBubble } from "../game/fish-delivery-bubbles";
 import type { MakeupDecorationDraft } from "../game/makeup-mode";
 import type { PlacedDecoration } from "../game/tank-entities";
 import type { CoinDrop } from "../objects/CoinDrop";
@@ -22,8 +21,6 @@ export function installNativeCanvasInputFallback(input: {
   beginMakeupDecorationDrag: (decoration: MakeupDecorationDraft) => void;
   updateMakeupDecorationDragAtDesignPoint: (point: Phaser.Math.Vector2) => void;
   endMakeupDecorationDrag: () => void;
-  fishBubbleAtPointer: (designX: number, designY: number) => PendingFishBubble | undefined;
-  popFishBubble: (pending: PendingFishBubble) => void;
   coinAtPointer: (designX: number, designY: number) => CoinDrop | undefined;
   collectCoin: (coin: CoinDrop, automated: boolean) => void;
   fishAtPointer: (designX: number, designY: number) => Fish | undefined;
@@ -174,14 +171,6 @@ export function installNativeCanvasInputFallback(input: {
     }
 
     if (input.activeScreen() !== "tank") {
-      return;
-    }
-
-    const tappedFishBubble = input.fishBubbleAtPointer(point.x, point.y);
-    if (tappedFishBubble) {
-      event.preventDefault();
-      event.stopPropagation();
-      input.popFishBubble(tappedFishBubble);
       return;
     }
 

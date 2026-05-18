@@ -43,7 +43,6 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.updateAutoFoodBuyer(tankFish);
   scene.updateFoodDispenser(tankFish);
   scene.updatePendingHelperCreatureDrops(deltaSeconds);
-  scene.fishDeliveryBubbles?.update(deltaSeconds, now);
   scene.updateHelperCreatures(deltaSeconds, activeHelpers, progressDeltaSeconds);
   scene.updateTankCleanliness(progressDeltaSeconds, tankFish.length);
   scene.updateDirtyTankOverlay();

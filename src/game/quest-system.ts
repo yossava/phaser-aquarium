@@ -145,7 +145,6 @@ export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQue
     { id: "buy-super-fish", label: "Buy a super rare fish", complete: input.fishPurchaseCount("superRare") > 0, reward, priority: 19 },
     { id: "place-fish", label: "Drag a fish into the tank", complete: actionCount("place-fish") > 0 || input.activeFishCount > 0, reward, priority: input.activeFishCount <= 0 ? 90 : 38 },
     { id: "own-5-fish", label: "Own 5 fish", complete: input.activeFishCount + input.storedFishCount >= 5, reward, priority: input.activeFishCount + input.storedFishCount >= 4 ? 45 : 18 },
-    { id: "pop-fish-bubble", label: "Tap a delivery fish bubble", complete: actionCount("pop-fish-bubble") > 0, reward, priority: input.activeFishCount <= 0 ? 86 : 37 },
     { id: "move-fish", label: "Move a fish", complete: actionCount("move-fish") > 0, reward, priority: input.activeFishCount > 0 ? 31 : 9 },
     { id: "sell-fish", label: "Sell a fish", complete: actionCount("sell-fish") > 0, reward, priority: input.activeFishCount > 1 || input.storedFishCount > 0 ? 30 : 7 },
     { id: "sell-active-fish", label: "Sell a tank fish", complete: actionCount("sell-active-fish") > 0, reward, priority: input.activeFishCount > 1 ? 29 : 7 },

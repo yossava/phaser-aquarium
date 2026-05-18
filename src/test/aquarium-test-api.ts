@@ -8,7 +8,6 @@ export type AquariumTestSnapshot = {
   foodInventory: number;
   foodInventoryByType: Record<string, number>;
   fishInventoryByType: Record<string, number>;
-  fishDeliveryBubbleCount: number;
   timeCurrentRemainingSeconds: number;
   tankActivitySpeedMultiplier: number;
   foodBuyQuantities: Record<string, number>;

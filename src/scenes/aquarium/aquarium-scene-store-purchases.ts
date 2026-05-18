@@ -42,11 +42,10 @@ type TankCosmeticUseAdapter = StorePurchaseSceneAdapter & {
 };
 
 type FishPurchaseAdapter = StorePurchaseSceneAdapter & {
-  addFishToInventory: (fishType: FishType, quantity: number, showBubble: boolean) => void;
+  addFishToInventory: (fishType: FishType, quantity: number) => void;
+  addFishToTank: (fishType: FishType, x: number, y: number) => void;
   recordFishPurchase: (fishType: FishType) => void;
   randomFishPlacement: () => { x: number; y: number };
-  spawnFishTankBubble: (fishType: FishType, x: number, y: number) => void;
-  spawnFishInventoryBubble: (fishType: FishType, quantity: number) => void;
 };
 
 type FoodPurchaseAdapter = StorePurchaseSceneAdapter & {
@@ -129,7 +128,7 @@ export function executeFishPurchase(adapter: FishPurchaseAdapter, fishType: Fish
   }
 
   if (purchasePlan.inventoryQuantity > 0) {
-    adapter.addFishToInventory(fishType, purchasePlan.inventoryQuantity, false);
+    adapter.addFishToInventory(fishType, purchasePlan.inventoryQuantity);
   }
   for (let index = 0; index < purchasePlan.buyQuantity; index += 1) {
     adapter.recordFishPurchase(fishType);
@@ -139,18 +138,14 @@ export function executeFishPurchase(adapter: FishPurchaseAdapter, fishType: Fish
 
   for (let index = 0; index < purchasePlan.tankDeliveryQuantity; index += 1) {
     const position = adapter.randomFishPlacement();
-    adapter.spawnFishTankBubble(fishType, position.x, position.y);
-  }
-
-  if (purchasePlan.inventoryQuantity > 0) {
-    adapter.spawnFishInventoryBubble(fishType, purchasePlan.inventoryQuantity);
+    adapter.addFishToTank(fishType, position.x, position.y);
   }
 
   adapter.setRecentInventoryDockItemKey("fish-menu:fish-menu");
   adapter.setPlacementMode({ kind: "none" });
   adapter.floatText(
     purchasePlan.tankDeliveryQuantity > 0
-      ? `${fishType.name} ${purchasePlan.tankDeliveryQuantity > 1 ? `x${formatNumber(purchasePlan.tankDeliveryQuantity)} ` : ""}in tank bubble`
+      ? `${fishType.name} ${purchasePlan.tankDeliveryQuantity > 1 ? `x${formatNumber(purchasePlan.tankDeliveryQuantity)} ` : ""}in tank`
       : `${fishType.name} x${formatNumber(purchasePlan.buyQuantity)} in inventory`,
     successColor
   );

@@ -64,7 +64,7 @@ export function createAquariumPrizeControllerHost(scene: AquariumSceneCore): Aqu
     coinSellValue: (coinType, count) => source.coinSellValue(coinType, count),
     storedFishSellValue: (fishType) => source.storedFishSellValue(fishType),
     sanitizeDecorationSize: (size) => source.sanitizeDecorationSize(size),
-    addFishToInventory: (fishType, showBubble = true) => source.addFishToInventory(fishType, 1, showBubble),
+    addFishToInventory: (fishType) => source.addFishToInventory(fishType),
     setPrizeCommonFish: (fishType) => {
       source.prizeCommonFish = fishType;
     },

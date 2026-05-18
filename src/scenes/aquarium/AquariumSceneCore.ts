@@ -65,7 +65,6 @@ import {
   type CoinComboState,
   type CoinDropOptions
 } from "../../game/coin-production";
-import { FishDeliveryBubbleManager, type PendingFishBubble } from "../../game/fish-delivery-bubbles";
 import {
   chooseBreedBabyType as chooseBreedBabyTypeModel,
   findBreedMate as findBreedMateModel
@@ -494,7 +493,6 @@ export class AquariumSceneCore extends Phaser.Scene {
   private activeAirStoneBubbles = new Set<Phaser.GameObjects.Arc>();
   private helperCreatures: HelperCreature[] = [];
   private pendingHelperCreatureDrops: PendingHelperCreatureDrop[] = [];
-  private fishDeliveryBubbles?: FishDeliveryBubbleManager;
   private aquariumEntityController?: AquariumEntityController;
   private aquariumFoodRuntimeController?: AquariumFoodController;
   private placementMode: PlacementMode = { kind: "none" };
@@ -680,16 +678,6 @@ export class AquariumSceneCore extends Phaser.Scene {
       frameRate: 10,
       repeat: -1
     });
-  }
-
-  private fishBubbleManager(): FishDeliveryBubbleManager {
-    this.fishDeliveryBubbles ??= new FishDeliveryBubbleManager(
-      this,
-      this.tankLayer,
-      (fishType, onLoad) => this.ensureFishTexturesLoaded(fishType, onLoad),
-      (pending) => this.handleFishBubblePop(pending)
-    );
-    return this.fishDeliveryBubbles;
   }
 
   public update(_time: number, delta: number): void {
@@ -2043,7 +2031,6 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.coinComboOverlay = undefined;
     this.destroyPrizeSpinContainer();
     this.destroyTankMenuOverlay();
-    this.fishDeliveryBubbles?.destroyAll();
     this.storeOverlay?.destroy();
     this.storeOverlay = undefined;
   }
@@ -3309,6 +3296,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       rewardedAd: this.rewardedAd,
       createButton: this.pageButtonFactory(),
       claimDailyGoal: (goalId, complete) => this.claimDailyGoal(goalId, complete),
+      claimAllDailyGoals: () => this.claimAllDailyGoals(),
       startRewardedAd: (kind) => this.startRewardedAd(kind),
       claimRewardedAd: (kind) => this.claimRewardedAd(kind)
     });
@@ -4349,8 +4337,6 @@ export class AquariumSceneCore extends Phaser.Scene {
       placementMode: this.placementMode,
       pointerDesignPoint: (inputPointer) => this.pointerDesignPoint(inputPointer),
       screenToTankPoint: (designX, designY) => this.screenToTankPoint(designX, designY),
-      fishBubbleAtPointer: (designX, designY) => this.pendingFishBubbleAtPointer(designX, designY),
-      popFishBubble: (pending) => this.popFishInventoryBubble(pending),
       coinAtPointer: (designX, designY) => this.coinAtPointer(designX, designY),
       collectCoin: (coin, automated) => this.collectCoin(coin, automated),
       fishTypeById: (id) => fishTypes.find((fishType) => fishType.id === id),
@@ -4440,38 +4426,9 @@ export class AquariumSceneCore extends Phaser.Scene {
     }
   }
 
-  private addFishToInventory(fishType: FishType, quantity = 1, showBubble = true): void {
+  private addFishToInventory(fishType: FishType, quantity = 1): void {
     this.recentInventoryDockItemKey = "fish-menu:fish-menu";
-    this.entityController().addFishToInventory(fishType, quantity, showBubble);
-  }
-
-  private spawnFishInventoryBubble(fishType: FishType, quantity = 1): void {
-    this.entityController().spawnFishInventoryBubble(fishType, quantity);
-  }
-
-  private spawnFishTankBubble(
-    fishType: FishType,
-    x: number,
-    y: number,
-    options: { ageSeconds?: number; exchangeTarget?: Fish; consumesInventory?: boolean } = {}
-  ): void {
-    this.entityController().spawnFishTankBubble(fishType, x, y, options);
-  }
-
-  private pendingFishBubbleAtPointer(designX: number, designY: number): PendingFishBubble | undefined {
-    return this.entityController().pendingFishBubbleAtPointer(designX, designY);
-  }
-
-  private popFishInventoryBubble(pending: PendingFishBubble): void {
-    this.entityController().popFishInventoryBubble(pending);
-  }
-
-  private handleFishBubblePop(pending: PendingFishBubble): boolean {
-    return this.entityController().handleFishBubblePop(pending);
-  }
-
-  private releaseFishTankBubble(pending: PendingFishBubble): boolean {
-    return this.entityController().releaseFishTankBubble(pending);
+    this.entityController().addFishToInventory(fishType, quantity);
   }
 
   private randomFishPlacement(): Phaser.Math.Vector2 {
@@ -5678,7 +5635,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.wallet = createEmptyWallet();
       state.wallet = this.wallet;
       this.grantLevelCompletionBonusRewards(state, bonusRewards);
-      rewardFish.forEach((fishType) => this.addFishToInventory(fishType, 1, false));
+      rewardFish.forEach((fishType) => this.addFishToInventory(fishType));
       this.showLevelCompletionRewardModal(previousLevel, nextLevel, rewardFish, bonusRewards);
       this.refreshUi();
       this.storeOverlay?.refresh();
@@ -6078,7 +6035,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     } else if (kind === "fish") {
       const fishType = this.rewardedAdFishReward();
       this.addFishToInventory(fishType);
-      this.floatText(`${fishType.name} in bubble`, toastX, toastY, "#a8ffb0");
+      this.floatText(`${fishType.name} in inventory`, toastX, toastY, "#a8ffb0");
     } else if (kind === "helper") {
       const creatureType = this.rewardedAdHelperReward();
       this.creatureInventory.set(creatureType.id, this.getCreatureInventory(creatureType.id) + 1);
@@ -6258,8 +6215,41 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private finishClaimDailyGoal(quest: DailyQuestItem): void {
-    if (this.dailyGoals.claimed.includes(quest.id)) {
+    if (!this.markDailyGoalClaimed(quest)) {
       return;
+    }
+
+    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
+    this.grantDailyQuestReward(quest.reward);
+    this.floatText(`+${this.dailyQuestRewardLabel(quest.reward)} quest`, toastX, toastY, "#ffe67a");
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
+  }
+
+  private claimAllDailyGoals(): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
+    const readyQuests = this.dailyQuestItems().filter((quest) => quest.complete && !this.dailyGoals.claimed.includes(quest.id));
+    if (readyQuests.length === 0) {
+      this.floatText("No quests ready", toastX, toastY, "#d7f4ff");
+      return;
+    }
+
+    readyQuests.forEach((quest) => {
+      if (this.markDailyGoalClaimed(quest)) {
+        this.grantDailyQuestReward(quest.reward);
+      }
+    });
+    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
+    this.floatText(`+${formatNumber(readyQuests.length)} quest rewards`, toastX, toastY, "#ffe67a");
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
+  }
+
+  private markDailyGoalClaimed(quest: DailyQuestItem): boolean {
+    if (this.dailyGoals.claimed.includes(quest.id)) {
+      return false;
     }
 
     this.dailyGoals.claimed.push(quest.id);
@@ -6267,12 +6257,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       const remainingActiveQuestIds = (this.dailyGoals.activeQuestIds ?? []).filter((id) => id !== quest.id && id !== "use-time-current");
       this.dailyGoals.activeQuestIds = ["use-time-current", ...remainingActiveQuestIds];
     }
-    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
-    this.grantDailyQuestReward(quest.reward);
-    this.floatText(`+${this.dailyQuestRewardLabel(quest.reward)} quest`, toastX, toastY, "#ffe67a");
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
+    return true;
   }
 
   private grantDailyQuestReward(reward: DailyQuestReward): void {
@@ -6290,7 +6275,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     if (reward.kind === "fish") {
       const fishType = fishTypes.find((candidate) => candidate.id === reward.fishTypeId) ?? fishTypes[0];
       if (fishType) {
-        this.addFishToInventory(fishType, Math.max(1, Math.floor(reward.quantity)), true);
+        this.addFishToInventory(fishType, Math.max(1, Math.floor(reward.quantity)));
       }
       return;
     }

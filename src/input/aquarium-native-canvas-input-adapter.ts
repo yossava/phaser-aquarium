@@ -1,5 +1,4 @@
 import Phaser from "phaser";
-import type { PendingFishBubble } from "../game/fish-delivery-bubbles";
 import type { MakeupDecorationDraft } from "../game/makeup-mode";
 import type { PlacedDecoration } from "../game/tank-entities";
 import type { CoinDrop } from "../objects/CoinDrop";
@@ -23,8 +22,6 @@ type AquariumNativeCanvasInputScene = {
   makeupDraggedDecoration?: MakeupDecorationDraft;
   updateMakeupDecorationDragAtDesignPoint: (point: Phaser.Math.Vector2) => void;
   endMakeupDecorationDrag: () => void;
-  pendingFishBubbleAtPointer: (designX: number, designY: number) => PendingFishBubble | undefined;
-  popFishInventoryBubble: (pending: PendingFishBubble) => void;
   coinAtPointer: (designX: number, designY: number) => CoinDrop | undefined;
   collectCoin: (coin: CoinDrop, automated: boolean) => void;
   fishAtPointer: (designX: number, designY: number) => Fish | undefined;
@@ -67,8 +64,6 @@ export function installAquariumNativeCanvasInputFallback(scene: unknown): () => 
       host.nativeMakeupDraggedDecoration = undefined;
       host.endMakeupDecorationDrag();
     },
-    fishBubbleAtPointer: (designX, designY) => host.pendingFishBubbleAtPointer(designX, designY),
-    popFishBubble: (pending) => host.popFishInventoryBubble(pending),
     coinAtPointer: (designX, designY) => host.coinAtPointer(designX, designY),
     collectCoin: (coin, automated) => host.collectCoin(coin, automated),
     fishAtPointer: (designX, designY) => host.fishAtPointer(designX, designY),

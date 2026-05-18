@@ -57,7 +57,8 @@ const readyFadeInMs = 220;
 const brickTextureKey = "stack-target-brick";
 const brickWidth = 92;
 const brickHeight = 22;
-const brickLevels = [0.42, 0.58, 0.74];
+const movingBrickCount = 4;
+const brickLevels = [0.34, 0.48, 0.62, 0.76];
 const brickSweepSpeed = 1.38;
 const brickCorrectFlashColor = 0x54ff76;
 const brickWrongFlashColor = 0xff4d55;
@@ -334,7 +335,7 @@ export class ShellBalanceScene extends Phaser.Scene {
   }
 
   private createMovingBricks(): void {
-    const brickSources = this.pieceSources.slice(0, 3);
+    const brickSources = this.pieceSources.slice(0, movingBrickCount);
     if (brickSources.length === 0) {
       return;
     }

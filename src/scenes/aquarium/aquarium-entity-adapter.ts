@@ -1,5 +1,4 @@
 import Phaser from "phaser";
-import type { FishDeliveryBubbleManager } from "../../game/fish-delivery-bubbles";
 import type { PlacedDecoration } from "../../game/tank-entities";
 import type { DecorationSize } from "../../game/tank-catalog";
 import type { Fish } from "../../objects/Fish";
@@ -21,7 +20,6 @@ type AquariumEntityAdapterScene = Phaser.Scene & {
   helperCreatures: HelperCreature[];
   pendingHelperCreatureDrops: PendingHelperCreatureDrop[];
   fishInventory: Map<string, number>;
-  fishDeliveryBubbles?: FishDeliveryBubbleManager;
   draggedFish?: Fish;
   selectedFishIndex?: number;
   placementMode: PlacementMode;
@@ -44,7 +42,6 @@ type AquariumEntityAdapterScene = Phaser.Scene & {
   refreshUi: () => void;
   createFoodDock: () => void;
   saveNow: () => void;
-  fishBubbleManager: () => FishDeliveryBubbleManager;
   getDecorationInventory: (decorationTypeId: string, size: DecorationSize) => number;
   consumeStoredDecoration: (decorationTypeId: string, size: DecorationSize) => void;
   activeDecorations: () => PlacedDecoration[];
@@ -69,7 +66,6 @@ export function createAquariumEntityControllerAdapter(scene: AquariumSceneCore):
     helperCreatures: () => aquariumScene.helperCreatures,
     pendingHelperCreatureDrops: () => aquariumScene.pendingHelperCreatureDrops,
     fishInventory: () => aquariumScene.fishInventory,
-    fishDeliveryBubbles: () => aquariumScene.fishDeliveryBubbles,
     draggedFish: () => aquariumScene.draggedFish,
     setDraggedFish: (fish) => {
       aquariumScene.draggedFish = fish;
@@ -103,7 +99,6 @@ export function createAquariumEntityControllerAdapter(scene: AquariumSceneCore):
     refreshUi: () => aquariumScene.refreshUi(),
     createFoodDock: () => aquariumScene.createFoodDock(),
     saveNow: () => aquariumScene.saveNow(),
-    fishBubbleManager: () => aquariumScene.fishBubbleManager(),
     getDecorationInventory: (decorationTypeId, size) => aquariumScene.getDecorationInventory(decorationTypeId, size),
     consumeStoredDecoration: (decorationTypeId, size) => aquariumScene.consumeStoredDecoration(decorationTypeId, size),
     activeDecorations: () => aquariumScene.activeDecorations(),

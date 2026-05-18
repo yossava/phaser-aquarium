@@ -22,7 +22,6 @@ type AquariumStoreAdapterScene = {
   coinMagnetWasActive: boolean;
   autoFoodBuyerWasActive: boolean;
   time: { now: number };
-  fishDeliveryBubbles?: { bubbles: Array<{ destination: string }> };
   careFoodTargetFish: Map<FoodTypeId, Fish>;
 
   calculateTankNetWorth(): number;
@@ -67,11 +66,10 @@ type AquariumStoreAdapterScene = {
   quantityPrice(price: Price, quantity: number): Price;
   attachTouchFeedback(button: HTMLButtonElement): void;
   showModal(title: string, lines: string[], actions: ModalAction[], bodyElements?: HTMLElement[]): void;
-  addFishToInventory(fishType: FishType, quantity: number, showBubble: boolean): void;
+  addFishToInventory(fishType: FishType, quantity: number): void;
+  addFishToTank(fishType: FishType, x: number, y: number, options?: { tankLevel?: number }): Fish;
   recordFishPurchase(fishType: FishType): void;
   randomFishPlacement(): { x: number; y: number };
-  spawnFishTankBubble(fishType: FishType, x: number, y: number): void;
-  spawnFishInventoryBubble(fishType: FishType, quantity: number): void;
   getSelectedFoodType(): FoodType;
   isCalorieTrackedFood(foodTypeId: FoodTypeId): boolean;
   isDroppableFood(foodTypeId: FoodTypeId): boolean;
@@ -141,13 +139,10 @@ export function createAquariumStoreAdapter(scene: AquariumStoreAdapterScene): St
     quantityPrice: (price, quantity) => scene.quantityPrice(price, quantity),
     attachTouchFeedback: (button) => scene.attachTouchFeedback(button),
     showModal: (title, lines, actions, bodyElements) => scene.showModal(title, lines, actions, bodyElements),
-    fishDeliveryTankBubbleCount: () =>
-      scene.fishDeliveryBubbles?.bubbles.filter((pending) => pending.destination === "tank").length ?? 0,
-    addFishToInventory: (fishType, quantity, showBubble) => scene.addFishToInventory(fishType, quantity, showBubble),
+    addFishToInventory: (fishType, quantity) => scene.addFishToInventory(fishType, quantity),
+    addFishToTank: (fishType, x, y) => scene.addFishToTank(fishType, x, y, { tankLevel: scene.tankLevel }),
     recordFishPurchase: (fishType) => scene.recordFishPurchase(fishType),
     randomFishPlacement: () => scene.randomFishPlacement(),
-    spawnFishTankBubble: (fishType, x, y) => scene.spawnFishTankBubble(fishType, x, y),
-    spawnFishInventoryBubble: (fishType, quantity) => scene.spawnFishInventoryBubble(fishType, quantity),
     selectedFoodType: () => scene.getSelectedFoodType(),
     isCalorieTrackedFood: (foodTypeId) => scene.isCalorieTrackedFood(foodTypeId),
     setFoodInventory: (foodTypeId, amount) => scene.foodInventory.set(foodTypeId, amount),

@@ -8,7 +8,8 @@ export function createQuestList(
   foodNameForId: (foodTypeId: string) => string,
   fishNameForId: (fishTypeId: string) => string,
   createButton: PageButtonFactory,
-  onClaim: (goalId: string, complete: boolean) => void
+  onClaim: (goalId: string, complete: boolean) => void,
+  onClaimAll: () => void
 ): HTMLElement {
   const list = htmlElement("div", "aq-quest-list");
   if (goals.length === 0) {
@@ -17,6 +18,16 @@ export function createQuestList(
   }
 
   const sortedGoals = [...goals].sort((left, right) => questSortRank(left, claimedGoalIds) - questSortRank(right, claimedGoalIds));
+  const readyCount = sortedGoals.filter((goal) => goal.complete && !claimedGoalIds.includes(goal.id)).length;
+  if (readyCount > 0) {
+    const toolbar = htmlElement("div", "aq-quest-toolbar");
+    toolbar.append(
+      htmlElement("span", "aq-quest-ready-count", [`${readyCount} ready`]),
+      createButton("Claim All", "aq-page-button aq-page-button-good aq-quest-claim-all", onClaimAll)
+    );
+    list.append(toolbar);
+  }
+
   sortedGoals.forEach((goal) => {
     const claimed = claimedGoalIds.includes(goal.id);
     const row = htmlElement("article", `aq-quest-row ${claimed ? "is-muted" : ""} ${goal.complete && !claimed ? "is-ready" : ""}`);

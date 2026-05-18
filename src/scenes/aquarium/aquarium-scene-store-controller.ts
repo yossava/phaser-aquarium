@@ -90,12 +90,10 @@ export type StoreControllerAdapter = {
   quantityPrice: (price: Price, quantity: number) => Price;
   attachTouchFeedback: (button: HTMLButtonElement) => void;
   showModal: (title: string, lines: string[], actions: ModalAction[], bodyElements?: HTMLElement[]) => void;
-  fishDeliveryTankBubbleCount: () => number;
-  addFishToInventory: (fishType: FishType, quantity: number, showBubble: boolean) => void;
+  addFishToInventory: (fishType: FishType, quantity: number) => void;
+  addFishToTank: (fishType: FishType, x: number, y: number) => void;
   recordFishPurchase: (fishType: FishType) => void;
   randomFishPlacement: () => { x: number; y: number };
-  spawnFishTankBubble: (fishType: FishType, x: number, y: number) => void;
-  spawnFishInventoryBubble: (fishType: FishType, quantity: number) => void;
   selectedFoodType: () => FoodType;
   isCalorieTrackedFood: (foodTypeId: FoodTypeId) => boolean;
   setFoodInventory: (foodTypeId: FoodTypeId, amount: number) => void;
@@ -222,7 +220,7 @@ export class AquariumSceneStoreController {
       remainingHourlyBuys,
       fishCapacity: adapter.fishCapacity(),
       activeFishCount: adapter.activeFish().length,
-      pendingTankDeliveries: adapter.fishDeliveryTankBubbleCount()
+      pendingTankDeliveries: 0
     });
     if (!adapter.developerGodMode() && !canAfford(adapter.wallet(), purchasePlan.totalPrice)) {
       adapter.floatText(`Need ${formatPrice(purchasePlan.totalPrice)}`, toastX, toastY, "#ffb0a8");
@@ -231,11 +229,10 @@ export class AquariumSceneStoreController {
 
     executeFishPurchase({
       ...this.storePurchaseAdapter(),
-      addFishToInventory: (type, count, showBubble) => adapter.addFishToInventory(type, count, showBubble),
+      addFishToInventory: (type, count) => adapter.addFishToInventory(type, count),
+      addFishToTank: (type, x, y) => adapter.addFishToTank(type, x, y),
       recordFishPurchase: (type) => adapter.recordFishPurchase(type),
-      randomFishPlacement: () => adapter.randomFishPlacement(),
-      spawnFishTankBubble: (type, x, y) => adapter.spawnFishTankBubble(type, x, y),
-      spawnFishInventoryBubble: (type, count) => adapter.spawnFishInventoryBubble(type, count)
+      randomFishPlacement: () => adapter.randomFishPlacement()
     }, fishType, purchasePlan);
   }
 

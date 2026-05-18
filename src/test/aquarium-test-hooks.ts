@@ -42,7 +42,6 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       foodInventory: scene.getTotalFoodInventory(),
       foodInventoryByType: scene.foodInventoryRecord(),
       fishInventoryByType: mapToRecord(scene.fishInventory),
-      fishDeliveryBubbleCount: scene.fishDeliveryBubbles?.bubbles.length ?? 0,
       timeCurrentRemainingSeconds: scene.timeCurrentRemainingSeconds(),
       tankActivitySpeedMultiplier: scene.tankActivitySpeedMultiplier(),
       foodBuyQuantities: scene.foodBuyQuantityRecord(),
@@ -433,25 +432,14 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
         return;
       }
       if (scene.getFishInventory(fishType.id) <= 0) {
-        const pendingTankBubble = scene.fishDeliveryBubbles?.bubbles.find((pending: any) => pending.destination === "tank" && pending.type.id === fishType.id);
-        if (pendingTankBubble) {
-          scene.popFishInventoryBubble(pendingTankBubble);
-        }
         return;
       }
 
-      const previousBubbleCount = scene.fishDeliveryBubbles?.bubbles.length ?? 0;
       scene.placeFishWithCompatibility(
         fishType,
         Phaser.Math.Clamp(x, tankBounds.left + 28, tankBounds.right - 28),
         Phaser.Math.Clamp(y, tankBounds.top + 26, tankBounds.bottom - 26)
       );
-      const pendingTankBubble = scene.fishDeliveryBubbles?.bubbles
-        .slice(previousBubbleCount)
-        .find((pending: any) => pending.destination === "tank" && pending.type.id === fishType.id);
-      if (pendingTankBubble) {
-        scene.popFishInventoryBubble(pendingTankBubble);
-      }
     },
     buyFood: (foodTypeId?: FoodTypeId) => {
       const foodType = foodTypes.find((item) => item.id === foodTypeId) ?? scene.getSelectedFoodType();

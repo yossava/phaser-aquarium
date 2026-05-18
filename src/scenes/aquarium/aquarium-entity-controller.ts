@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { addStoredFish as addStoredFishModel } from "../../game/fish-inventory";
-import { FishDeliveryBubbleManager, type PendingFishBubble } from "../../game/fish-delivery-bubbles";
 import {
   activeHelperCreatureCountWithPending as activeHelperCreatureCountWithPendingModel,
   defaultDecorationDepth,
@@ -11,7 +10,6 @@ import type { PlacedDecoration } from "../../game/tank-entities";
 import { Fish } from "../../objects/Fish";
 import { HelperCreature } from "../../objects/HelperCreature";
 import type { DecorationType, FishGender, FishType, HelperCreatureType } from "../../types/mechanics";
-import { formatNumber } from "../../game/economy";
 import { tankBounds, tankViewportBounds, toastX, toastY } from "../../game/constants";
 import type { DecorationSize } from "../../game/tank-catalog";
 import {
@@ -38,7 +36,6 @@ export type AquariumEntityControllerAdapter = {
   helperCreatures: () => HelperCreature[];
   pendingHelperCreatureDrops: () => PendingHelperCreatureDrop[];
   fishInventory: () => Map<string, number>;
-  fishDeliveryBubbles: () => FishDeliveryBubbleManager | undefined;
   draggedFish: () => Fish | undefined;
   setDraggedFish: (fish: Fish | undefined) => void;
   setSelectedFishIndex: (index: number | undefined) => void;
@@ -62,7 +59,6 @@ export type AquariumEntityControllerAdapter = {
   refreshUi: () => void;
   createFoodDock: () => void;
   saveNow: () => void;
-  fishBubbleManager: () => FishDeliveryBubbleManager;
   getDecorationInventory: (decorationTypeId: string, size: DecorationSize) => number;
   consumeStoredDecoration: (decorationTypeId: string, size: DecorationSize) => void;
   activeDecorations: () => PlacedDecoration[];
@@ -142,13 +138,13 @@ export class AquariumEntityController {
     if (exchangeTarget) {
       this.adapter.storeFish(exchangeTarget);
     }
-    this.spawnFishTankBubble(type, x, y, {
-      ageSeconds: storedAgeSeconds,
-      exchangeTarget
+    this.addFishToTank(type, x, y, {
+      tankLevel: this.adapter.tankLevel(),
+      ageSeconds: storedAgeSeconds
     });
     this.adapter.recordDailyQuestAction("place-fish");
 
-    this.adapter.floatTankText(exchangeTarget ? `${type.name} ready to swap` : `${type.name} ready`, x, y - 34, "#ffffff");
+    this.adapter.floatTankText(exchangeTarget ? `${type.name} swapped in` : `${type.name} moved in`, x, y - 34, "#ffffff");
     this.adapter.setPlacementMode({ kind: "none" });
     this.adapter.closeModal();
     this.adapter.refreshUi();
@@ -156,85 +152,12 @@ export class AquariumEntityController {
     this.adapter.saveNow();
   }
 
-  addFishToInventory(fishType: FishType, quantity = 1, showBubble = true): void {
-    const safeQuantity = addStoredFishModel({
+  addFishToInventory(fishType: FishType, quantity = 1): void {
+    addStoredFishModel({
       fishInventory: this.adapter.fishInventory(),
       fishTypeId: fishType.id,
       quantity
     });
-    if (showBubble) {
-      this.spawnFishInventoryBubble(fishType, safeQuantity);
-    }
-  }
-
-  spawnFishInventoryBubble(fishType: FishType, quantity = 1): void {
-    this.adapter.fishBubbleManager().spawnInventory(fishType, quantity);
-  }
-
-  spawnFishTankBubble(
-    fishType: FishType,
-    x: number,
-    y: number,
-    options: { ageSeconds?: number; exchangeTarget?: Fish; consumesInventory?: boolean } = {}
-  ): void {
-    this.adapter.fishBubbleManager().spawnTank(fishType, x, y, options);
-  }
-
-  pendingFishBubbleAtPointer(designX: number, designY: number): PendingFishBubble | undefined {
-    if (this.adapter.activeScreen() !== "tank") {
-      return undefined;
-    }
-
-    const tankPoint = this.adapter.screenToTankPoint(designX, designY);
-    return this.adapter.fishDeliveryBubbles()?.atTankPoint(tankPoint.x, tankPoint.y, this.adapter.tankViewScaleForLevel());
-  }
-
-  popFishInventoryBubble(pending: PendingFishBubble): void {
-    this.adapter.fishDeliveryBubbles()?.pop(pending);
-  }
-
-  handleFishBubblePop(pending: PendingFishBubble): boolean {
-    if (pending.destination === "tank") {
-      return this.releaseFishTankBubble(pending);
-    }
-
-    this.adapter.recordDailyQuestAction("pop-fish-bubble");
-    this.adapter.floatTankText(
-      pending.quantity > 1 ? `${pending.type.name} x${formatNumber(pending.quantity)} in inventory` : `${pending.type.name} in inventory`,
-      pending.container.x,
-      pending.container.y - 38,
-      "#d7f4ff"
-    );
-    return true;
-  }
-
-  releaseFishTankBubble(pending: PendingFishBubble): boolean {
-    const x = pending.container.x;
-    const y = pending.container.y;
-    const exchangeTarget = pending.exchangeTarget && this.adapter.fish().includes(pending.exchangeTarget)
-      ? pending.exchangeTarget
-      : undefined;
-    if (this.adapter.activeFish().length >= this.adapter.maxFishCapacityForLevel() && !exchangeTarget) {
-      this.adapter.showTankFullText(x, y);
-      return false;
-    }
-
-    if (pending.consumesInventory) {
-      this.adapter.removeStoredFish(pending.type.id);
-    }
-    if (exchangeTarget) {
-      this.adapter.storeFish(exchangeTarget);
-    }
-    this.addFishToTank(pending.type, x, y, {
-      tankLevel: this.adapter.tankLevel(),
-      ageSeconds: pending.ageSeconds
-    });
-    this.adapter.recordDailyQuestAction("pop-fish-bubble");
-    this.adapter.floatTankText(`${pending.type.name} moved in`, x, y - 38, "#ffffff");
-    this.adapter.refreshUi();
-    this.adapter.createFoodDock();
-    this.adapter.saveNow();
-    return true;
   }
 
   addDecorationToTank(
