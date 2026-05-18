@@ -25,6 +25,7 @@ export type PageOverlaySyncInput = {
   renderKey: string;
   scrollTop: number;
   reducedMotion: boolean;
+  forceTransition?: boolean;
   createOverlay: () => HTMLDivElement;
   createPage: () => HTMLElement;
   getRenderKey: () => string;
@@ -120,7 +121,7 @@ export function syncPageOverlay(input: PageOverlaySyncInput): PageOverlaySyncRes
   overlay.className = "aq-page-shell";
   overlay.classList.remove("hidden");
   overlay.replaceChildren(input.createPage());
-  if (wasHidden || previousKey !== nextKey) {
+  if (input.forceTransition || wasHidden || previousKey !== nextKey) {
     playHtmlPageTransition(overlay, input.reducedMotion);
   }
   installHtmlInputShield(overlay);

@@ -527,6 +527,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private inventoryTab: InventoryTab = "fish";
   private inventoryDrillOpen = false;
   private pageReturnScreen?: AppScreen;
+  private forceNextPageTransition = false;
   private fishCatalogLevel = 1;
   private selectedFishIndex?: number;
   private tankLayer!: Phaser.GameObjects.Container;
@@ -2066,8 +2067,10 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private openScreen(screen: Exclude<AppScreen, "tank">): void {
+    const wasTankScreen = this.activeScreen === "tank";
     this.pageReturnScreen = undefined;
     this.activeScreen = screen;
+    this.forceNextPageTransition = wasTankScreen && (screen === "menu" || screen === "goals");
     this.placementMode = { kind: "none" };
     if (screen === "album") {
       this.inventoryDrillOpen = false;
@@ -2251,10 +2254,12 @@ export class AquariumSceneCore extends Phaser.Scene {
       renderKey: this.htmlPageOverlayRenderKey,
       scrollTop: this.htmlPageOverlayScrollTop,
       reducedMotion: this.settings.reducedMotion,
+      forceTransition: this.forceNextPageTransition,
       createOverlay: () => this.createHtmlPageOverlay(),
       createPage: () => this.createHtmlPage(),
       getRenderKey: () => this.htmlPageOverlayKey()
     });
+    this.forceNextPageTransition = false;
     this.htmlPageOverlay = result.overlay;
     this.htmlPageOverlayRenderKey = result.renderKey;
     this.htmlPageOverlayScrollTop = result.scrollTop;
