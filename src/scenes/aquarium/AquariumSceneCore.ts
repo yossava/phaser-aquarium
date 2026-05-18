@@ -653,7 +653,6 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.input.on("pointermove", (pointer: Phaser.Input.Pointer) => this.updateMakeupDecorationDrag(pointer));
     this.input.on("pointerup", () => this.endMakeupDecorationDrag());
     this.input.on("pointerupoutside", () => this.endMakeupDecorationDrag());
-    this.installViewportResizeHandling();
     this.installNativeCanvasInputFallback();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyHtmlGameInterface());
 
@@ -4339,16 +4338,15 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private popFishInventoryBubble(pending: PendingFishBubble): void {
-    this.recordDailyQuestAction("pop-fish-bubble");
     this.entityController().popFishInventoryBubble(pending);
   }
 
-  private handleFishBubblePop(pending: PendingFishBubble): void {
-    this.entityController().handleFishBubblePop(pending);
+  private handleFishBubblePop(pending: PendingFishBubble): boolean {
+    return this.entityController().handleFishBubblePop(pending);
   }
 
-  private releaseFishTankBubble(pending: PendingFishBubble): void {
-    this.entityController().releaseFishTankBubble(pending);
+  private releaseFishTankBubble(pending: PendingFishBubble): boolean {
+    return this.entityController().releaseFishTankBubble(pending);
   }
 
   private randomFishPlacement(): Phaser.Math.Vector2 {
@@ -4393,6 +4391,40 @@ export class AquariumSceneCore extends Phaser.Scene {
   private startPhaserDecorationHold(decoration: PlacedDecoration, pointer: Phaser.Input.Pointer): void {
     void decoration;
     void pointer;
+  }
+
+  private beginTankDecorationDrag(decoration: PlacedDecoration): void {
+    if (this.activeScreen !== "tank") {
+      return;
+    }
+
+    this.draggedDecoration = decoration;
+    decoration.image.setAlpha(0.78);
+    decoration.image.setDepth(9);
+    this.tankLayer.bringToTop(decoration.image);
+  }
+
+  private updateTankDecorationDragAtDesignPoint(pointerPoint: Phaser.Math.Vector2): void {
+    if (this.activeScreen !== "tank" || !this.draggedDecoration) {
+      return;
+    }
+
+    const tankPoint = this.screenToTankPoint(pointerPoint.x, pointerPoint.y);
+    this.moveDecoration(this.draggedDecoration, tankPoint.x, tankPoint.y);
+  }
+
+  private endTankDecorationDrag(): void {
+    const decoration = this.draggedDecoration;
+    if (!decoration) {
+      return;
+    }
+
+    decoration.image.setAlpha(1);
+    this.moveDecoration(decoration, decoration.image.x, decoration.image.y);
+    this.draggedDecoration = undefined;
+    this.nativeDraggedDecoration = undefined;
+    this.recordDailyQuestAction("move-decoration");
+    this.saveNow();
   }
 
   private beginPhaserDecorationDrag(decoration: PlacedDecoration): void {
@@ -4623,7 +4655,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       setCoinDrops: (coinDrops) => {
         this.coinDrops = coinDrops;
       },
-      refreshUi: () => this.refreshUi(),
+      refreshUi: () => this.refreshUi(false),
       saveNow: () => this.saveNow()
     });
   }

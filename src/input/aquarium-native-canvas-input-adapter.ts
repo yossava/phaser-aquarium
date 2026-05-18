@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import type { PendingFishBubble } from "../game/fish-delivery-bubbles";
 import type { MakeupDecorationDraft } from "../game/makeup-mode";
+import type { PlacedDecoration } from "../game/tank-entities";
 import type { CoinDrop } from "../objects/CoinDrop";
 import type { Fish } from "../objects/Fish";
 import {
@@ -29,6 +30,12 @@ type AquariumNativeCanvasInputScene = {
   fishAtPointer: (designX: number, designY: number) => Fish | undefined;
   nativeDraggedFish?: Fish;
   draggedFish?: Fish;
+  decorationAtPointer: (designX: number, designY: number) => PlacedDecoration | undefined;
+  nativeDraggedDecoration?: PlacedDecoration;
+  draggedDecoration?: PlacedDecoration;
+  beginTankDecorationDrag: (decoration: PlacedDecoration) => void;
+  updateTankDecorationDragAtDesignPoint: (point: Phaser.Math.Vector2) => void;
+  endTankDecorationDrag: () => void;
   fish: Fish[];
   selectedFishIndex?: number;
   tankLayer: Phaser.GameObjects.Layer;
@@ -70,6 +77,19 @@ export function installAquariumNativeCanvasInputFallback(scene: unknown): () => 
     },
     setDraggedFish: (fish) => {
       host.draggedFish = fish;
+    },
+    setNativeDraggedDecoration: (decoration) => {
+      host.nativeDraggedDecoration = decoration;
+    },
+    setDraggedDecoration: (decoration) => {
+      host.draggedDecoration = decoration;
+    },
+    decorationAtPointer: (designX, designY) => host.decorationAtPointer(designX, designY),
+    beginTankDecorationDrag: (decoration) => host.beginTankDecorationDrag(decoration),
+    updateTankDecorationDragAtDesignPoint: (point) => host.updateTankDecorationDragAtDesignPoint(point),
+    endTankDecorationDrag: () => {
+      host.nativeDraggedDecoration = undefined;
+      host.endTankDecorationDrag();
     },
     selectFish: (fish) => {
       host.selectedFishIndex = host.fish.indexOf(fish);

@@ -10,8 +10,10 @@
 
 :root {
   color: #f8fbff;
-  background: #000000;
-  --aq-stage-width: 100vw;
+  background: #071b2a;
+  --aq-viewport-width: 100vw;
+  --aq-viewport-height: 100dvh;
+  --aq-stage-width: var(--aq-viewport-width);
   --aq-game-font: "Baloo 2", "Trebuchet MS", sans-serif;
   --aq-hud-edge-inset: 10px;
   --aq-hud-scale: 1;
@@ -41,7 +43,7 @@
 
 @media (orientation: landscape) {
   :root {
-    --aq-stage-width: min(100vw, calc(100dvh * 430 / 844));
+    --aq-stage-width: min(var(--aq-viewport-width), calc(var(--aq-viewport-height) * 430 / 844));
   }
 }
 
@@ -61,14 +63,16 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  background: #071b2a;
 }
 
 #app {
   position: relative;
   width: var(--aq-stage-width);
-  height: 100dvh;
+  height: var(--aq-viewport-height);
   margin: 0 auto;
   overflow: hidden;
+  background: #071b2a;
 }
 
 body {
@@ -76,7 +80,7 @@ body {
   overscroll-behavior: none;
   user-select: none;
   -webkit-user-select: none;
-  background: #000000;
+  background: #071b2a;
 }
 
 body:has(.aq-store-shell:not(.hidden)) {
@@ -86,6 +90,7 @@ body:has(.aq-store-shell:not(.hidden)) {
 canvas {
   display: block;
   touch-action: none;
+  background: #071b2a;
 }
 
 @layer components {

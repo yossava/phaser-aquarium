@@ -7,6 +7,16 @@ import { ShellBalanceScene } from "./scenes/ShellBalanceScene";
 
 await loadGameFonts();
 
+function setInitialViewportCssVars(): void {
+  const viewport = window.visualViewport;
+  const height = Math.ceil(viewport?.height ?? window.innerHeight) + 1;
+  const width = Math.ceil(viewport?.width ?? window.innerWidth);
+  document.documentElement.style.setProperty("--aq-viewport-height", `${height}px`);
+  document.documentElement.style.setProperty("--aq-viewport-width", `${width}px`);
+}
+
+setInitialViewportCssVars();
+
 const renderScale = renderScaleForDevice();
 const lowPowerMode = shouldUseLowPowerMode();
 

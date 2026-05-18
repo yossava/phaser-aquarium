@@ -193,36 +193,48 @@ export class AquariumEntityController {
     this.adapter.fishDeliveryBubbles()?.pop(pending);
   }
 
-  handleFishBubblePop(pending: PendingFishBubble): void {
+  handleFishBubblePop(pending: PendingFishBubble): boolean {
     if (pending.destination === "tank") {
-      this.releaseFishTankBubble(pending);
-    } else {
-      this.adapter.floatTankText(
-        pending.quantity > 1 ? `${pending.type.name} x${formatNumber(pending.quantity)} in inventory` : `${pending.type.name} in inventory`,
-        pending.container.x,
-        pending.container.y - 38,
-        "#d7f4ff"
-      );
+      return this.releaseFishTankBubble(pending);
     }
+
+    this.adapter.recordDailyQuestAction("pop-fish-bubble");
+    this.adapter.floatTankText(
+      pending.quantity > 1 ? `${pending.type.name} x${formatNumber(pending.quantity)} in inventory` : `${pending.type.name} in inventory`,
+      pending.container.x,
+      pending.container.y - 38,
+      "#d7f4ff"
+    );
+    return true;
   }
 
-  releaseFishTankBubble(pending: PendingFishBubble): void {
+  releaseFishTankBubble(pending: PendingFishBubble): boolean {
     const x = pending.container.x;
     const y = pending.container.y;
+    const exchangeTarget = pending.exchangeTarget && this.adapter.fish().includes(pending.exchangeTarget)
+      ? pending.exchangeTarget
+      : undefined;
+    if (this.adapter.activeFish().length >= this.adapter.maxFishCapacityForLevel() && !exchangeTarget) {
+      this.adapter.showTankFullText(x, y);
+      return false;
+    }
+
     if (pending.consumesInventory) {
       this.adapter.removeStoredFish(pending.type.id);
     }
-    if (pending.exchangeTarget && this.adapter.fish().includes(pending.exchangeTarget)) {
-      this.adapter.storeFish(pending.exchangeTarget);
+    if (exchangeTarget) {
+      this.adapter.storeFish(exchangeTarget);
     }
     this.addFishToTank(pending.type, x, y, {
       tankLevel: this.adapter.tankLevel(),
       ageSeconds: pending.ageSeconds
     });
+    this.adapter.recordDailyQuestAction("pop-fish-bubble");
     this.adapter.floatTankText(`${pending.type.name} moved in`, x, y - 38, "#ffffff");
     this.adapter.refreshUi();
     this.adapter.createFoodDock();
     this.adapter.saveNow();
+    return true;
   }
 
   addDecorationToTank(

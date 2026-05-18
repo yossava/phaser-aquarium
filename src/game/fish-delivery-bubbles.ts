@@ -38,7 +38,7 @@ export class FishDeliveryBubbleManager {
     private readonly scene: Phaser.Scene,
     private readonly tankLayer: Phaser.GameObjects.Container,
     private readonly ensureFishTexturesLoaded: (fishType: FishType, onLoad?: () => void) => boolean,
-    private readonly onPop: (pending: PendingFishBubble) => void
+    private readonly onPop: (pending: PendingFishBubble) => boolean | void
   ) {}
 
   public spawnInventory(fishType: FishType, quantity = 1): void {
@@ -178,12 +178,17 @@ export class FishDeliveryBubbleManager {
   }
 
   public pop(pending: PendingFishBubble): void {
+    pending.container.disableInteractive();
+    const accepted = this.onPop(pending) !== false;
+    if (!accepted) {
+      pending.container.setInteractive(new Phaser.Geom.Circle(0, 0, pending.container.width * 0.5), Phaser.Geom.Circle.Contains);
+      return;
+    }
+
     const index = this.bubbles.indexOf(pending);
     if (index >= 0) {
       this.bubbles.splice(index, 1);
     }
-    pending.container.disableInteractive();
-    this.onPop(pending);
     this.scene.tweens.add({
       targets: pending.container,
       scaleX: 1.38,
