@@ -3041,7 +3041,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     const board = htmlElement("section", "aq-fish-transfer-board", [
       htmlElement("div", "aq-fish-transfer-header", [
         htmlElement("h2", "aq-page-section-title", ["Fish"]),
-        htmlElement("p", "aq-fish-transfer-copy", ["Use arrow buttons to move fish between Inventory and In Tank."])
+        htmlElement("p", "aq-fish-transfer-copy", ["Use move buttons to transfer fish between Inventory and In Tank."])
       ])
     ]);
     const tankZone = this.createFishTransferZone({
@@ -3098,7 +3098,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       badge: "Tank",
       meta: `${fish.gender} | ${fish.ageLabel()} | ${this.rarityLabel(fish.type.rarity)}`,
       detail: fish.productionSummary(),
-      transferLabel: "<- To Inventory",
+      transferLabel: "Move to Inventory",
       transferDisabled: false,
       onTransfer: () => this.storeFishByIndex(index),
       actionLabel: `Sell C${formatNumber(this.activeFishSellValue(fish))}`,
@@ -3117,7 +3117,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       badge: `x${formatNumber(count)}`,
       meta: `Inventory | ${this.rarityLabel(fishType.rarity)}${ageCopy}`,
       detail: `Sell one for C${formatNumber(this.storedFishSellValue(fishType))}`,
-      transferLabel: "To Tank ->",
+      transferLabel: "Move to Tank",
       transferDisabled: this.activeFish().length >= this.maxFishCapacityForLevel(),
       onTransfer: () => this.moveStoredFishToTankFromInventoryPage(fishType.id),
       actionLabel: `Sell C${formatNumber(this.storedFishSellValue(fishType))}`,

@@ -72,7 +72,7 @@ export function createHtmlButton(
   button.textContent = label;
   button.disabled = Boolean(options.disabled);
   button.style.touchAction = "manipulation";
-  options.attachTouchFeedback?.(button);
+  (options.attachTouchFeedback ?? attachDefaultTouchFeedback)(button);
 
   let pointerArmed = false;
   let ignoreNextClick = false;
@@ -123,4 +123,18 @@ export function createHtmlButton(
     run();
   });
   return button;
+}
+
+function attachDefaultTouchFeedback(button: HTMLButtonElement): void {
+  const press = (): void => {
+    if (!button.disabled) {
+      button.classList.add("is-touching");
+    }
+  };
+  const release = (): void => button.classList.remove("is-touching");
+  button.addEventListener("pointerdown", press);
+  button.addEventListener("pointerup", release);
+  button.addEventListener("pointercancel", release);
+  button.addEventListener("pointerleave", release);
+  button.addEventListener("blur", release);
 }
