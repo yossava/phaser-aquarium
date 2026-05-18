@@ -322,6 +322,7 @@ canvas {
     width: var(--aq-stage-width);
     transform: translateX(-50%);
     pointer-events: auto;
+    overflow: hidden;
   }
 
   .aq-html-page-enter > * {
@@ -332,15 +333,15 @@ canvas {
   @keyframes aq-page-enter {
     from {
       opacity: 0;
-      transform: translate3d(24px, 0, 0) scale(0.975);
+      transform: translate3d(100%, 0, 0);
     }
-    72% {
+    78% {
       opacity: 1;
-      transform: translate3d(-3px, 0, 0) scale(1.01);
+      transform: translate3d(-2.5%, 0, 0);
     }
     to {
       opacity: 1;
-      transform: translate3d(0, 0, 0) scale(1);
+      transform: translate3d(0, 0, 0);
     }
   }
 

@@ -64,11 +64,12 @@ export function playPageTransition(root: MotionTarget, reducedMotion = false): v
   }
   page.animate(
     [
-      { opacity: 0, transform: "translate3d(22px, 0, 0) scale(0.985)" },
-      { opacity: 1, transform: "translate3d(0, 0, 0) scale(1)" }
+      { opacity: 0, transform: "translate3d(100%, 0, 0)" },
+      { opacity: 1, transform: "translate3d(-2.5%, 0, 0)", offset: 0.78 },
+      { opacity: 1, transform: "translate3d(0, 0, 0)" }
     ],
     {
-      duration: 260,
+      duration: 320,
       easing: mobileGameEase
     }
   );
