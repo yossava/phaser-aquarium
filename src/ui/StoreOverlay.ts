@@ -328,6 +328,8 @@ export class StoreOverlay {
           div("aq-card-title", [fish.name]),
           createStorePriceBadge(fish.price)
         ]),
+        div("aq-fish-power-inline", [`PWR ${formatNumber(Math.max(1, state.activeTankLevel))}`]),
+        div("aq-card-meta", [`Power Lv ${formatNumber(Math.max(1, state.activeTankLevel))} | baby size`]),
         button(
           levelLocked ? `Need Tank L${formatNumber(requiredLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy w-full",

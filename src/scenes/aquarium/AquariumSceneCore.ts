@@ -512,7 +512,10 @@ export class AquariumSceneCore extends Phaser.Scene {
   private cleanedAt = Date.now();
   private cleaningTank = false;
   private settings = { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false };
+  private developerMenuUnlocked = false;
   private developerGodMode = false;
+  private developerClockMultiplier = 1;
+  private developerClockOffsetMs = 0;
   private dailyGoals: DailyGoalsState = { date: this.localDateKey(), claimed: [] };
   private dailyQuestPlaytimeSeconds = 0;
   private tankLevel = 1;
@@ -3117,7 +3120,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     const card = this.createFishTransferCard({
       fishType: fish.type,
       badge: "Tank",
-      meta: `${fish.gender} | ${fish.ageLabel()} | ${this.rarityLabel(fish.type.rarity)}`,
+      powerLabel: `PWR ${formatNumber(fish.powerLevel())}`,
+      meta: `${fish.gender} | Power Lv ${formatNumber(fish.powerLevel())} | ${this.rarityLabel(fish.type.rarity)}`,
       detail: fish.productionSummary(),
       transferLabel: "Move to Inventory",
       transferDisabled: false,
@@ -3132,10 +3136,12 @@ export class AquariumSceneCore extends Phaser.Scene {
   private createStoredFishTransferCard(fishType: FishType): HTMLElement {
     const count = this.getFishInventory(fishType.id);
     const storedAges = this.storedFishAgesFor(fishType.id);
-    const ageCopy = storedAges.length > 0 ? ` | Oldest ${this.fusionAgeLabel(storedAges[0])}` : "";
+    const storedPowerLevel = storedAges.length > 0 ? this.fishPowerLevelForAgeSeconds(storedAges[0]) : 1;
+    const ageCopy = storedAges.length > 0 ? ` | Power ${this.fusionAgeLabel(storedAges[0])}` : "";
     const card = this.createFishTransferCard({
       fishType,
       badge: `x${formatNumber(count)}`,
+      powerLabel: `PWR ${formatNumber(storedPowerLevel)}`,
       meta: `Inventory | ${this.rarityLabel(fishType.rarity)}${ageCopy}`,
       detail: `Sell one for C${formatNumber(this.storedFishSellValue(fishType))}`,
       transferLabel: "Move to Tank",
@@ -3151,6 +3157,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private createFishTransferCard(input: {
     fishType: FishType;
     badge: string;
+    powerLabel: string;
     meta: string;
     detail: string;
     transferLabel: string;
@@ -3167,6 +3174,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       ]),
       htmlElement("div", "aq-fish-transfer-card-body", [
         htmlElement("h3", "", [input.fishType.name]),
+        htmlElement("span", "aq-fish-power-inline aq-fish-transfer-power-inline", [input.powerLabel]),
         htmlElement("p", "", [input.meta]),
         htmlElement("small", "", [input.detail])
       ]),
@@ -3176,6 +3184,10 @@ export class AquariumSceneCore extends Phaser.Scene {
       ])
     ]);
     return card;
+  }
+
+  private fishPowerLevelForAgeSeconds(ageSeconds: number): number {
+    return Math.max(1, Math.floor(Math.max(0, ageSeconds) / (12 * 60 * 60)) + 1);
   }
 
   private moveStoredFishToTankFromInventoryPage(fishTypeId: string | undefined): void {
@@ -3192,7 +3204,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     const position = this.randomFishPlacement();
     const ageSeconds = this.takeStoredFishAge(fishType.id);
     this.removeStoredFish(fishType.id);
-    this.addFishToTank(fishType, position.x, position.y, { tankLevel: this.tankLevel, ageSeconds });
+    this.addFishToTank(fishType, position.x, position.y, { tankLevel: this.tankLevel, ageSeconds, visualAgeSeconds: 0 });
     this.recordDailyQuestAction("move-fish");
     this.recordDailyQuestAction("place-fish");
     this.floatText(`${fishType.name} moved to tank`, toastX, toastY, "#d7f4ff");
@@ -3555,21 +3567,35 @@ export class AquariumSceneCore extends Phaser.Scene {
       showOfflineSummary: () => this.showOfflineSummary(),
       showResetConfirmation: () => this.showResetConfirmation(),
       developer: {
-        developerGodMode: this.developerGodMode,
+        unlocked: this.developerMenuUnlocked,
+        godModeEnabled: this.developerGodMode,
+        clockMultiplier: this.developerClockMultiplier,
         onUnlock: () => this.unlockDeveloperGodMode(),
-        onGrant: () => this.grantDeveloperGodMode(),
+        onToggleGodMode: () => this.toggleDeveloperGodMode(),
+        onGrantWallet: () => this.grantDeveloperWallet(),
+        onUnlockContent: () => this.unlockDeveloperContent(),
+        onSetClockMultiplier: (multiplier) => this.setDeveloperClockMultiplier(multiplier),
         onWrongPassword: () => this.floatText("Wrong password", toastX, toastY, "#ffb0a8")
       }
     });
   }
 
   private unlockDeveloperGodMode(): void {
-    this.developerGodMode = true;
-    this.grantDeveloperGodMode();
+    this.developerMenuUnlocked = true;
+    this.floatText("Developer menu unlocked", toastX, toastY, "#a8ffb0");
+    this.refreshUi(false);
+    this.syncHtmlPageOverlay();
   }
 
-  private grantDeveloperGodMode(): void {
-    const maxContentTankLevel = Math.max(1, ...fishTypes.map((fishType) => fishType.tankLevel));
+  private toggleDeveloperGodMode(): void {
+    this.developerGodMode = !this.developerGodMode;
+    this.floatText(this.developerGodMode ? "Free shop enabled" : "Free shop disabled", toastX, toastY, this.developerGodMode ? "#a8ffb0" : "#ffdd8a");
+    this.storeOverlay?.refresh();
+    this.refreshUi(false);
+    this.syncHtmlPageOverlay();
+  }
+
+  private grantDeveloperWallet(): void {
     const grantWallet = (wallet: Wallet): Wallet => createWallet(
       Math.max(wallet.common, 10_000),
       Math.max(wallet.rare, 10_000),
@@ -3577,25 +3603,56 @@ export class AquariumSceneCore extends Phaser.Scene {
     );
 
     this.captureActiveTankState();
+    for (const level of this.sortedOwnedTankLevels()) {
+      const state = this.ensureTankState(level);
+      state.wallet = grantWallet(state.wallet);
+    }
+    const activeState = this.ensureTankState(this.tankLevel);
+    this.wallet = grantWallet(activeState.wallet);
+    activeState.wallet = this.wallet;
+    this.floatText("10K coins granted", toastX, toastY, "#a8ffb0");
+    this.storeOverlay?.refresh();
+    this.refreshUi();
+    this.syncHtmlPageOverlay();
+    this.saveNow();
+  }
+
+  private unlockDeveloperContent(): void {
+    const maxContentTankLevel = Math.max(1, ...fishTypes.map((fishType) => fishType.tankLevel));
+
+    this.captureActiveTankState();
     for (let level = 1; level <= maxOwnedTanks; level += 1) {
       this.ownedTankLevels.add(level);
       this.tankNames.set(level, storeTankNames[level] ?? `Tank ${formatNumber(level)}`);
       const state = this.ensureTankState(level);
-      state.wallet = grantWallet(state.wallet);
       state.maxDisplayLevel = Math.max(state.maxDisplayLevel ?? 1, maxContentTankLevel);
     }
 
     const activeState = this.ensureTankState(this.tankLevel);
-    this.wallet = grantWallet(activeState.wallet);
-    activeState.wallet = this.wallet;
     activeState.maxDisplayLevel = Math.max(activeState.maxDisplayLevel ?? 1, maxContentTankLevel);
-    this.floatText("God mode unlocked", toastX, toastY, "#a8ffb0");
+    this.floatText("Tanks and levels unlocked", toastX, toastY, "#a8ffb0");
     this.storeOverlay?.refresh();
     this.refreshUi();
-    if (this.activeScreen !== "prize" && this.activeScreen !== "makeup") {
-      this.syncHtmlPageOverlay();
-    }
+    this.syncHtmlPageOverlay();
     this.saveNow();
+  }
+
+  private setDeveloperClockMultiplier(multiplier: number): void {
+    this.developerClockMultiplier = Phaser.Math.Clamp(Math.round(multiplier), 1, 10);
+    this.refreshUi(false);
+    this.syncHtmlPageOverlay();
+  }
+
+  private gameClockSpeedMultiplier(): number {
+    return Phaser.Math.Clamp(Math.round(this.developerClockMultiplier), 1, 10);
+  }
+
+  private advanceGameClock(realDeltaSeconds: number): void {
+    this.developerClockOffsetMs += Math.max(0, realDeltaSeconds) * (this.gameClockSpeedMultiplier() - 1) * 1000;
+  }
+
+  private gameClockNow(): number {
+    return this.time.now + this.developerClockOffsetMs;
   }
 
   private htmlButton(label: string, className: string, onClick: () => void, disabled = false): HTMLButtonElement {
@@ -4415,7 +4472,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.aquariumEntityController;
   }
 
-  private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number; ageSeconds?: number } = {}): Fish {
+  private addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number; ageSeconds?: number; visualAgeSeconds?: number } = {}): Fish {
     return this.entityController().addFishToTank(type, x, y, options);
   }
 
@@ -4639,7 +4696,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private updateFishCoinProduction(fish: Fish, activitySpeedMultiplier = 1): void {
     updateFishCoinProductionModel({
       fish,
-      now: this.time.now,
+      now: this.gameClockNow(),
       coinDropCount: this.coinDrops.length,
       maxCoinDrops,
       minDelayMs: fishCoinProductionMinDelayMs,
@@ -5639,8 +5696,6 @@ export class AquariumSceneCore extends Phaser.Scene {
     if (level === this.tankLevel) {
       this.moveActiveFishToInventory();
       this.clearCoinDrops();
-      this.wallet = createEmptyWallet();
-      state.wallet = this.wallet;
       this.grantLevelCompletionBonusRewards(state, bonusRewards);
       rewardFish.forEach((fishType) => this.addFishToInventory(fishType));
       this.showLevelCompletionRewardModal(previousLevel, nextLevel, rewardFish, bonusRewards);
@@ -5648,7 +5703,6 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.storeOverlay?.refresh();
       this.saveNow();
     } else {
-      state.wallet = createEmptyWallet();
       this.grantLevelCompletionBonusRewards(state, bonusRewards);
       for (const fishType of rewardFish) {
         state.fishInventory.set(fishType.id, (state.fishInventory.get(fishType.id) ?? 0) + 1);

@@ -11,9 +11,14 @@ export type SettingsPageState = {
 };
 
 export type DeveloperSettingsOptions = {
-  developerGodMode: boolean;
+  unlocked: boolean;
+  godModeEnabled: boolean;
+  clockMultiplier: number;
   onUnlock: () => void;
-  onGrant: () => void;
+  onToggleGodMode: () => void;
+  onGrantWallet: () => void;
+  onUnlockContent: () => void;
+  onSetClockMultiplier: (multiplier: number) => void;
   onWrongPassword: () => void;
 };
 
@@ -27,6 +32,7 @@ export type SettingsPageActions = {
 };
 
 export function appendSettingsPageContent(content: HTMLElement, settings: SettingsPageState, actions: SettingsPageActions): void {
+  content.classList.add("aq-page-content-scroll");
   const grid = htmlElement("div", "aq-page-card-grid");
   grid.append(
     createSettingsToggleCard("Sound", settings.sound, actions.createButton, () => actions.toggleSetting("sound")),
@@ -105,10 +111,10 @@ export function createDeveloperSettingsCard(
   const card = htmlElement("article", "aq-page-card aq-dev-settings-card");
   card.append(
     htmlElement("h3", "aq-page-card-title", ["Developer"]),
-    htmlElement("p", "aq-page-card-meta", [options.developerGodMode ? "God mode unlocked" : "Locked"])
+    htmlElement("p", "aq-page-card-meta", [options.unlocked ? "Unlocked" : "Locked"])
   );
 
-  if (!options.developerGodMode) {
+  if (!options.unlocked) {
     const row = htmlElement("div", "aq-dev-unlock-row");
     const input = document.createElement("input");
     input.type = "password";
@@ -135,9 +141,26 @@ export function createDeveloperSettingsCard(
     return card;
   }
 
+  const clockInput = document.createElement("input");
+  clockInput.className = "aq-settings-range";
+  clockInput.type = "range";
+  clockInput.min = "1";
+  clockInput.max = "10";
+  clockInput.step = "1";
+  clockInput.value = String(Math.max(1, Math.min(10, Math.round(options.clockMultiplier))));
+  clockInput.addEventListener("change", () => options.onSetClockMultiplier(Number(clockInput.value)));
+
   card.append(
-    htmlElement("p", "aq-page-card-copy", ["10K of each coin, max tank level, no shop price, level, or hourly purchase gates."]),
-    createButton("Grant God Mode", "aq-page-button aq-page-button-good", options.onGrant)
+    htmlElement("p", "aq-page-card-copy", ["Choose which developer tools are active. Unlocking this panel does not change coins, tanks, or shop rules."]),
+    createButton(
+      options.godModeEnabled ? "Disable Free Shop" : "Enable Free Shop",
+      options.godModeEnabled ? "aq-page-button aq-page-button-danger" : "aq-page-button aq-page-button-good",
+      options.onToggleGodMode
+    ),
+    createButton("Grant 10K Coins", "aq-page-button aq-page-button-muted", options.onGrantWallet),
+    createButton("Unlock Tanks + Levels", "aq-page-button aq-page-button-muted", options.onUnlockContent),
+    htmlElement("p", "aq-page-card-meta", [`Game Clock ${formatNumber(options.clockMultiplier)}x`]),
+    clockInput
   );
   return card;
 }

@@ -14,14 +14,16 @@ import {
 type AquariumSceneUpdateTarget = any;
 
 export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: number): void {
-  const deltaSeconds = delta / 1000;
+  const realDeltaSeconds = delta / 1000;
   const now = scene.time.now;
-  scene.updateStoreOverlayTimer(deltaSeconds);
+  scene.updateStoreOverlayTimer(realDeltaSeconds);
 
   if (!scene.shouldRunTankActivity()) {
     return;
   }
 
+  const deltaSeconds = realDeltaSeconds * (scene.gameClockSpeedMultiplier?.() ?? 1);
+  scene.advanceGameClock?.(realDeltaSeconds);
   scene.updateTimedUtilities();
   scene.updateTimeCurrent(deltaSeconds);
   scene.updateDailyQuestPlaytime(deltaSeconds);
@@ -55,8 +57,8 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.updateControlledFishBubbleTrail(deltaSeconds);
 
   removeDeadFish(scene, fishToRemove);
-  runAutosave(scene, deltaSeconds);
-  syncHudStatus(scene, deltaSeconds);
+  runAutosave(scene, realDeltaSeconds);
+  syncHudStatus(scene, realDeltaSeconds);
 }
 
 function updateFish(

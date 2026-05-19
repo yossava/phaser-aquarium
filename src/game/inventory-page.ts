@@ -68,7 +68,7 @@ export function storedFishInventoryRowData(input: {
   rarityLabel: string;
   ageLabel: (seconds: number) => string;
 }): StoredFishInventoryRowData {
-  const ageCopy = input.storedAges.length > 0 ? ` | Oldest ${input.ageLabel(input.storedAges[0])}` : "";
+  const ageCopy = input.storedAges.length > 0 ? ` | Power ${input.ageLabel(input.storedAges[0])}` : "";
   return {
     fishType: input.fishType,
     count: input.count,

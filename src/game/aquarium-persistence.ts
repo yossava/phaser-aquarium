@@ -64,6 +64,7 @@ export function createAquariumSaveSnapshot(input: {
       x: currentFish.sprite.x,
       y: currentFish.sprite.y,
       ageSeconds: currentFish.ageSeconds,
+      visualAgeSeconds: currentFish.visualAgeSeconds,
       hunger: currentFish.hunger,
       health: currentFish.health,
       nextCoinDropInMs: Math.max(0, currentFish.nextCoinDropAt - input.currentTime),

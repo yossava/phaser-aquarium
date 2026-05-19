@@ -272,6 +272,11 @@ canvas {
     @apply truncate text-[10px] font-bold leading-tight text-cyan-100/80;
   }
 
+  .aq-fish-power-inline {
+    @apply inline-flex w-fit max-w-full items-center rounded-full border border-white/75 bg-lime-400 px-1.5 py-0.5 text-[10px] font-black leading-none text-sky-950;
+    box-shadow: 0 2px 0 rgba(4, 36, 54, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  }
+
   .aq-card-copy {
     @apply line-clamp-2 min-h-0 overflow-hidden text-[10px] leading-tight text-cyan-50/90;
   }
@@ -1017,12 +1022,21 @@ canvas {
     @apply min-w-0 rounded-lg border border-cyan-100/18 bg-sky-950/45 px-1.5 py-1 leading-none;
   }
 
+  .aq-album-power-stat {
+    @apply border-lime-200/55 bg-lime-400;
+  }
+
   .aq-album-stat small {
     @apply block truncate text-[9px] font-extrabold text-cyan-100/60;
   }
 
   .aq-album-stat strong {
     @apply mt-0.5 block truncate text-[11px] font-black text-white;
+  }
+
+  .aq-album-power-stat small,
+  .aq-album-power-stat strong {
+    @apply text-sky-950;
   }
 
   .aq-album-bar-stat {
@@ -1135,6 +1149,10 @@ canvas {
 
   .aq-fish-transfer-badge {
     @apply absolute -bottom-1 -right-1 rounded-full border border-white/70 bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white;
+  }
+
+  .aq-fish-transfer-power-inline {
+    @apply mt-0.5;
   }
 
   .aq-fish-transfer-card-body {

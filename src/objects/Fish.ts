@@ -96,6 +96,7 @@ export class Fish {
   public state: FishState = "happy";
   public ageStage: AgeStage = "baby";
   public ageSeconds = 0;
+  public visualAgeSeconds = 0;
   public hunger = 12;
   public health = 100;
   public target = new Phaser.Math.Vector2();
@@ -184,6 +185,7 @@ export class Fish {
     progressDeltaSeconds = deltaSeconds
   ): { food: FoodPellet; accepted: boolean; reason?: "tooSmall"; consumedCalories: number; neededMealCalories: number } | undefined {
     this.ageSeconds += progressDeltaSeconds;
+    this.visualAgeSeconds += progressDeltaSeconds;
     this.updateAgeStage();
 
     const isMedicated = this.scene.time.now < this.medicatedUntil;
@@ -310,9 +312,11 @@ export class Fish {
     health: number,
     nextCoinDropAt: number,
     fatalCareSecondsValue = 0,
-    continuousHungrySecondsValue = 0
+    continuousHungrySecondsValue = 0,
+    visualAgeSecondsValue?: number
   ): void {
     this.setAgeSeconds(ageSeconds);
+    this.setVisualAgeSeconds(visualAgeSecondsValue ?? ageSeconds);
     this.hunger = Phaser.Math.Clamp(hunger, overfullHungerFloor, 100);
     this.health = Phaser.Math.Clamp(health, 0, 100);
     this.continuousHungrySeconds = this.isHungryEnoughForSickness()
@@ -361,6 +365,11 @@ export class Fish {
   public setAgeSeconds(ageSeconds: number): void {
     this.ageSeconds = Math.max(0, ageSeconds);
     this.updateAgeStage();
+    this.updateStatusBars(true);
+  }
+
+  public setVisualAgeSeconds(ageSeconds: number): void {
+    this.visualAgeSeconds = Math.max(0, ageSeconds);
     this.setVisualScale(this.desiredAgeScale());
     this.updateStatusBars(true);
   }
@@ -772,6 +781,10 @@ export class Fish {
     return Math.max(1, Math.floor(this.ageYears()) + 1);
   }
 
+  public powerLevel(): number {
+    return this.ageRequiredTankLevel();
+  }
+
   public growthCapAgeYears(): number {
     return growthCapYears;
   }
@@ -978,7 +991,7 @@ export class Fish {
   }
 
   private rawUncappedAgeScale(): number {
-    return this.rawUncappedAgeScaleAt(this.ageSeconds);
+    return this.rawUncappedAgeScaleAt(this.visualAgeSecondsInCurrentTank());
   }
 
   private rawUncappedAgeScaleAt(ageSecondsValue: number): number {
@@ -1102,17 +1115,17 @@ export class Fish {
 
   private visualAgeSecondsInCurrentTank(): number {
     const earlyVisualGrowthSeconds = (secondsPerFishMonth / daysPerFishMonth) * earlyVisualGrowthDays;
-    if (this.ageSeconds <= earlyVisualGrowthSeconds) {
-      return this.ageSeconds * earlyVisualGrowthMultiplier;
+    if (this.visualAgeSeconds <= earlyVisualGrowthSeconds) {
+      return this.visualAgeSeconds * earlyVisualGrowthMultiplier;
     }
 
-    if (this.ageSeconds < oneMonthGrowthSeconds) {
+    if (this.visualAgeSeconds < oneMonthGrowthSeconds) {
       const visualAgeAtEarlyCutoff = earlyVisualGrowthSeconds * earlyVisualGrowthMultiplier;
-      const taperRatio = (this.ageSeconds - earlyVisualGrowthSeconds) / Math.max(1, oneMonthGrowthSeconds - earlyVisualGrowthSeconds);
+      const taperRatio = (this.visualAgeSeconds - earlyVisualGrowthSeconds) / Math.max(1, oneMonthGrowthSeconds - earlyVisualGrowthSeconds);
       return Phaser.Math.Linear(visualAgeAtEarlyCutoff, oneMonthGrowthSeconds, this.smoothGrowthRatio(taperRatio));
     }
 
-    return this.ageSeconds;
+    return this.visualAgeSeconds;
   }
 
   private updateAgeStage(): void {

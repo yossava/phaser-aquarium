@@ -71,10 +71,13 @@ export type AquariumEntityControllerAdapter = {
 export class AquariumEntityController {
   constructor(private readonly adapter: AquariumEntityControllerAdapter) {}
 
-  addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number; ageSeconds?: number } = {}): Fish {
+  addFishToTank(type: FishType, x: number, y: number, options: { gender?: FishGender; tankLevel?: number; ageSeconds?: number; visualAgeSeconds?: number } = {}): Fish {
     const placedFish = new Fish(this.adapter.scene, type, x, y, options);
     if (options.ageSeconds && options.ageSeconds > 0) {
       placedFish.setAgeSeconds(options.ageSeconds);
+      placedFish.setVisualAgeSeconds(options.visualAgeSeconds ?? options.ageSeconds);
+    } else if (options.visualAgeSeconds !== undefined) {
+      placedFish.setVisualAgeSeconds(options.visualAgeSeconds);
     }
     this.adapter.ensureFishTexturesLoaded(type, () => placedFish.refreshTextureIfAvailable());
     placedFish.addToContainer(this.adapter.tankLayer());
@@ -140,7 +143,8 @@ export class AquariumEntityController {
     }
     this.addFishToTank(type, x, y, {
       tankLevel: this.adapter.tankLevel(),
-      ageSeconds: storedAgeSeconds
+      ageSeconds: storedAgeSeconds,
+      visualAgeSeconds: 0
     });
     this.adapter.recordDailyQuestAction("place-fish");
 

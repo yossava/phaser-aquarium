@@ -12,6 +12,7 @@ export type SavedFish = {
   x: number;
   y: number;
   ageSeconds: number;
+  visualAgeSeconds?: number;
   hunger: number;
   health: number;
   nextCoinDropInMs: number;
@@ -394,6 +395,7 @@ function sanitizeFish(fish: Partial<SavedFish>): SavedFish | undefined {
     x: sanitizeNumber(fish.x, 0),
     y: sanitizeNumber(fish.y, 0),
     ageSeconds: Math.max(0, sanitizeNumber(fish.ageSeconds, 0)),
+    visualAgeSeconds: Math.max(0, sanitizeNumber(fish.visualAgeSeconds, fish.ageSeconds ?? 0)),
     hunger: clamp(sanitizeNumber(fish.hunger, 12), -10000, 100),
     health: clamp(sanitizeNumber(fish.health, 100), 0, 100),
     nextCoinDropInMs: Math.max(0, sanitizeNumber(fish.nextCoinDropInMs, 0)),

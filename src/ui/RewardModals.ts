@@ -50,7 +50,7 @@ export function createLevelCompletionRewardShell(input: {
     ]),
     htmlElement("p", "aq-modal-owned-line", [`Reward: ${rewardLabel}`]),
     ...bonusRewardRows,
-    htmlElement("p", "aq-modal-line aq-level-reward-detail", ["Coins reset. Tank fish moved to inventory."]),
+    htmlElement("p", "aq-modal-line aq-level-reward-detail", ["Coins kept. Tank fish moved to inventory."]),
     htmlElement("div", "aq-modal-actions single", [closeButton])
   ]);
   shell.append(panel);

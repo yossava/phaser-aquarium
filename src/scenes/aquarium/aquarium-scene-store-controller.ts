@@ -39,6 +39,12 @@ import {
   executeTankUtilityPurchase
 } from "./aquarium-scene-store-purchases";
 
+const fishPowerLevelSeconds = 12 * 60 * 60;
+
+function adapterLevelToPowerAgeSeconds(level: number): number {
+  return (Math.max(1, Math.floor(level)) - 1) * fishPowerLevelSeconds;
+}
+
 export type StoreControllerAdapter = {
   wallet: () => Wallet;
   wealth: () => number;
@@ -91,7 +97,8 @@ export type StoreControllerAdapter = {
   attachTouchFeedback: (button: HTMLButtonElement) => void;
   showModal: (title: string, lines: string[], actions: ModalAction[], bodyElements?: HTMLElement[]) => void;
   addFishToInventory: (fishType: FishType, quantity: number) => void;
-  addFishToTank: (fishType: FishType, x: number, y: number) => void;
+  addStoredFishAge: (fishTypeId: string, ageSeconds: number) => void;
+  addFishToTank: (fishType: FishType, x: number, y: number, options?: { ageSeconds?: number; visualAgeSeconds?: number }) => void;
   recordFishPurchase: (fishType: FishType) => void;
   randomFishPlacement: () => { x: number; y: number };
   selectedFoodType: () => FoodType;
@@ -230,10 +237,15 @@ export class AquariumSceneStoreController {
     executeFishPurchase({
       ...this.storePurchaseAdapter(),
       addFishToInventory: (type, count) => adapter.addFishToInventory(type, count),
+      addStoredFishAge: (fishTypeId, ageSeconds) => adapter.addStoredFishAge(fishTypeId, ageSeconds),
       addFishToTank: (type, x, y) => adapter.addFishToTank(type, x, y),
       recordFishPurchase: (type) => adapter.recordFishPurchase(type),
       randomFishPlacement: () => adapter.randomFishPlacement()
-    }, fishType, purchasePlan);
+    }, fishType, purchasePlan, { powerAgeSeconds: this.shopFishPowerAgeSeconds() });
+  }
+
+  private shopFishPowerAgeSeconds(): number {
+    return Math.max(0, adapterLevelToPowerAgeSeconds(this.adapter.activeTankLevel()));
   }
 
   showFoodBuyQuantityModal(foodType: FoodType, initialQuantity = this.adapter.getFoodBuyQuantity(foodType.id)): void {

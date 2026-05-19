@@ -160,7 +160,8 @@ function restoreFish(scene: AquariumScenePersistenceTarget, fish: any[]): void {
       savedFish.health,
       scene.time.now + savedFish.nextCoinDropInMs,
       savedFish.fatalCareSeconds,
-      savedFish.continuousHungrySeconds
+      savedFish.continuousHungrySeconds,
+      savedFish.visualAgeSeconds
     );
   }
 }

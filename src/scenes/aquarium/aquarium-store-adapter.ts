@@ -67,7 +67,8 @@ type AquariumStoreAdapterScene = {
   attachTouchFeedback(button: HTMLButtonElement): void;
   showModal(title: string, lines: string[], actions: ModalAction[], bodyElements?: HTMLElement[]): void;
   addFishToInventory(fishType: FishType, quantity: number): void;
-  addFishToTank(fishType: FishType, x: number, y: number, options?: { tankLevel?: number }): Fish;
+  addStoredFishAge(fishTypeId: string, ageSeconds: number): void;
+  addFishToTank(fishType: FishType, x: number, y: number, options?: { tankLevel?: number; ageSeconds?: number; visualAgeSeconds?: number }): Fish;
   recordFishPurchase(fishType: FishType): void;
   randomFishPlacement(): { x: number; y: number };
   getSelectedFoodType(): FoodType;
@@ -140,7 +141,8 @@ export function createAquariumStoreAdapter(scene: AquariumStoreAdapterScene): St
     attachTouchFeedback: (button) => scene.attachTouchFeedback(button),
     showModal: (title, lines, actions, bodyElements) => scene.showModal(title, lines, actions, bodyElements),
     addFishToInventory: (fishType, quantity) => scene.addFishToInventory(fishType, quantity),
-    addFishToTank: (fishType, x, y) => scene.addFishToTank(fishType, x, y, { tankLevel: scene.tankLevel }),
+    addStoredFishAge: (fishTypeId, ageSeconds) => scene.addStoredFishAge(fishTypeId, ageSeconds),
+    addFishToTank: (fishType, x, y, options = {}) => scene.addFishToTank(fishType, x, y, { ...options, tankLevel: scene.tankLevel }),
     recordFishPurchase: (fishType) => scene.recordFishPurchase(fishType),
     randomFishPlacement: () => scene.randomFishPlacement(),
     selectedFoodType: () => scene.getSelectedFoodType(),

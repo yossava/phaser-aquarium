@@ -43,7 +43,8 @@ type TankCosmeticUseAdapter = StorePurchaseSceneAdapter & {
 
 type FishPurchaseAdapter = StorePurchaseSceneAdapter & {
   addFishToInventory: (fishType: FishType, quantity: number) => void;
-  addFishToTank: (fishType: FishType, x: number, y: number) => void;
+  addStoredFishAge?: (fishTypeId: string, ageSeconds: number) => void;
+  addFishToTank: (fishType: FishType, x: number, y: number, options?: { ageSeconds?: number; visualAgeSeconds?: number }) => void;
   recordFishPurchase: (fishType: FishType) => void;
   randomFishPlacement: () => { x: number; y: number };
 };
@@ -122,13 +123,21 @@ export function executeTankCosmeticUse(adapter: TankCosmeticUseAdapter, asset: T
   adapter.saveNow();
 }
 
-export function executeFishPurchase(adapter: FishPurchaseAdapter, fishType: FishType, purchasePlan: FishPurchasePlan): boolean {
+export function executeFishPurchase(
+  adapter: FishPurchaseAdapter,
+  fishType: FishType,
+  purchasePlan: FishPurchasePlan,
+  input: { powerAgeSeconds?: number } = {}
+): boolean {
   if (!adapter.spendPrice(purchasePlan.totalPrice)) {
     return false;
   }
 
   if (purchasePlan.inventoryQuantity > 0) {
     adapter.addFishToInventory(fishType, purchasePlan.inventoryQuantity);
+    for (let index = 0; index < purchasePlan.inventoryQuantity; index += 1) {
+      adapter.addStoredFishAge?.(fishType.id, input.powerAgeSeconds ?? 0);
+    }
   }
   for (let index = 0; index < purchasePlan.buyQuantity; index += 1) {
     adapter.recordFishPurchase(fishType);
@@ -138,7 +147,10 @@ export function executeFishPurchase(adapter: FishPurchaseAdapter, fishType: Fish
 
   for (let index = 0; index < purchasePlan.tankDeliveryQuantity; index += 1) {
     const position = adapter.randomFishPlacement();
-    adapter.addFishToTank(fishType, position.x, position.y);
+    adapter.addFishToTank(fishType, position.x, position.y, {
+      ageSeconds: input.powerAgeSeconds,
+      visualAgeSeconds: 0
+    });
   }
 
   adapter.setRecentInventoryDockItemKey("fish-menu:fish-menu");

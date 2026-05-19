@@ -97,6 +97,7 @@ export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
   const row = htmlElement("article", "aq-album-row fish");
   const fullnessValue = Math.round(clampPercent(fish.fullnessRatio() * 100));
   const stats = htmlElement("div", "aq-album-stat-grid", [
+    createAlbumTextStat("Power", `Lv ${formatNumber(fish.powerLevel())}`),
     createAlbumBarStat("Full", fullnessValue, albumPositiveTone(fullnessValue)),
     createAlbumBarStat("Happy", happinessPercent, albumPositiveTone(happinessPercent))
   ]);
@@ -108,7 +109,7 @@ export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
   imageWrap.title = `${fish.type.name}: ${status}`;
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [fish.type.name]),
-    htmlElement("p", "aq-album-row-meta", [`${fish.gender} | ${fish.ageLabel()} | ${rarityLabel} | ${fish.state}`]),
+    htmlElement("p", "aq-album-row-meta", [`${fish.gender} | Power Lv ${formatNumber(fish.powerLevel())} | ${rarityLabel} | ${fish.state}`]),
     htmlElement("p", "aq-album-row-copy", [`${growthStatus} | ${fish.lengthLabel()} | ${fish.weightLabel()} | ${fish.productionSummary()}`]),
     stats
   ]);
@@ -147,6 +148,12 @@ function createAlbumBarStat(label: string, value: number, tone: string): HTMLEle
   fill.style.width = `${clampPercent(value)}%`;
   bar.append(fill);
   stat.append(htmlElement("small", "", [label]), bar);
+  return stat;
+}
+
+function createAlbumTextStat(label: string, value: string): HTMLElement {
+  const stat = htmlElement("span", "aq-album-stat aq-album-power-stat");
+  stat.append(htmlElement("small", "", [label]), htmlElement("strong", "", [value]));
   return stat;
 }
 
