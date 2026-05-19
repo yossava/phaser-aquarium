@@ -47,6 +47,9 @@ export class StoreOverlay {
   private visible = false;
   private lastRenderKey = "";
   private lastStateSignature = "";
+  private scrollActive = false;
+  private pendingRender = false;
+  private scrollIdleTimer: number | undefined;
   private readonly scrollPositions = new Map<string, number>();
 
   constructor(
@@ -84,6 +87,9 @@ export class StoreOverlay {
 
   hide(): void {
     this.visible = false;
+    this.pendingRender = false;
+    this.scrollActive = false;
+    this.clearScrollIdleTimer();
     this.root.classList.add("hidden");
     this.root.replaceChildren();
   }
@@ -95,6 +101,7 @@ export class StoreOverlay {
   }
 
   destroy(): void {
+    this.clearScrollIdleTimer();
     if (this.ownsRoot) {
       this.root.remove();
     }
@@ -114,7 +121,12 @@ export class StoreOverlay {
     if (!force && previousKey === nextKey && this.lastStateSignature === nextSignature) {
       return;
     }
+    if (!force && previousKey === nextKey && this.scrollActive) {
+      this.pendingRender = true;
+      return;
+    }
 
+    this.pendingRender = false;
     this.lastRenderKey = nextKey;
     this.lastStateSignature = nextSignature;
     this.root.replaceChildren(this.createStore(state));
@@ -127,6 +139,34 @@ export class StoreOverlay {
     if (nextScroll instanceof HTMLElement && nextScrollTop > 0) {
       this.restoreScrollPosition(nextScroll, nextScrollTop);
     }
+    this.bindScrollActivity(nextScroll);
+  }
+
+  private bindScrollActivity(scrollElement: Element | null): void {
+    if (!(scrollElement instanceof HTMLElement)) {
+      return;
+    }
+
+    scrollElement.addEventListener("scroll", () => {
+      this.scrollPositions.set(this.lastRenderKey, scrollElement.scrollTop);
+      this.scrollActive = true;
+      this.clearScrollIdleTimer();
+      this.scrollIdleTimer = window.setTimeout(() => {
+        this.scrollActive = false;
+        this.scrollIdleTimer = undefined;
+        if (this.pendingRender && this.visible) {
+          this.render();
+        }
+      }, 180);
+    }, { passive: true });
+  }
+
+  private clearScrollIdleTimer(): void {
+    if (this.scrollIdleTimer === undefined) {
+      return;
+    }
+    window.clearTimeout(this.scrollIdleTimer);
+    this.scrollIdleTimer = undefined;
   }
 
   private restoreScrollPosition(element: HTMLElement, scrollTop: number): void {

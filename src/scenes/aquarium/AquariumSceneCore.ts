@@ -2150,7 +2150,6 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private openStoreOverlay(): void {
     this.hideHtmlPageOverlay();
-    this.htmlPageOverlay ??= this.createHtmlPageOverlay();
     this.storeOverlay ??= new StoreOverlay(
       () => this.storeOverlayState(),
       {
@@ -2164,8 +2163,7 @@ export class AquariumSceneCore extends Phaser.Scene {
         selectTankDecoration: (decorationId, size) => this.selectDecoration(decorationId, size),
         buyTankUtility: (utilityId) => this.buyTankUtility(utilityId)
       },
-      this.settings.reducedMotion,
-      this.htmlPageOverlay
+      this.settings.reducedMotion
     );
     this.storeOverlay.show();
   }
@@ -5042,7 +5040,9 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private refreshUi(renderControls = true): void {
-    this.storeOverlay?.refresh();
+    if (this.activeScreen === "store") {
+      this.storeOverlay?.refresh();
+    }
     if (this.activeScreen === "prize" || this.activeScreen === "makeup") {
       this.hideHtmlPageOverlay();
     } else if (this.activeScreen !== "tank" && this.activeScreen !== "store") {
