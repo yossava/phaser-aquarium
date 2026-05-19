@@ -1,4 +1,5 @@
 import { priceComponents } from "./economy";
+import { fishPowerResaleValue } from "./economy-model";
 import type { Fish } from "../objects/Fish";
 import type { CoinType, DecorationType, FishType, FoodType, HelperCreatureType, Price, Wallet } from "../types/mechanics";
 import type { DecorationSize } from "./tank-catalog";
@@ -32,11 +33,11 @@ export function quantityPrice(price: Price, quantity: number): Price {
 }
 
 export function activeFishSellValue(fish: Fish): number {
-  return Math.max(1, Math.floor(priceWealth(fish.type.price) * inventorySellRate * fish.resaleAdjustmentMultiplier()));
+  return Math.max(1, Math.floor(fishPowerResaleValue(fish.ageSeconds) * inventorySellRate * fish.resaleAdjustmentMultiplier()));
 }
 
-export function storedFishSellValue(fishType: FishType): number {
-  return Math.max(1, Math.floor(priceWealth(fishType.price) * inventorySellRate));
+export function storedFishSellValue(_fishType: FishType, ageSeconds = 0): number {
+  return Math.max(1, Math.floor(fishPowerResaleValue(ageSeconds) * inventorySellRate));
 }
 
 export function foodSellQuantityMultiplier(input: {

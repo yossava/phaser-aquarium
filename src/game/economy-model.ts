@@ -1,4 +1,5 @@
-import type { CoinProduction, FishType } from "../types/mechanics";
+import { priceComponents } from "./economy";
+import type { CoinProduction, CoinType, FishType, Price } from "../types/mechanics";
 
 export const baselineCommonFishPrice = 60;
 export const commonPerCalorie = 0.03;
@@ -11,6 +12,13 @@ export const fishCoinProductionMinDelayMs = 2000;
 export const fishCoinProductionMaxDelayMs = 8000;
 export const fishCoinProductionAverageDelaySeconds = 5;
 export const minimumFishCoinDropValue = 0.1;
+export const fishPowerLevelSeconds = 12 * 60 * 60;
+const fishPowerLevelPriceGrowth = 1.75;
+const coinWealthValue: Record<CoinType, number> = {
+  common: 1,
+  rare: 1000,
+  superRare: 10000
+};
 
 export type FishCoinDropPlanInput = {
   fullnessCalories: number;
@@ -37,13 +45,42 @@ export function fishCommonPrice(fishType: FishType): number {
   return fishType.price.coinType === "common" ? Math.max(1, fishType.price.amount) : baselineCommonFishPrice;
 }
 
-export function fishValueMultiplier(fishType: FishType): number {
-  return Math.max(1, fishCommonPrice(fishType) / baselineCommonFishPrice);
+export function fishPowerPrice(price: Price): number {
+  return Math.max(1, priceComponents(price).reduce((total, [coinType, amount]) => total + amount * coinWealthValue[coinType], 0));
+}
+
+export function fishPowerPriceForType(fishType: FishType): number {
+  return fishPowerPrice(fishType.price);
+}
+
+export function fishPowerLevelForPrice(fishType: FishType): number {
+  const priceRatio = Math.max(1, fishPowerPriceForType(fishType) / baselineCommonFishPrice);
+  return Math.max(1, Math.floor(Math.log(priceRatio) / Math.log(fishPowerLevelPriceGrowth)) + 1);
+}
+
+export function fishPowerAgeSecondsForLevel(level: number): number {
+  return (Math.max(1, Math.floor(level)) - 1) * fishPowerLevelSeconds;
+}
+
+export function fishPowerLevelForAgeSeconds(ageSeconds: number): number {
+  return Math.max(1, Math.floor(Math.max(0, ageSeconds) / fishPowerLevelSeconds) + 1);
+}
+
+export function fishPowerValueForAgeSeconds(ageSeconds: number): number {
+  const powerLevel = fishPowerLevelForAgeSeconds(ageSeconds);
+  return Math.max(baselineCommonFishPrice, baselineCommonFishPrice * Math.pow(fishPowerLevelPriceGrowth, powerLevel - 1));
+}
+
+export function fishPowerResaleValue(ageSeconds: number): number {
+  return fishPowerValueForAgeSeconds(ageSeconds);
+}
+
+export function fishValueMultiplier(_fishType: FishType, ageSeconds = 0): number {
+  return Math.max(1, fishPowerValueForAgeSeconds(ageSeconds) / baselineCommonFishPrice);
 }
 
 export function fishFullCaloriesNeed(fishType: FishType, ageSeconds: number): number {
-  const ageMinutes = Math.max(1, ageSeconds / 60);
-  return clamp(Math.max(minimumFullCaloriesNeed, ageMinutes * 10 * fishValueMultiplier(fishType)), minimumFullCaloriesNeed, maximumFullCaloriesNeed);
+  return clamp(Math.max(minimumFullCaloriesNeed, baselineCommonFishPrice * fishValueMultiplier(fishType, ageSeconds)), minimumFullCaloriesNeed, maximumFullCaloriesNeed);
 }
 
 export function fishTargetMealCalories(fishType: FishType, ageSeconds: number): number {
@@ -71,7 +108,7 @@ export function fishCoinValuePerFullnessCalorie(fishType: FishType, ageSeconds: 
     return commonPerCalorie * 1.1;
   }
 
-  return commonPerCalorie + (fishCommonPrice(fishType) * 3600) / Math.max(1, fishRoiSeconds * fullCaloriesNeed);
+  return commonPerCalorie + (fishPowerValueForAgeSeconds(ageSeconds) * 3600) / Math.max(1, fishRoiSeconds * fullCaloriesNeed);
 }
 
 export function fishCoinProductionValueForCalories(

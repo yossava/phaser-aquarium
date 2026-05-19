@@ -5,6 +5,7 @@ import {
 } from "../../game/dispenser-system";
 import { toastX, toastY } from "../../game/constants";
 import { canAfford, formatNumber, formatPrice } from "../../game/economy";
+import { fishPowerAgeSecondsForLevel, fishPowerLevelForPrice } from "../../game/economy-model";
 import { productionBoostFoodTypeId, timeCurrentFoodTypeId } from "../../game/food-system";
 import { fishShopRequiredLevel, buildStoreOverlayState } from "../../game/store-catalog";
 import {
@@ -38,12 +39,6 @@ import {
   executeFoodPurchase,
   executeTankUtilityPurchase
 } from "./aquarium-scene-store-purchases";
-
-const fishPowerLevelSeconds = 12 * 60 * 60;
-
-function adapterLevelToPowerAgeSeconds(level: number): number {
-  return (Math.max(1, Math.floor(level)) - 1) * fishPowerLevelSeconds;
-}
 
 export type StoreControllerAdapter = {
   wallet: () => Wallet;
@@ -241,11 +236,12 @@ export class AquariumSceneStoreController {
       addFishToTank: (type, x, y) => adapter.addFishToTank(type, x, y),
       recordFishPurchase: (type) => adapter.recordFishPurchase(type),
       randomFishPlacement: () => adapter.randomFishPlacement()
-    }, fishType, purchasePlan, { powerAgeSeconds: this.shopFishPowerAgeSeconds() });
+    }, fishType, purchasePlan, { powerAgeSeconds: this.shopFishPowerAgeSeconds(fishType) });
   }
 
-  private shopFishPowerAgeSeconds(): number {
-    return Math.max(0, adapterLevelToPowerAgeSeconds(this.adapter.activeTankLevel()));
+  private shopFishPowerAgeSeconds(fishType: FishType): number {
+    const powerLevel = Math.max(this.adapter.activeTankLevel(), fishShopRequiredLevel(fishType), fishPowerLevelForPrice(fishType));
+    return Math.max(0, fishPowerAgeSecondsForLevel(powerLevel));
   }
 
   showFoodBuyQuantityModal(foodType: FoodType, initialQuantity = this.adapter.getFoodBuyQuantity(foodType.id)): void {

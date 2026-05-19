@@ -43,7 +43,11 @@ import {
   utilityExpiresAt
 } from "../../game/dispenser-system";
 import { canAfford, createWallet, earn, formatNumber, formatPrice, formatPriceLong, spend } from "../../game/economy";
-import { fishCoinProductionMaxDelayMs, fishCoinProductionMinDelayMs } from "../../game/economy-model";
+import {
+  fishCoinProductionMaxDelayMs,
+  fishCoinProductionMinDelayMs,
+  fishPowerLevelForAgeSeconds as fishPowerLevelForAgeSecondsModel
+} from "../../game/economy-model";
 import {
   activeFishSellValue as activeFishSellValueModel,
   coinSellValue as coinSellValueModel,
@@ -3135,14 +3139,13 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private createStoredFishTransferCard(fishType: FishType): HTMLElement {
     const count = this.getFishInventory(fishType.id);
-    const storedAges = this.storedFishAgesFor(fishType.id);
-    const storedPowerLevel = storedAges.length > 0 ? this.fishPowerLevelForAgeSeconds(storedAges[0]) : 1;
-    const ageCopy = storedAges.length > 0 ? ` | Power ${this.fusionAgeLabel(storedAges[0])}` : "";
+    const storedPowerAgeSeconds = this.storedFishPowerAgeSeconds(fishType);
+    const storedPowerLevel = this.fishPowerLevelForAgeSeconds(storedPowerAgeSeconds);
     const card = this.createFishTransferCard({
       fishType,
       badge: `x${formatNumber(count)}`,
       powerLabel: `PWR ${formatNumber(storedPowerLevel)}`,
-      meta: `Inventory | ${this.rarityLabel(fishType.rarity)}${ageCopy}`,
+      meta: `Inventory | Power Lv ${formatNumber(storedPowerLevel)} | ${this.rarityLabel(fishType.rarity)}`,
       detail: `Sell one for C${formatNumber(this.storedFishSellValue(fishType))}`,
       transferLabel: "Move to Tank",
       transferDisabled: this.activeFish().length >= this.maxFishCapacityForLevel(),
@@ -3187,7 +3190,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private fishPowerLevelForAgeSeconds(ageSeconds: number): number {
-    return Math.max(1, Math.floor(Math.max(0, ageSeconds) / (12 * 60 * 60)) + 1);
+    return fishPowerLevelForAgeSecondsModel(ageSeconds);
   }
 
   private moveStoredFishToTankFromInventoryPage(fishTypeId: string | undefined): void {
@@ -4086,7 +4089,21 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private storedFishSellValue(fishType: FishType): number {
-    return storedFishSellValueModel(fishType);
+    return storedFishSellValueModel(fishType, this.storedFishPowerAgeSeconds(fishType));
+  }
+
+  private storedFishSellValueForQuantity(fishType: FishType, quantity: number): number {
+    const sellQuantity = Math.max(1, Math.floor(quantity));
+    const storedAges = this.storedFishAgesFor(fishType.id);
+    let total = 0;
+    for (let index = 0; index < sellQuantity; index += 1) {
+      total += storedFishSellValueModel(fishType, storedAges[index] ?? 0);
+    }
+    return total;
+  }
+
+  private storedFishPowerAgeSeconds(fishType: FishType): number {
+    return this.storedFishAgesFor(fishType.id)[0] ?? 0;
   }
 
   private removeStoredFish(fishTypeId: string, quantity = 1): void {
@@ -4109,7 +4126,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     const salePlan = planStoredFishSale({
       fishType,
       current,
-      requestedQuantity: quantity
+      requestedQuantity: quantity,
+      sellValue: this.storedFishSellValueForQuantity(fishType, Math.min(current, Math.max(1, Math.floor(quantity))))
     });
     for (let index = 0; index < salePlan.sellQuantity; index += 1) {
       this.takeStoredFishAge(fishTypeId);
@@ -6478,7 +6496,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.showModalContent(createStoredFishSellConfirmationContent({
       fishType,
       count,
-      valueForQuantity: (quantity) => this.storedFishSellValue(fishType) * quantity,
+      valueForQuantity: (quantity) => this.storedFishSellValueForQuantity(fishType, quantity),
       createValueRow: (label, amount) => this.commonCoinValueRow(label, amount),
       attachTouchFeedback: (button) => this.attachTouchFeedback(button),
       onSell: (quantity) => this.sellStoredFish(fishTypeId, quantity),

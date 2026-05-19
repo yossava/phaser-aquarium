@@ -4,7 +4,7 @@ import {
   foodDispenserInventoryKey,
   type TankUtilityId
 } from "./dispenser-system";
-import { fishCommonPrice } from "./economy-model";
+import { fishPowerPriceForType } from "./economy-model";
 import {
   coinSellValue,
   decorationSellValue,
@@ -98,14 +98,14 @@ export function planFoodPurchase(input: {
 export function growthTonicPriceForFishType(fishType: FishType): Price {
   return {
     coinType: "common",
-    amount: clampInt(Math.round(fishCommonPrice(fishType) * 0.15), 100, 15000)
+    amount: clampInt(Math.round(fishPowerPriceForType(fishType) * 0.15), 100, 15000)
   };
 }
 
 export function productionBoostPriceForFishType(fishType: FishType): Price {
   return {
     coinType: "common",
-    amount: clampInt(Math.round(fishCommonPrice(fishType) * 0.08), 25, 5000)
+    amount: clampInt(Math.round(fishPowerPriceForType(fishType) * 0.08), 25, 5000)
   };
 }
 
@@ -117,11 +117,14 @@ export function planStoredFishSale(input: {
   fishType: FishType;
   current: number;
   requestedQuantity: number;
+  unitSellValue?: number;
+  sellValue?: number;
 }): StoredFishSalePlan {
   const sellQuantity = clampInt(Math.floor(input.requestedQuantity), 1, input.current);
+  const unitSellValue = input.unitSellValue ?? storedFishSellValue(input.fishType);
   return {
     sellQuantity,
-    sellValue: storedFishSellValue(input.fishType) * sellQuantity,
+    sellValue: input.sellValue ?? unitSellValue * sellQuantity,
     nextInventoryCount: nextStoredFishInventoryCount(input.current, sellQuantity)
   };
 }

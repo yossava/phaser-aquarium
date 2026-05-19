@@ -7,10 +7,11 @@ import {
   minimumFishCoinDropValue,
   fishCoinProductionValueForCalories,
   fishCoinValuePerFullnessCalorie,
-  fishCommonPrice,
   fishCurrentFullnessCalories,
   fishFullCaloriesNeed,
   fishHungerReductionFromCalories,
+  fishPowerLevelForAgeSeconds,
+  fishPowerResaleValue,
   fishPostRoiHourlyNet,
   fishPrimaryProduction,
   fishRoiProgressRatio,
@@ -539,38 +540,16 @@ export class Fish {
   }
 
   public getSellValue(): number {
-    return Math.max(1, Math.floor(fishCommonPrice(this.type) * fishResaleBaseRate * this.resaleAdjustmentMultiplier()));
+    return Math.max(1, Math.floor(fishPowerResaleValue(this.ageSeconds) * fishResaleBaseRate * this.resaleAdjustmentMultiplier()));
   }
 
   public resaleAdjustmentMultiplier(): number {
-    const ageMultiplierByStage: Record<AgeStage, number> = {
-      baby: 0.82,
-      juvenile: 1.25,
-      adult: 1.85,
-      elder: 2.45,
-      master: 3.25
-    };
-    const rarityMultiplier: Record<FishType["rarity"], number> = {
-      common: 1,
-      rare: 1.12,
-      superRare: 1.28
-    };
-    const productionMultiplier = 1 + Phaser.Math.Clamp(this.postRoiHourlyNet() / 9000, 0, 1) * 0.34;
-    const sizeMultiplier = 0.92 + Phaser.Math.Clamp(this.currentVisualWorldScale() / this.veryBigScaleCap(), 0, 1) * 0.2;
-    const resilienceMultiplier = 0.96 + this.type.illnessResistance * 0.1;
     const conditionMultiplier = Phaser.Math.Clamp(
       0.55 + (this.health / 100) * 0.4 + ((100 - this.hunger) / 100) * 0.17,
       0.55,
       1.12
     );
-    const rawValue =
-      ageMultiplierByStage[this.ageStage] *
-      rarityMultiplier[this.type.rarity] *
-      productionMultiplier *
-      sizeMultiplier *
-      resilienceMultiplier *
-      conditionMultiplier;
-    return Math.max(0.35, rawValue);
+    return Math.max(0.35, conditionMultiplier);
   }
 
   public movementSizeMultiplier(): number {
@@ -782,7 +761,7 @@ export class Fish {
   }
 
   public powerLevel(): number {
-    return this.ageRequiredTankLevel();
+    return fishPowerLevelForAgeSeconds(this.ageSeconds);
   }
 
   public growthCapAgeYears(): number {

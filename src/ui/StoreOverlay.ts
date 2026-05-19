@@ -1,5 +1,6 @@
 import { foodAssetPath } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
+import { fishPowerLevelForPrice } from "../game/economy-model";
 import { foodCssFilterFor } from "../game/visuals";
 import type { FishType, FoodType, HelperCreatureType, StoreTab } from "../types/mechanics";
 import { createHtmlButton, htmlElement, installHtmlInputShield, playHtmlPageTransition } from "./dom";
@@ -310,6 +311,7 @@ export class StoreOverlay {
   private fishCard(fish: FishType, state: StoreOverlayState): HTMLElement {
     const affordable = state.developerGodMode || canAfford(state.wallet, fish.price);
     const requiredLevel = state.fishRequiredLevels[fish.id] ?? fish.tankLevel;
+    const powerLevel = Math.max(1, state.activeTankLevel, requiredLevel, fishPowerLevelForPrice(fish));
     const levelLocked = !state.developerGodMode && requiredLevel > Math.max(1, state.activeTankLevel);
     const hourlyLimitReached = !state.developerGodMode && state.fishPurchasesInWindow >= state.fishPurchaseHourlyLimit;
     const disabled = levelLocked || !affordable || hourlyLimitReached;
@@ -328,8 +330,8 @@ export class StoreOverlay {
           div("aq-card-title", [fish.name]),
           createStorePriceBadge(fish.price)
         ]),
-        div("aq-fish-power-inline", [`PWR ${formatNumber(Math.max(1, state.activeTankLevel))}`]),
-        div("aq-card-meta", [`Power Lv ${formatNumber(Math.max(1, state.activeTankLevel))} | baby size`]),
+        div("aq-fish-power-inline", [`PWR ${formatNumber(powerLevel)}`]),
+        div("aq-card-meta", [`Power Lv ${formatNumber(powerLevel)} | baby size`]),
         button(
           levelLocked ? `Need Tank L${formatNumber(requiredLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy w-full",
