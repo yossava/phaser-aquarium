@@ -7,9 +7,9 @@ export function createQuestList(
   claimedGoalIds: string[],
   foodNameForId: (foodTypeId: string) => string,
   fishNameForId: (fishTypeId: string) => string,
-  createButton: PageButtonFactory,
-  onClaim: (goalId: string, complete: boolean) => void,
-  onClaimAll: () => void
+  _createButton: PageButtonFactory,
+  _onClaim: (goalId: string, complete: boolean) => void,
+  _onClaimAll: () => void
 ): HTMLElement {
   const list = htmlElement("div", "aq-quest-list");
   if (goals.length === 0) {
@@ -22,8 +22,7 @@ export function createQuestList(
   if (readyCount > 0) {
     const toolbar = htmlElement("div", "aq-quest-toolbar");
     toolbar.append(
-      htmlElement("span", "aq-quest-ready-count", [`${readyCount} ready`]),
-      createButton("Claim All", "aq-page-button aq-page-button-good aq-quest-claim-all", onClaimAll)
+      htmlElement("span", "aq-quest-ready-count", [`${readyCount} dropping to tank`])
     );
     list.append(toolbar);
   }
@@ -39,7 +38,7 @@ export function createQuestList(
     row.append(
       status,
       body,
-      questAction(goal, claimed, createButton, onClaim)
+      questAction(goal, claimed)
     );
     list.append(row);
   });
@@ -61,16 +60,14 @@ function questSortRank(goal: DailyQuestItem, claimedGoalIds: string[]): number {
 
 function questAction(
   goal: DailyQuestItem,
-  claimed: boolean,
-  createButton: PageButtonFactory,
-  onClaim: (goalId: string, complete: boolean) => void
+  claimed: boolean
 ): HTMLElement {
   if (claimed) {
-    return htmlElement("span", "aq-quest-claimed", ["Claimed"]);
+    return htmlElement("span", "aq-quest-claimed", ["Dropped"]);
   }
 
   if (goal.complete) {
-    return createButton("Claim", "aq-page-button aq-page-button-good aq-quest-button", () => onClaim(goal.id, goal.complete));
+    return htmlElement("span", "aq-quest-claimed", ["Dropping"]);
   }
 
   return htmlElement("span", "aq-quest-pending", [""]);

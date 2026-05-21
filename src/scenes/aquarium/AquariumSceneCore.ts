@@ -312,6 +312,7 @@ import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../../objects
 import { Fish } from "../../objects/Fish";
 import { FoodPellet } from "../../objects/FoodPellet";
 import { HelperCreature } from "../../objects/HelperCreature";
+import { QuestPresentDrop, type QuestPresentDropOptions } from "../../objects/QuestPresentDrop";
 import {
   createPageOverlayRoot,
   createPageShellContent,
@@ -420,7 +421,9 @@ import {
   maxOwnedTanks,
   menuIconAssetPathByKey,
   overfullHungerFloor,
+  prizeHighlightSoundKey,
   prizeHighlightSoundPath,
+  prizeRewardSoundKey,
   prizeRewardSoundPath,
   storeTankNames,
   storeTankStarterWallets,
@@ -493,6 +496,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private fish: Fish[] = [];
   private foods: FoodPellet[] = [];
   private coinDrops: CoinDrop[] = [];
+  private questPresents: Array<{ drop: QuestPresentDrop; reward: DailyQuestReward }> = [];
   private airStoneBubblePool: Phaser.GameObjects.Arc[] = [];
   private activeAirStoneBubbles = new Set<Phaser.GameObjects.Arc>();
   private helperCreatures: HelperCreature[] = [];
@@ -1219,12 +1223,14 @@ export class AquariumSceneCore extends Phaser.Scene {
     const scale = this.tankViewScaleForLevel();
     this.foods.forEach((food) => food.setWorldScaleCompensation(scale));
     this.coinDrops.forEach((coin) => coin.setWorldScaleCompensation(scale));
+    this.questPresents.forEach((present) => present.drop.setWorldScaleCompensation(scale));
     this.pendingHelperCreatureDrops.forEach((drop) => this.fitPendingHelperCreatureDrop(drop, scale));
   }
 
   private fitCoinDropsToVisibleViewport(): void {
     const maxBottomY = this.visibleCoinBottomDesignY();
     this.coinDrops.forEach((coin) => coin.fitWithinVisibleBounds(tankViewportBounds, maxBottomY));
+    this.questPresents.forEach((present) => present.drop.fitWithinVisibleBounds(tankViewportBounds, maxBottomY));
   }
 
   private createScreenNav(): void {
@@ -1296,9 +1302,13 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.dirtyTankOverlay?.setVisible(false);
       this.coinMagnetRay?.setVisible(false);
       this.showDecorationTrashTarget(false);
+      this.syncQuestPresentVisibilityAndInput();
     } else if (this.activeScreen === "tank") {
       this.updateDirtyTankOverlay();
       this.syncCoinMagnetRay();
+      this.syncQuestPresentVisibilityAndInput();
+    } else {
+      this.syncQuestPresentVisibilityAndInput();
     }
   }
 
@@ -2044,6 +2054,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.htmlPageOverlay = undefined;
     this.coinComboOverlay?.remove();
     this.coinComboOverlay = undefined;
+    this.questPresents.forEach((present) => present.drop.destroy());
+    this.questPresents = [];
     this.destroyPrizeSpinContainer();
     this.destroyTankMenuOverlay();
     this.storeOverlay?.destroy();
@@ -2084,6 +2096,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.syncCoinDropVisibilityAndInput();
     this.createScreenNav();
     this.createFoodDock();
+    this.autoDropCompletedDailyQuestPresents();
 
     if (screen === "store") {
       this.hideHtmlPageOverlay();
@@ -4781,6 +4794,53 @@ export class AquariumSceneCore extends Phaser.Scene {
     });
   }
 
+  private createQuestPresentDrop(
+    questId: string,
+    reward: DailyQuestReward,
+    rewardLabel = this.dailyQuestRewardLabel(reward),
+    options: QuestPresentDropOptions & { id?: string; x?: number; y?: number } = {}
+  ): QuestPresentDrop {
+    const visibleBounds = tankViewportBounds;
+    const horizontalPadding = 38 / Math.max(0.01, this.tankViewScaleForLevel());
+    const minVisibleX = Math.max(tankBounds.left + horizontalPadding, visibleBounds.left + horizontalPadding);
+    const maxVisibleX = Math.min(tankBounds.right - horizontalPadding, visibleBounds.right - horizontalPadding);
+    const fallbackX = Phaser.Math.Clamp(visibleBounds.centerX || tankBounds.centerX, tankBounds.left + horizontalPadding, tankBounds.right - horizontalPadding);
+    const clampedVisibleX = (targetX: number) => (minVisibleX <= maxVisibleX ? Phaser.Math.Clamp(targetX, minVisibleX, maxVisibleX) : fallbackX);
+    const maxBottomY = this.visibleCoinBottomDesignY();
+    const bottomBand = Math.round(gameWidth * 0.08);
+    const randomX = minVisibleX <= maxVisibleX
+      ? Phaser.Math.Between(Math.round(minVisibleX), Math.round(maxVisibleX))
+      : fallbackX;
+    const x = clampedVisibleX(options.x ?? randomX);
+    const y = Phaser.Math.Clamp(options.y ?? tankViewportBounds.top + 36, visibleBounds.top + 24, maxBottomY);
+    const landingX = clampedVisibleX(options.landingX ?? x);
+    const bottomY = Phaser.Math.Clamp(
+      options.bottomY ?? Phaser.Math.Between(Math.round(maxBottomY - bottomBand), Math.round(maxBottomY)),
+      tankBounds.top + 80,
+      maxBottomY
+    );
+    const drop = new QuestPresentDrop(
+      this,
+      x,
+      y,
+      options.id ?? `quest-present:${questId}:${Date.now()}:${Phaser.Math.Between(1000, 9999)}`,
+      questId,
+      rewardLabel,
+      { ...options, landingX, bottomY }
+    );
+    drop.setWorldScaleCompensation(this.tankViewScaleForLevel());
+    drop.addToContainer(this.tankLayer);
+    const collect = (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      this.collectQuestPresent(drop);
+    };
+    drop.hitZone.on("pointerdown", collect);
+    drop.sprite.on("pointerdown", collect);
+    this.questPresents.push({ drop, reward });
+    this.syncQuestPresentVisibilityAndInput();
+    return drop;
+  }
+
   private visibleCoinBottomDesignY(): number {
     this.refreshVisibleTankViewport();
     const scale = Math.max(0.01, this.tankViewScaleForLevel());
@@ -4800,6 +4860,66 @@ export class AquariumSceneCore extends Phaser.Scene {
       coin.hitZone.disableInteractive();
       coin.sprite.disableInteractive();
     }
+  }
+
+  private setQuestPresentVisible(present: QuestPresentDrop, visible: boolean): void {
+    present.sprite.setVisible(visible);
+    present.hitZone.setVisible(visible);
+    present.labelText.setVisible(visible);
+    if (visible && this.canManuallyCollectTankPresents()) {
+      present.hitZone.setInteractive({ useHandCursor: true });
+      present.sprite.setInteractive({ useHandCursor: true });
+    } else {
+      present.hitZone.disableInteractive();
+      present.sprite.disableInteractive();
+    }
+  }
+
+  private collectQuestPresent(drop: QuestPresentDrop): void {
+    if (!this.canManuallyCollectTankPresents()) {
+      return;
+    }
+    const present = this.questPresents.find((candidate) => candidate.drop === drop);
+    if (!present) {
+      return;
+    }
+
+    if (present.reward.kind === "coins") {
+      this.claimQuestPresentReward(present.drop, "combo");
+      return;
+    }
+
+    this.showQuestPresentModal(present);
+  }
+
+  private showQuestPresentModal(present: { drop: QuestPresentDrop; reward: DailyQuestReward }): void {
+    this.showPrizeCelebration(
+      "Present Prize!",
+      this.questRewardImageUrl(present.reward),
+      present.drop.rewardLabel,
+      "Claim",
+      () => this.claimQuestPresentReward(present.drop)
+    );
+  }
+
+  private claimQuestPresentReward(drop: QuestPresentDrop, display: "modal" | "combo" = "modal"): void {
+    const present = this.questPresents.find((candidate) => candidate.drop === drop);
+    if (!present) {
+      return;
+    }
+
+    this.grantDailyQuestReward(present.reward);
+    this.playSfx(prizeRewardSoundKey, { volume: 0.2 });
+    if (display === "combo") {
+      this.showCoinComboOverlay(`QUEST PRIZE +${present.drop.rewardLabel}!`, true, coinComboRewardTextDurationMs);
+    } else {
+      this.floatText(`+${present.drop.rewardLabel} quest`, present.drop.sprite.x, present.drop.sprite.y - 24, "#ffe67a");
+    }
+    present.drop.destroy();
+    this.questPresents = this.questPresents.filter((candidate) => candidate !== present);
+    this.refreshUi();
+    this.createFoodDock();
+    this.saveNow();
   }
 
   private collectCoin(coin: CoinDrop, automated: boolean): void {
@@ -4856,10 +4976,21 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.activeScreen === "tank" && !this.modal && !this.htmlDockDragging;
   }
 
+  private canManuallyCollectTankPresents(): boolean {
+    return this.activeScreen === "tank" && !this.modal && !this.htmlDockDragging;
+  }
+
   private syncCoinDropVisibilityAndInput(): void {
     const visible = this.activeScreen !== "makeup";
     for (const coin of this.coinDrops) {
       this.setCoinDropVisible(coin, visible);
+    }
+  }
+
+  private syncQuestPresentVisibilityAndInput(): void {
+    const visible = this.activeScreen === "tank";
+    for (const present of this.questPresents) {
+      this.setQuestPresentVisible(present.drop, visible);
     }
   }
 
@@ -6262,6 +6393,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private recordDailyQuestAction(action: string): void {
     this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
     this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, action);
+    this.autoDropCompletedDailyQuestPresents();
   }
 
   private localDateKey(): string {
@@ -6289,7 +6421,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
-    this.showQuestRewardModal(quest);
+    this.dropDailyQuestPresent(quest);
   }
 
   private showQuestRewardModal(quest: DailyQuestItem): void {
@@ -6323,16 +6455,40 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
-    readyQuests.forEach((quest) => {
-      if (this.markDailyGoalClaimed(quest)) {
-        this.grantDailyQuestReward(quest.reward);
-      }
-    });
+    readyQuests.forEach((quest) => this.dropDailyQuestPresent(quest, false));
     this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
-    this.floatText(`+${formatNumber(readyQuests.length)} quest rewards`, toastX, toastY, "#ffe67a");
+    this.floatText(`${formatNumber(readyQuests.length)} prizes dropped`, toastX, toastY, "#ffe67a");
     this.refreshUi();
-    this.createFoodDock();
     this.saveNow();
+  }
+
+  private autoDropCompletedDailyQuestPresents(): void {
+    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
+    const readyQuests = this.dailyQuestItems().filter((quest) => quest.complete && !this.dailyGoals.claimed.includes(quest.id));
+    if (readyQuests.length === 0) {
+      return;
+    }
+
+    readyQuests.forEach((quest) => this.dropDailyQuestPresent(quest, false));
+    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
+    this.refreshUi(false);
+    this.saveNow();
+  }
+
+  private dropDailyQuestPresent(quest: DailyQuestItem, notify = true): void {
+    if (this.questPresents.some((present) => present.drop.questId === quest.id)) {
+      return;
+    }
+    if (!this.markDailyGoalClaimed(quest)) {
+      return;
+    }
+
+    const label = this.dailyQuestRewardLabel(quest.reward);
+    this.createQuestPresentDrop(quest.id, quest.reward, label);
+    this.playSfx(prizeHighlightSoundKey, { volume: 0.16 });
+    if (notify) {
+      this.floatText("Prize dropped in tank", toastX, toastY, "#ffe67a");
+    }
   }
 
   private markDailyGoalClaimed(quest: DailyQuestItem): boolean {

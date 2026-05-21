@@ -9,6 +9,7 @@ import {
   tankThumbnailBaseTextureKey
 } from "../../game/tank-catalog";
 import { coinTextureKeyByType } from "../../objects/CoinDrop";
+import { questPresentAssetPath, questPresentTextureKey } from "../../objects/QuestPresentDrop";
 import type { CoinType, FoodTypeId } from "../../types/mechanics";
 import { prizeWheelIconAssetPaths, prizeWheelIconTextureKeys } from "../../game/prize-machine-wheel";
 import {
@@ -79,6 +80,7 @@ function aquariumStaticImageAssets(foodTextureKey: (foodTypeId: FoodTypeId) => s
       textureKey: coinTextureKeyByType[coinType],
       assetPath: coinAssetPathByType[coinType]
     })),
+    { textureKey: questPresentTextureKey, assetPath: questPresentAssetPath },
     ...imageAssetsFromRecord(menuIconAssetPathByKey),
     ...imageAssetsFromRecord(hudIconAssetPathByKey),
     ...tankImageAssets,

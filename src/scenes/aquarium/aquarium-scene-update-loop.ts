@@ -27,9 +27,11 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.updateTimedUtilities();
   scene.updateTimeCurrent(deltaSeconds);
   scene.updateDailyQuestPlaytime(deltaSeconds);
+  scene.autoDropCompletedDailyQuestPresents?.();
   const activitySpeedMultiplier = scene.tankActivitySpeedMultiplier();
   const progressDeltaSeconds = deltaSeconds * activitySpeedMultiplier;
 
+  scene.questPresents?.forEach((present: any) => present.drop.update(deltaSeconds));
   scene.foods.forEach((food: any) => food.update(deltaSeconds));
   scene.removeExpiredFood();
   scene.coinDrops.forEach((coin: any) => coin.update(deltaSeconds));

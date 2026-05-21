@@ -44,6 +44,7 @@ export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget):
   restoreHelperCreatures(scene, saved.helperCreatures);
   restoreFish(scene, saved.fish);
   restoreCoinDrops(scene, saved.coinDrops);
+  restoreQuestPresents(scene, saved.questPresents ?? []);
   scene.refreshFishTankVisibility();
   scene.refreshHelperTankVisibility();
   scene.refreshDecorationTankVisibility();
@@ -102,6 +103,7 @@ export function saveAquariumSceneNow(scene: AquariumScenePersistenceTarget, save
     decorations: scene.placedDecorations,
     helperCreatures: scene.helperCreatures,
     coinDrops: scene.coinDrops,
+    questPresents: scene.questPresents,
     tank: {
       cleanliness: scene.cleanliness,
       cleanedAt: scene.cleanedAt,
@@ -182,6 +184,21 @@ function restoreCoinDrops(scene: AquariumScenePersistenceTarget, coinDrops: any[
         bottomY: savedCoin.bottomY
       }
     );
+  }
+}
+
+function restoreQuestPresents(scene: AquariumScenePersistenceTarget, questPresents: any[]): void {
+  for (const savedPresent of questPresents) {
+    if ((savedPresent.tankLevel ?? scene.tankLevel) !== scene.tankLevel) {
+      continue;
+    }
+    scene.createQuestPresentDrop(savedPresent.questId, savedPresent.reward, savedPresent.rewardLabel, {
+      id: savedPresent.id,
+      x: savedPresent.x,
+      y: savedPresent.y,
+      landingX: savedPresent.landingX,
+      bottomY: savedPresent.bottomY
+    });
   }
 }
 

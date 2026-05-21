@@ -1,5 +1,6 @@
 import { foodTypes } from "../data/content";
 import { createDefaultPrizeMachineState, normalizePrizeMachineState, type PrizeMachineState } from "./prize-machine";
+import type { DailyQuestReward } from "./quest-system";
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
 
 export const SAVE_VERSION = 13;
@@ -49,6 +50,18 @@ export type SavedCoinDrop = {
   bottomY?: number;
 };
 
+export type SavedQuestPresent = {
+  id: string;
+  questId: string;
+  reward: DailyQuestReward;
+  rewardLabel: string;
+  tankLevel?: number;
+  x: number;
+  y: number;
+  landingX?: number;
+  bottomY?: number;
+};
+
 export type SavedGame = {
   version: typeof SAVE_VERSION;
   savedAt: number;
@@ -62,6 +75,7 @@ export type SavedGame = {
   decorations: SavedDecoration[];
   helperCreatures: SavedHelperCreature[];
   coinDrops: SavedCoinDrop[];
+  questPresents?: SavedQuestPresent[];
   tank: {
     cleanliness: number;
     cleanedAt: number;
@@ -187,6 +201,9 @@ export function loadGame(): SavedGame | undefined {
       coinDrops: Array.isArray(migrated.coinDrops)
         ? migrated.coinDrops.map(sanitizeCoinDrop).filter((coin): coin is SavedCoinDrop => Boolean(coin))
         : [],
+      questPresents: Array.isArray(migrated.questPresents)
+        ? migrated.questPresents.map(sanitizeQuestPresent).filter((present): present is SavedQuestPresent => Boolean(present))
+        : [],
       tank: {
         cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
         cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
@@ -258,6 +275,7 @@ function migrateSave(
       decorations: Array.isArray(parsed.decorations) ? parsed.decorations : [],
       helperCreatures: [],
       coinDrops: [],
+      questPresents: [],
       tank: { cleanliness: 100, cleanedAt: Date.now(), level: 1 },
       settings: { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false },
       dailyGoals: { date: localDateKey(), claimed: [] },
@@ -524,6 +542,71 @@ function sanitizeCoinDrop(coin: Partial<SavedCoinDrop>): SavedCoinDrop | undefin
     landingX: sanitizeNumber(coin.landingX, coin.x ?? 0),
     bottomY: sanitizeNumber(coin.bottomY, coin.y ?? 0)
   };
+}
+
+function sanitizeQuestPresent(present: Partial<SavedQuestPresent>): SavedQuestPresent | undefined {
+  const id = typeof present.id === "string" ? present.id : "";
+  const questId = typeof present.questId === "string" ? present.questId : "";
+  const reward = sanitizeDailyQuestReward(present.reward);
+  if (!id || !questId || !reward) {
+    return undefined;
+  }
+
+  return {
+    id,
+    questId,
+    reward,
+    rewardLabel: typeof present.rewardLabel === "string" ? present.rewardLabel : "Prize",
+    tankLevel: Math.max(1, Math.floor(sanitizeNumber(present.tankLevel, 1))),
+    x: sanitizeNumber(present.x, 0),
+    y: sanitizeNumber(present.y, 0),
+    landingX: sanitizeNumber(present.landingX, present.x ?? 0),
+    bottomY: sanitizeNumber(present.bottomY, present.y ?? 0)
+  };
+}
+
+function sanitizeDailyQuestReward(reward: unknown): DailyQuestReward | undefined {
+  if (!reward || typeof reward !== "object") {
+    return undefined;
+  }
+  const candidate = reward as Partial<DailyQuestReward>;
+  if (candidate.kind === "coins" && candidate.price) {
+    const price = candidate.price;
+    const coinType = price.coinType === "rare" || price.coinType === "superRare" ? price.coinType : "common";
+    return {
+      kind: "coins",
+      price: {
+        coinType,
+        amount: Math.max(0, sanitizeNumber(price.amount, 0)),
+        rareAmount: Math.max(0, sanitizeNumber(price.rareAmount, 0)) || undefined,
+        superRareAmount: Math.max(0, sanitizeNumber(price.superRareAmount, 0)) || undefined
+      }
+    };
+  }
+  if (candidate.kind === "food" && typeof candidate.foodTypeId === "string") {
+    return {
+      kind: "food",
+      foodTypeId: candidate.foodTypeId,
+      quantity: Math.max(1, Math.floor(sanitizeNumber(candidate.quantity, 1))),
+      assignTo: candidate.assignTo === "oldest-active-fish" ? "oldest-active-fish" : undefined
+    };
+  }
+  if (candidate.kind === "fish" && typeof candidate.fishTypeId === "string") {
+    return {
+      kind: "fish",
+      fishTypeId: candidate.fishTypeId,
+      quantity: Math.max(1, Math.floor(sanitizeNumber(candidate.quantity, 1)))
+    };
+  }
+  if (candidate.kind === "utility" && typeof candidate.utilityId === "string") {
+    return {
+      kind: "utility",
+      utilityId: candidate.utilityId,
+      quantity: Math.max(1, Math.floor(sanitizeNumber(candidate.quantity, 1)))
+    };
+  }
+
+  return undefined;
 }
 
 function sanitizeNumber(value: unknown, fallback: number): number {

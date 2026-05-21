@@ -1,11 +1,12 @@
 import { normalizePrizeMachineState, type PrizeMachineState } from "./prize-machine";
 import type { DailyGoalsState } from "./quest-system";
-import { mapToRecord, SAVE_VERSION, type SavedCoinDrop, type SavedGame } from "./save";
+import { mapToRecord, SAVE_VERSION, type SavedCoinDrop, type SavedGame, type SavedQuestPresent } from "./save";
 import { ageMapToRecord } from "./tank-state";
 import type { PlacedDecoration } from "./tank-entities";
 import type { Fish } from "../objects/Fish";
 import type { HelperCreature } from "../objects/HelperCreature";
 import type { CoinDrop } from "../objects/CoinDrop";
+import type { QuestPresentDrop } from "../objects/QuestPresentDrop";
 import type { FoodTypeId, Wallet } from "../types/mechanics";
 
 export function savedCoinDrops(input: {
@@ -24,6 +25,23 @@ export function savedCoinDrops(input: {
   }));
 }
 
+export function savedQuestPresents(input: {
+  questPresents: Array<{ drop: QuestPresentDrop; reward: SavedQuestPresent["reward"] }>;
+  tankLevel: number;
+}): SavedQuestPresent[] {
+  return input.questPresents.map(({ drop, reward }) => ({
+    id: drop.id,
+    questId: drop.questId,
+    reward,
+    rewardLabel: drop.rewardLabel,
+    tankLevel: input.tankLevel,
+    x: drop.sprite.x,
+    y: drop.sprite.y,
+    landingX: drop.landingX,
+    bottomY: drop.bottomY
+  }));
+}
+
 export function createAquariumSaveSnapshot(input: {
   savedAt: number;
   currentTime: number;
@@ -37,6 +55,7 @@ export function createAquariumSaveSnapshot(input: {
   decorations: PlacedDecoration[];
   helperCreatures: HelperCreature[];
   coinDrops: CoinDrop[];
+  questPresents: Array<{ drop: QuestPresentDrop; reward: SavedQuestPresent["reward"] }>;
   tank: {
     cleanliness: number;
     cleanedAt: number;
@@ -90,6 +109,10 @@ export function createAquariumSaveSnapshot(input: {
     })),
     coinDrops: savedCoinDrops({
       coinDrops: input.coinDrops,
+      tankLevel: input.tank.activeLevel
+    }),
+    questPresents: savedQuestPresents({
+      questPresents: input.questPresents,
       tankLevel: input.tank.activeLevel
     }),
     tank: {
