@@ -123,7 +123,6 @@ export class Fish {
   private visualWorldScale = 1;
   private swimPhase: number;
   private velocity = new Phaser.Math.Vector2();
-  private joystickDirection = new Phaser.Math.Vector2();
   private restUntil = 0;
   private hasRestedAtTarget = false;
   private dragReleaseEscapeUntil = 0;
@@ -220,28 +219,6 @@ export class Fish {
       this.velocity.set(0, 0);
       this.setStateTint();
       this.animateSwimming(deltaSeconds, 0, false, true);
-      this.updateStateEmoji();
-      this.maybeUpdateStatusBars();
-      return undefined;
-    }
-
-    if (this.joystickDirection.lengthSq() > 0.0025 && !escapingFromDrag) {
-      this.restUntil = 0;
-      this.hasRestedAtTarget = false;
-      this.offscreenVisitState = "none";
-      const controlSpeed = this.type.speed * this.movementSizeMultiplier() * fishMovementSpeedMultiplier * 10.8;
-      this.steerTowardVelocity(
-        this.joystickDirection.x * controlSpeed,
-        this.joystickDirection.y * controlSpeed,
-        deltaSeconds,
-        7.2
-      );
-      this.sprite.x = Phaser.Math.Clamp(this.sprite.x, this.minimumMovementX(), this.maximumMovementX());
-      this.sprite.y = Phaser.Math.Clamp(this.sprite.y, tankBounds.top + 26, tankBounds.bottom - 26);
-      this.target.set(this.sprite.x + this.joystickDirection.x * 80, this.sprite.y + this.joystickDirection.y * 80);
-      this.forceFacing(1);
-      this.setStateTint();
-      this.animateSwimming(deltaSeconds, controlSpeed, true, false);
       this.updateStateEmoji();
       this.maybeUpdateStatusBars();
       return undefined;
@@ -488,29 +465,6 @@ export class Fish {
     this.startDragReleaseEscape();
     this.scheduleNextOffscreenVisit();
     this.updateStatusBars(true);
-  }
-
-  public setJoystickDirection(x: number, y: number): void {
-    this.joystickDirection.set(
-      Phaser.Math.Clamp(x, -1, 1),
-      Phaser.Math.Clamp(y, -1, 1)
-    );
-    if (this.joystickDirection.lengthSq() > 1) {
-      this.joystickDirection.normalize();
-    }
-    if (this.joystickDirection.lengthSq() > 0.0025) {
-      this.dragReleaseEscapeUntil = 0;
-    }
-  }
-
-  public clearJoystickDirection(): void {
-    this.joystickDirection.set(0, 0);
-    this.velocity.set(0, 0);
-    this.pickWanderTarget();
-  }
-
-  public isJoystickControlled(): boolean {
-    return this.joystickDirection.lengthSq() > 0.0025;
   }
 
   public addToContainer(container: Phaser.GameObjects.Container): void {

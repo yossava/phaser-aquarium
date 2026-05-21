@@ -55,8 +55,6 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   for (const currentFish of tankFish) {
     updateFish(scene, currentFish, foodAssignments.get(currentFish) ?? [], deltaSeconds, progressDeltaSeconds, fishToRemove, activitySpeedMultiplier);
   }
-  scene.collectCoinsHitByControlledFish();
-  scene.updateControlledFishBubbleTrail(deltaSeconds);
 
   removeDeadFish(scene, fishToRemove);
   runAutosave(scene, realDeltaSeconds);
