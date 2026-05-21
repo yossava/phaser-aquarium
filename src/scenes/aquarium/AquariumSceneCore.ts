@@ -382,6 +382,7 @@ import { createModalShell, type ModalAction } from "../../ui/modal";
 import type { AquariumTestSnapshot } from "../../test/aquarium-test-api";
 import { installAquariumTestHooks } from "../../test/aquarium-test-hooks";
 import type { CoinType, DecorationType, FishGender, FishState, FishType, FoodType, FoodTypeId, HelperCreatureType, Price, Rarity, StoreTab, Wallet } from "../../types/mechanics";
+import { BubblePopScene, BubblePopSceneKey, type BubblePopResult } from "../BubblePopScene";
 import { ReefDropScene, ReefDropSceneKey, type ReefDropResult } from "../ReefDropScene";
 import {
   algaeParticleThreshold,
@@ -638,6 +639,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private rewardedAdModalButton?: HTMLButtonElement;
   private prizeMachine: PrizeMachineState = createDefaultPrizeMachineState();
   private reefDropPauseToken = 0;
+  private bubblePopPauseToken = 0;
   private prizeMachineSelectedBetIndex?: number;
   private prizeSpinContainer?: Phaser.GameObjects.Container;
   private prizeSpinInProgress = false;
@@ -2042,6 +2044,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private closePage(): void {
     const closingScreen = this.activeScreen;
     this.removeReefDropScene();
+    this.removeBubblePopScene();
     this.ensureAquariumSceneRunning();
     const explicitReturnScreen = this.pageReturnScreen;
     this.pageReturnScreen = undefined;
@@ -2076,6 +2079,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private returnToTankScreen(): void {
     this.removeReefDropScene();
+    this.removeBubblePopScene();
     this.ensureAquariumSceneRunning();
     this.activeScreen = "tank";
     this.settlePausedTankEarnings();
@@ -2255,6 +2259,12 @@ export class AquariumSceneCore extends Phaser.Scene {
         "Treasure Spin",
         "Spin for fish, coins, helpers, and supplies.",
         () => this.openPrizeMachineArcade()
+      ),
+      this.createDrillMenuCard(
+        menuIconAssetPathByKey["ui-game"],
+        "Bubble Pop",
+        "Tap bubbles for quick coins.",
+        () => this.openBubblePopGame()
       ),
       this.createDrillMenuCard(
         menuIconAssetPathByKey["ui-game"],
@@ -3326,6 +3336,8 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private openPrizeMachineArcade(): void {
+    this.removeReefDropScene();
+    this.removeBubblePopScene();
     this.prizeController().openPrizeMachineArcade();
   }
 
@@ -3343,6 +3355,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.gameHudOverlay?.classList.add("hidden");
     this.htmlFoodDock?.classList.add("hidden");
     this.destroyPrizeSpinContainer();
+    this.removeBubblePopScene();
     this.hideReefDropSceneImmediately();
     this.scene.remove(ReefDropSceneKey);
     this.scene.add(ReefDropSceneKey, ReefDropScene, false);
@@ -3359,6 +3372,48 @@ export class AquariumSceneCore extends Phaser.Scene {
       }
       this.scene.pause("AquariumScene");
     });
+  }
+
+  private openBubblePopGame(): void {
+    this.placementMode = { kind: "none" };
+    if (this.activeScreen === "tank") {
+      this.startPausedTankEarnings();
+    }
+    this.activeScreen = "prize";
+    this.closeModal();
+    this.storeOverlay?.hide();
+    this.hideHtmlPageOverlay();
+    this.syncHtmlGameInterface();
+    this.tankMenuOverlay?.classList.add("hidden");
+    this.gameHudOverlay?.classList.add("hidden");
+    this.htmlFoodDock?.classList.add("hidden");
+    this.destroyPrizeSpinContainer();
+    this.removeReefDropScene();
+    this.hideBubblePopSceneImmediately();
+    this.scene.remove(BubblePopSceneKey);
+    this.scene.add(BubblePopSceneKey, BubblePopScene, false);
+    const pauseToken = ++this.bubblePopPauseToken;
+    this.scene.launch(BubblePopSceneKey, {
+      productionPerMinute: this.activeFishProductionPerMinute(),
+      onComplete: (result: BubblePopResult) => this.completeBubblePopGame(result),
+      onCancel: () => this.returnFromBubblePopGame()
+    });
+    this.scene.bringToTop(BubblePopSceneKey);
+    this.time.delayedCall(0, () => {
+      if (this.bubblePopPauseToken !== pauseToken || this.activeScreen !== "prize") {
+        return;
+      }
+      this.scene.pause("AquariumScene");
+    });
+  }
+
+  private completeBubblePopGame(result: BubblePopResult): void {
+    const rewardCommonCoins = Math.max(0, Math.floor(result.coinReward));
+    earn(this.wallet, "common", rewardCommonCoins);
+    this.recordDailyQuestAction("bubble-pop-game");
+    this.recordDailyQuestAction("prize-game");
+    this.saveNow();
+    this.returnFromBubblePopGame();
   }
 
   private completeReefDropGame(result: ReefDropResult): void {
@@ -3414,6 +3469,15 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.syncHtmlPageOverlay();
   }
 
+  private returnFromBubblePopGame(): void {
+    this.removeBubblePopScene();
+    this.ensureAquariumSceneRunning();
+    this.scene.bringToTop("AquariumScene");
+    this.activeScreen = "menu";
+    this.syncHtmlGameInterface();
+    this.syncHtmlPageOverlay();
+  }
+
   private hideReefDropSceneImmediately(): void {
     let reefDropScene: Phaser.Scene;
     try {
@@ -3456,6 +3520,50 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.scene.sleep(ReefDropSceneKey);
     this.scene.stop(ReefDropSceneKey);
     this.scene.remove(ReefDropSceneKey);
+  }
+
+  private hideBubblePopSceneImmediately(): void {
+    let bubblePopScene: Phaser.Scene;
+    try {
+      bubblePopScene = this.scene.get(BubblePopSceneKey);
+    } catch {
+      return;
+    }
+    if (!bubblePopScene) {
+      return;
+    }
+    bubblePopScene.input.enabled = false;
+    bubblePopScene.tweens.killAll();
+    bubblePopScene.time.removeAllEvents();
+    [...bubblePopScene.children.getChildren()].forEach((child) => {
+      (child as Phaser.GameObjects.GameObject & { setVisible?: (value: boolean) => unknown }).setVisible?.(false);
+      child.destroy();
+    });
+    bubblePopScene.children.removeAll(true);
+    bubblePopScene.cameras.cameras.forEach((camera) => {
+      camera.visible = false;
+    });
+    bubblePopScene.sys.setVisible(false);
+    bubblePopScene.sys.setActive(false);
+  }
+
+  private removeBubblePopScene(): void {
+    this.bubblePopPauseToken += 1;
+    let bubblePopScene: Phaser.Scene;
+    try {
+      bubblePopScene = this.scene.get(BubblePopSceneKey);
+    } catch {
+      return;
+    }
+    if (!bubblePopScene) {
+      return;
+    }
+    this.hideBubblePopSceneImmediately();
+    this.scene.setVisible(false, BubblePopSceneKey);
+    this.scene.setActive(false, BubblePopSceneKey);
+    this.scene.sleep(BubblePopSceneKey);
+    this.scene.stop(BubblePopSceneKey);
+    this.scene.remove(BubblePopSceneKey);
   }
 
   private showPrizeMachineSpinner(): void {
