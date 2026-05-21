@@ -172,6 +172,10 @@ export class CoinDrop {
   }
 
   public destroy(): void {
+    this.hitZone.removeAllListeners();
+    this.sprite.removeAllListeners();
+    this.hitZone.disableInteractive();
+    this.sprite.disableInteractive();
     this.hitZone.destroy();
     this.shimmer.destroy();
     this.sprite.destroy();

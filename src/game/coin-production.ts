@@ -36,7 +36,7 @@ export function updateFishCoinProduction(input: {
     return;
   }
 
-  if (input.coinDropCount >= input.maxCoinDrops && !fish.hasActiveProductionBoost(now) && minimumCoinDropValue <= 0) {
+  if (input.coinDropCount >= input.maxCoinDrops && !fish.hasActiveProductionBoost(now)) {
     const cappedValue = fish.takeCoinProductionDrop(now, input.activeProductionPaceMultiplier);
     if (cappedValue > 0) {
       input.addFishProductionTotal(fish.tankLevel, cappedValue);

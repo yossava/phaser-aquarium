@@ -34,6 +34,7 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.foods.forEach((food: any) => food.update(deltaSeconds));
   scene.removeExpiredFood();
   scene.coinDrops.forEach((coin: any) => coin.update(deltaSeconds));
+  scene.trimExcessCoinDrops?.();
   scene.updateCoinMagnetRayPulse();
   scene.updateCoinMagnet();
   if (scene.coinComboCount > 0 && now - scene.coinComboLastClaimedAt >= coinComboIdleTimeoutMs) {

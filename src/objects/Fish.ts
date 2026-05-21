@@ -814,6 +814,8 @@ export class Fish {
   }
 
   public destroy(): void {
+    this.sprite.removeAllListeners();
+    this.sprite.disableInteractive();
     this.tailMark.destroy();
     this.stateBubble.destroy();
     this.stateEmoji.destroy();
