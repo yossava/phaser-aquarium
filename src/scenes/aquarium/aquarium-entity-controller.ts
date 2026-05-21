@@ -136,15 +136,13 @@ export class AquariumEntityController {
       return;
     }
 
-    const storedAgeSeconds = this.adapter.takeStoredFishAge(type.id);
+    this.adapter.takeStoredFishAge(type.id);
     this.adapter.removeStoredFish(type.id);
     if (exchangeTarget) {
       this.adapter.storeFish(exchangeTarget);
     }
     this.addFishToTank(type, x, y, {
-      tankLevel: this.adapter.tankLevel(),
-      ageSeconds: storedAgeSeconds,
-      visualAgeSeconds: 0
+      tankLevel: this.adapter.tankLevel()
     });
     this.adapter.recordDailyQuestAction("place-fish");
 

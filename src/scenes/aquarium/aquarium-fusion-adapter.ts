@@ -121,7 +121,6 @@ export function createAquariumFusionAdapter(scene: AquariumSceneCore): AquariumF
     aquariumScene.captureActiveTankState();
     consumeSources(input.selected);
     aquariumScene.addFishToInventory(input.resultType);
-    aquariumScene.addStoredFishAge(input.resultType.id, input.inheritedAge);
     aquariumScene.ensureFishTexturesLoaded(input.resultType);
   };
 

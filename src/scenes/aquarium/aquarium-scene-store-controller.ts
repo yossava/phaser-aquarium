@@ -252,7 +252,7 @@ export class AquariumSceneStoreController {
   }
 
   private shopFishPowerAgeSeconds(fishType: FishType): number {
-    const powerLevel = Math.max(this.adapter.activeTankLevel(), fishShopRequiredLevel(fishType), fishPowerLevelForPrice(fishType));
+    const powerLevel = fishShopRequiredLevel(fishType);
     return Math.max(0, fishPowerAgeSecondsForLevel(powerLevel));
   }
 

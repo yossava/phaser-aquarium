@@ -13,6 +13,7 @@ export const fishCoinProductionMaxDelayMs = 8000;
 export const fishCoinProductionAverageDelaySeconds = 5;
 export const minimumFishCoinDropValue = 0.1;
 export const fishPowerLevelSeconds = 12 * 60 * 60;
+const maxFishPowerLevel = 20;
 const fishPowerLevelPriceGrowth = 1.75;
 const coinWealthValue: Record<CoinType, number> = {
   common: 1,
@@ -63,7 +64,7 @@ export function fishPowerAgeSecondsForLevel(level: number): number {
 }
 
 export function fishPowerLevelForAgeSeconds(ageSeconds: number): number {
-  return Math.max(1, Math.floor(Math.max(0, ageSeconds) / fishPowerLevelSeconds) + 1);
+  return clamp(Math.floor(Math.max(0, ageSeconds) / fishPowerLevelSeconds) + 1, 1, maxFishPowerLevel);
 }
 
 export function fishPowerValueForAgeSeconds(ageSeconds: number): number {

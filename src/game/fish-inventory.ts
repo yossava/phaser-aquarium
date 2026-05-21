@@ -39,7 +39,6 @@ export function storeActiveFish(input: {
   fish: Fish;
   activeFish: Fish[];
   fishInventory: Map<string, number>;
-  addStoredFishAge: (fishTypeId: string, ageSeconds: number) => void;
   removeFishAt: (index: number) => Fish | undefined;
 }): boolean {
   const index = input.activeFish.indexOf(input.fish);
@@ -51,7 +50,6 @@ export function storeActiveFish(input: {
     fishInventory: input.fishInventory,
     fishTypeId: input.fish.type.id
   });
-  input.addStoredFishAge(input.fish.type.id, input.fish.ageSeconds);
   input.removeFishAt(index);
   return true;
 }

@@ -307,12 +307,6 @@ import {
   planStoredFishSale,
   utilitySaleValue
 } from "../../game/store-transactions";
-import {
-  addStoredFishAge as addStoredFishAgeModel,
-  setStoredFishAges as setStoredFishAgesModel,
-  storedFishAgesFor as storedFishAgesForModel,
-  takeStoredFishAge as takeStoredFishAgeModel
-} from "../../game/stored-fish-ages";
 import { CoinDrop, coinTextureKeyByType, coinVisualsByType } from "../../objects/CoinDrop";
 import { Fish } from "../../objects/Fish";
 import { FoodPellet } from "../../objects/FoodPellet";
@@ -511,7 +505,6 @@ export class AquariumSceneCore extends Phaser.Scene {
   private foods: FoodPellet[] = [];
   private coinDrops: CoinDrop[] = [];
   private questPresents: Array<{ drop: QuestPresentDrop; reward: DailyQuestReward }> = [];
-  private emergencyFoodCoinFish?: Fish;
   private airStoneBubblePool: Phaser.GameObjects.Arc[] = [];
   private activeAirStoneBubbles = new Set<Phaser.GameObjects.Arc>();
   private helperCreatures: HelperCreature[] = [];
@@ -531,9 +524,6 @@ export class AquariumSceneCore extends Phaser.Scene {
   private pausedTankEarningsRatePerSecond = 0;
   private activeProductionPaceMultiplierFrame = -1;
   private activeProductionPaceMultiplierValue = 1;
-  private emergencyFoodCoinTargetFrame = -1;
-  private emergencyFoodCoinTarget?: Fish;
-  private emergencyFoodCoinDeficitValue = 0;
   private autosaveElapsed = 0;
   private hudStatusSyncElapsed = 0;
   private storeRefreshElapsed = 0;
@@ -3203,9 +3193,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     }
 
     const position = this.randomFishPlacement();
-    const ageSeconds = this.takeStoredFishAge(fishType.id);
     this.removeStoredFish(fishType.id);
-    this.addFishToTank(fishType, position.x, position.y, { tankLevel: this.tankLevel, ageSeconds, visualAgeSeconds: 0 });
+    this.addFishToTank(fishType, position.x, position.y, { tankLevel: this.tankLevel });
     this.recordDailyQuestAction("move-fish");
     this.recordDailyQuestAction("place-fish");
     this.floatText(`${fishType.name} moved to tank`, toastX, toastY, "#d7f4ff");
@@ -3456,8 +3445,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private currentGameTimeSeconds(): number {
     const activeAges = this.activeFish().map((fish) => fish.ageSeconds);
-    const storedAges = [...this.fishInventoryAges.values()].flat();
-    return Math.max(0, ...activeAges, ...storedAges);
+    return Math.max(0, ...activeAges);
   }
 
   private returnFromReefDropGame(): void {
@@ -4210,16 +4198,16 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private storedFishSellValueForQuantity(fishType: FishType, quantity: number): number {
     const sellQuantity = Math.max(1, Math.floor(quantity));
-    const storedAges = this.storedFishAgesFor(fishType.id);
     let total = 0;
     for (let index = 0; index < sellQuantity; index += 1) {
-      total += storedFishSellValueModel(fishType, storedAges[index] ?? 0);
+      total += storedFishSellValueModel(fishType, 0);
     }
     return total;
   }
 
   private storedFishPowerAgeSeconds(fishType: FishType): number {
-    return this.storedFishAgesFor(fishType.id)[0] ?? 0;
+    void fishType;
+    return 0;
   }
 
   private removeStoredFish(fishTypeId: string, quantity = 1): void {
@@ -4454,7 +4442,6 @@ export class AquariumSceneCore extends Phaser.Scene {
       fish,
       activeFish: this.fish,
       fishInventory: this.fishInventory,
-      addStoredFishAge: (fishTypeId, ageSeconds) => this.addStoredFishAge(fishTypeId, ageSeconds),
       removeFishAt: (index) => this.removeFishAt(index)
     });
     if (!stored) {
@@ -4838,7 +4825,6 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private updateFishCoinProduction(fish: Fish, activitySpeedMultiplier = 1): void {
-    const emergencyFoodCoinValue = this.emergencyFoodCoinValueForFish(fish);
     updateFishCoinProductionModel({
       fish,
       now: this.gameClockNow(),
@@ -4847,101 +4833,10 @@ export class AquariumSceneCore extends Phaser.Scene {
       minDelayMs: fishCoinProductionMinDelayMs,
       maxDelayMs: fishCoinProductionMaxDelayMs,
       activeProductionPaceMultiplier: this.activeProductionPaceMultiplier() * Phaser.Math.Clamp(activitySpeedMultiplier, 0.001, timeCurrentSpeedMultiplier),
-      minimumCoinDropValue: emergencyFoodCoinValue,
       randomBetween: (min, max) => Phaser.Math.Between(min, max),
       addFishProductionTotal: (tankLevel, value) => this.addFishProductionTotal(tankLevel, value),
-      createCoinDrop: (x, y, value, coinType, isMega, options) => {
-        this.createCoinDrop(x, y, value, coinType, isMega, options);
-        if (emergencyFoodCoinValue > 0) {
-          this.emergencyFoodCoinFish = undefined;
-          this.emergencyFoodCoinTargetFrame = -1;
-          this.emergencyFoodCoinTarget = undefined;
-          this.emergencyFoodCoinDeficitValue = 0;
-        }
-      }
+      createCoinDrop: (x, y, value, coinType, isMega, options) => this.createCoinDrop(x, y, value, coinType, isMega, options)
     });
-  }
-
-  private emergencyFoodCoinValueForFish(fish: Fish): number {
-    const { target, deficit } = this.emergencyFoodCoinSnapshot();
-    if (target !== fish) {
-      return 0;
-    }
-
-    return deficit;
-  }
-
-  private emergencyFoodCoinSnapshot(): { target?: Fish; deficit: number } {
-    const frame = this.updateFrameKey();
-    if (this.emergencyFoodCoinTargetFrame === frame) {
-      return {
-        target: this.emergencyFoodCoinTarget,
-        deficit: this.emergencyFoodCoinDeficitValue
-      };
-    }
-
-    this.emergencyFoodCoinTargetFrame = frame;
-    const deficit = this.emergencyFoodCoinDeficit();
-    this.emergencyFoodCoinDeficitValue = deficit;
-    if (deficit <= 0) {
-      this.emergencyFoodCoinFish = undefined;
-      this.emergencyFoodCoinTarget = undefined;
-      return { deficit: 0 };
-    }
-
-    const candidates = this.activeFish().filter((fish) =>
-      fish.state !== "ill" &&
-      fish.health >= 35 &&
-      fish.currentFullnessCalories() > 0
-    );
-    if (candidates.length === 0) {
-      this.emergencyFoodCoinFish = undefined;
-      this.emergencyFoodCoinTarget = undefined;
-      return { deficit: 0 };
-    }
-
-    if (!this.emergencyFoodCoinFish || !candidates.includes(this.emergencyFoodCoinFish)) {
-      this.emergencyFoodCoinFish = Phaser.Utils.Array.GetRandom(candidates);
-    }
-    this.emergencyFoodCoinTarget = this.emergencyFoodCoinFish;
-    return { target: this.emergencyFoodCoinTarget, deficit };
-  }
-
-  private emergencyFoodCoinDeficit(): number {
-    const foodPrice = this.emergencyFoodPriceForTankNeed();
-    if (foodPrice <= 0) {
-      return 0;
-    }
-
-    const unclaimedCommonCoins = this.coinDrops.reduce(
-      (total, coin) => total + (coin.coinType === "common" ? Math.max(0, coin.value) : 0),
-      0
-    );
-    return Math.max(0, Math.ceil(foodPrice - this.wallet.common - unclaimedCommonCoins));
-  }
-
-  private emergencyFoodPriceForTankNeed(): number {
-    const missingCalories = this.activeFish().reduce(
-      (total, fish) => total + Math.max(0, fish.fullCaloriesNeed() - fish.currentFullnessCalories()),
-      0
-    );
-    if (missingCalories <= 0) {
-      return 0;
-    }
-
-    const candidates = this.visibleFoodCatalog()
-      .filter((foodType) => this.isCalorieTrackedFood(foodType.id))
-      .filter((foodType) => !this.phaseOneShopLimitActive() || isPhaseOneStoreFood(foodType));
-    if (candidates.length === 0) {
-      return 0;
-    }
-
-    return candidates.reduce((bestPrice, foodType) => {
-      const quantity = Math.max(1, Math.ceil(missingCalories / Math.max(1, foodType.calories)));
-      const price = this.quantityPrice(foodType.price, quantity);
-      const commonPrice = Math.max(0, price.amount);
-      return bestPrice <= 0 ? commonPrice : Math.min(bestPrice, commonPrice);
-    }, 0);
   }
 
   private createCoinDrop(
@@ -7148,19 +7043,23 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private storedFishAgesFor(fishTypeId: string): number[] {
-    return storedFishAgesForModel(this.fishInventoryAges, fishTypeId);
+    void fishTypeId;
+    return [];
   }
 
   private addStoredFishAge(fishTypeId: string, ageSeconds: number): void {
-    addStoredFishAgeModel(this.fishInventoryAges, fishTypeId, ageSeconds, this.getFishInventory(fishTypeId));
+    void fishTypeId;
+    void ageSeconds;
   }
 
   private takeStoredFishAge(fishTypeId: string): number {
-    return takeStoredFishAgeModel(this.fishInventoryAges, fishTypeId, Math.max(0, this.getFishInventory(fishTypeId) - 1));
+    this.fishInventoryAges.delete(fishTypeId);
+    return 0;
   }
 
   private setStoredFishAges(fishTypeId: string, ages: number[]): void {
-    setStoredFishAgesModel(this.fishInventoryAges, fishTypeId, ages, this.getFishInventory(fishTypeId));
+    void ages;
+    this.fishInventoryAges.delete(fishTypeId);
   }
 
   private trimStoredFishAges(fishTypeId: string): void {

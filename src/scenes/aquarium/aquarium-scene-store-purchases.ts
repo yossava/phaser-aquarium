@@ -135,9 +135,6 @@ export function executeFishPurchase(
 
   if (purchasePlan.inventoryQuantity > 0) {
     adapter.addFishToInventory(fishType, purchasePlan.inventoryQuantity);
-    for (let index = 0; index < purchasePlan.inventoryQuantity; index += 1) {
-      adapter.addStoredFishAge?.(fishType.id, input.powerAgeSeconds ?? 0);
-    }
   }
   adapter.closeModal();
   closeStoreAfterPurchase(adapter);

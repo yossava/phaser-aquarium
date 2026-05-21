@@ -313,7 +313,7 @@ export class StoreOverlay {
   private fishCard(fish: FishType, state: StoreOverlayState): HTMLElement {
     const affordable = state.developerGodMode || canAfford(state.wallet, fish.price);
     const requiredLevel = state.fishRequiredLevels[fish.id] ?? fish.tankLevel;
-    const powerLevel = Math.max(1, state.activeTankLevel, requiredLevel, fishPowerLevelForPrice(fish));
+    const powerLevel = Math.max(1, requiredLevel);
     const levelLocked = !state.developerGodMode && requiredLevel > Math.max(1, state.activeTankLevel);
     const hourlyLimitReached = !state.developerGodMode && state.fishPurchasesInWindow >= state.fishPurchaseHourlyLimit;
     const phaseLocked = state.phaseOneShopLimitActive && !isPhaseOneStoreFish(fish);
