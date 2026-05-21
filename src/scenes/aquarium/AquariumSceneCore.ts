@@ -618,6 +618,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private rewardedAdCountdownText?: HTMLSpanElement;
   private rewardedAdModalButton?: HTMLButtonElement;
   private prizeMachine: PrizeMachineState = createDefaultPrizeMachineState();
+  private reefDropPauseToken = 0;
   private prizeMachineSelectedBetIndex?: number;
   private prizeSpinContainer?: Phaser.GameObjects.Container;
   private prizeSpinInProgress = false;
@@ -2068,6 +2069,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private openScreen(screen: Exclude<AppScreen, "tank">): void {
+    this.ensureAquariumSceneRunning();
     const wasTankScreen = this.activeScreen === "tank";
     this.pageReturnScreen = undefined;
     this.activeScreen = screen;
@@ -2109,9 +2111,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private closePage(): void {
     const closingScreen = this.activeScreen;
     this.removeReefDropScene();
-    this.scene.resume("AquariumScene");
-    this.scene.setVisible(true, "AquariumScene");
-    this.scene.setActive(true, "AquariumScene");
+    this.ensureAquariumSceneRunning();
     const explicitReturnScreen = this.pageReturnScreen;
     this.pageReturnScreen = undefined;
     const returnToMainMenu = closingScreen !== "tank" && closingScreen !== "menu" && closingScreen !== "goals";
@@ -2142,9 +2142,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private returnToTankScreen(): void {
     this.removeReefDropScene();
-    this.scene.resume("AquariumScene");
-    this.scene.setVisible(true, "AquariumScene");
-    this.scene.setActive(true, "AquariumScene");
+    this.ensureAquariumSceneRunning();
     this.activeScreen = "tank";
     this.storeOverlay?.hide();
     this.hideHtmlPageOverlay();
@@ -2153,6 +2151,12 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.createFoodDock();
     this.syncMakeupPresentation();
     this.refreshUi(false);
+  }
+
+  private ensureAquariumSceneRunning(): void {
+    this.scene.resume("AquariumScene");
+    this.scene.setVisible(true, "AquariumScene");
+    this.scene.setActive(true, "AquariumScene");
   }
 
   private openStoreOverlay(): void {
@@ -3355,13 +3359,19 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.hideReefDropSceneImmediately();
     this.scene.remove(ReefDropSceneKey);
     this.scene.add(ReefDropSceneKey, ReefDropScene, false);
+    const pauseToken = ++this.reefDropPauseToken;
     this.scene.launch(ReefDropSceneKey, {
       productionPerMinute: this.activeFishProductionPerMinute(),
       onComplete: (result: ReefDropResult) => this.completeReefDropGame(result),
       onCancel: () => this.returnFromReefDropGame()
     });
     this.scene.bringToTop(ReefDropSceneKey);
-    this.time.delayedCall(0, () => this.scene.pause("AquariumScene"));
+    this.time.delayedCall(0, () => {
+      if (this.reefDropPauseToken !== pauseToken || this.activeScreen !== "prize") {
+        return;
+      }
+      this.scene.pause("AquariumScene");
+    });
   }
 
   private completeReefDropGame(result: ReefDropResult): void {
@@ -3409,9 +3419,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private returnFromReefDropGame(): void {
     this.removeReefDropScene();
-    this.scene.resume("AquariumScene");
-    this.scene.setVisible(true, "AquariumScene");
-    this.scene.setActive(true, "AquariumScene");
+    this.ensureAquariumSceneRunning();
     this.scene.bringToTop("AquariumScene");
     this.activeScreen = "menu";
     this.syncHtmlGameInterface();
@@ -3444,6 +3452,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private removeReefDropScene(): void {
+    this.reefDropPauseToken += 1;
     let reefDropScene: Phaser.Scene;
     try {
       reefDropScene = this.scene.get(ReefDropSceneKey);
