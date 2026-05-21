@@ -525,7 +525,6 @@ export class AquariumSceneCore extends Phaser.Scene {
   private developerClockMultiplier = 1;
   private developerClockOffsetMs = 0;
   private dailyGoals: DailyGoalsState = { date: this.localDateKey(), claimed: [] };
-  private dailyQuestPlaytimeSeconds = 0;
   private tankLevel = 1;
   private ownedTankLevels = new Set<number>([1]);
   private tankNames = new Map<number, string>([[1, "Home Reef"]]);
@@ -559,6 +558,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private gameHudCommonText?: HTMLSpanElement;
   private gameHudRareText?: HTMLSpanElement;
   private gameHudSuperRareText?: HTMLSpanElement;
+  private gameHudQuestChecklist?: HTMLDivElement;
   private timeCurrentElement?: HTMLDivElement;
   private timeCurrentText?: HTMLSpanElement;
   private foodDispenserText?: HTMLSpanElement;
@@ -1266,14 +1266,6 @@ export class AquariumSceneCore extends Phaser.Scene {
           y: tankMenuButtonY,
           icon: menuIconAssetPathByKey["ui-menu"],
           onClick: () => this.openScreen("menu")
-        },
-        {
-          id: "goals",
-          label: "Quest",
-          y: tankMenuButtonY + 86,
-          icon: menuIconAssetPathByKey["ui-goals"],
-          badge: this.dailyGoalUnclaimedCount() > 0 ? this.foodBadgeLabel(this.dailyGoalUnclaimedCount()) : undefined,
-          onClick: () => this.openScreen("goals")
         }
       ],
       attachTouchFeedback: (element, releaseOnLeave) => this.attachTouchFeedback(element, releaseOnLeave)
@@ -1326,6 +1318,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.gameHudCommonText!.textContent = formatNumber(this.wallet.common);
     this.gameHudRareText!.textContent = formatNumber(this.wallet.rare);
     this.gameHudSuperRareText!.textContent = formatNumber(this.wallet.superRare);
+    this.syncTankQuestChecklist();
     this.syncTimeCurrentIndicator();
     if (this.foodDispenserText) {
       this.foodDispenserText.textContent = this.foodBadgeLabel(this.getTotalDispenserInventory());
@@ -1358,6 +1351,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.gameHudCommonText = hud.commonText;
     this.gameHudRareText = hud.rareText;
     this.gameHudSuperRareText = hud.superRareText;
+    this.gameHudQuestChecklist = hud.questChecklist;
     this.timeCurrentElement = hud.timeCurrentElement;
     this.timeCurrentText = hud.timeCurrentText;
     this.coinMagnetElement = hud.coinMagnetElement;
@@ -1368,6 +1362,28 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.foodDispenserText = hud.foodDispenserText;
     document.body.appendChild(hud.overlay);
     return hud.overlay;
+  }
+
+  private syncTankQuestChecklist(): void {
+    if (!this.gameHudQuestChecklist) {
+      return;
+    }
+
+    const quests = this.visibleDailyQuestItems().slice(0, 3);
+    this.gameHudQuestChecklist.replaceChildren();
+    if (quests.length === 0) {
+      this.gameHudQuestChecklist.classList.add("hidden");
+      return;
+    }
+
+    this.gameHudQuestChecklist.classList.remove("hidden");
+    for (const quest of quests) {
+      const row = htmlElement("div", "aq-tank-quest-item");
+      row.append(
+        htmlElement("span", "aq-tank-quest-label", [quest.label])
+      );
+      this.gameHudQuestChecklist.append(row);
+    }
   }
 
   private syncTimeCurrentIndicator(): void {
@@ -2383,7 +2399,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       screen: this.activeScreen as PageOverlayScreen,
       fishCount: formatNumber(this.activeFish().length),
       helperCount: formatNumber(this.activeHelperCreatures().length),
-      dailyGoalsDate: this.dailyGoals.date
+      dailyGoalsDate: "Phase 1"
     });
   }
 
@@ -5133,6 +5149,9 @@ export class AquariumSceneCore extends Phaser.Scene {
       maxCount: coinComboMaxCount
     });
     this.applyCoinComboState(result.state);
+    if (result.state.count >= 2 && this.dailyQuestActionCount("coin-combo-2") <= 0) {
+      this.recordDailyQuestAction("coin-combo-2");
+    }
     if (result.state.count >= 10 && this.dailyQuestActionCount("coin-combo-10") <= 0) {
       this.recordDailyQuestAction("coin-combo-10");
     }
@@ -6077,41 +6096,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     return normalizeDailyGoalsModel(savedGoals, this.localDateKey());
   }
 
-  private updateDailyQuestPlaytime(deltaSeconds: number): void {
-    if (this.dailyQuestActionCount("play-time-current") > 0 || this.dailyGoals.claimed.includes("play-time-current")) {
-      return;
-    }
-
-    this.dailyQuestPlaytimeSeconds += Math.max(0, deltaSeconds);
-    if (this.dailyQuestPlaytimeSeconds >= 180) {
-      this.recordDailyQuestAction("play-time-current");
-      this.refreshUi(false);
-    }
-  }
-
   private dailyQuestItems(): DailyQuestItem[] {
-    const activeFish = this.activeFish();
     return buildDailyQuestItems({
-      affordableCommonFish: fishTypes.some((fishType) => fishType.rarity === "common" && canAfford(this.wallet, fishType.price)),
-      activeFishCount: activeFish.length,
-      activeDecorationCount: this.activeDecorations().length,
-      activeHelperCount: this.activeHelperCreatures().length,
-      sickFishCount: activeFish.filter((fish) => fish.state === "ill" || fish.health < 82).length,
-      hungryFishCount: activeFish.filter((fish) => fish.state === "hungry" || fish.hunger > 68).length,
-      medicineInventory: this.getFoodInventory("medicine"),
-      feedableFoodInventory: this.getTotalFeedableFoodInventory(),
-      totalFoodInventory: this.getTotalFoodInventory(),
-      storedFishCount: [...this.fishInventory.values()].reduce((total, count) => total + count, 0),
-      storedDecorationCount: [...this.decorationInventory.values()].reduce((total, count) => total + count, 0),
-      rareCoinCount: this.wallet.rare,
-      superRareCoinCount: this.wallet.superRare,
-      coinDropCount: this.coinDrops.length,
-      tankLevelProgressRatio: levelProgressToNext(this.tankDisplayLevel(), this.fishProductionTotal()).ratio,
-      cleanliness: this.cleanliness,
-      hasFoodDispenser: this.hasFoodDispenser(),
-      hasCoinMagnet: this.hasCoinMagnet(),
-      hasAutoFoodBuyer: this.hasAutoFoodBuyer(),
-      foodDispenserPrice: foodDispenserPrice,
       questReward: coinQuestReward(this.currentProductionMinuteQuestReward()),
       fishQuestReward: this.fishQuestReward(),
       actionCount: (action) => this.dailyQuestActionCount(action),
@@ -6121,6 +6107,10 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private dailyGoalUnclaimedCount(): number {
     return this.dailyQuestItems().filter((quest) => quest.complete && !this.dailyGoals.claimed.includes(quest.id)).length;
+  }
+
+  private phaseOneShopLimitActive(): boolean {
+    return this.dailyQuestItems().some((quest) => quest.id.startsWith("phase-1-") && !this.dailyGoals.claimed.includes(quest.id));
   }
 
   private visibleDailyQuestItems(): DailyQuestItem[] {
@@ -6497,10 +6487,6 @@ export class AquariumSceneCore extends Phaser.Scene {
     }
 
     this.dailyGoals.claimed.push(quest.id);
-    if (quest.id === "play-time-current") {
-      const remainingActiveQuestIds = (this.dailyGoals.activeQuestIds ?? []).filter((id) => id !== quest.id && id !== "use-time-current");
-      this.dailyGoals.activeQuestIds = ["use-time-current", ...remainingActiveQuestIds];
-    }
     return true;
   }
 

@@ -2,6 +2,7 @@ import { foodAssetPath } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
 import { fishPowerLevelForPrice } from "../game/economy-model";
 import { foodCssFilterFor } from "../game/visuals";
+import { isPhaseOneStoreFish, isPhaseOneStoreFood } from "../game/store-catalog";
 import type { FishType, FoodType, HelperCreatureType, StoreTab } from "../types/mechanics";
 import { createHtmlButton, htmlElement, installHtmlInputShield, playHtmlPageTransition } from "./dom";
 import { currentStoreItems, storeItemTier } from "./store/StoreCatalogItems";
@@ -201,6 +202,7 @@ export class StoreOverlay {
       productionBoostRestockLabel: state.productionBoostRestockLabel,
       timeCurrentPurchaseAvailable: state.timeCurrentPurchaseAvailable,
       timeCurrentRestockLabel: state.timeCurrentRestockLabel,
+      phaseOneShopLimitActive: state.phaseOneShopLimitActive,
       fishCount: state.fishCount,
       fishCapacity: state.fishCapacity,
       fishOwned: recordEntries(state.fishOwned),
@@ -314,13 +316,14 @@ export class StoreOverlay {
     const powerLevel = Math.max(1, state.activeTankLevel, requiredLevel, fishPowerLevelForPrice(fish));
     const levelLocked = !state.developerGodMode && requiredLevel > Math.max(1, state.activeTankLevel);
     const hourlyLimitReached = !state.developerGodMode && state.fishPurchasesInWindow >= state.fishPurchaseHourlyLimit;
-    const disabled = levelLocked || !affordable || hourlyLimitReached;
+    const phaseLocked = state.phaseOneShopLimitActive && !isPhaseOneStoreFish(fish);
+    const disabled = phaseLocked || levelLocked || !affordable || hourlyLimitReached;
     const card = createStoreBaseCard(fish.rarity);
-    if (levelLocked) {
+    if (phaseLocked || levelLocked) {
       card.classList.add("opacity-70");
     }
-    const preview = createStorePreview(`/assets/fish/${fish.id}.png`, fish.name, levelLocked ? "aq-fish-preview-unpurchased" : "");
-    if (levelLocked) {
+    const preview = createStorePreview(`/assets/fish/${fish.id}.png`, fish.name, phaseLocked || levelLocked ? "aq-fish-preview-unpurchased" : "");
+    if (phaseLocked || levelLocked) {
       preview.querySelector("img")?.classList.remove("drop-shadow-lg");
     }
     card.append(
@@ -333,7 +336,7 @@ export class StoreOverlay {
         div("aq-fish-power-inline", [`PWR ${formatNumber(powerLevel)}`]),
         div("aq-card-meta", [`Power Lv ${formatNumber(powerLevel)} | baby size`]),
         button(
-          levelLocked ? `Need Tank L${formatNumber(requiredLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
+          phaseLocked ? "Locked in Phase 1" : levelLocked ? `Need Tank L${formatNumber(requiredLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy w-full",
           () => this.actions.buyFish(fish),
           disabled
@@ -353,9 +356,15 @@ export class StoreOverlay {
     const blockedByProductionBoostCooldown = !state.developerGodMode && isProductionBoost && !state.productionBoostPurchaseAvailable;
     const blockedByTimeCurrentCooldown = !state.developerGodMode && isTimeCurrent && !state.timeCurrentPurchaseAvailable;
     const blockedByTimeCurrentOwned = !state.developerGodMode && isTimeCurrent && (state.foodOwned[food.id] ?? 0) > 0;
+    const phaseLocked = state.phaseOneShopLimitActive && !isPhaseOneStoreFood(food);
     const buyLabel = fishPricedSupply ? "Select Fish" : this.activeTab === "supply" ? `Buy ${isTimeCurrent ? "Boost" : "Supply"}` : "Buy Food";
     const card = createStoreBaseCard(food.rarity);
-    const buttonLabel = blockedByCooldown
+    if (phaseLocked) {
+      card.classList.add("opacity-70");
+    }
+    const buttonLabel = phaseLocked
+      ? "Locked in Phase 1"
+      : blockedByCooldown
       ? state.ageBoostRestockLabel
       : blockedByProductionBoostCooldown
         ? state.productionBoostRestockLabel
@@ -386,7 +395,7 @@ export class StoreOverlay {
           buttonLabel,
           "aq-buy w-full",
           () => this.actions.buyFood(food, 1),
-          !affordable || blockedByCooldown || blockedByProductionBoostCooldown || blockedByTimeCurrentCooldown || blockedByTimeCurrentOwned
+          phaseLocked || !affordable || blockedByCooldown || blockedByProductionBoostCooldown || blockedByTimeCurrentCooldown || blockedByTimeCurrentOwned
         )
       ])
     );
@@ -412,8 +421,12 @@ export class StoreOverlay {
   private helperCard(creature: HelperCreatureType, state: StoreOverlayState): HTMLElement {
     const owned = state.helperOwned[creature.id] ?? 0;
     const affordable = state.developerGodMode || canAfford(state.wallet, creature.price);
+    const phaseLocked = state.phaseOneShopLimitActive;
     const texture = creature.id === "feeder-snail" ? "/assets/helpers/feeder-snail.png" : `/assets/helpers/${creature.id}.png`;
     const card = createStoreBaseCard(creature.rarity);
+    if (phaseLocked) {
+      card.classList.add("opacity-70");
+    }
     card.append(
       createStorePreview(texture, creature.name),
       div("aq-card-body", [
@@ -423,7 +436,7 @@ export class StoreOverlay {
         ]),
         div("aq-card-meta", [`Owned ${formatNumber(owned)} · ${helperRole(creature)}`]),
         div("aq-card-copy", [creature.description]),
-        button(affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy w-full", () => this.actions.buyHelper(creature), !affordable)
+        button(phaseLocked ? "Locked in Phase 1" : affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy w-full", () => this.actions.buyHelper(creature), phaseLocked || !affordable)
       ])
     );
     return card;
@@ -431,7 +444,11 @@ export class StoreOverlay {
 
   private tankCosmeticCard(cosmetic: StoreTankCosmeticCard, state: StoreOverlayState): HTMLElement {
     const affordable = state.developerGodMode || canAfford(state.wallet, cosmetic.price);
+    const phaseLocked = state.phaseOneShopLimitActive && !cosmetic.owned;
     const card = createStoreBaseCard(storeItemTier("common", cosmetic.price));
+    if (phaseLocked) {
+      card.classList.add("opacity-70");
+    }
     const preview = cosmetic.previewUrl
       ? createStorePreview(cosmetic.previewUrl, cosmetic.name)
       : div("relative mx-auto flex h-[clamp(54px,14dvh,82px)] w-full shrink-0 items-center justify-center overflow-hidden rounded-xl", [
@@ -452,9 +469,9 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [cosmetic.category === "background" ? "Tank Background" : "Tank Seabed"]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [cosmetic.owned ? "Install this look on the active tank." : "Buy and install on the active tank."]),
-        button(cosmetic.active ? "Current Look" : cosmetic.owned ? "Use Look" : affordable ? "Buy Look" : `Need ${formatPrice(cosmetic.price)}`, "aq-buy mt-auto w-full", () => {
+        button(phaseLocked ? "Locked in Phase 1" : cosmetic.active ? "Current Look" : cosmetic.owned ? "Use Look" : affordable ? "Buy Look" : `Need ${formatPrice(cosmetic.price)}`, "aq-buy mt-auto w-full", () => {
           cosmetic.owned ? this.actions.switchTankCosmetic(cosmetic.category, cosmetic.id) : this.actions.buyTankCosmetic(cosmetic.category, cosmetic.id);
-        }, !cosmetic.owned && !affordable)
+        }, phaseLocked || (!cosmetic.owned && !affordable))
       ])
     );
     return card;
@@ -473,6 +490,9 @@ export class StoreOverlay {
   private tankDecorationCard(decoration: StoreTankDecorationCard): HTMLElement {
     const card = createStoreBaseCard(decoration.rarity);
     card.classList.add("aq-decor-card");
+    if (this.getState().phaseOneShopLimitActive) {
+      card.classList.add("opacity-70");
+    }
     card.append(
       createStorePreview(`/assets/decorations/${decoration.id}.png`, decoration.name, "aq-decor-preview"),
       div("aq-decor-card-body", [
@@ -488,12 +508,16 @@ export class StoreOverlay {
 
   private tankUtilityCard(utility: StoreTankUtilityCard, state: StoreOverlayState): HTMLElement {
     const affordable = state.developerGodMode || canAfford(state.wallet, utility.price);
+    const phaseLocked = state.phaseOneShopLimitActive && !utility.owned;
     const timed = Boolean(utility.durationLabel);
     const description = timed
       ? `${utility.description} Duration: ${utility.durationLabel}.`
       : utility.description;
     const purchaseLabel = timed ? "Rent Utility" : "Buy Utility";
     const card = createStoreBaseCard(storeItemTier("common", utility.price));
+    if (phaseLocked) {
+      card.classList.add("opacity-70");
+    }
     card.append(
       createStorePreview(utility.icon, utility.name),
       div("flex min-w-0 flex-1 flex-col overflow-hidden", [
@@ -503,11 +527,11 @@ export class StoreOverlay {
         ]),
         div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", ["Tank Utility"]),
         div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [description]),
-        button(utility.owned ? utility.id === "food-dispenser" ? "Installed" : "Active" : affordable ? purchaseLabel : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
+        button(phaseLocked ? "Locked in Phase 1" : utility.owned ? utility.id === "food-dispenser" ? "Installed" : "Active" : affordable ? purchaseLabel : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
           if (!utility.owned) {
             this.actions.buyTankUtility(utility.id);
           }
-        }, !utility.owned && !affordable)
+        }, phaseLocked || (!utility.owned && !affordable))
       ])
     );
     return card;

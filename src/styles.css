@@ -2511,6 +2511,26 @@ canvas {
     @apply relative z-10;
   }
 
+  .aq-tank-quest-checklist {
+    @apply pointer-events-none absolute right-0 z-[3] flex flex-col items-end gap-1;
+    top: max(230px, calc(env(safe-area-inset-top) + 218px));
+    max-width: min(46%, 220px);
+    padding-right: var(--aq-hud-edge-inset);
+    transform: scale(var(--aq-hud-scale));
+    transform-origin: top right;
+  }
+
+  .aq-tank-quest-item {
+    @apply min-w-0 text-right text-[12px] font-black leading-tight text-cyan-50;
+    text-shadow:
+      0 2px 0 rgba(0, 35, 68, 0.86),
+      0 4px 6px rgba(0, 0, 0, 0.52);
+  }
+
+  .aq-tank-quest-label {
+    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
   .aq-hud-info-target {
     @apply pointer-events-auto cursor-pointer;
     touch-action: manipulation;

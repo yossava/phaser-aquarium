@@ -36,6 +36,7 @@ type AquariumStoreAdapterScene = {
   productionBoostPurchaseRestockLabel(): string;
   canBuyTimeCurrentNow(): boolean;
   timeCurrentPurchaseRestockLabel(): string;
+  phaseOneShopLimitActive(): boolean;
   activeFish(): Fish[];
   maxFishCapacityForLevel(): number;
   getFishInventory(fishTypeId: string): number;
@@ -100,6 +101,7 @@ export function createAquariumStoreAdapter(scene: AquariumStoreAdapterScene): St
     productionBoostPurchaseRestockLabel: () => scene.productionBoostPurchaseRestockLabel(),
     canBuyTimeCurrentNow: () => scene.canBuyTimeCurrentNow(),
     timeCurrentPurchaseRestockLabel: () => scene.timeCurrentPurchaseRestockLabel(),
+    phaseOneShopLimitActive: () => scene.phaseOneShopLimitActive(),
     activeFish: () => scene.activeFish(),
     fishCapacity: () => scene.maxFishCapacityForLevel(),
     allFish: () => scene.fish,

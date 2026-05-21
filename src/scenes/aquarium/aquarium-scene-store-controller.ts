@@ -7,7 +7,7 @@ import { toastX, toastY } from "../../game/constants";
 import { canAfford, formatNumber, formatPrice } from "../../game/economy";
 import { fishPowerAgeSecondsForLevel, fishPowerLevelForPrice } from "../../game/economy-model";
 import { productionBoostFoodTypeId, timeCurrentFoodTypeId } from "../../game/food-system";
-import { fishShopRequiredLevel, buildStoreOverlayState } from "../../game/store-catalog";
+import { fishShopRequiredLevel, buildStoreOverlayState, isPhaseOneStoreFish, isPhaseOneStoreFood } from "../../game/store-catalog";
 import {
   growthTonicPriceForFishType,
   planFishPurchase,
@@ -57,6 +57,7 @@ export type StoreControllerAdapter = {
   productionBoostPurchaseRestockLabel: () => string;
   canBuyTimeCurrentNow: () => boolean;
   timeCurrentPurchaseRestockLabel: () => string;
+  phaseOneShopLimitActive: () => boolean;
   activeFish: () => Fish[];
   fishCapacity: () => number;
   allFish: () => Fish[];
@@ -136,6 +137,7 @@ export class AquariumSceneStoreController {
       productionBoostRestockLabel: adapter.productionBoostPurchaseRestockLabel(),
       timeCurrentPurchaseAvailable: adapter.canBuyTimeCurrentNow(),
       timeCurrentRestockLabel: adapter.timeCurrentPurchaseRestockLabel(),
+      phaseOneShopLimitActive: adapter.phaseOneShopLimitActive(),
       fishCount: adapter.activeFish().length,
       fishCapacity: adapter.fishCapacity(),
       getFishOwned: (fishTypeId) =>
@@ -170,6 +172,11 @@ export class AquariumSceneStoreController {
 
   showFishBuyQuantityModal(fishType: FishType): void {
     const adapter = this.adapter;
+    if (adapter.phaseOneShopLimitActive() && !isPhaseOneStoreFish(fishType)) {
+      adapter.floatText("Locked in Phase 1", toastX, toastY, "#ffdd8a");
+      return;
+    }
+
     const requiredLevel = fishShopRequiredLevel(fishType);
     if (!adapter.developerGodMode() && requiredLevel > adapter.activeTankLevel()) {
       adapter.floatText(`Needs tank L${formatNumber(requiredLevel)}`, toastX, toastY, "#ffb0a8");
@@ -203,6 +210,11 @@ export class AquariumSceneStoreController {
 
   buyFish(fishType: FishType, quantity = 1): void {
     const adapter = this.adapter;
+    if (adapter.phaseOneShopLimitActive() && !isPhaseOneStoreFish(fishType)) {
+      adapter.floatText("Locked in Phase 1", toastX, toastY, "#ffdd8a");
+      return;
+    }
+
     const requiredLevel = fishShopRequiredLevel(fishType);
     if (!adapter.developerGodMode() && requiredLevel > adapter.activeTankLevel()) {
       adapter.floatText(`Needs tank L${formatNumber(requiredLevel)}`, toastX, toastY, "#ffb0a8");
@@ -246,6 +258,11 @@ export class AquariumSceneStoreController {
 
   showFoodBuyQuantityModal(foodType: FoodType, initialQuantity = this.adapter.getFoodBuyQuantity(foodType.id)): void {
     const adapter = this.adapter;
+    if (adapter.phaseOneShopLimitActive() && !isPhaseOneStoreFood(foodType)) {
+      adapter.floatText("Locked in Phase 1", toastX, toastY, "#ffdd8a");
+      return;
+    }
+
     if (foodType.id === "ageBoost") {
       this.showGrowthTonicFishModal(foodType);
       return;
@@ -279,6 +296,11 @@ export class AquariumSceneStoreController {
 
   buyFood(foodType = this.adapter.selectedFoodType(), quantity = this.adapter.getFoodBuyQuantity(foodType.id)): void {
     const adapter = this.adapter;
+    if (adapter.phaseOneShopLimitActive() && !isPhaseOneStoreFood(foodType)) {
+      adapter.floatText("Locked in Phase 1", toastX, toastY, "#ffdd8a");
+      return;
+    }
+
     if (foodType.id === "ageBoost") {
       this.showGrowthTonicFishModal(foodType);
       return;

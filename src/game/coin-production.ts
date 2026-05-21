@@ -124,7 +124,9 @@ export function collectCoin(input: {
   const fee = input.automated ? Math.floor(input.coin.value * input.automatedFeeRate) : 0;
   const claimedValue = Math.max(0, input.coin.value - fee);
   earn(input.wallet, input.coin.coinType, claimedValue);
-  input.recordDailyQuestAction("coin");
+  if (!input.automated) {
+    input.recordDailyQuestAction("coin");
+  }
   input.floatCoinClaimText(
     claimedValue,
     input.coin.coinType,

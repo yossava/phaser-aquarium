@@ -18,6 +18,7 @@ export type HtmlHudOverlayElements = {
   commonText: HTMLSpanElement;
   rareText: HTMLSpanElement;
   superRareText: HTMLSpanElement;
+  questChecklist: HTMLDivElement;
   timeCurrentElement: HTMLDivElement;
   timeCurrentText: HTMLSpanElement;
   coinMagnetElement: HTMLDivElement;
@@ -131,6 +132,8 @@ export function createHtmlHudOverlay(input: {
 
   const timeCurrent = createTimeCurrentIndicator(input.timeCurrentIconPath, input.prepareInfoTarget);
   panel.append(summary, wallet);
+  const questChecklist = document.createElement("div");
+  questChecklist.className = "aq-tank-quest-checklist";
   const coinMagnet = createTankSideTool("aq-tank-side-tool aq-coin-magnet-tool", input.coinMagnetIconPath, "Coin magnet", "aq-coin-magnet-count");
   const autoFoodBuyer = createTankSideTool(
     "aq-tank-side-tool aq-auto-food-buyer-tool",
@@ -148,13 +151,14 @@ export function createHtmlHudOverlay(input: {
   input.bindAutoFoodBuyerDrag(autoFoodBuyer.element);
   input.bindFoodDispenserDrag(foodDispenser.element);
 
-  overlay.append(panel, timeCurrent.element, autoFoodBuyer.element, coinMagnet.element, foodDispenser.element);
+  overlay.append(panel, questChecklist, timeCurrent.element, autoFoodBuyer.element, coinMagnet.element, foodDispenser.element);
   return {
     overlay,
     levelText,
     commonText,
     rareText,
     superRareText,
+    questChecklist,
     timeCurrentElement: timeCurrent.element,
     timeCurrentText: timeCurrent.text,
     coinMagnetElement: coinMagnet.element,

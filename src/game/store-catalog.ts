@@ -32,6 +32,7 @@ export type BuildStoreOverlayStateInput = {
   productionBoostRestockLabel: string;
   timeCurrentPurchaseAvailable: boolean;
   timeCurrentRestockLabel: string;
+  phaseOneShopLimitActive: boolean;
   fishCount: number;
   fishCapacity: number;
   getFishOwned: (fishTypeId: string) => number;
@@ -75,6 +76,17 @@ export function visibleFishCatalog(storeCoinFilter: CoinType): FishType[] {
 
 export function visibleFoodCatalog(): FoodType[] {
   return foodTypes.filter((foodType) => !hiddenFoodTypeIds.has(foodType.id) && !supplyFoodTypeIds.has(foodType.id));
+}
+
+export function isPhaseOneStoreFish(fishType: Pick<FishType, "id">): boolean {
+  return fishTypes.slice(0, 2).some((candidate) => candidate.id === fishType.id);
+}
+
+export function isPhaseOneStoreFood(foodType: Pick<FoodType, "id">): boolean {
+  return [...visibleFoodCatalog()]
+    .sort((first, second) => first.calories - second.calories)
+    .slice(0, 2)
+    .some((candidate) => candidate.id === foodType.id);
 }
 
 export function visibleSupplyCatalog(storeCoinFilter: CoinType): FoodType[] {
@@ -139,6 +151,7 @@ export function buildStoreOverlayState(input: BuildStoreOverlayStateInput): Stor
     productionBoostRestockLabel: input.productionBoostRestockLabel,
     timeCurrentPurchaseAvailable: input.timeCurrentPurchaseAvailable,
     timeCurrentRestockLabel: input.timeCurrentRestockLabel,
+    phaseOneShopLimitActive: input.phaseOneShopLimitActive,
     fishCount: input.fishCount,
     fishCapacity: input.fishCapacity,
     fishOwned: Object.fromEntries(fishTypes.map((fishType) => [fishType.id, input.getFishOwned(fishType.id)])),
