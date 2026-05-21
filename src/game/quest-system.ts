@@ -49,6 +49,20 @@ export type BuildDailyQuestItemsInput = {
   fishQuestReward: DailyQuestReward;
   actionCount: (action: string) => number;
   fishPurchaseCount: (coinType?: CoinType) => number;
+  phaseOneComplete: () => boolean;
+  phaseTwoStarted: () => boolean;
+  phaseTwoComplete: () => boolean;
+  phaseThreeStarted: () => boolean;
+  walletCommon: () => number;
+  activeFishCount: () => number;
+  storedFishCount: () => number;
+  feedableFoodInventory: () => number;
+  medicineInventory: () => number;
+  sickFishCount: () => number;
+  coinDropCount: () => number;
+  ownsNewBackground: () => boolean;
+  ownsNewSeabed: () => boolean;
+  ownsPhaseTwoDecoration: () => boolean;
 };
 
 export const fishPurchaseWindowMs = 60 * 60 * 1000;
@@ -91,13 +105,76 @@ export function normalizeDailyGoals(savedGoals: DailyGoalsState | undefined, tod
 
 export function buildDailyQuestItems(input: BuildDailyQuestItemsInput): DailyQuestItem[] {
   const actionCount = input.actionCount;
+  const firstFishBought = input.fishPurchaseCount() > 0;
+  const movedFishToTank = actionCount("place-fish") > 0;
+  const foodBought = actionCount("buy-food") > 0;
+  const fishFed = actionCount("feed") > 0;
+  const coinTapped = actionCount("coin") > 0;
+  const comboMade = actionCount("coin-combo-2") > 0;
+  const anotherFishBought = input.fishPurchaseCount() > 1;
+  const phaseTwoStarted = input.phaseTwoStarted();
+  const phaseTwoUnlocked = input.phaseOneComplete() || phaseTwoStarted;
+  const phaseThreeStarted = input.phaseThreeStarted();
+  const phaseThreeUnlocked = input.phaseTwoComplete() || phaseThreeStarted;
+  const activeFishCount = input.activeFishCount();
+  const storedFishCount = input.storedFishCount();
+  const feedableFoodInventory = input.feedableFoodInventory();
+  const medicineInventory = input.medicineInventory();
+  const sickFishCount = input.sickFishCount();
+  const coinDropCount = input.coinDropCount();
+  const conditionalQuest = (condition: boolean, quest: DailyQuestItem): DailyQuestItem[] => condition || quest.complete ? [quest] : [];
+  const moveFishToTankQuest = input.storedFishCount() > 0 || movedFishToTank
+    ? [{ id: "phase-1-move-fish-to-tank", label: "Move a fish to the tank", complete: movedFishToTank, reward: input.questReward }]
+    : [];
+  const phaseOneQuests = [
+    { id: "phase-1-buy-fish", label: "Buy a fish", complete: firstFishBought, reward: input.questReward },
+    ...moveFishToTankQuest,
+    ...conditionalQuest(activeFishCount > 0, { id: "phase-1-buy-food", label: "Buy food", complete: foodBought, reward: input.questReward }),
+    ...conditionalQuest(activeFishCount > 0 && feedableFoodInventory > 0, { id: "phase-1-feed-fish", label: "Feed a fish", complete: fishFed, reward: input.questReward }),
+    ...conditionalQuest(coinDropCount > 0, { id: "phase-1-tap-coin", label: "Tap a coin", complete: coinTapped, reward: input.questReward }),
+    ...conditionalQuest(coinTapped, { id: "phase-1-combo", label: "Make a 2x combo", complete: comboMade, reward: input.fishQuestReward }),
+    ...conditionalQuest(firstFishBought && (activeFishCount > 0 || storedFishCount > 0), { id: "phase-1-buy-another-fish", label: "Buy another fish", complete: anotherFishBought, reward: input.questReward })
+  ];
+  if (!phaseTwoUnlocked) {
+    return phaseOneQuests;
+  }
+
+  const medicineBought = actionCount("buy-medicine") > 0;
+  const fishHealed = actionCount("medicine") > 0;
+  const backgroundChanged = actionCount("use-background") > 0;
+  const seabedChanged = actionCount("use-seabed") > 0;
+  const decorationPlaced = actionCount("place-decoration") > 0;
+  const phaseTwoQuests = [
+    ...phaseOneQuests,
+    ...conditionalQuest(sickFishCount > 0, { id: "phase-2-buy-medicine", label: "Buy medicine", complete: medicineBought, reward: input.questReward }),
+    ...conditionalQuest(sickFishCount > 0 && medicineInventory > 0, { id: "phase-2-heal-fish", label: "Heal a fish", complete: fishHealed, reward: input.questReward }),
+    ...conditionalQuest(fishHealed && input.ownsNewBackground(), { id: "phase-2-change-background", label: "Change the background", complete: backgroundChanged, reward: input.questReward }),
+    ...conditionalQuest(fishHealed && input.ownsNewSeabed(), { id: "phase-2-change-sand", label: "Change the sand", complete: seabedChanged, reward: input.questReward }),
+    ...conditionalQuest(fishHealed && input.ownsPhaseTwoDecoration(), { id: "phase-2-place-decor", label: "Place decor", complete: decorationPlaced, reward: input.questReward })
+  ];
+  if (!phaseThreeUnlocked) {
+    return phaseTwoQuests;
+  }
+
+  const spinnerPlayed = actionCount("prize-game") > 0;
+  const fiveFishInTank = activeFishCount >= 5 || actionCount("phase-3-five-fish-in-tank") > 0;
+  const fishFused = actionCount("fuse-fish") > 0;
+  const combo30Made = actionCount("coin-combo-30") > 0;
+  const reached1kCoins = input.walletCommon() >= 1000 || actionCount("phase-3-reach-1k-coins") > 0;
+  const shrimpBought = actionCount("buy-helper-shrimp") > 0;
+  const foodDispenserBought = actionCount("buy-dispenser") > 0;
+  const tankDirtied = actionCount("phase-3-dirty-tank") > 0;
+  const tankCleaned = actionCount("phase-3-clean") > 0;
   return [
-    { id: "phase-1-buy-fish", label: "Buy a fish", complete: input.fishPurchaseCount() > 0, reward: input.questReward },
-    { id: "phase-1-buy-food", label: "Buy food", complete: actionCount("buy-food") > 0, reward: input.questReward },
-    { id: "phase-1-feed-fish", label: "Feed a fish", complete: actionCount("feed") > 0, reward: input.questReward },
-    { id: "phase-1-tap-coin", label: "Tap a coin", complete: actionCount("coin") > 0, reward: input.questReward },
-    { id: "phase-1-combo", label: "Make a 2x combo", complete: actionCount("coin-combo-2") > 0, reward: input.fishQuestReward },
-    { id: "phase-1-buy-another-fish", label: "Buy another fish", complete: input.fishPurchaseCount() > 1, reward: input.questReward }
+    ...phaseTwoQuests,
+    { id: "phase-3-play-spinner", label: "Play Games: Treasure Spinner", complete: spinnerPlayed, reward: input.questReward },
+    ...conditionalQuest(spinnerPlayed, { id: "phase-3-five-fish-in-tank", label: "Have 5 fish in the tank", complete: fiveFishInTank, reward: input.questReward }),
+    ...conditionalQuest(fiveFishInTank, { id: "phase-3-fuse-fish", label: "Fuse fish", complete: fishFused, reward: input.questReward }),
+    ...conditionalQuest(fishFused, { id: "phase-3-coin-combo-30", label: "Make a 30x combo", complete: combo30Made, reward: input.questReward }),
+    ...conditionalQuest(combo30Made, { id: "phase-3-buy-cleaner-shrimp", label: "Buy a cleaner shrimp", complete: shrimpBought, reward: input.questReward }),
+    ...conditionalQuest(shrimpBought, { id: "phase-3-buy-food-dispenser", label: "Buy a food dispenser", complete: foodDispenserBought, reward: input.questReward }),
+    ...conditionalQuest(foodDispenserBought || tankDirtied, { id: "phase-3-clean-tank", label: "Clean the tank", complete: tankCleaned, reward: input.questReward }),
+    ...conditionalQuest(tankCleaned, { id: "phase-3-reach-1k-coins", label: "Reach 1k coins", complete: reached1kCoins, reward: input.questReward })
   ];
 }
 
@@ -130,12 +207,16 @@ export function formatDailyQuestReward(
 export function ensureActiveDailyQuestItems(goals: DailyGoalsState, quests: DailyQuestItem[], limit = 3): DailyGoalsState {
   return {
     ...goals,
-    activeQuestIds: quests.filter((quest) => !goals.claimed.includes(quest.id)).slice(0, limit).map((quest) => quest.id)
+    activeQuestIds: quests.filter((quest) => !isQuestComplete(goals, quest)).slice(0, limit).map((quest) => quest.id)
   };
 }
 
 export function visibleDailyQuestItems(goals: DailyGoalsState, quests: DailyQuestItem[], limit = 3): DailyQuestItem[] {
-  return quests.filter((quest) => !goals.claimed.includes(quest.id)).slice(0, limit);
+  return quests.filter((quest) => !isQuestComplete(goals, quest)).slice(0, limit);
+}
+
+export function isQuestComplete(goals: DailyGoalsState, quest: DailyQuestItem): boolean {
+  return quest.complete || goals.claimed.includes(quest.id);
 }
 
 export function commonQuestReward(tankWorth: number): Price {

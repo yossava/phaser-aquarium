@@ -20,7 +20,7 @@ export function applyMakeupLook(input: {
   ensureTankState: (level: number) => TankRuntimeState;
   ownsTankCosmetic: (asset: TankCosmetic) => boolean;
   addTankCosmeticToInventory: (category: TankCosmeticCategory, assetId: string) => void;
-  recordDailyQuestAction: (action: "buy-background" | "buy-seabed" | "buy-decoration" | "place-decoration") => void;
+  recordDailyQuestAction: (action: "buy-background" | "buy-seabed" | "buy-decoration" | "place-decoration" | "use-background" | "use-seabed") => void;
   renderTankCosmeticBlueTintIntensity: (category: TankCosmeticCategory, assetId: string) => number;
   applyTankCosmeticBlueTint: (category: TankCosmeticCategory, assetId: string, intensity: number) => void;
   removeAllPlacedDecorationsFromActiveTank: () => void;
@@ -54,6 +54,8 @@ export function applyMakeupLook(input: {
 
   state.selectedBackgroundId = background.id;
   state.selectedSeabedId = seabed.id;
+  input.recordDailyQuestAction("use-background");
+  input.recordDailyQuestAction("use-seabed");
   input.applyTankCosmeticBlueTint("background", background.id, input.renderTankCosmeticBlueTintIntensity("background", background.id));
   input.applyTankCosmeticBlueTint("seabed", seabed.id, input.renderTankCosmeticBlueTintIntensity("seabed", seabed.id));
 

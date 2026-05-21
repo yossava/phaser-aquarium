@@ -8,6 +8,7 @@ export type MainMenuItem = {
   icon: string;
   action: () => void;
   badge?: string;
+  disabled?: boolean;
 };
 
 export type MainMenuStatusItem = {
@@ -29,7 +30,7 @@ export function appendMainMenuPage(input: {
   input.content.append(createMainMenuStatusGrid(input));
   const grid = htmlElement("div", "aq-main-menu-grid");
   for (const item of input.items) {
-    const button = input.createButton("", "aq-main-menu-card aq-kids-card-groove", item.action);
+    const button = input.createButton("", "aq-main-menu-card aq-kids-card-groove", item.action, item.disabled);
     button.dataset.menu = item.id;
     const iconWrap = htmlElement("span", "aq-main-menu-icon-wrap", [
       htmlImage(item.icon, "", "aq-main-menu-icon")

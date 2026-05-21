@@ -264,7 +264,16 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
         labelFontSize: Number.parseFloat(`${coin.valueText.style.fontSize}`) * scene.tankViewScaleForLevel(),
         bottomY: scene.tankToScreenPoint(coin.sprite.x, coin.bottomY).y,
         atBottom: coin.atBottom
-      }))
+      })),
+      questPresents: scene.questPresents.map((present: any) => {
+        const position = scene.tankToScreenPoint(present.drop.sprite.x, present.drop.sprite.y);
+        return {
+          questId: present.drop.questId,
+          rewardLabel: present.drop.rewardLabel,
+          x: position.x,
+          y: position.y
+        };
+      })
     }),
     setFishVitals: (index: number, hunger: number, health: number) => {
       const targetFish = scene.fish[index];

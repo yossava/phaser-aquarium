@@ -166,6 +166,12 @@ export type AquariumTestSnapshot = {
     bottomY: number;
     atBottom: boolean;
   }>;
+  questPresents: Array<{
+    questId: string;
+    rewardLabel: string;
+    x: number;
+    y: number;
+  }>;
 };
 
 export type AquariumTestApi = {

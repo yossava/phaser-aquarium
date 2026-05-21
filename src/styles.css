@@ -962,7 +962,13 @@ canvas {
   }
 
   .aq-album-list {
-    @apply grid grid-cols-2 gap-2;
+    @apply grid grid-cols-1 gap-2;
+  }
+
+  @media (min-width: 960px) {
+    .aq-album-list {
+      @apply grid-cols-2;
+    }
   }
 
   .aq-album-row {
@@ -1086,14 +1092,23 @@ canvas {
     @apply mb-2 max-w-[52%] text-right text-[11px] font-extrabold leading-tight text-cyan-100/72;
   }
 
-  .aq-fish-transfer-zones {
-    @apply grid grid-cols-1 gap-2;
+  .aq-fish-transfer-rate {
+    @apply flex items-center justify-between gap-2 rounded-xl border border-lime-200/35 bg-lime-300 px-3 py-2 text-sky-950;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 2px 5px rgba(0, 33, 49, 0.14);
   }
 
-  @media (min-width: 720px) {
-    .aq-fish-transfer-zones {
-      @apply grid-cols-2;
-    }
+  .aq-fish-transfer-rate span {
+    @apply truncate text-xs font-black uppercase leading-none;
+  }
+
+  .aq-fish-transfer-rate strong {
+    @apply shrink-0 text-sm font-black leading-none;
+  }
+
+  .aq-fish-transfer-zones {
+    @apply grid grid-cols-1 gap-2;
   }
 
   .aq-fish-transfer-zone {
@@ -1169,6 +1184,39 @@ canvas {
 
   .aq-fish-transfer-card-body small {
     @apply mt-0.5 line-clamp-2 text-[10px] font-bold leading-tight text-cyan-50/78;
+  }
+
+  .aq-fish-transfer-status-bars {
+    @apply mt-1.5 grid gap-1;
+  }
+
+  .aq-fish-transfer-status-row {
+    @apply grid grid-cols-[38px_minmax(0,1fr)_30px] items-center gap-1 text-[9px] font-black uppercase leading-none text-cyan-50/82;
+  }
+
+  .aq-fish-transfer-status-label,
+  .aq-fish-transfer-status-value {
+    @apply truncate;
+  }
+
+  .aq-fish-transfer-status-value {
+    @apply text-right text-cyan-50/70;
+  }
+
+  .aq-fish-transfer-status-track {
+    @apply h-1.5 overflow-hidden rounded-full bg-sky-950/70;
+  }
+
+  .aq-fish-transfer-status-fill {
+    @apply block h-full rounded-full bg-lime-300;
+  }
+
+  .aq-fish-transfer-status-fill.health {
+    @apply bg-emerald-300;
+  }
+
+  .aq-fish-transfer-status-fill.food {
+    @apply bg-amber-300;
   }
 
   .aq-fish-transfer-actions {
@@ -1449,15 +1497,17 @@ canvas {
   }
 
   .aq-main-menu-status-grid {
-    @apply mb-3 grid grid-cols-3 gap-1.5;
+    @apply mb-3 grid grid-cols-3 gap-1.5 rounded-2xl border border-cyan-100/18 p-2;
+    background: rgba(6, 74, 122, 0.42);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      0 2px 8px rgba(0, 27, 48, 0.14);
   }
 
   .aq-main-menu-status-card {
-    @apply flex min-w-0 flex-col items-center justify-center rounded-xl px-1.5 py-2 text-center text-white;
-    background: var(--aq-kids-menu-card-blue);
-    box-shadow:
-      inset 0 2px 5px rgba(0, 62, 116, 0.32),
-      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+    @apply flex min-w-0 flex-col items-center justify-center px-1.5 py-1 text-center text-white;
+    background: transparent;
+    box-shadow: none;
   }
 
   .aq-main-menu-status-button {
@@ -1467,7 +1517,7 @@ canvas {
   .aq-main-menu-status-button:active,
   .aq-main-menu-status-button.is-touching {
     filter: brightness(1.05);
-    transform: scale(0.98);
+    transform: translateY(1px);
   }
 
   .aq-main-menu-status-icon {
@@ -1523,6 +1573,27 @@ canvas {
   .aq-main-menu-card {
     @apply relative flex min-h-[118px] flex-col items-center justify-center gap-2 rounded-2xl border-0 px-3 py-3 text-white;
     touch-action: manipulation;
+  }
+
+  .aq-main-menu-card:disabled {
+    @apply cursor-not-allowed text-white/82;
+    background: #4f96c0;
+    box-shadow:
+      inset 0 2px 5px rgba(0, 62, 116, 0.2),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+    filter: saturate(0.86) brightness(0.96);
+    transform: none;
+  }
+
+  .aq-main-menu-card:disabled .aq-main-menu-icon {
+    opacity: 0.82;
+    filter: saturate(0.78);
+  }
+
+  .aq-main-menu-card:disabled .aq-main-menu-label,
+  .aq-main-menu-card:disabled .aq-drill-menu-description {
+    color: rgba(255, 255, 255, 0.82);
+    text-shadow: none;
   }
 
   .aq-main-menu-icon-wrap {

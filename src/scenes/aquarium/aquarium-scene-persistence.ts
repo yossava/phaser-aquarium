@@ -154,7 +154,7 @@ function restoreFish(scene: AquariumScenePersistenceTarget, fish: any[]): void {
 
     const restoredFish = scene.addFishToTank(type, savedFish.x, savedFish.y, {
       gender: savedFish.gender,
-      tankLevel: 1
+      tankLevel: savedFish.tankLevel ?? 1
     });
     restoredFish.restoreProgress(
       savedFish.ageSeconds,

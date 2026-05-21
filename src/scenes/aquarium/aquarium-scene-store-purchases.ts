@@ -139,9 +139,6 @@ export function executeFishPurchase(
       adapter.addStoredFishAge?.(fishType.id, input.powerAgeSeconds ?? 0);
     }
   }
-  for (let index = 0; index < purchasePlan.buyQuantity; index += 1) {
-    adapter.recordFishPurchase(fishType);
-  }
   adapter.closeModal();
   closeStoreAfterPurchase(adapter);
 
@@ -151,6 +148,9 @@ export function executeFishPurchase(
       ageSeconds: input.powerAgeSeconds,
       visualAgeSeconds: 0
     });
+  }
+  for (let index = 0; index < purchasePlan.buyQuantity; index += 1) {
+    adapter.recordFishPurchase(fishType);
   }
 
   adapter.setRecentInventoryDockItemKey("fish-menu:fish-menu");
@@ -264,6 +264,9 @@ export function executeHelperCreaturePurchase(adapter: HelperCreaturePurchaseAda
 
   adapter.setCreatureInventory(creatureType.id, adapter.getCreatureInventory(creatureType.id) + 1);
   adapter.recordDailyQuestAction("buy-helper");
+  if (creatureType.id === "shrimp") {
+    adapter.recordDailyQuestAction("buy-helper-shrimp");
+  }
   adapter.setRecentInventoryDockItemKey(`helper:${creatureType.id}`);
   adapter.setPlacementMode({ kind: "none" });
   adapter.floatText(`${creatureType.name} docked`, successColor);

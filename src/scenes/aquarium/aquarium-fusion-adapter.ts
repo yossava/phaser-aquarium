@@ -175,6 +175,10 @@ export function createAquariumFusionAdapter(scene: AquariumSceneCore): AquariumF
           aquariumScene.activeScreen === "album" &&
           document.body.contains(outputStage),
         afterFusionSuccess: ({ resultLabel, resultType, inheritedAge, fusionCost }) => {
+          aquariumScene.recordDailyQuestAction("fuse-fish");
+          if (resultLabel === "Premium") {
+            aquariumScene.recordDailyQuestAction("premium-fusion");
+          }
           aquariumScene.floatText(`-${formatPrice(fusionCost)} fusion`, toastX, toastY, "#ffdc7a");
           aquariumScene.floatText(`${resultType.name} moved to inventory`, toastX, toastY, "#a8ffb0");
           aquariumScene.createFoodDock();

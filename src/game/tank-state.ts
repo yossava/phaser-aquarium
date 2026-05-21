@@ -62,8 +62,8 @@ export function tankNamesRecord(names: Map<number, string>): Record<string, stri
 export function createDefaultTankState(level: number, config: TankStateConfig, now = Date.now()): TankRuntimeState {
   const cosmeticId = config.defaultCosmeticId(level);
   return {
-    wallet: level === 1 ? createWallet(120, 0, 0) : createEmptyWallet(),
-    foodInventory: new Map<FoodTypeId, number>(level === 1 ? [[config.basicFoodId, config.basicFoodCalories * 3]] : []),
+    wallet: level === 1 ? createWallet(500, 0, 0) : createEmptyWallet(),
+    foodInventory: new Map<FoodTypeId, number>(),
     fishInventory: new Map<string, number>(),
     fishInventoryAges: new Map<string, number[]>(),
     decorationInventory: new Map<string, number>(),
@@ -198,27 +198,23 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
     });
   }
 
-  if (!states.has(1)) {
-    states.set(1, {
+  const activeLevel = Math.max(1, Math.floor(saved.tank.activeLevel ?? saved.tank.level ?? 1));
+  if (activeLevel <= config.maxOwnedTanks) {
+    const previousState = ensureTankState(states, activeLevel, config);
+    states.set(activeLevel, {
+      ...previousState,
       wallet: { ...saved.wallet },
       foodInventory: recordToMap(saved.foodInventory) as Map<FoodTypeId, number>,
       fishInventory: recordToMap(saved.fishInventory),
       fishInventoryAges: ageRecordToMap(saved.fishInventoryAges),
       decorationInventory: recordToMap(saved.decorationInventory),
       creatureInventory: recordToMap(saved.creatureInventory),
-      backgroundInventory: cosmeticInventoryFromRecord(undefined, 1, config),
-      seabedInventory: cosmeticInventoryFromRecord(undefined, 1, config),
-      backgroundBlueTints: new Map<string, number>(),
-      seabedBlueTints: new Map<string, number>(),
-      selectedBackgroundId: config.validCosmeticId("background", undefined, 1),
-      selectedSeabedId: config.validCosmeticId("seabed", undefined, 1),
       cleanliness: saved.tank.cleanliness,
-      cleanedAt: saved.tank.cleanedAt,
-      maxDisplayLevel: 1,
-      fishProductionTotal: 0,
-      timeCurrentRemainingSeconds: 0
+      cleanedAt: saved.tank.cleanedAt
     });
   }
+
+  ensureTankState(states, 1, config);
 
   return states;
 }

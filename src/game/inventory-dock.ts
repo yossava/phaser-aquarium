@@ -5,7 +5,7 @@ import type { FoodType, FoodTypeId } from "../types/mechanics";
 
 export type InventoryDockItem =
   | { kind: "food"; id: FoodTypeId; label: string; count: number; badgeLabel?: string; icon: string }
-  | { kind: "fish-menu"; id: "fish-menu"; label: string; count: number; icon: string }
+  | { kind: "fish-menu"; id: "fish-menu"; label: string; count: number; badgeLabel?: string; icon: string }
   | { kind: "fish"; id: string; label: string; count: number; icon: string }
   | { kind: "decoration"; id: string; size: DecorationSize; label: string; count: number; icon: string }
   | { kind: "helper"; id: string; label: string; count: number; icon: string }
@@ -18,6 +18,9 @@ export type InventoryDockBuildInput = {
   foodDisplayCount: (foodType: FoodType) => number;
   foodBadgeLabel: (foodType: FoodType) => string;
   totalStoredFishCount: () => number;
+  activeFishCount: () => number;
+  maxFishCapacity: () => number;
+  hasHungryFishWarning: () => boolean;
   getDecorationInventory: (decorationTypeId: string, size: DecorationSize) => number;
   getCreatureInventory: (creatureTypeId: string) => number;
 };
@@ -35,32 +38,16 @@ export function buildInventoryDockItems(input: InventoryDockBuildInput): Invento
     }));
 
   const storedFishCount = input.totalStoredFishCount();
-  const fishItems: InventoryDockItem[] = storedFishCount > 0
-    ? [{
-        kind: "fish-menu",
-        id: "fish-menu",
-        label: "My Fish",
-        count: storedFishCount,
-        icon: input.fishMenuIcon
-      }]
-    : [];
-
-  const decorationItems: InventoryDockItem[] = [];
-  for (const decorationType of decorationTypes) {
-    for (const size of decorationSizeOrder) {
-      const count = input.getDecorationInventory(decorationType.id, size);
-      if (count > 0) {
-        decorationItems.push({
-          kind: "decoration",
-          id: decorationType.id,
-          size,
-          label: `${decorationType.name} ${decorationSizes[size].label}`,
-          count,
-          icon: `/assets/decorations/${decorationType.id}.png`
-        });
-      }
-    }
-  }
+  const canMoveStoredFishToTank = storedFishCount > 0 && input.activeFishCount() < input.maxFishCapacity();
+  const fishMenuBadgeLabel = input.hasHungryFishWarning() ? "!" : canMoveStoredFishToTank ? String(storedFishCount) : undefined;
+  const fishItems: InventoryDockItem[] = [{
+    kind: "fish-menu",
+    id: "fish-menu",
+    label: "My Fish",
+    count: storedFishCount,
+    badgeLabel: fishMenuBadgeLabel,
+    icon: input.fishMenuIcon
+  }];
 
   const helperItems: InventoryDockItem[] = helperCreatureTypes
     .filter((creatureType) => input.getCreatureInventory(creatureType.id) > 0)
@@ -72,7 +59,7 @@ export function buildInventoryDockItems(input: InventoryDockBuildInput): Invento
       icon: creatureType.id === "feeder-snail" ? "/assets/helpers/feeder-snail.png" : `/assets/helpers/${creatureType.id}.png`
     }));
 
-  return [...foodItems, ...fishItems, ...decorationItems, ...helperItems];
+  return [...fishItems, ...foodItems, ...helperItems];
 }
 
 export function inventoryDockItemKey(item: InventoryDockItem): string {

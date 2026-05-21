@@ -8,8 +8,8 @@
       "amount": 650
     },
     "texture": "helper-shrimp",
-    "speed": 52,
-    "coinCollectSeconds": 6,
+    "speed": 78,
+    "coinCollectSeconds": 2,
     "cleanupSeconds": 3,
     "habitatTags": [
       "bottom",

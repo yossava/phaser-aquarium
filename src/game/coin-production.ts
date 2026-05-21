@@ -22,11 +22,13 @@ export function updateFishCoinProduction(input: {
   minDelayMs: number;
   maxDelayMs: number;
   activeProductionPaceMultiplier: number;
+  minimumCoinDropValue?: number;
   randomBetween: (min: number, max: number) => number;
   addFishProductionTotal: (tankLevel: number, value: number) => boolean;
   createCoinDrop: (x: number, y: number, value: number, coinType: CoinType, isMega: boolean, options?: CoinDropOptions) => void;
 }): void {
   const { fish, now } = input;
+  const minimumCoinDropValue = Math.max(0, input.minimumCoinDropValue ?? 0);
   if (!fish.canDropCoin(now)) {
     if (fish.nextCoinDropAt > 0 && now >= fish.nextCoinDropAt) {
       fish.postponeCoinProduction(now, input.randomBetween(input.minDelayMs, input.maxDelayMs));
@@ -34,7 +36,7 @@ export function updateFishCoinProduction(input: {
     return;
   }
 
-  if (input.coinDropCount >= input.maxCoinDrops && !fish.hasActiveProductionBoost(now)) {
+  if (input.coinDropCount >= input.maxCoinDrops && !fish.hasActiveProductionBoost(now) && minimumCoinDropValue <= 0) {
     const cappedValue = fish.takeCoinProductionDrop(now, input.activeProductionPaceMultiplier);
     if (cappedValue > 0) {
       input.addFishProductionTotal(fish.tankLevel, cappedValue);
@@ -42,13 +44,16 @@ export function updateFishCoinProduction(input: {
     return;
   }
 
-  const value = fish.takeCoinProductionDrop(now, input.activeProductionPaceMultiplier);
+  const value = Math.max(
+    fish.takeCoinProductionDrop(now, input.activeProductionPaceMultiplier),
+    minimumCoinDropValue
+  );
   if (value <= 0) {
     return;
   }
 
   const leveledUp = input.addFishProductionTotal(fish.tankLevel, value);
-  if (leveledUp) {
+  if (leveledUp && minimumCoinDropValue <= 0) {
     return;
   }
 

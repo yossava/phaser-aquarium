@@ -286,22 +286,24 @@ export function createHtmlInventoryDockButton(input: {
   const button = document.createElement("button");
   button.type = "button";
   button.className = "aq-food-button";
-  button.setAttribute("aria-label", `${item.label} x${input.badgeLabel}`);
+  button.setAttribute("aria-label", item.kind === "fish-menu" ? item.label : `${item.label} x${input.badgeLabel}`);
   input.attachTouchFeedback(button);
 
   const bubble = document.createElement("span");
   bubble.className = "aq-food-button-bubble";
   bubble.append(createInventoryDockIcon(item));
 
-  const count = document.createElement("span");
-  count.className = "aq-food-button-count";
-  if (item.kind === "utility" && item.id === "coin-magnet") {
-    count.classList.add("is-timer");
-    count.textContent = `${formatNumber(item.count)}m`;
-  } else {
-    count.textContent = input.badgeLabel;
+  if (item.kind !== "fish-menu" || item.badgeLabel) {
+    const count = document.createElement("span");
+    count.className = "aq-food-button-count";
+    if (item.kind === "utility" && item.id === "coin-magnet") {
+      count.classList.add("is-timer");
+      count.textContent = `${formatNumber(item.count)}m`;
+    } else {
+      count.textContent = input.badgeLabel;
+    }
+    bubble.append(count);
   }
-  bubble.append(count);
 
   const label = document.createElement("span");
   label.className = "aq-food-button-label";

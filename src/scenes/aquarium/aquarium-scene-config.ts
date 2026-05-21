@@ -58,7 +58,7 @@ export type AdjustableSound = Phaser.Sound.BaseSound & {
   setVolume: (value: number) => unknown;
 };
 
-export const maxCoinDrops = 5;
+export const maxCoinDrops = 10;
 export const maxFoodDrops = 5;
 export const coinCollectSoundKey = "sfx-coin-collect";
 export const coinCollectSoundPath = "/assets/audio/sfx/coin-pick.ogg";
@@ -112,7 +112,7 @@ export const storeTankNames: Record<number, string> = {
   5: "Royal Tank"
 };
 export const storeTankStarterWallets: Record<number, Wallet> = {
-  1: createWallet(120, 0, 0),
+  1: createWallet(500, 0, 0),
   2: createWallet(180, 0, 0),
   3: createWallet(320, 16, 0),
   4: createWallet(520, 30, 6),

@@ -220,7 +220,7 @@ export function createResetConfirmationModalContent(input: {
     title: "Reset Save",
     lines: [
       "This clears the local aquarium save on this device.",
-      "The page will return to the starter wallet and food."
+      "The page will return to the starter wallet."
     ],
     actions: [
       { label: "Reset", fill: 0x76512d, action: input.onReset },
