@@ -2698,15 +2698,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private activeFishProductionPerMinute(): number {
-    const now = this.time.now;
     return this.activeFish().reduce((total, fish) => {
       if (fish.state === "ill" || fish.currentFullnessCalories() <= 0) {
         return total;
       }
-
-      const intervalSeconds = Math.max(1, fish.type.coinDropSeconds);
-      const boostMultiplier = fish.hasActiveProductionBoost(now) ? 5 : 1;
-      return total + fish.type.coinValue * boostMultiplier * (60 / intervalSeconds);
+      return total + fish.projectedProductionPerMinute();
     }, 0);
   }
 
@@ -5680,8 +5676,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     });
   }
 
-  private floatTankText(message: string, x: number, y: number, color: string): void {
-    return;
+   private floatTankText(message: string, x: number, y: number, color: string): void {
     const position = this.tankToScreenPoint(x, y);
     this.floatText(message, position.x, position.y, color);
   }

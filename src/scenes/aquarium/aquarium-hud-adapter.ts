@@ -85,7 +85,7 @@ export function createAquariumHudControllerHost(scene: AquariumSceneCore): Aquar
     tankMenuOverlay: s.tankMenuOverlay,
     tankMenuOverlayStateKey: s.tankMenuOverlayStateKey,
 
-    activeScreen: s.activeScreen,
+    getActiveScreen: () => s.activeScreen,
     wallet: s.wallet,
     tankLevel: s.tankLevel,
     cleanliness: s.cleanliness,
@@ -94,7 +94,7 @@ export function createAquariumHudControllerHost(scene: AquariumSceneCore): Aquar
     coinMagnetY: s.coinMagnetY,
     autoFoodBuyerY: s.autoFoodBuyerY,
     coinMagnetRay: s.coinMagnetRay,
-    placementMode: s.placementMode,
+    getPlacementMode: () => s.placementMode,
 
     tankDisplayLevel: () => s.tankDisplayLevel(),
     tankViewScaleForLevel: () => s.tankViewScaleForLevel(),

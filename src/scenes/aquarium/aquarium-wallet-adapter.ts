@@ -94,11 +94,11 @@ export function createAquariumWalletControllerHost(scene: AquariumSceneCore): Wa
     coinComboLastPosition: s.coinComboLastPosition,
     coinComboOverlay: s.coinComboOverlay,
     questPresents: s.questPresents,
-    modal: s.modal,
-    activeScreen: s.activeScreen,
-    htmlDockDragging: s.htmlDockDragging,
-    tankLevel: s.tankLevel,
-    cleanliness: s.cleanliness,
+    getModal: () => s.modal,
+    getActiveScreen: () => s.activeScreen,
+    getHtmlDockDragging: () => s.htmlDockDragging,
+    getTankLevel: () => s.tankLevel,
+    getCleanliness: () => s.cleanliness,
     decorationInventory: s.decorationInventory,
     tankLayer: s.tankLayer,
     gameHudCommonText: s.gameHudCommonText,
@@ -138,7 +138,7 @@ export function createAquariumWalletControllerHost(scene: AquariumSceneCore): Wa
     getCompactTankNeedIndicator: () => s.getCompactTankNeedIndicator(),
     getTankNeedIndicator: () => s.getTankNeedIndicator(),
     getHudNeedLabel: () => s.getHudNeedLabel(),
-    placementMode: s.placementMode,
+    getPlacementMode: () => s.placementMode,
     timeCurrentRemainingSeconds: () => s.timeCurrentRemainingSeconds()
   };
 }

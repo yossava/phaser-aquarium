@@ -56,7 +56,7 @@ export type AquariumHudControllerHost = {
   tankMenuOverlayStateKey: string;
 
   // Core state
-  activeScreen: AppScreen;
+  getActiveScreen(): AppScreen;
   wallet: { common: number; rare: number; superRare: number };
   tankLevel: number;
   cleanliness: number;
@@ -65,7 +65,7 @@ export type AquariumHudControllerHost = {
   coinMagnetY: number;
   autoFoodBuyerY: number;
   coinMagnetRay?: Phaser.GameObjects.Graphics;
-  placementMode: PlacementMode;
+  getPlacementMode(): PlacementMode;
 
   // Scene helpers
   tankDisplayLevel(): number;
@@ -114,7 +114,7 @@ export class AquariumHudController {
   // ─── HUD Overlay ───
 
   public syncHtmlHud(): void {
-    if (this.host.activeScreen !== "tank") {
+    if (this.host.getActiveScreen() !== "tank") {
       this.host.gameHudOverlay?.classList.add("hidden");
       return;
     }
@@ -308,7 +308,7 @@ export class AquariumHudController {
   }
 
   public syncFoodDockPosition(): void {
-    if (!this.host.gameHudOverlay || this.host.activeScreen !== "tank") {
+    if (!this.host.gameHudOverlay || this.host.getActiveScreen() !== "tank") {
       return;
     }
 
@@ -327,7 +327,7 @@ export class AquariumHudController {
 
   public bindFoodDispenserDrag(element: HTMLElement): void {
     bindTankSideToolDragInput(element, {
-      isEnabled: () => this.host.activeScreen === "tank",
+      isEnabled: () => this.host.getActiveScreen() === "tank",
       getY: () => this.host.foodDispenserY,
       setY: (y) => {
         this.host.foodDispenserY = y;
@@ -343,7 +343,7 @@ export class AquariumHudController {
 
   public bindCoinMagnetDrag(element: HTMLElement): void {
     bindTankSideToolDragInput(element, {
-      isEnabled: () => this.host.activeScreen === "tank",
+      isEnabled: () => this.host.getActiveScreen() === "tank",
       getY: () => this.host.coinMagnetY,
       setY: (y) => {
         this.host.coinMagnetY = y;
@@ -359,7 +359,7 @@ export class AquariumHudController {
 
   public bindAutoFoodBuyerDrag(element: HTMLElement): void {
     bindTankSideToolDragInput(element, {
-      isEnabled: () => this.host.activeScreen === "tank",
+      isEnabled: () => this.host.getActiveScreen() === "tank",
       getY: () => this.host.autoFoodBuyerY,
       setY: (y) => {
         this.host.autoFoodBuyerY = y;
@@ -436,7 +436,7 @@ export class AquariumHudController {
   // ─── Tank Menu Overlay ───
 
   public syncTankMenuOverlay(): void {
-    if (this.host.activeScreen !== "tank") {
+    if (this.host.getActiveScreen() !== "tank") {
       this.host.tankMenuOverlay?.classList.add("hidden");
       return;
     }
@@ -525,14 +525,14 @@ export class AquariumHudController {
   // ─── Status Labels ───
 
   public getHudNeedLabel(): string {
-    if (this.host.placementMode.kind !== "none") {
+    if (this.host.getPlacementMode().kind !== "none") {
       return this.getModeLabel();
     }
     return this.host.getCompactTankNeedIndicator();
   }
 
   public getModeLabel(): string {
-    const mode = this.host.placementMode;
+    const mode = this.host.getPlacementMode();
 
     if (mode.kind === "fish") {
       const fishType = fishTypes.find((item) => item.id === mode.fishTypeId);
@@ -555,6 +555,6 @@ export class AquariumHudController {
   // ─── Visibility ───
 
   public shouldShowTankScene(): boolean {
-    return this.host.activeScreen === "tank" || this.host.activeScreen === "makeup";
+    return this.host.getActiveScreen() === "tank" || this.host.getActiveScreen() === "makeup";
   }
 }

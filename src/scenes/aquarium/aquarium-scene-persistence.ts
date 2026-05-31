@@ -15,6 +15,7 @@ import {
   calculateOfflineSeconds,
   createEmptyWallet,
   loadGame,
+  SAVE_KEY,
   saveGame,
   type OfflineProgress,
   type SavedCoinDrop,
@@ -92,6 +93,12 @@ export type AquariumScenePersistenceTarget = {
 export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget): void {
   const saved = loadGame();
   if (!saved) {
+    const rawSave = localStorage.getItem(SAVE_KEY);
+    console.warn(
+      rawSave
+        ? "[Save] Found saved game data but could not restore it; starting fresh."
+        : "[Save] No saved game found; starting fresh."
+    );
     return;
   }
 

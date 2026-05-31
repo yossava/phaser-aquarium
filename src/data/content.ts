@@ -3,7 +3,7 @@ import foodTypeData from "./food-types.json";
 import decorationTypeData from "./decoration-types.json";
 import helperCreatureTypeData from "./helper-creature-types.json";
 import { maximumMealCaloriesNeed } from "../game/economy-model";
-import type { CoinType, DecorationType, FishType, FoodType, HelperCreatureType, Price, Rarity } from "../types/mechanics";
+import type { DecorationType, FishType, FoodType, HelperCreatureType, Price, Rarity } from "../types/mechanics";
 
 const baselineCommonFishPrice = 60;
 const fishShopTierSize = 8;
@@ -219,20 +219,7 @@ function normalizeFishTypes(source: FishType[]): FishType[] {
     return {
       ...fishType,
       price,
-      sellBaseValue: { coinType: "common", amount: Math.max(1, Math.floor(commonAmount * 0.7)) },
-      requiredFoodTypes: [],
-      preferredFoodTypes: [],
-      ageCurve: Object.fromEntries(
-        Object.entries(fishType.ageCurve).map(([stage, curve]) => [
-          stage,
-          {
-            ...curve,
-            production: [{ coinType: "common" as CoinType, amount: 1, intervalSeconds: 10, chance: 1 }]
-          }
-        ])
-      ) as FishType["ageCurve"],
-      coinDropSeconds: 10,
-      coinValue: 1
+      sellBaseValue: { coinType: "common", amount: Math.max(1, Math.floor(commonAmount * 0.7)) }
     };
   });
 }

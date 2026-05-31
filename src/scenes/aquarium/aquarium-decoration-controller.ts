@@ -39,11 +39,12 @@ import type { MakeupDecorationDraft } from "../../game/makeup-mode";
 
 export type AquariumDecorationControllerHost = {
   scene: Phaser.Scene;
-  activeScreen: AppScreen;
-  tankLevel: number;
+  getActiveScreen(): AppScreen;
+  getTankLevel(): number;
   decorationInventory: Map<string, number>;
   placedDecorations: PlacedDecoration[];
-  placementMode: PlacementMode;
+  getPlacementMode(): PlacementMode;
+  setPlacementMode(mode: PlacementMode): void;
   tankLayer: Phaser.GameObjects.Container;
   draggedDecoration?: PlacedDecoration;
   phaserDraggedDecoration?: PlacedDecoration;
@@ -108,13 +109,13 @@ export class AquariumDecorationController {
     consumeStoredDecorationModel(this.host.decorationInventory, decorationTypeId, size);
   }
 
-  public getPlacedDecorationCount(decorationTypeId: string, size: DecorationSize, level = this.host.tankLevel): number {
+  public getPlacedDecorationCount(decorationTypeId: string, size: DecorationSize, level = this.host.getTankLevel()): number {
     return placedDecorationCountModel({
       decorations: this.host.placedDecorations, decorationTypeId, size, level, validSizes: decorationSizeOrder
     });
   }
 
-  public getOwnedDecorationCount(decorationTypeId: string, size: DecorationSize, level = this.host.tankLevel): number {
+  public getOwnedDecorationCount(decorationTypeId: string, size: DecorationSize, level = this.host.getTankLevel()): number {
     return ownedDecorationCountModel({
       inventory: this.host.decorationInventory, decorations: this.host.placedDecorations, decorationTypeId, size, level, validSizes: decorationSizeOrder
     });
@@ -133,7 +134,7 @@ export class AquariumDecorationController {
     let removed = 0;
     const max = Math.max(0, Math.floor(quantity));
     for (const d of this.host.placedDecorations) {
-      if (d.tankLevel === this.host.tankLevel && d.typeId === decorationTypeId && this.sanitizeDecorationSize(d.size) === size && removed < max) {
+      if (d.tankLevel === this.host.getTankLevel() && d.typeId === decorationTypeId && this.sanitizeDecorationSize(d.size) === size && removed < max) {
         d.image.destroy();
         removed += 1;
       } else {
@@ -148,14 +149,14 @@ export class AquariumDecorationController {
   public removeAllPlacedDecorationsFromActiveTank(): void {
     const kept: PlacedDecoration[] = [];
     for (const d of this.host.placedDecorations) {
-      if (d.tankLevel === this.host.tankLevel) { d.image.destroy(); } else { kept.push(d); }
+      if (d.tankLevel === this.host.getTankLevel()) { d.image.destroy(); } else { kept.push(d); }
     }
     this.host.placedDecorations.length = 0;
     this.host.placedDecorations.push(...kept);
   }
 
   public activeDecorations(): PlacedDecoration[] {
-    return this.host.placedDecorations.filter((d) => d.tankLevel === this.host.tankLevel);
+    return this.host.placedDecorations.filter((d) => d.tankLevel === this.host.getTankLevel());
   }
 
   public decorationsInTank(level: number): PlacedDecoration[] {
@@ -163,7 +164,7 @@ export class AquariumDecorationController {
   }
 
   public decorationAtTankPoint(designX: number, designY: number): PlacedDecoration | undefined {
-    if (this.host.activeScreen !== "tank") { return undefined; }
+    if (this.host.getActiveScreen() !== "tank") { return undefined; }
     const tp = this.host.screenToTankPoint(designX, designY);
     return decorationAtTankPoint(this.activeDecorations(), tp.x, tp.y);
   }
@@ -177,7 +178,7 @@ export class AquariumDecorationController {
   }
 
   public refreshDecorationTankVisibility(): void {
-    for (const d of this.host.placedDecorations) { d.image.setVisible(d.tankLevel === this.host.tankLevel); }
+    for (const d of this.host.placedDecorations) { d.image.setVisible(d.tankLevel === this.host.getTankLevel()); }
   }
 
   public createDecorationTrashTarget(): void {
@@ -193,7 +194,7 @@ export class AquariumDecorationController {
 
   public showDecorationTrashTarget(show: boolean): void {
     if (!this.host.decorationTrashTarget) { return; }
-    this.host.decorationTrashTarget.setVisible(show && this.host.activeScreen === "tank");
+    this.host.decorationTrashTarget.setVisible(show && this.host.getActiveScreen() === "tank");
     if (!show) { this.highlightDecorationTrashTarget(false); }
   }
 
@@ -211,7 +212,7 @@ export class AquariumDecorationController {
     }
     this.consumeStoredDecoration(decoration.id, size);
     this.addDecorationToTank(decoration, x, y, size);
-    this.host.placementMode = { kind: "none" };
+    this.host.setPlacementMode({ kind: "none" });
     this.host.recordDailyQuestAction("place-decoration");
     this.host.createFoodDock();
     this.host.refreshUi(false);
@@ -220,7 +221,7 @@ export class AquariumDecorationController {
 
   public addDecorationToTank(
     decoration: DecorationType, x: number, y: number, size: DecorationSize = "m",
-    tankLevel = this.host.tankLevel, depth = defaultDecorationDepth(y)
+    tankLevel = this.host.getTankLevel(), depth = defaultDecorationDepth(y)
   ): void {
     const img = this.host.scene.add.image(x, y, decoration.texture).setDepth(depth);
     this.fitDecorationDisplay(img, decoration, size);
@@ -230,15 +231,15 @@ export class AquariumDecorationController {
     this.host.placedDecorations.push(placed);
     img.on("pointerdown", (pointer: Phaser.Input.Pointer, _px: number, _py: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
-      if (this.host.activeScreen === "tank") { this.beginTankDecorationDrag(placed); }
-      else if (this.host.activeScreen === "makeup") { this.beginPhaserDecorationDrag(placed); }
+      if (this.host.getActiveScreen() === "tank") { this.beginTankDecorationDrag(placed); }
+      else if (this.host.getActiveScreen() === "makeup") { this.beginPhaserDecorationDrag(placed); }
     });
   }
 
   public selectDecoration(decorationTypeId: string, size: DecorationSize = "m"): void {
     if (this.getDecorationInventory(decorationTypeId, size) <= 0) { this.host.floatText("Buy one first", toastX, toastY, "#ffb0a8"); return; }
-    this.host.placementMode = { kind: "decoration", decorationTypeId, size };
-    if (this.host.activeScreen !== "tank") { this.host.returnToTankScreen(); }
+    this.host.setPlacementMode({ kind: "decoration", decorationTypeId, size });
+    if (this.host.getActiveScreen() !== "tank") { this.host.returnToTankScreen(); }
     this.host.refreshUi();
   }
 
@@ -246,14 +247,14 @@ export class AquariumDecorationController {
   public startPhaserDecorationHold(_d: PlacedDecoration, _p: Phaser.Input.Pointer): void {}
 
   public beginTankDecorationDrag(decoration: PlacedDecoration): void {
-    if (this.host.activeScreen !== "tank") { return; }
+    if (this.host.getActiveScreen() !== "tank") { return; }
     this.host.draggedDecoration = decoration;
     decoration.image.setAlpha(0.78).setDepth(9);
     this.host.tankLayer.bringToTop(decoration.image);
   }
 
   public updateTankDecorationDragAtDesignPoint(pointerPoint: Phaser.Math.Vector2): void {
-    if (this.host.activeScreen !== "tank" || !this.host.draggedDecoration) { return; }
+    if (this.host.getActiveScreen() !== "tank" || !this.host.draggedDecoration) { return; }
     const tp = this.host.screenToTankPoint(pointerPoint.x, pointerPoint.y);
     this.moveDecoration(this.host.draggedDecoration, tp.x, tp.y);
   }
@@ -270,7 +271,7 @@ export class AquariumDecorationController {
   }
 
   public beginPhaserDecorationDrag(decoration: PlacedDecoration): void {
-    if (this.host.nativeDraggedDecoration || this.host.activeScreen !== "makeup") { return; }
+    if (this.host.nativeDraggedDecoration || this.host.getActiveScreen() !== "makeup") { return; }
     this.host.phaserDraggedDecoration = decoration;
     this.host.draggedDecoration = decoration;
     decoration.image.setAlpha(0.78).setDepth(9);
@@ -278,7 +279,7 @@ export class AquariumDecorationController {
   }
 
   public updatePhaserDecorationDrag(pointer: Phaser.Input.Pointer): void {
-    if (this.host.nativeDraggedDecoration || this.host.activeScreen !== "makeup") { return; }
+    if (this.host.nativeDraggedDecoration || this.host.getActiveScreen() !== "makeup") { return; }
     const pp = this.host.pointerDesignPoint(pointer);
     if (!this.host.phaserDraggedDecoration) { return; }
     const tp = this.host.screenToTankPoint(pp.x, pp.y);
@@ -292,9 +293,9 @@ export class AquariumDecorationController {
     d.image.setAlpha(1);
     this.showDecorationTrashTarget(false);
     const pp = this.host.pointerDesignPoint(pointer);
-    if (this.host.activeScreen === "makeup" && this.host.decorationTrashZone.contains(pp.x, pp.y)) {
+    if (this.host.getActiveScreen() === "makeup" && this.host.decorationTrashZone.contains(pp.x, pp.y)) {
       this.trashDecoration(d);
-    } else if (this.host.activeScreen === "makeup" && tankViewportBounds.contains(pp.x, pp.y)) {
+    } else if (this.host.getActiveScreen() === "makeup" && tankViewportBounds.contains(pp.x, pp.y)) {
       const tp = this.host.screenToTankPoint(pp.x, pp.y);
       this.moveDecoration(d, tp.x, tp.y);
       this.host.recordDailyQuestAction("move-decoration");

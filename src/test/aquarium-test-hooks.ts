@@ -3,7 +3,7 @@ import { decorationTypes, fishTypes, foodTypes, helperCreatureTypes } from "../d
 import { tankBounds, tankViewportBounds } from "../game/constants";
 import { foodDispenserInventoryKey } from "../game/dispenser-system";
 import { earn, formatNumber } from "../game/economy";
-import { clearSave, loadGame, mapToRecord } from "../game/save";
+import { clearSave, loadGame, mapToRecord, SAVE_KEY } from "../game/save";
 import { fishShopRequiredLevel } from "../game/store-catalog";
 import { fishFoodTintFor } from "../game/visuals";
 import { FoodPellet } from "../objects/FoodPellet";
@@ -36,6 +36,10 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
   }
 
   window.__aquariumTest = {
+    _scene: scene,
+    floatTankText: (message: string, x: number, y: number, color: string) => {
+      scene.floatTankText(message, x, y, color);
+    },
     getSnapshot: () => ({
       coins: scene.wallet.common,
       wallet: { ...scene.wallet },
@@ -152,6 +156,11 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       compatibilityScore: scene.calculateCurrentCompatibility().score,
       modalTitle: scene.modalTitle,
       saved: Boolean(loadGame()),
+      saveHealth: (() => {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if (!raw) return "missing";
+        return loadGame() ? "ok" : "corrupted";
+      })(),
       offlineProgress: {
         elapsedSeconds: scene.offlineProgress.elapsedSeconds,
         earned: { ...scene.offlineProgress.earned }
@@ -273,7 +282,20 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
           x: position.x,
           y: position.y
         };
-      })
+      }),
+      fishTypeFields: fishTypes.slice(0, 5).map((fishType) => ({
+        id: fishType.id,
+        coinDropSeconds: fishType.coinDropSeconds,
+        coinValue: fishType.coinValue,
+        requiredFoodTypes: fishType.requiredFoodTypes,
+        preferredFoodTypes: fishType.preferredFoodTypes,
+        ageCurveProduction: Object.fromEntries(
+          Object.entries(fishType.ageCurve).map(([stage, curve]) => [
+            stage,
+            curve.production.map((p) => ({ coinType: p.coinType, amount: p.amount, intervalSeconds: p.intervalSeconds, chance: p.chance }))
+          ])
+        )
+      }))
     }),
     setFishVitals: (index: number, hunger: number, health: number) => {
       const targetFish = scene.fish[index];
@@ -378,6 +400,7 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       }
 
       targetFish.setAgeSeconds(ageSeconds);
+      targetFish.setVisualAgeSeconds(ageSeconds);
     },
     awardPrizeFishForTest: (fishTypeId: string) => {
       const fishType = fishTypes.find((item) => item.id === fishTypeId);

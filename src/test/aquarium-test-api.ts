@@ -88,6 +88,7 @@ export type AquariumTestSnapshot = {
   compatibilityScore: number;
   modalTitle?: string;
   saved: boolean;
+  saveHealth: "ok" | "missing" | "corrupted";
   offlineProgress: OfflineProgress;
   fish: Array<{
     typeId: string;
@@ -172,9 +173,19 @@ export type AquariumTestSnapshot = {
     x: number;
     y: number;
   }>;
+  fishTypeFields: Array<{
+    id: string;
+    coinDropSeconds: number;
+    coinValue: number;
+    requiredFoodTypes: string[];
+    preferredFoodTypes: string[];
+    ageCurveProduction: Record<string, Array<{ coinType: CoinType; amount: number; intervalSeconds: number; chance: number }>>;
+  }>;
 };
 
 export type AquariumTestApi = {
+  _scene: unknown;
+  floatTankText: (message: string, x: number, y: number, color: string) => void;
   getSnapshot: () => AquariumTestSnapshot;
   setFishVitals: (index: number, hunger: number, health: number) => void;
   setFishFatalCareSeconds: (index: number, seconds: number) => void;

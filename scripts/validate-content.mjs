@@ -256,15 +256,48 @@ function validateHelperCreatureTypes(helperCreatureTypesData) {
   }
 }
 
+function validateTankCosmeticTypes(collectionName, items) {
+  const seenAssetIndexes = new Set();
+  const seenThemeIds = new Set();
+
+  for (const item of items) {
+    if (!Number.isInteger(item.assetIndex) || item.assetIndex < 1) {
+      fail(`${collectionName}/${item.themeId ?? "<unknown>"}: assetIndex must be a positive integer.`);
+    }
+
+    if (!item.themeId || typeof item.themeId !== "string") {
+      fail(`${collectionName}: item is missing a string themeId.`);
+    } else if (seenThemeIds.has(item.themeId)) {
+      fail(`${collectionName}: duplicate themeId "${item.themeId}".`);
+    } else {
+      seenThemeIds.add(item.themeId);
+    }
+
+    if (seenAssetIndexes.has(item.assetIndex)) {
+      fail(`${collectionName}: duplicate assetIndex ${item.assetIndex}.`);
+    } else {
+      seenAssetIndexes.add(item.assetIndex);
+    }
+
+    if (!item.name || typeof item.name !== "string") {
+      fail(`${collectionName}/${item.themeId ?? "<unknown>"}: name must be a string.`);
+    }
+  }
+}
+
 const fishTypesData = await readJson("fish-types.json");
 const foodTypesData = await readJson("food-types.json");
 const decorationTypesData = await readJson("decoration-types.json");
 const helperCreatureTypesData = await readJson("helper-creature-types.json");
+const tankBackgroundTypesData = await readJson("tank-background-types.json");
+const tankSeabedTypesData = await readJson("tank-seabed-types.json");
 
 validateFishTypes(fishTypesData);
 validateFoodTypes(foodTypesData);
 validateDecorationTypes(decorationTypesData);
 validateHelperCreatureTypes(helperCreatureTypesData);
+validateTankCosmeticTypes("tank-background-types", tankBackgroundTypesData);
+validateTankCosmeticTypes("tank-seabed-types", tankSeabedTypesData);
 
 if (fishTypesData.length < 50) {
   fail(`fish-types: expected at least 50 fish, found ${fishTypesData.length}.`);

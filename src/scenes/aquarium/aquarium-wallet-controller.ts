@@ -60,11 +60,11 @@ export type WalletControllerHost = {
   coinComboLastPosition: Phaser.Math.Vector2;
   coinComboOverlay?: HTMLDivElement;
   questPresents: Array<{ drop: QuestPresentDrop; reward: DailyQuestReward }>;
-  modal: boolean;
-  activeScreen: AppScreen;
-  htmlDockDragging: boolean;
-  tankLevel: number;
-  cleanliness: number;
+  getModal(): boolean;
+  getActiveScreen(): AppScreen;
+  getHtmlDockDragging(): boolean;
+  getTankLevel(): number;
+  getCleanliness(): number;
   decorationInventory: Map<string, number>;
   tankLayer: Phaser.GameObjects.Container;
   gameHudCommonText?: HTMLSpanElement;
@@ -104,7 +104,7 @@ export type WalletControllerHost = {
   getCompactTankNeedIndicator(): string;
   getTankNeedIndicator(): string;
   getHudNeedLabel(): string;
-  placementMode: PlacementMode;
+  getPlacementMode(): PlacementMode;
   timeCurrentRemainingSeconds(): number;
 };
 
@@ -149,7 +149,7 @@ export class AquariumWalletController {
       tankLayer: this.host.tankLayer,
       coinDrops: this.host.coinDrops,
       coinMagnetPreviousCoinY: this.host.coinMagnetPreviousCoinY,
-      visible: this.host.activeScreen !== "makeup",
+      visible: this.host.getActiveScreen() !== "makeup",
       canManuallyCollectTankCoins: () => this.canManuallyCollectTankCoins(),
       collectCoin: (coin, automated) => this.collectCoin(coin, automated),
       setCoinDropVisible: (coin, visible) => this.setCoinDropVisible(coin, visible)
@@ -193,7 +193,7 @@ export class AquariumWalletController {
   }
 
   public syncCoinDropVisibilityAndInput(): void {
-    const visible = this.host.activeScreen !== "makeup";
+    const visible = this.host.getActiveScreen() !== "makeup";
     for (const coin of this.host.coinDrops) {
       this.setCoinDropVisible(coin, visible);
     }
@@ -240,7 +240,7 @@ export class AquariumWalletController {
   }
 
   public updateCoinMagnet(): void {
-    if (!this.hasCoinMagnet() || this.host.modal || this.host.coinDrops.length === 0) {
+    if (!this.hasCoinMagnet() || this.host.getModal() || this.host.coinDrops.length === 0) {
       for (const coin of this.host.coinDrops) {
         this.host.coinMagnetPreviousCoinY.set(coin, coin.sprite.y);
       }
@@ -261,11 +261,11 @@ export class AquariumWalletController {
   }
 
   public canManuallyCollectTankCoins(): boolean {
-    return this.host.activeScreen === "tank" && !this.host.modal && !this.host.htmlDockDragging;
+    return this.host.getActiveScreen() === "tank" && !this.host.getModal() && !this.host.getHtmlDockDragging();
   }
 
   public canManuallyCollectTankPresents(): boolean {
-    return this.host.activeScreen === "tank" && !this.host.modal && !this.host.htmlDockDragging;
+    return this.host.getActiveScreen() === "tank" && !this.host.getModal() && !this.host.getHtmlDockDragging();
   }
 
   public useCoinMagnetAtClientPoint(clientX: number, clientY: number, showEmptyMessage: boolean): void {
@@ -403,7 +403,7 @@ export class AquariumWalletController {
       return;
     }
 
-    const leveledUp = this.host.addFishProductionTotal(this.host.tankLevel, bonus);
+    const leveledUp = this.host.addFishProductionTotal(this.host.getTankLevel(), bonus);
     this.showCoinComboOverlay(`COMBO BONUS C${formatNumber(bonus)}!`, true, coinComboRewardTextDurationMs);
     this.host.floatTankText(`COMBO BONUS C${formatNumber(bonus)}!`, position.x, position.y - 24, "#55ff8a");
     this.host.refreshUi(!leveledUp);
@@ -552,7 +552,7 @@ export class AquariumWalletController {
   }
 
   public syncQuestPresentVisibilityAndInput(): void {
-    const visible = this.host.activeScreen === "tank";
+    const visible = this.host.getActiveScreen() === "tank";
     for (const present of this.host.questPresents) {
       this.setQuestPresentVisible(present.drop, visible);
     }
@@ -563,7 +563,7 @@ export class AquariumWalletController {
   }
 
   public tankStatusSnapshotText(): string {
-    return `${this.host.getTankName(this.host.tankLevel)} Lv${formatNumber(this.host.tankDisplayLevel())}`;
+    return `${this.host.getTankName(this.host.getTankLevel())} Lv${formatNumber(this.host.tankDisplayLevel())}`;
   }
 
   public tankCareSnapshotText(): string {
@@ -584,7 +584,7 @@ export class AquariumWalletController {
     const boostLabel = this.host.timeCurrentRemainingSeconds() > 0
       ? `   Current x${formatNumber(timeCurrentSpeedMultiplier)} ${compactDurationLabelModel(this.host.timeCurrentRemainingSeconds(), formatNumber)}`
       : "";
-    return `Food ${formatNumber(this.host.getTotalFoodInventory())}   Clean ${formatNumber(Math.round(this.host.cleanliness))}%   Happy ${formatNumber(Math.round(this.host.calculateTankHappiness()))}%${boostLabel}`;
+    return `Food ${formatNumber(this.host.getTotalFoodInventory())}   Clean ${formatNumber(Math.round(this.host.getCleanliness()))}%   Happy ${formatNumber(Math.round(this.host.calculateTankHappiness()))}%${boostLabel}`;
   }
 
   public destroy(): void {

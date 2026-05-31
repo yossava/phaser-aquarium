@@ -75,7 +75,7 @@ export type AquariumFishInventoryControllerHost = {
   renderTabControls: () => void;
   ensureTankState: (level: number) => { fishInventory: Map<string, number> };
   getTankStates: () => Map<number, { fishInventory: Map<string, number> }>;
-  tankLevel: number;
+  getTankLevel(): number;
   getWallet: () => Wallet;
   htmlButton: (label: string, className: string, action: () => void, disabled?: boolean) => HTMLButtonElement;
 
@@ -292,7 +292,7 @@ export class AquariumFishInventoryController {
 
     const position = this.host.randomFishPlacement();
     this.host.removeStoredFish(fishType.id);
-    this.host.addFishToTank(fishType, position.x, position.y, { tankLevel: this.host.tankLevel });
+    this.host.addFishToTank(fishType, position.x, position.y, { tankLevel: this.host.getTankLevel() });
     this.host.recordDailyQuestAction("move-fish");
     this.host.recordDailyQuestAction("place-fish");
     this.host.floatText(`${fishType.name} moved to tank`, toastX, toastY, "#d7f4ff");
@@ -370,7 +370,7 @@ export class AquariumFishInventoryController {
       randomChoice: (items) => Phaser.Utils.Array.GetRandom(items)
     });
     const position = this.host.randomFishPlacement();
-    this.host.addFishToTank(babyType, position.x, position.y, { tankLevel: this.host.tankLevel });
+    this.host.addFishToTank(babyType, position.x, position.y, { tankLevel: this.host.getTankLevel() });
     this.host.recordDailyQuestAction("breed-fish");
     this.host.floatTankText(`${babyType.name} moved in`, position.x, position.y - 34, "#ffffff");
     this.host.renderTabControls();

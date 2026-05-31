@@ -159,9 +159,8 @@ export function saveGame(snapshot: SavedGame): void {
 
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
-  } catch {
-    // Swallowed — storageAvailable() write-test handles most cases, but
-    // quota-exceeded and integrity errors can still surface here.
+  } catch (err) {
+    console.warn("[Save] Failed to write save to localStorage", err);
   }
 }
 
@@ -187,7 +186,8 @@ export function loadGame(): SavedGame | undefined {
     }
 
     return buildSanitizedSave(migrated);
-  } catch {
+  } catch (err) {
+    console.warn("[Save] Failed to load save, attempting partial recovery", err);
     return recoverPartialSave(rawSave);
   }
 }
@@ -297,7 +297,8 @@ function recoverPartialSave(rawSave: string): SavedGame | undefined {
       },
       prizeMachine: normalizePrizeMachineState(candidate.prizeMachine)
     };
-  } catch {
+  } catch (err) {
+    console.warn("[Save] Failed to recover partial save", err);
     return undefined;
   }
 }

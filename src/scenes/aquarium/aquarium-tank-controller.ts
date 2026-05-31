@@ -65,7 +65,7 @@ export type TankControllerHost = {
   fishInventoryAges: Map<string, number[]>;
   decorationInventory: Map<string, number>;
   creatureInventory: Map<string, number>;
-  activeScreen: AppScreen;
+  getActiveScreen(): AppScreen;
   makeupDraft?: MakeupDraft;
   fish: Fish[];
   helperCreatures: HelperCreature[];
@@ -197,7 +197,7 @@ export class AquariumTankController {
   }
 
   public renderTankCosmeticId(category: TankCosmeticCategory, level = this.tankLevel): string {
-    if (this.host.activeScreen === "makeup" && level === this.tankLevel && this.host.makeupDraft) {
+    if (this.host.getActiveScreen() === "makeup" && level === this.tankLevel && this.host.makeupDraft) {
       const cosmetics = this.tankCosmetics(category);
       const index = category === "background" ? this.host.makeupDraft.backgroundIndex : this.host.makeupDraft.seabedIndex;
       return cosmetics[index]?.id ?? this.selectedTankCosmeticId(category, level);
@@ -220,7 +220,7 @@ export class AquariumTankController {
   }
 
   public renderTankCosmeticBlueTintIntensity(category: TankCosmeticCategory, id: string, level = this.tankLevel): number {
-    if (this.host.activeScreen === "makeup" && level === this.tankLevel && this.host.makeupDraft) {
+    if (this.host.getActiveScreen() === "makeup" && level === this.tankLevel && this.host.makeupDraft) {
       const tintMap = category === "background" ? this.host.makeupDraft.backgroundTintById : this.host.makeupDraft.seabedTintById;
       return Phaser.Math.Clamp(tintMap.get(id) ?? 0, 0, 100);
     }
@@ -319,7 +319,7 @@ export class AquariumTankController {
     this.host.refreshHelperTankVisibility();
     this.host.refreshDecorationTankVisibility();
     this.host.updateDirtyTankOverlay();
-    if (this.host.activeScreen !== "tank") {
+    if (this.host.getActiveScreen() !== "tank") {
       this.host.returnToTankScreen();
     } else {
       this.host.renderTabControls();

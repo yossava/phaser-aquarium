@@ -112,7 +112,7 @@ export function createAquariumFishInventoryControllerHost(scene: AquariumSceneCo
     renderTabControls: () => s.renderTabControls(),
     ensureTankState: (level) => s.ensureTankState(level),
     getTankStates: () => s.tankStates,
-    tankLevel: s.tankLevel,
+    getTankLevel: () => s.tankLevel,
     getWallet: () => s.wallet,
     htmlButton: (label, className, action, disabled) => s.htmlButton(label, className, action, disabled),
 

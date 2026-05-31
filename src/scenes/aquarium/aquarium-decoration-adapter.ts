@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import type { AquariumDecorationControllerHost } from "./aquarium-decoration-controller";
 import type { AquariumSceneCore } from "./AquariumSceneCore";
+import { decorationTrashZone } from "./aquarium-scene-config";
 import type { DecorationType, Price, Wallet } from "../../types/mechanics";
 import type { AppScreen, PlacementMode } from "./aquarium-scene-config";
 import type { PlacedDecoration } from "../../game/tank-entities";
@@ -59,11 +60,14 @@ export function createAquariumDecorationControllerHost(scene: AquariumSceneCore)
   return {
     scene: s,
 
-    activeScreen: s.activeScreen,
-    tankLevel: s.tankLevel,
+    getActiveScreen: () => s.activeScreen,
+    getTankLevel: () => s.tankLevel,
     decorationInventory: s.decorationInventory,
     placedDecorations: s.placedDecorations,
-    placementMode: s.placementMode,
+    getPlacementMode: () => s.placementMode,
+    setPlacementMode: (mode) => {
+      s.placementMode = mode;
+    },
     tankLayer: s.tankLayer,
 
     draggedDecoration: s.draggedDecoration,
@@ -95,6 +99,6 @@ export function createAquariumDecorationControllerHost(scene: AquariumSceneCore)
     rarityStarsLabel: (rarity) => s.rarityStarsLabel(rarity),
     getWallet: () => s.wallet,
 
-    decorationTrashZone: s.decorationTrashZone
+    decorationTrashZone
   };
 }
