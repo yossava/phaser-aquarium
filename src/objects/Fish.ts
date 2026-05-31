@@ -128,6 +128,7 @@ export class Fish {
   private dragReleaseEscapeUntil = 0;
   private previousManualDragPosition = new Phaser.Math.Vector2();
   private lastManualDragPosition = new Phaser.Math.Vector2();
+  private tempDirection = new Phaser.Math.Vector2();
   private nextOffscreenVisitAt = 0;
   private offscreenVisitState: OffscreenVisitState = "none";
   private offscreenVisitHiddenUntil = 0;
@@ -1127,18 +1128,40 @@ export class Fish {
       return undefined;
     }
 
-    const edibleFoods = foods.filter((food) => this.willChaseFood(food));
     const willingToEat = this.state === "hungry" || this.state === "ill" || this.hunger > minimumHungerToEatMore;
-    const hasCareBooster = edibleFoods.some((food) => food.foodType.id === "ageBoost" || food.foodType.id === "productionBoost");
-    if (edibleFoods.length === 0 || (!willingToEat && !hasCareBooster)) {
+    let hasCareBooster = false;
+    let closest: FoodPellet | undefined;
+    let closestDistSq = Infinity;
+
+    for (let i = 0; i < foods.length; i += 1) {
+      const food = foods[i];
+      if (!this.willChaseFood(food)) {
+        continue;
+      }
+      if (food.foodType.id === "ageBoost" || food.foodType.id === "productionBoost") {
+        hasCareBooster = true;
+      }
+      if (!willingToEat && food.foodType.id !== "ageBoost" && food.foodType.id !== "productionBoost") {
+        continue;
+      }
+      const dx = this.sprite.x - food.sprite.x;
+      const dy = this.sprite.y - food.sprite.y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < closestDistSq) {
+        closestDistSq = distSq;
+        closest = food;
+      }
+    }
+
+    if (!closest) {
       return undefined;
     }
 
-    return edibleFoods.reduce((closest, food) => {
-      const closestDistance = Phaser.Math.Distance.BetweenPoints(this.sprite, closest.sprite);
-      const foodDistance = Phaser.Math.Distance.BetweenPoints(this.sprite, food.sprite);
-      return foodDistance < closestDistance ? food : closest;
-    });
+    if (!willingToEat && !hasCareBooster) {
+      return undefined;
+    }
+
+    return closest;
   }
 
   private acceptsFood(food: FoodPellet): boolean {
@@ -1209,22 +1232,22 @@ export class Fish {
   }
 
   private moveTowardTarget(deltaSeconds: number, speed: number): void {
-    const direction = new Phaser.Math.Vector2(
+    this.tempDirection.set(
       this.target.x - this.sprite.x,
       this.target.y - this.sprite.y
     );
 
-    if (direction.lengthSq() < 4) {
+    if (this.tempDirection.lengthSq() < 4) {
       this.velocity.scale(Phaser.Math.Clamp(1 - deltaSeconds * 2.6, 0, 1));
       return;
     }
 
-    direction.normalize();
+    this.tempDirection.normalize();
     const kickPulse = 1 + Math.max(0, Math.sin(this.swimPhase * 1.9)) * swimKickPulseStrength;
     const swaySpeed = Math.sin(this.swimPhase * 0.82) * speed * swimPathSwayRatio;
     this.steerTowardVelocity(
-      direction.x * speed * kickPulse - direction.y * swaySpeed,
-      direction.y * speed * kickPulse + direction.x * swaySpeed,
+      this.tempDirection.x * speed * kickPulse - this.tempDirection.y * swaySpeed,
+      this.tempDirection.y * speed * kickPulse + this.tempDirection.x * swaySpeed,
       deltaSeconds,
       3.8
     );
@@ -1260,24 +1283,24 @@ export class Fish {
   }
 
   private startDragReleaseEscape(): void {
-    const direction = new Phaser.Math.Vector2(
+    this.tempDirection.set(
       this.lastManualDragPosition.x - this.previousManualDragPosition.x,
       this.lastManualDragPosition.y - this.previousManualDragPosition.y
     );
 
-    if (direction.lengthSq() < 36) {
-      direction.set(this.sprite.x - gameWidth * 0.5, this.sprite.y - gameHeight * 0.5);
+    if (this.tempDirection.lengthSq() < 36) {
+      this.tempDirection.set(this.sprite.x - gameWidth * 0.5, this.sprite.y - gameHeight * 0.5);
     }
 
-    if (direction.lengthSq() < 36) {
-      direction.set(Phaser.Math.FloatBetween(-1, 1), Phaser.Math.FloatBetween(-0.7, 0.7));
+    if (this.tempDirection.lengthSq() < 36) {
+      this.tempDirection.set(Phaser.Math.FloatBetween(-1, 1), Phaser.Math.FloatBetween(-0.7, 0.7));
     }
 
-    direction.x = Math.max(Math.abs(direction.x), 0.42) * this.facing;
-    direction.y = 0;
-    direction.normalize();
-    const targetX = Phaser.Math.Clamp(this.sprite.x + direction.x * dragReleaseEscapeDistance, tankBounds.left + 28, tankBounds.right - 28);
-    const targetY = Phaser.Math.Clamp(this.sprite.y + direction.y * dragReleaseEscapeDistance, tankBounds.top + 26, tankBounds.bottom - 26);
+    this.tempDirection.x = Math.max(Math.abs(this.tempDirection.x), 0.42) * this.facing;
+    this.tempDirection.y = 0;
+    this.tempDirection.normalize();
+    const targetX = Phaser.Math.Clamp(this.sprite.x + this.tempDirection.x * dragReleaseEscapeDistance, tankBounds.left + 28, tankBounds.right - 28);
+    const targetY = Phaser.Math.Clamp(this.sprite.y + this.tempDirection.y * dragReleaseEscapeDistance, tankBounds.top + 26, tankBounds.bottom - 26);
     this.target.set(targetX, targetY);
     this.restUntil = 0;
     this.hasRestedAtTarget = false;

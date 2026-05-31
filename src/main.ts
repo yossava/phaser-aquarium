@@ -6,7 +6,11 @@ import { AquariumScene } from "./scenes/AquariumScene";
 import { BubblePopScene } from "./scenes/BubblePopScene";
 import { ReefDropScene } from "./scenes/ReefDropScene";
 
-await loadGameFonts();
+try {
+  await loadGameFonts();
+} catch {
+  // Continue without blocking boot — font fallbacks in CSS handle the rest.
+}
 
 function setInitialViewportCssVars(): void {
   const viewport = window.visualViewport;

@@ -4,19 +4,90 @@ import { createAquariumSaveSnapshot } from "../../game/aquarium-persistence";
 import { earn } from "../../game/economy";
 import {
   beginPrizeMachineSession,
-  normalizePrizeMachineState
+  normalizePrizeMachineState,
+  type PrizeMachineState
 } from "../../game/prize-machine";
+import {
+  type DailyGoalsState,
+  type DailyQuestReward
+} from "../../game/quest-system";
 import {
   calculateOfflineSeconds,
   createEmptyWallet,
   loadGame,
   saveGame,
-  type OfflineProgress
+  type OfflineProgress,
+  type SavedCoinDrop,
+  type SavedDecoration,
+  type SavedFish,
+  type SavedGame,
+  type SavedHelperCreature,
+  type SavedQuestPresent,
+  type SavedTankState
 } from "../../game/save";
-import type { Wallet } from "../../types/mechanics";
+import type { TankRuntimeState } from "../../game/tank-state";
+import type { CoinDrop } from "../../objects/CoinDrop";
+import type { Fish } from "../../objects/Fish";
+import type { HelperCreature } from "../../objects/HelperCreature";
+import type { QuestPresentDrop } from "../../objects/QuestPresentDrop";
+import type { PlacedDecoration } from "../../game/tank-entities";
+import type { CoinType, DecorationType, FishType, HelperCreatureType, Wallet } from "../../types/mechanics";
+import type { SettingsState } from "./aquarium-settings-controller";
 import { maxCoinDrops, maxOwnedTanks } from "./aquarium-scene-config";
 
-type AquariumScenePersistenceTarget = any;
+export type AquariumScenePersistenceTarget = {
+  time: { now: number };
+  prizeMachineRuntimeSessionId: number;
+  tankStates: Map<number, TankRuntimeState>;
+  ownedTankLevels: Set<number>;
+  tankNames: Map<number, string>;
+  tankLevel: number;
+  fishCatalogLevel: number;
+  settings: SettingsState;
+  dailyGoals: DailyGoalsState;
+  prizeMachine: PrizeMachineState;
+  offlineProgress: OfflineProgress;
+  cleanliness: number;
+  cleanedAt: number;
+  fish: Fish[];
+  coinDrops: CoinDrop[];
+  questPresents: Array<{ drop: QuestPresentDrop; reward: DailyQuestReward }>;
+  placedDecorations: PlacedDecoration[];
+  helperCreatures: HelperCreature[];
+  wallet: Wallet;
+  foodInventory: Map<string, number>;
+  fishInventory: Map<string, number>;
+  fishInventoryAges: Map<string, number[]>;
+  decorationInventory: Map<string, number>;
+  creatureInventory: Map<string, number>;
+  tankStatesFromSave: (saved: SavedGame) => Map<number, TankRuntimeState>;
+  tankNamesFromRecord: (record: Record<number, string> | undefined) => Map<number, string>;
+  hasTankLevel: (level: number) => boolean;
+  applyTankState: (level: number) => void;
+  applyTankViewScale: () => void;
+  normalizeDailyGoals: (goals: DailyGoalsState | undefined) => DailyGoalsState;
+  refreshFishTankVisibility: () => void;
+  refreshHelperTankVisibility: () => void;
+  refreshDecorationTankVisibility: () => void;
+  showOfflineSummary: () => void;
+  saveNow: (savedAt?: number) => void;
+  sortedOwnedTankLevels: () => number[];
+  tankNamesRecord: () => Record<number, string>;
+  tankStatesRecord: () => Record<string, SavedTankState> | undefined;
+  captureActiveTankState: () => void;
+  foodInventoryRecord: () => Record<string, number>;
+  addDecorationToTank: (decoration: DecorationType, x: number, y: number, size: string | undefined, count: number, depth: number | undefined) => void;
+  sanitizeDecorationSize: (size: string | undefined) => string;
+  addHelperCreatureToTank: (creatureType: HelperCreatureType, x: number, y: number, targetX: number, count: number) => void;
+  addFishToTank: (type: FishType, x: number, y: number, options: { gender?: string; tankLevel?: number }) => Fish;
+  createCoinDrop: (x: number, y: number, value: number, coinType: CoinType, isMega: boolean | undefined, options: { landingX?: number; bottomY?: number }) => void;
+  createQuestPresentDrop: (questId: string, reward: DailyQuestReward, rewardLabel: string, options: { id?: string; x?: number; y?: number; landingX?: number; bottomY?: number }) => void;
+  removeFishAt: (index: number) => Fish | undefined;
+  tankDirtRatePerSecond: (activeFishCount: number) => number;
+  activeProductionPaceMultiplier: () => number;
+  addFishProductionTotal: (tankLevel: number, amount: number) => void;
+  ensureTankState: (level: number) => TankRuntimeState;
+};
 
 export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget): void {
   const saved = loadGame();
@@ -62,7 +133,7 @@ export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget):
 export function applyAquariumSceneOfflineProgress(scene: AquariumScenePersistenceTarget, elapsedSeconds: number): OfflineProgress {
   const earned = createEmptyWallet();
   const earnedByTank = new Map<number, Wallet>();
-  const offlineDeaths: any[] = [];
+  const offlineDeaths: Fish[] = [];
 
   for (const currentFish of scene.fish) {
     applyOfflineFishProduction(scene, currentFish, elapsedSeconds, earned, earnedByTank);
@@ -119,7 +190,7 @@ export function saveAquariumSceneNow(scene: AquariumScenePersistenceTarget, save
   }));
 }
 
-function restoreDecorations(scene: AquariumScenePersistenceTarget, decorations: any[]): void {
+function restoreDecorations(scene: AquariumScenePersistenceTarget, decorations: SavedDecoration[]): void {
   const savedDecorations = [...decorations].sort((first, second) => (first.depth ?? 0) - (second.depth ?? 0));
   for (const savedDecoration of savedDecorations) {
     const decoration = decorationTypes.find((item) => item.id === savedDecoration.typeId);
@@ -136,7 +207,7 @@ function restoreDecorations(scene: AquariumScenePersistenceTarget, decorations: 
   }
 }
 
-function restoreHelperCreatures(scene: AquariumScenePersistenceTarget, helperCreatures: any[]): void {
+function restoreHelperCreatures(scene: AquariumScenePersistenceTarget, helperCreatures: SavedHelperCreature[]): void {
   for (const savedCreature of helperCreatures) {
     const creatureType = helperCreatureTypes.find((item) => item.id === savedCreature.typeId);
     if (creatureType) {
@@ -145,7 +216,7 @@ function restoreHelperCreatures(scene: AquariumScenePersistenceTarget, helperCre
   }
 }
 
-function restoreFish(scene: AquariumScenePersistenceTarget, fish: any[]): void {
+function restoreFish(scene: AquariumScenePersistenceTarget, fish: SavedFish[]): void {
   for (const savedFish of fish) {
     const type = fishTypes.find((fishType) => fishType.id === savedFish.typeId);
     if (!type) {
@@ -168,7 +239,7 @@ function restoreFish(scene: AquariumScenePersistenceTarget, fish: any[]): void {
   }
 }
 
-function restoreCoinDrops(scene: AquariumScenePersistenceTarget, coinDrops: any[]): void {
+function restoreCoinDrops(scene: AquariumScenePersistenceTarget, coinDrops: SavedCoinDrop[]): void {
   for (const savedCoin of coinDrops) {
     if ((savedCoin.tankLevel ?? scene.tankLevel) !== scene.tankLevel || scene.coinDrops.length >= maxCoinDrops) {
       continue;
@@ -187,7 +258,7 @@ function restoreCoinDrops(scene: AquariumScenePersistenceTarget, coinDrops: any[
   }
 }
 
-function restoreQuestPresents(scene: AquariumScenePersistenceTarget, questPresents: any[]): void {
+function restoreQuestPresents(scene: AquariumScenePersistenceTarget, questPresents: SavedQuestPresent[]): void {
   for (const savedPresent of questPresents) {
     if ((savedPresent.tankLevel ?? scene.tankLevel) !== scene.tankLevel) {
       continue;
@@ -204,7 +275,7 @@ function restoreQuestPresents(scene: AquariumScenePersistenceTarget, questPresen
 
 function applyOfflineFishProduction(
   scene: AquariumScenePersistenceTarget,
-  currentFish: any,
+  currentFish: Fish,
   elapsedSeconds: number,
   earned: Wallet,
   earnedByTank: Map<number, Wallet>
@@ -234,7 +305,7 @@ function applyOfflineFishProduction(
   earnedByTank.set(currentFish.tankLevel, tankEarned);
 }
 
-function applyOfflineFishCare(currentFish: any, elapsedSeconds: number, offlineDeaths: any[]): void {
+function applyOfflineFishCare(currentFish: Fish, elapsedSeconds: number, offlineDeaths: Fish[]): void {
   const hungerBeforeOffline = currentFish.hunger;
   currentFish.setAgeSeconds(currentFish.ageSeconds + elapsedSeconds);
 

@@ -1,8 +1,15 @@
+import Phaser from "phaser";
 import {
   fishCoinProductionMaxDelayMs,
   fishCoinProductionMinDelayMs
 } from "../../game/economy-model";
 import { productionBoostFoodTypeId } from "../../game/food-system";
+import type { CoinDrop } from "../../objects/CoinDrop";
+import type { FoodPellet } from "../../objects/FoodPellet";
+import type { Fish } from "../../objects/Fish";
+import type { HelperCreature } from "../../objects/HelperCreature";
+import type { QuestPresentDrop } from "../../objects/QuestPresentDrop";
+import type { PlacedDecoration } from "../../game/tank-entities";
 import {
   coinComboIdleTimeoutMs,
   fishEatSoundKey,
@@ -11,7 +18,56 @@ import {
   productionBoostDurationMs
 } from "./aquarium-scene-config";
 
-type AquariumSceneUpdateTarget = any;
+export type AquariumSceneUpdateTarget = {
+  time: { now: number };
+  updateStoreOverlayTimer: (deltaSeconds: number) => void;
+  shouldRunTankActivity: () => boolean;
+  gameClockSpeedMultiplier: () => number;
+  advanceGameClock: (realDeltaSeconds: number) => void;
+  updateTimedUtilities: () => void;
+  updateTimeCurrent: (deltaSeconds: number) => void;
+  autoDropCompletedDailyQuestPresents: () => void;
+  tankActivitySpeedMultiplier: () => number;
+  questPresents: Array<{ drop: QuestPresentDrop }>;
+  foods: FoodPellet[];
+  removeExpiredFood: () => void;
+  coinDrops: CoinDrop[];
+  trimExcessCoinDrops: () => void;
+  updateCoinMagnetRayPulse: () => void;
+  updateCoinMagnet: () => void;
+  coinComboCount: number;
+  coinComboLastClaimedAt: number;
+  resolveCoinCombo?: () => void;
+  activeFish: () => Fish[];
+  activeDecorations: () => PlacedDecoration[];
+  activeHelperCreatures: () => HelperCreature[];
+  updateAirStoneBubbles: (deltaSeconds: number, activeDecorations: PlacedDecoration[]) => void;
+  updateAutoFoodBuyer: (tankFish: Fish[]) => void;
+  updateFoodDispenser: (tankFish: Fish[]) => void;
+  updatePendingHelperCreatureDrops: (deltaSeconds: number) => void;
+  updateHelperCreatures: (deltaSeconds: number, activeHelpers: HelperCreature[], progressDeltaSeconds: number) => void;
+  updateTankCleanliness: (deltaSeconds: number, activeFishCount?: number) => void;
+  updateDirtyTankOverlay: () => void;
+  assignFoodsToFish: (tankFish: Fish[]) => Map<Fish, FoodPellet[]>;
+  cleanliness: number;
+  updateFishCoinProduction: (fish: Fish, activitySpeedMultiplier?: number) => void;
+  playSfx: (key: string, config?: Phaser.Types.Sound.SoundConfig) => void;
+  saveNow: () => void;
+  recordDailyQuestAction: (action: string) => void;
+  floatTankText: (message: string, x: number, y: number, color: string) => void;
+  foodNeedMessage: (targetCalories: number) => string;
+  showMissedFoodEmotes: (food: FoodPellet, winner: Fish) => void;
+  refundUnusedFood: (food: FoodPellet, consumedCalories?: number) => void;
+  removeFood: (food: FoodPellet) => void;
+  removeFishAt: (index: number) => Fish | undefined;
+  fish: Fish[];
+  closeModal: () => void;
+  renderTabControls: () => void;
+  refreshUi: () => void;
+  refreshStatus: () => void;
+  autosaveElapsed: number;
+  hudStatusSyncElapsed: number;
+};
 
 export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: number): void {
   const realDeltaSeconds = delta / 1000;
@@ -30,15 +86,15 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   const activitySpeedMultiplier = scene.tankActivitySpeedMultiplier();
   const progressDeltaSeconds = deltaSeconds * activitySpeedMultiplier;
 
-  scene.questPresents?.forEach((present: any) => present.drop.update(deltaSeconds));
-  scene.foods.forEach((food: any) => food.update(deltaSeconds));
+  scene.questPresents.forEach((present) => present.drop.update(deltaSeconds));
+  scene.foods.forEach((food) => food.update(deltaSeconds));
   scene.removeExpiredFood();
-  scene.coinDrops.forEach((coin: any) => coin.update(deltaSeconds));
+  scene.coinDrops.forEach((coin) => coin.update(deltaSeconds));
   scene.trimExcessCoinDrops?.();
   scene.updateCoinMagnetRayPulse();
   scene.updateCoinMagnet();
   if (scene.coinComboCount > 0 && now - scene.coinComboLastClaimedAt >= coinComboIdleTimeoutMs) {
-    scene.resolveCoinCombo();
+    scene.resolveCoinCombo?.();
   }
   const tankFish = scene.activeFish();
   const activeDecorations = scene.activeDecorations();
@@ -51,7 +107,7 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
   scene.updateTankCleanliness(progressDeltaSeconds, tankFish.length);
   scene.updateDirtyTankOverlay();
   const foodAssignments = scene.assignFoodsToFish(tankFish);
-  const fishToRemove: any[] = [];
+  const fishToRemove: Fish[] = [];
   for (const currentFish of tankFish) {
     updateFish(scene, currentFish, foodAssignments.get(currentFish) ?? [], deltaSeconds, progressDeltaSeconds, fishToRemove, activitySpeedMultiplier);
   }
@@ -63,11 +119,11 @@ export function runAquariumSceneUpdate(scene: AquariumSceneUpdateTarget, delta: 
 
 function updateFish(
   scene: AquariumSceneUpdateTarget,
-  currentFish: any,
-  assignedFoods: any[],
+  currentFish: Fish,
+  assignedFoods: FoodPellet[],
   deltaSeconds: number,
   progressDeltaSeconds: number,
-  fishToRemove: any[],
+  fishToRemove: Fish[],
   activitySpeedMultiplier = 1
 ): void {
   const previousAgeStage = currentFish.ageStage;
@@ -95,7 +151,11 @@ function updateFish(
   }
 }
 
-function handleEatenFood(scene: AquariumSceneUpdateTarget, currentFish: any, eatenFood: any): void {
+function handleEatenFood(
+  scene: AquariumSceneUpdateTarget,
+  currentFish: Fish,
+  eatenFood: { accepted: boolean; food: FoodPellet; reason?: "tooSmall"; neededMealCalories: number; consumedCalories: number }
+): void {
   const ateMedicine = eatenFood.accepted && eatenFood.food.foodType.id === "medicine" && !eatenFood.food.medicineActsAsFood;
   const ateMedicineAsFood = eatenFood.accepted && eatenFood.food.foodType.id === "medicine" && eatenFood.food.medicineActsAsFood;
   const ateAgeBoost = eatenFood.accepted && eatenFood.food.foodType.id === "ageBoost";
@@ -137,7 +197,7 @@ function handleEatenFood(scene: AquariumSceneUpdateTarget, currentFish: any, eat
   scene.saveNow();
 }
 
-function removeDeadFish(scene: AquariumSceneUpdateTarget, fishToRemove: any[]): void {
+function removeDeadFish(scene: AquariumSceneUpdateTarget, fishToRemove: Fish[]): void {
   if (fishToRemove.length === 0) {
     return;
   }

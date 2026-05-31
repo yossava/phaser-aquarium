@@ -251,13 +251,32 @@ export function tankStatesRecord(
 }
 
 export function ageRecordToMap(source: Record<string, number[]> | undefined): Map<string, number[]> {
-  void source;
-  return new Map<string, number[]>();
+  const result = new Map<string, number[]>();
+  if (!source) {
+    return result;
+  }
+
+  for (const [id, ages] of Object.entries(source)) {
+    if (!id || !Array.isArray(ages)) {
+      continue;
+    }
+    const validAges = ages.filter((value) => typeof value === "number" && Number.isFinite(value) && value > 0);
+    if (validAges.length > 0) {
+      result.set(id, validAges);
+    }
+  }
+
+  return result;
 }
 
 export function ageMapToRecord(source: Map<string, number[]>): Record<string, number[]> {
-  void source;
-  return {};
+  const result: Record<string, number[]> = {};
+  for (const [id, ages] of source.entries()) {
+    if (ages.length > 0) {
+      result[id] = ages;
+    }
+  }
+  return result;
 }
 
 function clamp(value: number, min: number, max: number): number {

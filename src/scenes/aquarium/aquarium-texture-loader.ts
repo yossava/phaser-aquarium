@@ -84,13 +84,24 @@ export class AquariumTextureLoader {
       });
     }
 
-    this.scene.load.once(Phaser.Loader.Events.COMPLETE, () => {
+    const cleanupListeners = () => {
+      this.scene.load.off(Phaser.Loader.Events.COMPLETE, onComplete);
+      this.scene.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, onError);
+    };
+    const onComplete = () => {
+      cleanupListeners();
       this.pendingFishTextureLoads.delete(fishType.id);
       this.createFishAnimation(fishType);
       const callbacks = this.fishTextureLoadCallbacks.get(fishType.id);
       this.fishTextureLoadCallbacks.delete(fishType.id);
       callbacks?.forEach((callback) => callback());
-    });
+    };
+    const onError = () => {
+      cleanupListeners();
+      this.pendingFishTextureLoads.delete(fishType.id);
+    };
+    this.scene.load.once(Phaser.Loader.Events.COMPLETE, onComplete);
+    this.scene.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, onError);
 
     this.startLoaderIfIdle();
 

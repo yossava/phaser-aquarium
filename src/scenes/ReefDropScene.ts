@@ -181,6 +181,9 @@ export class ReefDropScene extends Phaser.Scene {
     this.matter.world.on("collisionstart", this.handleCollisionStart, this);
     this.enableNativeTapFallback();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.input.off("pointerup");
+      this.input.off("pointerupoutside");
+      this.input.keyboard?.off("keydown-ESC");
       this.restoreSafariTouchGestures();
       this.nativeTapCleanup?.();
       this.nativeTapCleanup = undefined;

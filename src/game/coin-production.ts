@@ -53,9 +53,7 @@ export function updateFishCoinProduction(input: {
   }
 
   const leveledUp = input.addFishProductionTotal(fish.tankLevel, value);
-  if (leveledUp && minimumCoinDropValue <= 0) {
-    return;
-  }
+  void leveledUp;
 
   const boostedDrop = fish.hasActiveProductionBoost(now);
   const dropX = fish.sprite.x + (boostedDrop ? 0 : input.randomBetween(-18, 18));

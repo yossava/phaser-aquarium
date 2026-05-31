@@ -157,7 +157,12 @@ export function saveGame(snapshot: SavedGame): void {
     return;
   }
 
-  localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Swallowed — storageAvailable() write-test handles most cases, but
+    // quota-exceeded and integrity errors can still surface here.
+  }
 }
 
 export function loadGame(): SavedGame | undefined {
@@ -181,55 +186,116 @@ export function loadGame(): SavedGame | undefined {
       return undefined;
     }
 
+    return buildSanitizedSave(migrated);
+  } catch {
+    return recoverPartialSave(rawSave);
+  }
+}
+
+function buildSanitizedSave(migrated: SavedGame): SavedGame {
+  return {
+    version: SAVE_VERSION,
+    savedAt: sanitizeNumber(migrated.savedAt, Date.now()),
+    wallet: sanitizeWallet(migrated.wallet),
+    foodInventory: sanitizeFoodInventory(migrated.foodInventory),
+    fishInventory: sanitizeCountRecord(migrated.fishInventory),
+    fishInventoryAges: sanitizeAgeRecord(migrated.fishInventoryAges),
+    decorationInventory: sanitizeCountRecord(migrated.decorationInventory),
+    creatureInventory: sanitizeCountRecord(migrated.creatureInventory),
+    fish: migrated.fish.map(sanitizeFish).filter((fish): fish is SavedFish => Boolean(fish)),
+    decorations: Array.isArray(migrated.decorations)
+      ? migrated.decorations.map(sanitizeDecoration).filter((decoration): decoration is SavedDecoration => Boolean(decoration))
+      : [],
+    helperCreatures: Array.isArray(migrated.helperCreatures)
+      ? migrated.helperCreatures.map(sanitizeHelperCreature).filter((creature): creature is SavedHelperCreature => Boolean(creature))
+      : [],
+    coinDrops: Array.isArray(migrated.coinDrops)
+      ? migrated.coinDrops.map(sanitizeCoinDrop).filter((coin): coin is SavedCoinDrop => Boolean(coin))
+      : [],
+    questPresents: Array.isArray(migrated.questPresents)
+      ? migrated.questPresents.map(sanitizeQuestPresent).filter((present): present is SavedQuestPresent => Boolean(present))
+      : [],
+    tank: {
+      cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
+      cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
+      level: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.level, 1))),
+      ownedLevels: sanitizeOwnedTankLevels(migrated.tank?.ownedLevels, migrated.tank?.level).slice(0, 5),
+      activeLevel: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.activeLevel, migrated.tank?.level ?? 1))),
+      names: sanitizeTankNames(migrated.tank?.names),
+      states: sanitizeTankStates(migrated.tank?.states)
+    },
+    settings: {
+      sound: migrated.settings?.sound ?? true,
+      music: migrated.settings?.music ?? true,
+      musicVolume: clamp(sanitizeNumber(migrated.settings?.musicVolume, 16), 0, 100),
+      reducedMotion: migrated.settings?.reducedMotion ?? false,
+      notifications: migrated.settings?.notifications ?? false
+    },
+    dailyGoals: {
+      date: typeof migrated.dailyGoals?.date === "string" ? migrated.dailyGoals.date : localDateKey(),
+      claimed: Array.isArray(migrated.dailyGoals?.claimed)
+        ? migrated.dailyGoals.claimed.filter((id): id is string => typeof id === "string")
+        : [],
+      activeQuestIds: Array.isArray(migrated.dailyGoals?.activeQuestIds)
+        ? migrated.dailyGoals.activeQuestIds.filter((id): id is string => typeof id === "string")
+        : undefined
+    },
+    prizeMachine: normalizePrizeMachineState(migrated.prizeMachine)
+  };
+}
+
+function recoverPartialSave(rawSave: string): SavedGame | undefined {
+  try {
+    const parsed = JSON.parse(rawSave);
+    if (!parsed || typeof parsed !== "object") {
+      return undefined;
+    }
+    const candidate = parsed as Partial<SavedGame> & { tank?: Partial<SavedGame["tank"]> };
+    if (!candidate.wallet || !Array.isArray(candidate.fish)) {
+      return undefined;
+    }
+    const wallet = sanitizeWallet(candidate.wallet);
+    const fish = candidate.fish.map(sanitizeFish).filter((f): f is SavedFish => Boolean(f));
     return {
       version: SAVE_VERSION,
-      savedAt: sanitizeNumber(migrated.savedAt, Date.now()),
-      wallet: sanitizeWallet(migrated.wallet),
-      foodInventory: sanitizeFoodInventory(migrated.foodInventory),
-      fishInventory: sanitizeCountRecord(migrated.fishInventory),
-      fishInventoryAges: sanitizeAgeRecord(migrated.fishInventoryAges),
-      decorationInventory: sanitizeCountRecord(migrated.decorationInventory),
-      creatureInventory: sanitizeCountRecord(migrated.creatureInventory),
-      fish: migrated.fish.map(sanitizeFish).filter((fish): fish is SavedFish => Boolean(fish)),
-      decorations: Array.isArray(migrated.decorations)
-        ? migrated.decorations.map(sanitizeDecoration).filter((decoration): decoration is SavedDecoration => Boolean(decoration))
-        : []
-      ,
-      helperCreatures: Array.isArray(migrated.helperCreatures)
-        ? migrated.helperCreatures.map(sanitizeHelperCreature).filter((creature): creature is SavedHelperCreature => Boolean(creature))
+      savedAt: sanitizeNumber(candidate.savedAt, Date.now()),
+      wallet,
+      foodInventory: sanitizeFoodInventory(candidate.foodInventory),
+      fishInventory: sanitizeCountRecord(candidate.fishInventory),
+      fishInventoryAges: sanitizeAgeRecord(candidate.fishInventoryAges),
+      decorationInventory: sanitizeCountRecord(candidate.decorationInventory),
+      creatureInventory: sanitizeCountRecord(candidate.creatureInventory),
+      fish,
+      decorations: Array.isArray(candidate.decorations)
+        ? candidate.decorations.map(sanitizeDecoration).filter((d): d is SavedDecoration => Boolean(d))
         : [],
-      coinDrops: Array.isArray(migrated.coinDrops)
-        ? migrated.coinDrops.map(sanitizeCoinDrop).filter((coin): coin is SavedCoinDrop => Boolean(coin))
-        : [],
-      questPresents: Array.isArray(migrated.questPresents)
-        ? migrated.questPresents.map(sanitizeQuestPresent).filter((present): present is SavedQuestPresent => Boolean(present))
-        : [],
+      helperCreatures: [],
+      coinDrops: [],
+      questPresents: [],
       tank: {
-        cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
-        cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
-        level: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.level, 1))),
-        ownedLevels: sanitizeOwnedTankLevels(migrated.tank?.ownedLevels, migrated.tank?.level).slice(0, 5),
-        activeLevel: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.activeLevel, migrated.tank?.level ?? 1))),
-        names: sanitizeTankNames(migrated.tank?.names),
-        states: sanitizeTankStates(migrated.tank?.states)
+        cleanliness: clamp(sanitizeNumber(candidate.tank?.cleanliness, 100), 0, 100),
+        cleanedAt: sanitizeNumber(candidate.tank?.cleanedAt, Date.now()),
+        level: Math.max(1, Math.floor(sanitizeNumber(candidate.tank?.level, 1))),
+        ownedLevels: sanitizeOwnedTankLevels(candidate.tank?.ownedLevels, candidate.tank?.level),
+        activeLevel: Math.max(1, Math.floor(sanitizeNumber(candidate.tank?.activeLevel, candidate.tank?.level ?? 1))),
+        names: sanitizeTankNames(candidate.tank?.names),
+        states: sanitizeTankStates(candidate.tank?.states as Record<string, SavedTankState> | undefined)
       },
       settings: {
-        sound: migrated.settings?.sound ?? true,
-        music: migrated.settings?.music ?? true,
-        musicVolume: clamp(sanitizeNumber(migrated.settings?.musicVolume, 16), 0, 100),
-        reducedMotion: migrated.settings?.reducedMotion ?? false,
-        notifications: migrated.settings?.notifications ?? false
+        sound: candidate.settings?.sound ?? true,
+        music: candidate.settings?.music ?? true,
+        musicVolume: clamp(sanitizeNumber(candidate.settings?.musicVolume, 16), 0, 100),
+        reducedMotion: candidate.settings?.reducedMotion ?? false,
+        notifications: candidate.settings?.notifications ?? false
       },
       dailyGoals: {
-        date: typeof migrated.dailyGoals?.date === "string" ? migrated.dailyGoals.date : localDateKey(),
-        claimed: Array.isArray(migrated.dailyGoals?.claimed)
-          ? migrated.dailyGoals.claimed.filter((id): id is string => typeof id === "string")
+        date: typeof candidate.dailyGoals?.date === "string" ? candidate.dailyGoals.date : localDateKey(),
+        claimed: Array.isArray(candidate.dailyGoals?.claimed)
+          ? candidate.dailyGoals.claimed.filter((id): id is string => typeof id === "string")
           : [],
-        activeQuestIds: Array.isArray(migrated.dailyGoals?.activeQuestIds)
-          ? migrated.dailyGoals.activeQuestIds.filter((id): id is string => typeof id === "string")
-          : undefined
+        activeQuestIds: undefined
       },
-      prizeMachine: normalizePrizeMachineState(migrated.prizeMachine)
+      prizeMachine: normalizePrizeMachineState(candidate.prizeMachine)
     };
   } catch {
     return undefined;
@@ -619,7 +685,10 @@ function clamp(value: number, min: number, max: number): number {
 
 function storageAvailable(): boolean {
   try {
-    return typeof localStorage !== "undefined";
+    const testKey = "__storage_test__";
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+    return true;
   } catch {
     return false;
   }
