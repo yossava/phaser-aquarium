@@ -37,8 +37,7 @@ export function createStoredFishInventoryRow(input: {
   const row = htmlElement("article", "aq-album-row fish");
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [input.fishType.name]),
-    htmlElement("p", "aq-album-row-meta", [`Inventory x${formatNumber(input.count)} | ${input.rarityLabel}${input.ageCopy}`]),
-    htmlElement("p", "aq-album-row-copy", [`Sell converts one fish to C${formatNumber(input.sellValue)}`])
+    htmlElement("p", "aq-album-row-meta", [`${input.rarityLabel} · x${formatNumber(input.count)}${input.ageCopy}`])
   ]);
   row.append(
     htmlImage(`/assets/fish/${input.fishType.id}.png`, "", "aq-album-row-image fish"),
@@ -68,9 +67,8 @@ export function createFoodInventoryRow(input: {
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [input.foodType.name]),
     htmlElement("p", "aq-album-row-meta", [
-      input.onUse ? `Owned x${input.countLabel} | Supply item` : `Owned x${input.countLabel} | ${formatNumber(input.foodType.calories)} cal each`
-    ]),
-    htmlElement("p", "aq-album-row-copy", [`Sell all for C${formatNumber(input.sellValue)}`])
+      input.onUse ? `x${input.countLabel} · Medicine` : `x${input.countLabel} · ${formatNumber(input.foodType.calories)} food`
+    ])
   ]);
   row.append(
     image,
@@ -95,8 +93,7 @@ export function createCoinInventoryRow(input: {
   const row = htmlElement("article", "aq-album-row coin");
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [label]),
-    htmlElement("p", "aq-album-row-meta", [`Owned x${formatNumber(input.count)}`]),
-    htmlElement("p", "aq-album-row-copy", [`Sell all for C${formatNumber(input.value)}`])
+    htmlElement("p", "aq-album-row-meta", [`x${formatNumber(input.count)}`])
   ]);
   row.append(
     htmlImage(input.icon, "", "aq-album-row-image"),
@@ -125,8 +122,7 @@ export function createDecorationInventoryRow(input: {
   const row = htmlElement("article", "aq-album-row decor");
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [input.decorationType.name]),
-    htmlElement("p", "aq-album-row-meta", [`${input.sizeLabel} x${formatNumber(count)} | Stored ${formatNumber(input.storedCount)} | Tank ${formatNumber(input.placedCount)}`]),
-    htmlElement("p", "aq-album-row-copy", [`Sell all for C${formatNumber(input.sellValue)}`])
+    htmlElement("p", "aq-album-row-meta", [`${input.sizeLabel} · Owned ${formatNumber(input.storedCount)} · Tank ${formatNumber(input.placedCount)}`])
   ]);
   row.append(
     htmlImage(`/assets/decorations/${input.decorationType.id}.png`, "", "aq-album-row-image"),

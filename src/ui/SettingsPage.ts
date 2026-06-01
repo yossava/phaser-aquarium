@@ -50,8 +50,8 @@ export function appendSettingsPageContent(content: HTMLElement, settings: Settin
 
   const actionRow = htmlElement("div", "aq-page-actions");
   actionRow.append(
-    actions.createButton("Offline Summary", "aq-page-button aq-page-button-good", actions.showOfflineSummary),
-    actions.createButton("Reset Save", "aq-page-button aq-page-button-danger", actions.showResetConfirmation)
+    actions.createButton("Coins While Away", "aq-page-button aq-page-button-good", actions.showOfflineSummary),
+    actions.createButton("Start Over", "aq-page-button aq-page-button-danger", actions.showResetConfirmation)
   );
   content.append(
     grid,
@@ -69,7 +69,6 @@ export function createSettingsToggleCard(
   const card = htmlElement("article", "aq-page-card");
   card.append(
     htmlElement("h3", "aq-page-card-title", [label]),
-    htmlElement("p", "aq-page-card-meta", [enabled ? "On" : "Off"]),
     createButton(enabled ? "Turn Off" : "Turn On", "aq-page-button", onToggle)
   );
   return card;
@@ -93,7 +92,7 @@ export function createSettingsMusicCard(
   volumeInput.addEventListener("change", () => setMusicVolume(Number(volumeInput.value), true));
   card.append(
     htmlElement("h3", "aq-page-card-title", ["Music"]),
-    htmlElement("p", "aq-page-card-meta", [`${settings.music ? "On" : "Off"} | Volume ${formatNumber(settings.musicVolume)}%`]),
+    htmlElement("p", "aq-page-card-meta", [`Volume ${formatNumber(settings.musicVolume)}%`]),
     volumeInput,
     htmlElement("div", "aq-settings-volume-actions", [
       createButton("-", "aq-page-button aq-page-button-muted aq-settings-volume-button", () => setMusicVolume(settings.musicVolume - 5, true)),
@@ -151,15 +150,14 @@ export function createDeveloperSettingsCard(
   clockInput.addEventListener("change", () => options.onSetClockMultiplier(Number(clockInput.value)));
 
   card.append(
-    htmlElement("p", "aq-page-card-copy", ["Choose which developer tools are active. Unlocking this panel does not change coins, tanks, or shop rules."]),
     createButton(
       options.godModeEnabled ? "Disable Free Shop" : "Enable Free Shop",
       options.godModeEnabled ? "aq-page-button aq-page-button-danger" : "aq-page-button aq-page-button-good",
       options.onToggleGodMode
     ),
-    createButton("Grant 10K Coins", "aq-page-button aq-page-button-muted", options.onGrantWallet),
-    createButton("Unlock Tanks + Levels", "aq-page-button aq-page-button-muted", options.onUnlockContent),
-    htmlElement("p", "aq-page-card-meta", [`Game Clock ${formatNumber(options.clockMultiplier)}x`]),
+    createButton("Add 10K Coins", "aq-page-button aq-page-button-muted", options.onGrantWallet),
+    createButton("Unlock All", "aq-page-button aq-page-button-muted", options.onUnlockContent),
+    htmlElement("p", "aq-page-card-meta", [`Speed ${formatNumber(options.clockMultiplier)}x`]),
     clockInput
   );
   return card;

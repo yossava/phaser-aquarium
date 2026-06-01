@@ -40,6 +40,14 @@
   --aq-kids-button-cyan: #21c8f6;
   --aq-kids-text-light: #ffffff;
   --aq-kids-text-blue: #e8fbff;
+  --aq-game-radius-sm: 8px;
+  --aq-game-radius: 12px;
+  --aq-game-radius-lg: 16px;
+  --aq-game-font-min: 12px;
+  --aq-game-font-sm: 13px;
+  --aq-game-font-base: 14px;
+  --aq-game-gold-accent: #ffd94f;
+  --aq-game-glow-cyan: rgba(19, 196, 220, 0.3);
   font-family: var(--aq-game-font);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -99,6 +107,42 @@ canvas {
 }
 
 @layer components {
+  .aq-texture-noise,
+  .aq-kids-card-groove,
+  .aq-kids-panel-groove {
+    position: relative;
+  }
+
+  .aq-texture-noise::after,
+  .aq-kids-card-groove::after,
+  .aq-kids-panel-groove::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.045;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+  }
+
+  .aq-glowing {
+    transition: box-shadow 200ms ease;
+  }
+
+  .aq-glowing:hover,
+  .aq-glowing:focus-visible,
+  .aq-main-menu-card:hover,
+  .aq-main-menu-card:focus-visible,
+  .aq-store-category-card:hover,
+  .aq-store-category-card:focus-visible,
+  .aq-page-card:hover,
+  .aq-page-card:focus-visible,
+  .aq-album-row:hover,
+  .aq-album-row:focus-visible {
+    box-shadow: 0 0 18px rgba(19, 196, 220, 0.28), 0 0 36px rgba(19, 196, 220, 0.1);
+  }
+
   .aq-store-shell {
     @apply fixed left-1/2 top-0 z-50 flex h-dvh text-white;
     width: var(--aq-stage-width);
@@ -108,13 +152,16 @@ canvas {
 
   .aq-store {
     @apply relative flex h-dvh w-full flex-col overflow-hidden px-3 pb-3 pt-[max(8px,env(safe-area-inset-top))];
-    background: var(--aq-kids-page-blue-dark);
+    background: linear-gradient(180deg, rgba(19, 196, 220, 0.06) 0%, transparent 30%), var(--aq-kids-page-blue-dark);
   }
 
   .aq-panel {
-    @apply rounded-2xl border border-cyan-200/25 shadow-none;
+    @apply rounded-xl border border-cyan-200/25 shadow-none;
     background: var(--aq-kids-panel-blue-dark);
-    box-shadow: none;
+    box-shadow:
+      0 0 0 2px rgba(19, 196, 220, 0.15),
+      0 0 0 5px rgba(19, 196, 220, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
 
   .aq-chip {
@@ -123,8 +170,8 @@ canvas {
   }
 
   .aq-store-category-card {
-    @apply flex min-h-[112px] w-full flex-col items-center justify-center gap-1.5 rounded-2xl border-0 px-2 py-2 text-center shadow-none;
-    transition: filter 90ms ease, transform 90ms ease;
+    @apply flex min-h-[112px] w-full flex-col items-center justify-center gap-1.5 rounded-xl border-0 px-2 py-2 text-center shadow-none;
+    transition: filter 90ms ease, transform 90ms ease, box-shadow 200ms ease;
     background: var(--aq-kids-menu-card-blue);
     box-shadow:
       inset 0 2px 5px rgba(0, 62, 116, 0.32),
@@ -150,7 +197,7 @@ canvas {
   }
 
   .aq-store-category-description {
-    @apply mt-0.5 line-clamp-2 text-[10px] font-bold leading-tight text-cyan-100/75;
+    @apply mt-0.5 line-clamp-2 text-[12px] font-bold leading-tight text-cyan-100/75;
   }
 
   .aq-store-category-arrow {
@@ -159,7 +206,7 @@ canvas {
 
   .aq-page-close,
   .aq-store-back-button {
-    @apply flex h-10 w-[78px] shrink-0 items-center justify-center rounded-xl border px-2 text-center text-xs font-black uppercase leading-none text-white shadow-lg;
+    @apply flex h-10 w-[78px] shrink-0 items-center justify-center rounded-lg border px-2 text-center text-xs font-black uppercase leading-none text-white shadow-lg;
     white-space: nowrap;
   }
 
@@ -168,7 +215,7 @@ canvas {
     background: #f97316;
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.36),
-      0 3px 0 rgba(124, 45, 18, 0.9);
+      0 4px 0 rgba(124, 45, 18, 0.9);
     text-shadow: 0 2px 1px rgba(103, 37, 12, 0.62);
   }
 
@@ -177,7 +224,7 @@ canvas {
   .aq-store-back-button:active,
   .aq-store-back-button.is-touching {
     filter: brightness(1.06);
-    transform: translateY(1px) scale(0.98);
+    transform: translateY(2px) scale(0.98);
   }
 
   .aq-store-list-scroll {
@@ -199,7 +246,7 @@ canvas {
   }
 
   .aq-card {
-    @apply relative flex min-h-[188px] flex-col items-stretch gap-2 rounded-2xl border-0 p-2 shadow-none;
+    @apply relative flex min-h-[188px] flex-col items-stretch gap-2 rounded-xl border-0 p-2 shadow-none;
     background: var(--aq-kids-menu-card-blue);
     container-type: inline-size;
     box-shadow:
@@ -269,16 +316,16 @@ canvas {
   }
 
   .aq-card-meta {
-    @apply truncate text-[10px] font-bold leading-tight text-cyan-100/80;
+    @apply truncate text-[12px] font-bold leading-tight text-cyan-100/80;
   }
 
   .aq-fish-power-inline {
-    @apply inline-flex w-fit max-w-full items-center rounded-full border border-white/75 bg-lime-400 px-1.5 py-0.5 text-[10px] font-black leading-none text-sky-950;
+    @apply inline-flex w-fit max-w-full items-center rounded-full border border-white/75 bg-lime-400 px-1.5 py-0.5 text-[12px] font-black leading-none text-sky-950;
     box-shadow: 0 2px 0 rgba(4, 36, 54, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.58);
   }
 
   .aq-card-copy {
-    @apply line-clamp-2 min-h-0 overflow-hidden text-[10px] leading-tight text-cyan-50/90;
+    @apply line-clamp-2 min-h-0 overflow-hidden text-[12px] leading-tight text-cyan-50/90;
   }
 
   .aq-food-preview {
@@ -295,7 +342,7 @@ canvas {
   }
 
   .aq-food-cal-pill {
-    @apply w-fit rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-0.5 text-[10px] font-black leading-tight text-cyan-50/90;
+    @apply w-fit rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-0.5 text-[12px] font-black leading-tight text-cyan-50/90;
   }
 
   .aq-decor-card {
@@ -318,7 +365,7 @@ canvas {
   }
 
   .aq-decor-shop-note {
-    @apply mt-auto rounded-xl border border-cyan-100/18 bg-sky-950/42 px-2 py-1.5 text-[10px] font-bold leading-tight text-cyan-50/82;
+    @apply mt-auto rounded-xl border border-cyan-100/18 bg-sky-950/42 px-2 py-1.5 text-[12px] font-bold leading-tight text-cyan-50/82;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
@@ -363,7 +410,7 @@ canvas {
 
   .aq-page {
     @apply relative flex h-dvh w-full flex-col overflow-hidden px-3 pb-3 pt-[max(8px,env(safe-area-inset-top))];
-    background: var(--aq-kids-page-blue-dark);
+    background: linear-gradient(180deg, rgba(19, 196, 220, 0.06) 0%, transparent 30%), var(--aq-kids-page-blue-dark);
   }
 
   .aq-kids-page-surface {
@@ -392,8 +439,10 @@ canvas {
   }
 
   .aq-page-header {
-    @apply flex shrink-0 items-center gap-2 rounded-2xl border border-cyan-200/30 bg-sky-950/80 p-2.5 shadow-xl;
+    @apply flex shrink-0 items-center gap-2 rounded-xl border border-cyan-200/30 bg-sky-950/80 p-2.5 shadow-xl;
     box-shadow:
+      0 0 0 2px rgba(19, 196, 220, 0.18),
+      0 0 18px rgba(19, 196, 220, 0.12),
       inset 0 1px 0 rgba(255, 255, 255, 0.2),
       inset 0 -16px 34px rgba(4, 26, 44, 0.48);
   }
@@ -415,13 +464,14 @@ canvas {
     @apply border-red-100/70;
     transition: filter 90ms ease, transform 90ms ease;
     background: linear-gradient(#ff6f75, #b91326);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 3px 0 rgba(82, 8, 15, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 4px 0 rgba(82, 8, 15, 0.8);
     text-shadow: 0 2px 1px rgba(82, 8, 15, 0.62);
   }
 
   .aq-page-content {
-    @apply mt-3 min-h-0 flex-1 overflow-hidden rounded-2xl border border-cyan-200/25 p-3;
+    @apply mt-3 min-h-0 flex-1 overflow-hidden rounded-xl border border-cyan-200/25 p-3;
     scrollbar-width: none;
+    box-shadow: inset 0 0 0 1px rgba(19, 196, 220, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   }
 
   .aq-page-content-main-menu {
@@ -476,8 +526,10 @@ canvas {
   }
 
   .aq-page-card {
-    @apply min-w-0 rounded-2xl border-0 p-2.5 shadow-none;
+    @apply min-w-0 rounded-xl border-0 p-2.5 shadow-none;
     background: var(--aq-kids-menu-card-blue);
+    border-top: 2px solid rgba(255, 217, 79, 0.35);
+    transition: box-shadow 200ms ease;
     box-shadow:
       inset 0 2px 5px rgba(0, 62, 116, 0.32),
       inset 0 -1px 0 rgba(255, 255, 255, 0.14);
@@ -520,7 +572,7 @@ canvas {
   }
 
   .aq-cosmetic-apply-button {
-    @apply mt-1 min-h-7 py-1 text-[10px];
+    @apply mt-1 min-h-7 py-1 text-[12px];
   }
 
   .aq-settings-volume-actions {
@@ -562,7 +614,7 @@ canvas {
   }
 
   .aq-page-card-copy {
-    @apply mt-1 text-xs font-bold leading-snug text-cyan-50/82;
+    @apply mt-1 text-sm font-bold leading-snug text-cyan-50/82;
   }
 
   .aq-page-card-image {
@@ -578,7 +630,7 @@ canvas {
   }
 
   .aq-tank-grid-card {
-    @apply relative min-h-0 overflow-hidden rounded-2xl border-0 shadow-none;
+    @apply relative min-h-0 overflow-hidden rounded-xl border-0 shadow-none;
     background: var(--aq-kids-menu-card-blue);
     box-shadow:
       inset 0 2px 5px rgba(0, 62, 116, 0.32),
@@ -632,15 +684,15 @@ canvas {
   }
 
   .aq-page-button {
-    @apply min-h-10 rounded-xl border border-cyan-100/45 bg-cyan-700 px-3 py-2 text-center text-sm font-black text-white shadow-lg;
+    @apply min-h-10 rounded-lg border border-cyan-100/45 bg-cyan-700 px-3 py-2 text-center text-sm font-black text-white shadow-lg;
     transition: filter 90ms ease, transform 90ms ease;
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.26), 0 3px 0 rgba(6, 50, 73, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.26), 0 4px 0 rgba(6, 50, 73, 0.8), 0 0 14px var(--aq-game-glow-cyan);
   }
 
   .aq-page-button:active,
   .aq-page-button.is-touching {
     filter: brightness(1.06);
-    transform: translateY(1px) scale(0.98);
+    transform: translateY(2px) scale(0.98);
   }
 
   .aq-tank-background-button {
@@ -650,13 +702,13 @@ canvas {
   .aq-page-button-good {
     @apply border-lime-200/70;
     background: linear-gradient(#80e43a, #26921f);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(8, 52, 11, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 4px 0 rgba(8, 52, 11, 0.8), 0 0 14px var(--aq-game-glow-cyan);
   }
 
   .aq-page-button-danger {
     @apply border-red-100/70;
     background: linear-gradient(#ff6f75, #b91326);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 3px 0 rgba(82, 8, 15, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 4px 0 rgba(82, 8, 15, 0.8), 0 0 14px var(--aq-game-glow-cyan);
   }
 
   .aq-page-button-muted {
@@ -686,7 +738,7 @@ canvas {
 
   .aq-makeup-title-block {
     @apply pointer-events-auto min-w-0 flex-1 rounded-2xl border border-cyan-100/35 bg-sky-950/76 px-3 py-2 shadow-xl;
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.18),
       inset 0 -14px 30px rgba(2, 20, 36, 0.48);
@@ -720,7 +772,7 @@ canvas {
 
   .aq-makeup-button.section-card {
     @apply flex min-h-[104px] flex-col items-center justify-center gap-2 rounded-3xl border-cyan-100/35 bg-sky-800/82 px-2 py-3 text-base shadow-xl;
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
   }
 
   .aq-makeup-section-icon {
@@ -797,13 +849,13 @@ canvas {
 
   .aq-makeup-decor-preview {
     @apply pointer-events-auto h-10 w-10 rounded-full border border-cyan-100/35 bg-sky-950/58 object-contain p-1 shadow-lg;
-    backdrop-filter: blur(6px);
+    backdrop-filter: none;
   }
 
   .aq-makeup-picker-copy,
   .aq-makeup-decor-name {
     @apply pointer-events-auto min-w-0 rounded-3xl border border-cyan-100/28 bg-sky-950/50 px-4 py-2 text-center shadow-inner;
-    backdrop-filter: blur(6px);
+    backdrop-filter: none;
   }
 
   .aq-makeup-decor-tools .aq-makeup-decor-name {
@@ -813,11 +865,11 @@ canvas {
 
   .aq-makeup-decor-tools .aq-makeup-decor-row {
     @apply pointer-events-auto rounded-3xl border border-cyan-100/28 bg-sky-950/50 p-2 shadow-inner;
-    backdrop-filter: blur(6px);
+    backdrop-filter: none;
   }
 
   .aq-makeup-row-label {
-    @apply block truncate text-[10px] font-black uppercase tracking-normal text-cyan-100/70;
+    @apply block truncate text-[12px] font-black uppercase tracking-normal text-cyan-100/70;
   }
 
   .aq-makeup-picker-copy strong,
@@ -831,7 +883,7 @@ canvas {
   }
 
   .aq-makeup-cosmetic-status {
-    @apply flex shrink-0 items-center justify-center gap-1 truncate text-[10px] font-black uppercase;
+    @apply flex shrink-0 items-center justify-center gap-1 truncate text-[12px] font-black uppercase;
   }
 
   .aq-makeup-cosmetic-status.owned {
@@ -839,16 +891,16 @@ canvas {
   }
 
   .aq-makeup-cosmetic-status.price .aq-makeup-cost-chip {
-    @apply border-0 bg-transparent px-0 py-0 text-[10px] shadow-none;
+    @apply border-0 bg-transparent px-0 py-0 text-[12px] shadow-none;
   }
 
   .aq-makeup-tint-control {
-    @apply mt-1 grid grid-cols-[34px_minmax(0,1fr)_42px] items-center gap-2 text-[10px] font-black uppercase text-cyan-50/82;
+    @apply mt-1 grid grid-cols-[34px_minmax(0,1fr)_42px] items-center gap-2 text-[12px] font-black uppercase text-cyan-50/82;
   }
 
   .aq-makeup-tint-control.vertical {
     @apply pointer-events-auto mt-0 grid h-[224px] w-[72px] grid-cols-1 grid-rows-[20px_minmax(0,1fr)_20px] justify-items-center justify-self-end rounded-3xl border border-cyan-100/28 bg-sky-950/50 px-2 py-3 shadow-xl;
-    backdrop-filter: blur(6px);
+    backdrop-filter: none;
   }
 
   .aq-makeup-tint-range {
@@ -900,7 +952,7 @@ canvas {
   .aq-makeup-decoration-settings {
     @apply pointer-events-auto absolute z-[2] w-[86px] rounded-3xl border border-cyan-100/28 bg-sky-950/72 p-2 shadow-xl;
     transform: translate(-50%, -100%);
-    backdrop-filter: blur(8px);
+    backdrop-filter: none;
   }
 
   .aq-makeup-button {
@@ -972,8 +1024,10 @@ canvas {
   }
 
   .aq-album-row {
-    @apply grid min-h-[150px] grid-cols-1 grid-rows-[58px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-2xl border-0 p-2 text-center shadow-none;
+    @apply grid min-h-[150px] grid-cols-1 grid-rows-[58px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-xl border-0 p-2 text-center shadow-none;
     background: var(--aq-kids-menu-card-blue);
+    border-top: 2px solid rgba(255, 217, 79, 0.35);
+    transition: box-shadow 200ms ease;
     box-shadow:
       inset 0 2px 5px rgba(0, 62, 116, 0.32),
       inset 0 -1px 0 rgba(255, 255, 255, 0.14);
@@ -1013,11 +1067,11 @@ canvas {
   }
 
   .aq-album-row-meta {
-    @apply mt-0.5 truncate text-[11px] font-extrabold leading-tight text-cyan-100/78;
+    @apply mt-0.5 truncate text-[13px] font-extrabold leading-tight text-cyan-100/78;
   }
 
   .aq-album-row-copy {
-    @apply mt-0.5 line-clamp-2 text-[11px] font-bold leading-tight text-cyan-50/82;
+    @apply mt-0.5 line-clamp-2 text-[13px] font-bold leading-tight text-cyan-50/82;
   }
 
   .aq-album-stat-grid {
@@ -1033,11 +1087,11 @@ canvas {
   }
 
   .aq-album-stat small {
-    @apply block truncate text-[9px] font-extrabold text-cyan-100/60;
+    @apply block truncate text-[13px] font-extrabold text-cyan-100/60;
   }
 
   .aq-album-stat strong {
-    @apply mt-0.5 block truncate text-[11px] font-black text-white;
+    @apply mt-0.5 block truncate text-[13px] font-black text-white;
   }
 
   .aq-album-power-stat small,
@@ -1073,7 +1127,7 @@ canvas {
   }
 
   .aq-album-row-button {
-    @apply min-h-9 w-full px-1.5 py-1 text-[11px];
+    @apply min-h-9 w-full px-1.5 py-1 text-[13px];
   }
 
   .aq-album-row-actions {
@@ -1081,7 +1135,7 @@ canvas {
   }
 
   .aq-fish-transfer-board {
-    @apply flex flex-col gap-2;
+    @apply flex flex-col gap-1.5;
   }
 
   .aq-fish-transfer-header {
@@ -1089,46 +1143,48 @@ canvas {
   }
 
   .aq-fish-transfer-copy {
-    @apply mb-2 max-w-[52%] text-right text-[11px] font-extrabold leading-tight text-cyan-100/72;
+    @apply mb-1 max-w-[50%] text-right text-[12px] font-extrabold leading-tight text-cyan-100/72;
   }
 
   .aq-fish-transfer-rate {
-    @apply flex items-center justify-between gap-2 rounded-xl border border-lime-200/35 bg-lime-300 px-3 py-2 text-sky-950;
+    @apply flex items-center justify-between gap-1.5 rounded-xl border border-lime-200/45 bg-lime-300 px-2 py-1.5 text-sky-950;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.5),
       0 2px 5px rgba(0, 33, 49, 0.14);
   }
 
   .aq-fish-transfer-rate span {
-    @apply truncate text-xs font-black uppercase leading-none;
+    @apply truncate text-[12px] font-black uppercase leading-none;
   }
 
   .aq-fish-transfer-rate strong {
-    @apply shrink-0 text-sm font-black leading-none;
+    @apply shrink-0 text-xs font-black leading-none;
   }
 
   .aq-fish-transfer-zones {
-    @apply grid grid-cols-1 gap-2;
+    @apply grid grid-cols-1 gap-1.5;
   }
 
   .aq-fish-transfer-zone {
-    @apply min-h-[220px] rounded-2xl border-2 border-cyan-100/20 bg-sky-950/28 p-2 transition-colors;
+    @apply min-h-[156px] rounded-2xl border border-cyan-200/25 p-1.5 transition-colors;
+    background: var(--aq-kids-panel-blue-dark);
+    box-shadow: none;
   }
 
   .aq-fish-transfer-zone-head {
-    @apply mb-2 flex items-center justify-between gap-2 rounded-xl bg-cyan-950/45 px-2 py-1.5;
+    @apply mb-1.5 flex items-center justify-between gap-1.5 rounded-xl bg-sky-950/50 px-2 py-1;
   }
 
   .aq-fish-transfer-zone-head strong {
-    @apply truncate text-sm font-black leading-none text-white;
+    @apply truncate text-xs font-black leading-none text-white;
   }
 
   .aq-fish-transfer-zone-head span {
-    @apply shrink-0 rounded-full bg-sky-500 px-2 py-0.5 text-xs font-black leading-none text-white;
+    @apply shrink-0 rounded-full bg-cyan-600 px-1.5 py-0.5 text-[12px] font-black leading-none text-white;
   }
 
   .aq-fish-transfer-list {
-    @apply grid gap-2;
+    @apply grid gap-1.5;
   }
 
   .aq-fish-transfer-list:has(.aq-fish-transfer-card) .aq-fish-transfer-empty {
@@ -1136,38 +1192,39 @@ canvas {
   }
 
   .aq-fish-transfer-empty {
-    @apply flex min-h-[116px] flex-col items-center justify-center rounded-xl border border-dashed border-cyan-100/28 px-2 text-center;
+    @apply flex min-h-[82px] flex-col items-center justify-center rounded-xl border border-dashed border-cyan-100/28 px-2 text-center;
   }
 
   .aq-fish-transfer-empty strong {
-    @apply text-sm font-black leading-tight text-white;
+    @apply text-xs font-black leading-tight text-white;
   }
 
   .aq-fish-transfer-empty span {
-    @apply mt-1 text-[11px] font-bold leading-tight text-cyan-100/68;
+    @apply mt-0.5 text-[12px] font-bold leading-tight text-cyan-100/68;
   }
 
   .aq-fish-transfer-card {
-    @apply grid select-none grid-cols-[58px_minmax(0,1fr)] gap-2 rounded-xl border border-cyan-100/22 bg-sky-800/90 p-2 text-left shadow-none transition-opacity;
+    @apply grid select-none grid-cols-[46px_minmax(0,1fr)] gap-1.5 rounded-xl border-0 p-1.5 text-left shadow-none transition-opacity;
+    background: var(--aq-kids-menu-card-blue);
     box-shadow:
-      inset 0 2px 4px rgba(255, 255, 255, 0.12),
-      inset 0 -8px 18px rgba(0, 45, 92, 0.22);
+      inset 0 2px 5px rgba(0, 62, 116, 0.32),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.14);
   }
 
   .aq-fish-transfer-image-wrap {
-    @apply relative flex h-[54px] w-[54px] items-center justify-center rounded-xl bg-cyan-100/12;
+    @apply relative flex h-[44px] w-[44px] items-center justify-center rounded-xl bg-cyan-100/12;
   }
 
   .aq-fish-transfer-image {
-    @apply h-10 w-12 object-contain drop-shadow-lg;
+    @apply h-8 w-10 object-contain drop-shadow-lg;
   }
 
   .aq-fish-transfer-badge {
-    @apply absolute -bottom-1 -right-1 rounded-full border border-white/70 bg-emerald-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white;
+    @apply absolute -bottom-1 -right-1 rounded-full border border-white/70 bg-lime-500 px-1 py-0.5 text-[11px] font-black leading-none text-white;
   }
 
   .aq-fish-transfer-power-inline {
-    @apply mt-0.5;
+    @apply mt-0.5 text-[11px];
   }
 
   .aq-fish-transfer-card-body {
@@ -1175,23 +1232,23 @@ canvas {
   }
 
   .aq-fish-transfer-card-body h3 {
-    @apply truncate text-sm font-black leading-tight text-white;
+    @apply truncate text-xs font-black leading-tight text-white;
   }
 
   .aq-fish-transfer-card-body p {
-    @apply mt-0.5 truncate text-[11px] font-extrabold leading-tight text-cyan-100/78;
+    @apply mt-0.5 truncate text-[12px] font-extrabold leading-tight text-cyan-100/78;
   }
 
   .aq-fish-transfer-card-body small {
-    @apply mt-0.5 line-clamp-2 text-[10px] font-bold leading-tight text-cyan-50/78;
+    @apply mt-0.5 line-clamp-1 text-[12px] font-bold leading-tight text-cyan-50/78;
   }
 
   .aq-fish-transfer-status-bars {
-    @apply mt-1.5 grid gap-1;
+    @apply mt-1 grid gap-0.5;
   }
 
   .aq-fish-transfer-status-row {
-    @apply grid grid-cols-[38px_minmax(0,1fr)_30px] items-center gap-1 text-[9px] font-black uppercase leading-none text-cyan-50/82;
+    @apply grid grid-cols-[34px_minmax(0,1fr)_26px] items-center gap-1 text-[11px] font-black uppercase leading-none text-cyan-50/82;
   }
 
   .aq-fish-transfer-status-label,
@@ -1204,7 +1261,7 @@ canvas {
   }
 
   .aq-fish-transfer-status-track {
-    @apply h-1.5 overflow-hidden rounded-full bg-sky-950/70;
+    @apply h-1 overflow-hidden rounded-full bg-sky-950/70;
   }
 
   .aq-fish-transfer-status-fill {
@@ -1224,7 +1281,7 @@ canvas {
   }
 
   .aq-fish-transfer-action {
-    @apply min-h-9 w-full px-1.5 py-1 text-[11px];
+    @apply min-h-8 w-full px-1 py-0.5 text-[12px] leading-tight;
   }
 
   .aq-fusion-page {
@@ -1314,7 +1371,7 @@ canvas {
   }
 
   .aq-fusion-selected-tag {
-    @apply mt-2 rounded-full bg-green-500/55 px-2.5 py-1 text-[10px] font-black leading-none text-lime-100;
+    @apply mt-2 rounded-full bg-green-500/55 px-2.5 py-1 text-[12px] font-black leading-none text-lime-100;
   }
 
   .aq-fusion-machine {
@@ -1378,7 +1435,7 @@ canvas {
   }
 
   .aq-fusion-stat-pill {
-    @apply rounded-full border border-cyan-100/24 bg-cyan-100/10 px-2 py-1 text-[10px] font-black uppercase leading-none text-cyan-50/82;
+    @apply rounded-full border border-cyan-100/24 bg-cyan-100/10 px-2 py-1 text-[12px] font-black uppercase leading-none text-cyan-50/82;
   }
 
   .aq-fusion-result-divider {
@@ -1408,7 +1465,7 @@ canvas {
   }
 
   .aq-fusion-roster-count {
-    @apply rounded-full border border-cyan-100/20 bg-sky-900/70 px-2 py-1 text-[10px] font-black leading-none text-cyan-50/80;
+    @apply rounded-full border border-cyan-100/20 bg-sky-900/70 px-2 py-1 text-[12px] font-black leading-none text-cyan-50/80;
   }
 
   .aq-fusion-preview-grid {
@@ -1448,12 +1505,12 @@ canvas {
   }
 
   .aq-fusion-preview-name {
-    @apply relative z-10 mt-1 w-full truncate text-center text-[11px] font-black text-white;
+    @apply relative z-10 mt-1 w-full truncate text-center text-[13px] font-black text-white;
     text-shadow: none;
   }
 
   .aq-fusion-preview-meta {
-    @apply relative z-10 mt-0.5 w-full truncate text-center text-[9px] font-bold leading-tight text-cyan-50/78;
+    @apply relative z-10 mt-0.5 w-full truncate text-center text-[11px] font-bold leading-tight text-cyan-50/78;
   }
 
   .aq-fusion-action-bar {
@@ -1529,7 +1586,7 @@ canvas {
   }
 
   .aq-main-menu-status-badge {
-    @apply -right-2 -top-2 min-h-4 min-w-4 px-0 text-[9px];
+    @apply -right-2 -top-2 min-h-4 min-w-4 px-0 text-[11px];
   }
 
   .aq-main-menu-level-card {
@@ -1558,20 +1615,22 @@ canvas {
   }
 
   .aq-main-menu-level-percent {
-    @apply text-[11px];
+    @apply text-[13px];
   }
 
   .aq-main-menu-status-label {
-    @apply mt-0.5 max-w-full truncate text-[9px] font-extrabold leading-none text-cyan-100/78;
+    @apply mt-0.5 max-w-full truncate text-[13px] font-extrabold leading-none text-cyan-100/78;
   }
 
   .aq-main-menu-status-value {
-    @apply mt-0.5 max-w-full truncate text-[12px] font-black leading-none text-white;
+    @apply mt-0.5 max-w-full truncate text-[14px] font-black leading-none text-white;
     text-shadow: 0 2px 0 rgba(0, 31, 53, 0.58);
   }
 
   .aq-main-menu-card {
-    @apply relative flex min-h-[118px] flex-col items-center justify-center gap-2 rounded-2xl border-0 px-3 py-3 text-white;
+    @apply relative flex min-h-[118px] flex-col items-center justify-center gap-2 rounded-xl border-0 px-3 py-3 text-white;
+    border-top: 2px solid rgba(255, 217, 79, 0.35);
+    transition: box-shadow 200ms ease;
     touch-action: manipulation;
   }
 
@@ -1623,7 +1682,7 @@ canvas {
   }
 
   .aq-main-menu-badge {
-    @apply absolute -right-1 -top-1 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[10px] font-black leading-none text-white;
+    @apply absolute -right-1 -top-1 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[12px] font-black leading-none text-white;
     box-shadow: none;
     text-shadow: none;
   }
@@ -1635,7 +1694,7 @@ canvas {
   }
 
   .aq-drill-menu-description {
-    @apply max-w-full line-clamp-2 text-center text-[11px] font-bold leading-tight text-cyan-100/78;
+    @apply max-w-full line-clamp-2 text-center text-[13px] font-bold leading-tight text-cyan-100/78;
   }
 
   .aq-page-drill-header {
@@ -1643,7 +1702,7 @@ canvas {
   }
 
   .aq-quest-row {
-    @apply grid min-h-[68px] grid-cols-[56px_minmax(0,1fr)_82px] items-center gap-2 rounded-2xl border-0 px-2.5 py-2 text-left shadow-none;
+    @apply grid min-h-[68px] grid-cols-[56px_minmax(0,1fr)_82px] items-center gap-2 rounded-xl border-0 px-2.5 py-2 text-left shadow-none;
     background: var(--aq-kids-menu-card-blue);
     box-shadow:
       inset 0 2px 5px rgba(0, 62, 116, 0.32),
@@ -1660,7 +1719,7 @@ canvas {
   }
 
   .aq-quest-status {
-    @apply rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-1 text-center text-[10px] font-black leading-none text-cyan-50;
+    @apply rounded-full border border-cyan-100/25 bg-sky-950/55 px-2 py-1 text-center text-[12px] font-black leading-none text-cyan-50;
   }
 
   .aq-quest-row.is-ready .aq-quest-status {
@@ -1705,7 +1764,7 @@ canvas {
   }
 
   .aq-rewarded-ad-card {
-    @apply grid min-h-[138px] grid-cols-1 grid-rows-[44px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-2xl border-0 px-2.5 py-2 text-center shadow-none;
+    @apply grid min-h-[138px] grid-cols-1 grid-rows-[44px_minmax(0,1fr)_auto] items-center gap-1.5 rounded-xl border-0 px-2.5 py-2 text-center shadow-none;
     background: var(--aq-kids-menu-card-blue);
     box-shadow:
       inset 0 2px 5px rgba(0, 62, 116, 0.32),
@@ -1735,7 +1794,7 @@ canvas {
   }
 
   .aq-rewarded-ad-button {
-    @apply min-h-9 w-full px-1.5 py-1 text-[11px];
+    @apply min-h-9 w-full px-1.5 py-1 text-[13px];
   }
 
   .aq-page-icon-button,
@@ -1905,7 +1964,7 @@ canvas {
   }
 
   .aq-level-reward-card-detail {
-    @apply text-[10px] font-black uppercase leading-none text-cyan-100/72;
+    @apply text-[12px] font-black uppercase leading-none text-cyan-100/72;
   }
 
   .aq-modal-price-line {
@@ -1977,11 +2036,11 @@ canvas {
   }
 
   .aq-production-boost-fish-age {
-    @apply text-[10px] font-bold leading-none text-cyan-100/85;
+    @apply text-[12px] font-bold leading-none text-cyan-100/85;
   }
 
   .aq-production-boost-fish-price {
-    @apply text-[10px] font-black leading-none text-yellow-100;
+    @apply text-[12px] font-black leading-none text-yellow-100;
   }
 
   .aq-production-boost-selected {
@@ -1997,27 +2056,27 @@ canvas {
   }
 
   .aq-modal-button {
-    @apply min-h-11 rounded-xl border border-cyan-100/45 bg-cyan-700 px-3 py-2 text-center text-sm font-black text-white shadow-lg;
+    @apply min-h-11 rounded-lg border border-cyan-100/45 bg-cyan-700 px-3 py-2 text-center text-sm font-black text-white shadow-lg;
     transition: filter 90ms ease, transform 90ms ease;
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 3px 0 rgba(6, 50, 73, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 4px 0 rgba(6, 50, 73, 0.8), 0 0 14px var(--aq-game-glow-cyan);
   }
 
   .aq-modal-button:active,
   .aq-modal-button.is-touching {
     filter: brightness(1.06);
-    transform: translateY(1px) scale(0.98);
+    transform: translateY(2px) scale(0.98);
   }
 
   .aq-modal-button.good {
     @apply border-lime-200/70;
     background: linear-gradient(#80e43a, #26921f);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(8, 52, 11, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 4px 0 rgba(8, 52, 11, 0.8), 0 0 14px var(--aq-game-glow-cyan);
   }
 
   .aq-modal-button.danger {
     @apply border-red-100/70;
     background: linear-gradient(#ff6f75, #b91326);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 3px 0 rgba(82, 8, 15, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.34), 0 4px 0 rgba(82, 8, 15, 0.8), 0 0 14px var(--aq-game-glow-cyan);
   }
 
   .aq-modal-button.muted {
@@ -2028,7 +2087,7 @@ canvas {
     @apply cursor-not-allowed text-cyan-50/70;
     filter: grayscale(0.35);
     background: linear-gradient(#6b8794, #39515e);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.16), 0 3px 0 rgba(15, 38, 48, 0.75);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.16), 0 4px 0 rgba(15, 38, 48, 0.75);
   }
 
   .aq-prize-bet-grid {
@@ -2066,7 +2125,7 @@ canvas {
   }
 
   .aq-fusion-modal-badge {
-    @apply mb-1 inline-flex rounded-full border border-lime-200/40 bg-lime-300/15 px-2 py-1 text-[10px] font-black uppercase leading-none text-lime-100;
+    @apply mb-1 inline-flex rounded-full border border-lime-200/40 bg-lime-300/15 px-2 py-1 text-[12px] font-black uppercase leading-none text-lime-100;
   }
 
   .aq-fusion-modal-title {
@@ -2105,11 +2164,11 @@ canvas {
   }
 
   .aq-fusion-source-name {
-    @apply mt-1 w-full truncate text-center text-[10px] font-black leading-tight;
+    @apply mt-1 w-full truncate text-center text-[12px] font-black leading-tight;
   }
 
   .aq-fusion-source-meta {
-    @apply mt-0.5 w-full truncate text-center text-[9px] font-bold leading-tight text-cyan-50/75;
+    @apply mt-0.5 w-full truncate text-center text-[11px] font-bold leading-tight text-cyan-50/75;
   }
 
   .aq-fusion-result-stage {
@@ -2130,7 +2189,7 @@ canvas {
   }
 
   .aq-fusion-result-tier {
-    @apply absolute -top-3 left-1/2 -translate-x-1/2 rounded-b-lg rounded-t-sm bg-blue-500 px-3 py-1.5 text-[10px] font-black uppercase leading-none text-white;
+    @apply absolute -top-3 left-1/2 -translate-x-1/2 rounded-b-lg rounded-t-sm bg-blue-500 px-3 py-1.5 text-[12px] font-black uppercase leading-none text-white;
   }
 
   .aq-fusion-result-name {
@@ -2176,7 +2235,7 @@ canvas {
   }
 
   .aq-fusion-chamber-status {
-    @apply mt-3 grid w-full grid-cols-3 gap-1 text-center text-[9px] font-black uppercase leading-tight text-sky-200;
+    @apply mt-3 grid w-full grid-cols-3 gap-1 text-center text-[11px] font-black uppercase leading-tight text-sky-200;
   }
 
   .aq-fusion-chamber-status span {
@@ -2403,18 +2462,18 @@ canvas {
   }
 
   .aq-buy {
-    @apply min-h-0 rounded-xl border border-lime-200/70 px-3 py-1 text-xs font-black text-white shadow-lg;
+    @apply min-h-0 rounded-lg border border-lime-200/70 px-3 py-1 text-xs font-black text-white shadow-lg;
     min-height: 34px;
     height: auto;
     transition: filter 90ms ease, transform 90ms ease;
     background: linear-gradient(#80e43a, #26921f);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 3px 0 rgba(8, 52, 11, 0.8);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), 0 4px 0 rgba(8, 52, 11, 0.8), 0 0 12px rgba(163, 230, 53, 0.18);
   }
 
   .aq-buy:active,
   .aq-buy.is-touching {
     filter: brightness(1.06);
-    transform: translateY(1px) scale(0.98);
+    transform: translateY(2px) scale(0.98);
   }
 
   .aq-food-qty-row {
@@ -2426,7 +2485,7 @@ canvas {
   }
 
   .aq-qty {
-    @apply min-h-0 rounded-lg border border-cyan-200/30 bg-sky-900/80 px-2 py-1 text-center text-[10px] font-black text-cyan-50;
+    @apply min-h-0 rounded-lg border border-cyan-200/30 bg-sky-900/80 px-2 py-1 text-center text-[12px] font-black text-cyan-50;
     touch-action: none;
     user-select: none;
   }
@@ -2448,7 +2507,7 @@ canvas {
 
   .aq-buy:disabled {
     background: linear-gradient(#6b8794, #39515e);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18), 0 3px 0 rgba(15, 38, 48, 0.75);
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18), 0 4px 0 rgba(15, 38, 48, 0.75);
   }
 
   .aq-tank-menu {
@@ -2535,7 +2594,7 @@ canvas {
   }
 
   .aq-tank-menu-badge {
-    @apply absolute -right-0.5 -top-0.5 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[10px] font-black leading-none text-white;
+    @apply absolute -right-0.5 -top-0.5 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[12px] font-black leading-none text-white;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.38);
     text-shadow: 0 1px 1px rgba(70, 0, 16, 0.65);
   }
@@ -2874,7 +2933,7 @@ canvas {
 
     .aq-buy {
       height: 28px;
-      @apply px-1 py-0 text-[10px] leading-none;
+      @apply px-1 py-0 text-[12px] leading-none;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
     }
 
@@ -3026,7 +3085,7 @@ canvas {
   }
 
   .aq-tank-side-tool-count {
-    @apply absolute -right-0.5 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/85 bg-emerald-500 px-1 text-[10px] font-black leading-none text-white;
+    @apply absolute -right-0.5 top-2 flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/85 bg-emerald-500 px-1 text-[12px] font-black leading-none text-white;
     box-shadow:
       inset 0 2px 0 rgba(255, 255, 255, 0.32),
       0 2px 5px rgba(0, 38, 45, 0.38);
@@ -3069,7 +3128,7 @@ canvas {
   }
 
   .aq-food-dock-page-label {
-    @apply min-w-6 text-center text-[10px] font-black leading-none text-white;
+    @apply min-w-6 text-center text-[12px] font-black leading-none text-white;
     text-shadow: 0 2px 2px rgba(0, 0, 0, 0.72);
   }
 
@@ -3122,7 +3181,7 @@ canvas {
   }
 
   .aq-food-button-count {
-    @apply absolute -right-0.5 -top-0.5 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[10px] font-black leading-none text-white;
+    @apply absolute -right-0.5 -top-0.5 z-[2] flex min-h-5 min-w-5 items-center justify-center rounded-full border border-white/80 bg-rose-500 px-1 text-[12px] font-black leading-none text-white;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.38);
     text-shadow: 0 1px 1px rgba(70, 0, 16, 0.65);
     transition: transform 90ms ease;

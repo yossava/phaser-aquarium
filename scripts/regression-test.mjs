@@ -203,6 +203,46 @@ async function snapshot(cdp) {
   return JSON.parse(await evaluate(cdp, "JSON.stringify(window.__aquariumTest.getSnapshot())"));
 }
 
+async function tankUiSnapshot(cdp) {
+  return evaluate(
+    cdp,
+    `(() => {
+      const visible = (selector) => {
+        const element = document.querySelector(selector);
+        if (!element || element.classList.contains("hidden")) return false;
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      return {
+        hudVisible: visible(".aq-game-hud"),
+        dockVisible: visible(".aq-food-dock"),
+        dockButtonCount: document.querySelectorAll(".aq-food-dock button").length,
+        tankMenuVisible: visible(".aq-tank-menu"),
+        tankMenuButtonCount: document.querySelectorAll(".aq-tank-menu-button").length
+      };
+    })()`
+  );
+}
+
+function assertEmptyTankUi(state, tankUi, context) {
+  assert(
+    state.fishCount === 0 &&
+      tankUi.hudVisible &&
+      tankUi.dockVisible &&
+      tankUi.dockButtonCount >= 1 &&
+      tankUi.tankMenuVisible &&
+      tankUi.tankMenuButtonCount >= 1,
+    `${context} Got ${JSON.stringify(tankUi)} with fishCount ${state.fishCount}.`
+  );
+}
+
+async function reloadPageAndWaitForHook(cdp) {
+  const loadEvent = cdp.once("Page.loadEventFired").catch(() => undefined);
+  await cdp.send("Page.reload", { ignoreCache: true });
+  await loadEvent;
+  await waitForTestHook(cdp, 60000);
+}
+
 async function waitFor(cdp, predicate, message, timeoutMs = 5000) {
   const startedAt = Date.now();
   let lastState;
@@ -278,6 +318,13 @@ async function runRegression(cdp) {
     "Initial HUD state did not load."
   );
   let state = await snapshot(cdp);
+  const initialTankUi = await tankUiSnapshot(cdp);
+  assertEmptyTankUi(state, initialTankUi, "Empty tank should still show HUD, inventory dock, and tank menu.");
+  await evaluate(cdp, "window.__aquariumTest.saveNow()");
+  await reloadPageAndWaitForHook(cdp);
+  state = await snapshot(cdp);
+  const restoredEmptyTankUi = await tankUiSnapshot(cdp);
+  assertEmptyTankUi(state, restoredEmptyTankUi, "Restored empty tank should still show HUD, inventory dock, and tank menu.");
   const canvasResolution = await evaluate(
     cdp,
     `(() => {

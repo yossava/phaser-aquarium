@@ -90,18 +90,15 @@ function createMainMenuLevelStatusCard(level: number, production: number): HTMLE
 export function createDrillMenuCard(input: {
   icon: string;
   label: string;
-  description: string;
   action: () => void;
   createButton: (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
 }): HTMLButtonElement {
   const button = input.createButton("", "aq-main-menu-card aq-kids-card-groove", input.action);
-  const iconWrap = htmlElement("span", "aq-main-menu-icon-wrap", [
+  const iconWrap = htmlElement("span", "aq-main-menu-icon-wrap aq-drill-menu-icon-wrap", [
     htmlImage(input.icon, "", "aq-main-menu-icon")
   ]);
-  button.append(
-    iconWrap,
-    htmlElement("span", "aq-main-menu-label", [input.label]),
-    htmlElement("span", "aq-drill-menu-description", [input.description])
-  );
+  iconWrap.style.width = "5rem";
+  iconWrap.style.height = "5rem";
+  button.append(iconWrap, htmlElement("span", "aq-main-menu-label", [input.label]));
   return button;
 }

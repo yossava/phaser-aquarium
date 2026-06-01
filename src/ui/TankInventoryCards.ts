@@ -10,10 +10,10 @@ export function appendTankInventoryTabContent(input: {
   decorations: HTMLElement[];
   tools: HTMLElement[];
 }): void {
-  appendTankInventorySection(input.content, "Background", input.backgrounds, "No backgrounds owned", "Buy tank backgrounds from Shop.");
-  appendTankInventorySection(input.content, "Seabed", input.seabeds, "No seabeds owned", "Buy tank seabeds from Shop.");
-  appendTankInventorySection(input.content, "Decor", input.decorations, "No decorations owned", "Buy tank decorations from Shop.");
-  appendTankInventorySection(input.content, "Tools", input.tools, "No tools owned", "Buy tank utilities from Shop.");
+  appendTankInventorySection(input.content, "Background", input.backgrounds, "No backgrounds", "Shop has more.");
+  appendTankInventorySection(input.content, "Seabed", input.seabeds, "No seabeds", "Shop has more.");
+  appendTankInventorySection(input.content, "Decor", input.decorations, "No decor", "Shop has more.");
+  appendTankInventorySection(input.content, "Tools", input.tools, "No tools", "Shop has more.");
 }
 
 function appendTankInventorySection(content: HTMLElement, title: string, items: HTMLElement[], emptyTitle: string, emptyDetail: string): void {
@@ -47,7 +47,7 @@ export function createTankCosmeticInventoryCard(input: {
   attachTouchFeedback: (element: HTMLElement) => void;
   onApply: () => void;
 }): HTMLElement {
-  const card = htmlElement("article", `aq-tank-grid-card ${input.selected ? "is-active" : ""}`);
+  const card = htmlElement("article", `aq-tank-grid-card aq-kids-card-groove ${input.selected ? "is-active" : ""}`);
   input.attachTouchFeedback(card);
   if (input.imageUrl) {
     card.append(htmlImage(input.imageUrl, "", "aq-tank-grid-image cover"));
@@ -87,7 +87,7 @@ export function createTankLevelInventoryCard(input: {
   onSwitch: () => void;
   onOpenMakeup: () => void;
 }): HTMLElement {
-  const card = htmlElement("article", `aq-tank-grid-card ${input.active ? "is-active" : ""}`);
+  const card = htmlElement("article", `aq-tank-grid-card aq-kids-card-groove ${input.active ? "is-active" : ""}`);
   input.attachTouchFeedback(card);
   if (input.owned && !input.active) {
     card.addEventListener("click", (event) => {
@@ -107,10 +107,7 @@ export function createTankLevelInventoryCard(input: {
   const overlay = htmlElement("div", "aq-tank-grid-overlay", [
     htmlElement("span", "aq-page-tank-level", [`Level ${formatNumber(input.displayLevel)}`]),
     htmlElement("h3", "aq-page-card-title", [input.name]),
-    htmlElement("p", "aq-page-card-meta", [
-      `${input.owned ? "Owned" : "Locked"} | ${formatNumber(input.fishCount)}/${formatNumber(input.capacity)} fish`
-    ]),
-    htmlElement("p", "aq-page-card-copy", [`Produced ${formatNumber(input.productionTotal)} | ${input.summary}`])
+    htmlElement("p", "aq-page-card-meta", [input.owned ? "Owned" : "Locked"])
   ]);
   if (input.owned) {
     if (input.active) {
@@ -120,10 +117,10 @@ export function createTankLevelInventoryCard(input: {
         ])
       );
     } else {
-      overlay.append(htmlElement("p", "aq-page-card-meta", ["Tap card to activate"]));
+      overlay.append(htmlElement("p", "aq-page-card-meta", ["Tap to use"]));
     }
   } else {
-    overlay.append(htmlElement("p", "aq-page-card-meta", ["Available in Shop"]));
+    overlay.append(htmlElement("p", "aq-page-card-meta", ["In Shop"]));
   }
   card.append(overlay);
   return card;
@@ -141,7 +138,7 @@ export function createDecorationInventoryCard(input: {
   }>;
   createButton: (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
 }): HTMLElement {
-  const card = htmlElement("article", "aq-tank-grid-card");
+  const card = htmlElement("article", "aq-tank-grid-card aq-kids-card-groove");
   const sizeGrid = htmlElement("div", "aq-page-size-grid");
   for (const row of input.sizeRows) {
     sizeGrid.append(
@@ -151,11 +148,11 @@ export function createDecorationInventoryCard(input: {
   }
   card.append(
     htmlImage(`/assets/decorations/${input.decorationType.id}.png`, "", "aq-tank-grid-image contain"),
-    htmlElement("div", "aq-tank-grid-overlay", [
-      htmlElement("h3", "aq-page-card-title", [input.decorationType.name]),
-      htmlElement("p", "aq-page-card-meta", [`${input.rarityLabel} | +${formatNumber(input.decorationType.happinessBonus)} happy`]),
-      sizeGrid
-    ])
+      htmlElement("div", "aq-tank-grid-overlay", [
+        htmlElement("h3", "aq-page-card-title", [input.decorationType.name]),
+        htmlElement("p", "aq-page-card-meta", [input.rarityLabel]),
+        sizeGrid
+      ])
   );
   return card;
 }
@@ -170,15 +167,18 @@ export function createTankUtilityInventoryCard(input: {
   createButton: (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
   onSell: (id: string) => void;
 }): HTMLElement {
-  const card = htmlElement("article", "aq-tank-grid-card");
+  const card = htmlElement("article", "aq-tank-grid-card aq-kids-card-groove");
   card.append(
     htmlImage(input.icon, "", "aq-tank-grid-image contain"),
-    htmlElement("div", "aq-tank-grid-overlay", [
-      htmlElement("h3", "aq-page-card-title", [input.name]),
-      htmlElement("p", "aq-page-card-meta", [input.meta]),
-      htmlElement("p", "aq-page-card-copy", [input.copy]),
-      input.createButton(`Sell C${formatNumber(input.sellValue)}`, "aq-page-button aq-page-button-danger", () => input.onSell(input.id))
-    ])
+      htmlElement("div", "aq-tank-grid-overlay", [
+        htmlElement("h3", "aq-page-card-title", [input.name]),
+        htmlElement("p", "aq-page-card-meta", [shortCopy(input.meta)]),
+        input.createButton(`Sell C${formatNumber(input.sellValue)}`, "aq-page-button aq-page-button-danger", () => input.onSell(input.id))
+      ])
   );
   return card;
+}
+
+function shortCopy(copy: string): string {
+  return copy.length > 15 ? `${copy.slice(0, 12)}...` : copy;
 }

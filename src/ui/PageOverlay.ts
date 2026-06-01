@@ -72,7 +72,7 @@ export function pageScreenMeta(input: PageScreenMetaInput): PageScreenMeta {
     },
     settings: {
       title: "Settings",
-      subtitle: "Audio, motion, notifications, and save controls",
+      subtitle: "Sounds, wiggles, alerts, and saves",
       icon: "/assets/ui/settings.png"
     }
   };

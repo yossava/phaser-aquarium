@@ -25,7 +25,7 @@ export function createPrizeCelebrationShell(input: {
     htmlElement("div", "aq-prize-celebration-image-wrap", [
       htmlImage(input.imageUrl, "", "aq-prize-celebration-image")
     ]),
-    htmlElement("p", "aq-modal-line aq-prize-celebration-detail", [input.detail]),
+    htmlElement("p", "aq-modal-line aq-prize-celebration-detail", [shortRewardDetail(input.detail)]),
     htmlElement("div", "aq-modal-actions single", [closeButton])
   ]);
   shell.append(panel);
@@ -59,7 +59,7 @@ export function createLevelCompletionRewardShell(input: {
   const panel = htmlElement("section", "aq-modal aq-level-reward-modal", [
     htmlElement("h2", "aq-modal-title aq-level-reward-title", [`Level ${formatNumber(input.completedLevel)} Complete!`]),
     htmlElement("div", "aq-level-reward-medallion", [formatNumber(input.nextLevel)]),
-    htmlElement("p", "aq-modal-line aq-level-reward-detail", [`Tank reached Level ${formatNumber(input.nextLevel)}.`]),
+    htmlElement("p", "aq-modal-line aq-level-reward-detail", [`Level ${formatNumber(input.nextLevel)} unlocked!`]),
     htmlElement("div", "aq-level-reward-card-grid", rewardCards.map(createLevelRewardCard)),
     htmlElement("div", "aq-modal-actions single", [closeButton])
   ]);
@@ -75,6 +75,11 @@ function createLevelRewardCard(reward: LevelCompletionRewardCard): HTMLElement {
     htmlElement("strong", "aq-level-reward-card-title", [reward.title]),
     htmlElement("span", "aq-level-reward-card-detail", [reward.detail])
   ]);
+}
+
+function shortRewardDetail(detail: string): string {
+  const firstLine = detail.split(/[\n.]/)[0]?.trim() ?? "";
+  return firstLine || "Prize won!";
 }
 
 function modalShell(className: string): HTMLDivElement {

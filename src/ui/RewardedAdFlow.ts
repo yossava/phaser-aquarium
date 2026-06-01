@@ -34,13 +34,13 @@ export function syncRewardedAdModalView(input: {
   input.countdownText.textContent = formatNumber(remainingSeconds);
   if (input.ad.cooldown === true) {
     input.claimButton.disabled = true;
-    input.claimButton.textContent = `Cooldown ${formatNumber(remainingSeconds)}s`;
+    input.claimButton.textContent = `Wait ${formatNumber(remainingSeconds)}s`;
     return;
   }
   if (remainingSeconds <= 0) {
     input.countdownText.textContent = "Ready";
     input.claimButton.disabled = false;
-    input.claimButton.textContent = "Claim Reward";
+    input.claimButton.textContent = "Grab Prize";
     return;
   }
 

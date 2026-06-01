@@ -570,8 +570,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   private get tankLevel(): number { return this.aquariumTankController().tankLevel; }
   private set tankLevel(value: number) { this.aquariumTankController().tankLevel = value; }
   private get ownedTankLevels(): Set<number> { return this.aquariumTankController().ownedTankLevels; }
+  private set ownedTankLevels(value: Set<number>) { this.aquariumTankController().ownedTankLevels = value; }
   private get tankNames(): Map<number, string> { return this.aquariumTankController().tankNames; }
+  private set tankNames(value: Map<number, string>) { this.aquariumTankController().tankNames = value; }
   private get tankStates(): Map<number, TankRuntimeState> { return this.aquariumTankController().tankStates; }
+  private set tankStates(value: Map<number, TankRuntimeState>) { this.aquariumTankController().tankStates = value; }
   private get tankMenuTab(): TankMenuTab { return this.aquariumTankController().tankMenuTab; }
   private set tankMenuTab(value: TankMenuTab) { this.aquariumTankController().tankMenuTab = value; }
   private get tankMenuDrillOpen(): boolean { return this.aquariumTankController().tankMenuDrillOpen; }
@@ -1829,36 +1832,32 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.createDrillMenuCard(
         menuIconAssetPathByKey["ui-game"],
         "Treasure Spin",
-        "Spin for fish, coins, helpers, and supplies.",
         () => this.openPrizeMachineArcade()
       ),
       this.createDrillMenuCard(
         menuIconAssetPathByKey["ui-game"],
         "Bubble Pop",
-        "Tap bubbles for quick coins.",
         () => this.openBubblePopGame()
       ),
       this.createDrillMenuCard(
         menuIconAssetPathByKey["ui-game"],
         "Reef Drop",
-        "Drop helpers onto matching reef bricks for rewards.",
         () => this.openReefDropGame()
       )
     );
     content.append(grid);
   }
 
-  private createDrillMenuCard(icon: string, label: string, description: string, action: () => void): HTMLButtonElement {
+  private createDrillMenuCard(icon: string, label: string, action: () => void): HTMLButtonElement {
     return createDrillMenuCardView({
       icon,
       label,
-      description,
       action,
       createButton: (buttonLabel, className, onClick, disabled) => this.htmlButton(buttonLabel, className, onClick, disabled)
     });
   }
 
-  private createFusionDrillMenuCard(description: string, action: () => void): HTMLButtonElement {
+  private createFusionDrillMenuCard(action: () => void): HTMLButtonElement {
     const button = this.htmlButton("", "aq-main-menu-card aq-kids-card-groove", action);
     const iconWrap = htmlElement("span", "aq-main-menu-icon-wrap aq-fusion-menu-icon-wrap", [
       htmlImage("/assets/fish/goldfish.png", "", "aq-main-menu-icon aq-fusion-menu-fish left"),
@@ -1866,8 +1865,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     ]);
     button.append(
       iconWrap,
-      htmlElement("span", "aq-main-menu-label", ["Fusion"]),
-      htmlElement("span", "aq-drill-menu-description", [description])
+      htmlElement("span", "aq-main-menu-label", ["Fusion"])
     );
     return button;
   }
@@ -1878,7 +1876,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.htmlButton("< BACK", "aq-store-back-button", onBack),
       htmlElement("div", "min-w-0 flex-1", [
         htmlElement("div", "truncate text-sm font-black leading-tight text-white", [title]),
-        htmlElement("div", "truncate text-[10px] font-bold text-cyan-100/70", ["Choose an item"])
+    htmlElement("div", "truncate text-xs font-bold text-cyan-100/70", ["Choose an item"])
       ])
     );
     return row;
@@ -2513,8 +2511,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     });
     return createInventoryCategoryGridView({
       items,
-      createDrillMenuCard: (icon, label, description, action) => this.createDrillMenuCard(icon, label, description, action),
-      createFusionDrillMenuCard: (description, action) => this.createFusionDrillMenuCard(description, action),
+      createDrillMenuCard: (icon, label, action) => this.createDrillMenuCard(icon, label, action),
+      createFusionDrillMenuCard: (action) => this.createFusionDrillMenuCard(action),
       onSelectTab: (tab) => {
         this.inventoryTab = tab;
         this.inventoryDrillOpen = true;

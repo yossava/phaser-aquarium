@@ -44,13 +44,13 @@ export function createMakeupPanel(input: {
   onDecorScroll: (scrollLeft: number) => void;
 }): MakeupPanelResult {
   const button = makeupButtonFactory(input.attachTouchFeedback);
-  const panel = htmlElement("section", "aq-makeup-panel");
+  const panel = htmlElement("section", "aq-makeup-panel aq-texture-noise");
   panel.append(
     htmlElement("div", "aq-makeup-header", [
-      htmlElement("div", "aq-makeup-title-block", [
+      gameSurface(htmlElement("div", "aq-makeup-title-block aq-kids-panel-groove aq-panel border-t-4 border-amber-300", [
         htmlElement("h2", "aq-makeup-title", ["Makeup"]),
         input.totalCostElement
-      ]),
+      ])),
       button("Apply", "good", input.onApply),
       button("Close", "danger", input.onClose)
     ])
@@ -80,11 +80,11 @@ function createMakeupSectionPicker(
   input: Parameters<typeof createMakeupPanel>[0],
   button: MakeupButtonFactory
 ): HTMLElement {
-  return htmlElement("div", "aq-makeup-section-picker", [
+  return gameSurface(htmlElement("div", "aq-makeup-section-picker aq-kids-panel-groove aq-panel border-t-4 border-amber-300", [
     createMakeupSectionCard("Background", "/assets/ui/menu/menu_background_icon.png", () => input.onSetSection("background"), button),
     createMakeupSectionCard("Bed", "/assets/ui/menu/menu_seabed_icon.png", () => input.onSetSection("seabed"), button),
     createMakeupSectionCard("Decor", "/assets/decorations/amethyst-cluster.png", () => input.onSetSection("decor"), button)
-  ]);
+  ]));
 }
 
 function createMakeupSectionCard(label: string, icon: string, action: () => void, button: MakeupButtonFactory): HTMLButtonElement {
@@ -109,7 +109,7 @@ function createMakeupDecorTools(
   input.decorationTypes.forEach((decorationType, index) => {
     strip.append(createMakeupDecorCard(input, decorationType, index, index === input.draft.selectedDecorationTypeIndex, button));
   });
-  return htmlElement("div", "aq-makeup-decor-tools", [
+  return htmlElement("div", "aq-makeup-decor-tools aq-texture-noise", [
     strip,
     button("Add", "good", input.onAddDecoration)
   ]);
@@ -125,7 +125,7 @@ function createMakeupSelectedDecorationSettings(
     return undefined;
   }
 
-  return htmlElement("div", "aq-makeup-decoration-settings", [
+  return gameSurface(htmlElement("div", "aq-makeup-decoration-settings aq-kids-panel-groove aq-panel border-t-4 border-amber-300", [
     htmlElement("div", "aq-makeup-size-row", [
       ...input.decorationSizeOrder.map((size) =>
         button(
@@ -140,7 +140,7 @@ function createMakeupSelectedDecorationSettings(
       button("Front", "muted", () => input.onMoveSelectedDecorationDepth(1), selectedDecorationIndex === input.draft.decorations.length - 1),
       button("Remove", "danger", input.onRemoveSelectedDecoration)
     ])
-  ]);
+  ]));
 }
 
 function createMakeupDecorCard(
@@ -150,8 +150,10 @@ function createMakeupDecorCard(
   selected: boolean,
   button: MakeupButtonFactory
 ): HTMLButtonElement {
-  const card = button("", `photo-card ${selected ? "selected" : ""}`, () => input.onSetDecorationTypeIndex(index, input.decorScrollLeft));
-  const preview = htmlElement("span", "aq-makeup-cosmetic-photo");
+  const card = button("", `photo-card aq-kids-card-groove ${selected ? "selected" : ""}`, () =>
+    input.onSetDecorationTypeIndex(index, input.decorScrollLeft)
+  );
+  const preview = hexPreviewSurface(htmlElement("span", "aq-makeup-cosmetic-photo"));
   preview.append(
     htmlImage(`/assets/decorations/${decorationType.id}.png`, "", "aq-makeup-cosmetic-image contain"),
     htmlImage(input.rarityIconPath(decorationType.rarity), "", "aq-makeup-cosmetic-rarity")
@@ -171,7 +173,7 @@ function createMakeupCosmeticCardPicker(
 ): HTMLElement {
   const cosmetics = input.tankCosmetics(category);
   const selectedAsset = input.selectedCosmetic(category);
-  const strip = htmlElement("div", "aq-makeup-cosmetic-strip");
+  const strip = htmlElement("div", "aq-makeup-cosmetic-strip aq-panel aq-texture-noise");
   const restoreScrollLeft = category === "background" ? input.backgroundScrollLeft : 0;
   strip.scrollLeft = restoreScrollLeft;
   strip.addEventListener("scroll", () => {
@@ -188,7 +190,7 @@ function createMakeupCosmeticCardPicker(
 
   return htmlElement("div", "aq-makeup-cosmetic-card-tools", [
     strip,
-    makeupTintControl(input, category, "vertical")
+    gameSurface(makeupTintControl(input, category, "vertical"))
   ]);
 }
 
@@ -200,11 +202,11 @@ function createMakeupCosmeticCard(
   selected: boolean,
   button: MakeupButtonFactory
 ): HTMLButtonElement {
-  const card = button("", `photo-card ${selected ? "selected" : ""}`, () =>
+  const card = button("", `photo-card aq-kids-card-groove ${selected ? "selected" : ""}`, () =>
     input.onSetCosmeticIndex(category, index, category === "background" ? input.backgroundScrollLeft : undefined)
   );
   const imageUrl = input.tankCosmeticImageUrl(asset);
-  const preview = htmlElement("span", "aq-makeup-cosmetic-photo");
+  const preview = hexPreviewSurface(htmlElement("span", "aq-makeup-cosmetic-photo"));
   if (imageUrl) {
     preview.append(htmlImage(imageUrl, "", "aq-makeup-cosmetic-image"));
   } else {
@@ -277,7 +279,7 @@ function makeupButtonFactory(attachTouchFeedback: (element: HTMLElement, compact
   return (label, tone, onClick, disabled = false) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `aq-makeup-button ${tone}`;
+    button.className = `aq-makeup-button arcade-button ${tone}`;
     button.disabled = disabled;
     button.textContent = label;
     attachTouchFeedback(button, true);
@@ -293,4 +295,16 @@ function makeupButtonFactory(attachTouchFeedback: (element: HTMLElement, compact
     });
     return button;
   };
+}
+
+function gameSurface<T extends HTMLElement>(element: T): T {
+  element.style.backdropFilter = "none";
+  return element;
+}
+
+function hexPreviewSurface<T extends HTMLElement>(element: T): T {
+  element.classList.add("aq-kids-card-groove");
+  element.style.backdropFilter = "none";
+  element.style.boxShadow = "inset 0 2px 0 rgba(255,255,255,0.18), inset 0 -4px 0 rgba(2,20,36,0.38)";
+  return element;
 }

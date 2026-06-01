@@ -13,7 +13,7 @@ export function createQuestList(
 ): HTMLElement {
   const list = htmlElement("div", "aq-quest-list");
   if (goals.length === 0) {
-    list.append(createPageEmptyCard("All quests complete", "Come back tomorrow for a fresh route through the tank."));
+    list.append(createPageEmptyCard("All quests complete", "Come back tomorrow for more tank fun!"));
     return list;
   }
 

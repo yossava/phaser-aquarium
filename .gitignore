@@ -44,3 +44,4 @@ Thumbs.db
 .npm/
 .pnpm-store/
 .omo/*
+tests/*

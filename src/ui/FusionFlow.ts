@@ -84,7 +84,7 @@ export function createInventoryFusionPage(input: InventoryFusionPageFlow): HTMLE
     const savedResult = input.pageResult();
     const resultFish = savedResult ? fishTypes.find((fishType) => fishType.id === savedResult.fishTypeId) : undefined;
     if (!resultFish || !savedResult) {
-      outputStage.replaceChildren(createFusionMachinePlaceholder("Choose two fish to reveal Normal and Premium outcomes."));
+      outputStage.replaceChildren(createFusionMachinePlaceholder("Pick 2 fish to see prizes."));
       return;
     }
     outputStage.replaceChildren(
@@ -139,14 +139,14 @@ export function createInventoryFusionPage(input: InventoryFusionPageFlow): HTMLE
           })
         );
       } else {
-        outputStage.replaceChildren(createFusionMachinePlaceholder("No un-owned fish available."));
+        outputStage.replaceChildren(createFusionMachinePlaceholder("No new fish yet."));
       }
     } else {
       renderSavedResult();
     }
   };
 
-  previewButton = createHtmlButton("Select 2 Fish", "aq-fusion-preview-button", () => {
+  previewButton = createHtmlButton("Select 2 Fish", "aq-fusion-preview-button aq-buy", () => {
     const selected = selectedSources();
     if (selected.length !== 2) {
       return;
@@ -187,13 +187,13 @@ export function createInventoryFusionPage(input: InventoryFusionPageFlow): HTMLE
         input.setSelectedKeys(new Set());
         outputStage.style.removeProperty("--aq-fusion-duration");
         updatePreviewSelection();
-        outputStage.replaceChildren(createFusionMachinePlaceholder("Fusion source changed. Select two fish again."));
+        outputStage.replaceChildren(createFusionMachinePlaceholder("Pick 2 fish again."));
         return;
       }
       if (!input.spendPrice(fusionCost)) {
         outputStage.style.removeProperty("--aq-fusion-duration");
         updatePreviewSelection();
-        outputStage.replaceChildren(createFusionMachinePlaceholder(`Need ${formatPrice(fusionCost)} to fuse.`));
+        outputStage.replaceChildren(createFusionMachinePlaceholder(`Need ${formatPrice(fusionCost)}.`));
         return;
       }
       const resultType = resultOutcome.fishType;
@@ -290,8 +290,8 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
   shell.addEventListener("click", stopEvent);
 
   const selectedLabel = htmlElement("p", "aq-modal-line aq-fusion-selected", ["Select 2 fish"]);
-  const resultStage = htmlElement("div", "aq-fusion-result-stage", [
-    htmlElement("p", "aq-fusion-result-copy", ["Select 2 fish to preview the result."])
+  const resultStage = htmlElement("div", "aq-fusion-result-stage aq-panel aq-glowing", [
+    htmlElement("p", "aq-fusion-result-copy", ["Pick 2 fish to see prizes."])
   ]);
   const sourceGrid = htmlElement("div", "aq-fusion-source-grid");
   let fuseButton: HTMLButtonElement;
@@ -312,16 +312,16 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
           createFusionResultCandidate({ label: "Normal", fishType: resultTypes.normal, chance: chances.normal }),
           resultTypes.premium
             ? createFusionResultCandidate({ label: "Premium", fishType: resultTypes.premium, chance: chances.premium })
-            : htmlElement("div", "aq-fusion-result-card unavailable", [
+            : htmlElement("div", "aq-fusion-result-card unavailable aq-kids-card-groove border-t-2 border-t-amber-300/80", [
               htmlElement("span", "aq-fusion-result-tier", ["Premium"]),
-              htmlElement("p", "aq-fusion-result-copy", ["No premium fish available"])
+              htmlElement("p", "aq-fusion-result-copy", ["No Premium yet"])
             ])
         ]),
-        htmlElement("p", "aq-fusion-result-copy", [`Age ${input.ageLabel(inheritedAge)} | Always succeeds`])
+        htmlElement("p", "aq-fusion-result-copy", [`Age ${input.ageLabel(inheritedAge)} | Always works`])
       );
     } else {
       resultStage.replaceChildren(
-        htmlElement("p", "aq-fusion-result-copy", [selected.length === 2 ? "No un-owned fish available." : "Select 2 fish to preview the result."])
+        htmlElement("p", "aq-fusion-result-copy", [selected.length === 2 ? "No new fish yet." : "Pick 2 fish to see prizes."])
       );
     }
     sourceGrid.querySelectorAll<HTMLButtonElement>(".aq-fusion-source-button").forEach((button) => {
@@ -330,7 +330,7 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
   };
 
   sources.forEach((source) => {
-    const sourceButton = createHtmlButton("", "aq-fusion-source-button", () => {
+    const sourceButton = createHtmlButton("", "aq-fusion-source-button aq-kids-card-groove border-t-2 border-t-amber-300/80", () => {
       if (selectedKeys.has(source.key)) {
         selectedKeys.delete(source.key);
       } else if (selectedKeys.size < 2) {
@@ -350,7 +350,7 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
   const closeButton = createHtmlButton("Cancel", "aq-modal-button muted", input.closeModal, {
     attachTouchFeedback: input.attachTouchFeedback
   });
-  fuseButton = createHtmlButton("FUSE", "aq-modal-button good", () => {
+  fuseButton = createHtmlButton("FUSE", "aq-modal-button good aq-buy", () => {
     const selected = selectedSources();
     if (selected.length !== 2) {
       return;
@@ -398,13 +398,13 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
         resultStage.classList.remove("processing");
         selectedKeys.clear();
         unlockFusionControls();
-        resultStage.replaceChildren(htmlElement("p", "aq-fusion-result-copy", ["Fusion source changed. Select two fish again."]));
+        resultStage.replaceChildren(htmlElement("p", "aq-fusion-result-copy", ["Pick 2 fish again."]));
         return;
       }
       if (!input.spendPrice(fusionCost)) {
         resultStage.classList.remove("processing");
         unlockFusionControls();
-        resultStage.replaceChildren(htmlElement("p", "aq-fusion-result-copy", [`Need ${formatPrice(fusionCost)} to fuse.`]));
+        resultStage.replaceChildren(htmlElement("p", "aq-fusion-result-copy", [`Need ${formatPrice(fusionCost)}.`]));
         return;
       }
       const resultType = resultOutcome.fishType;
@@ -412,7 +412,7 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
       resultStage.classList.remove("processing");
       resultStage.replaceChildren(
         htmlImage(`/assets/fish/${resultType.id}.png`, "", "aq-fusion-result-image"),
-        htmlElement("p", "aq-fusion-result-copy success", [`${resultOutcome.label} success: ${resultType.name} inventory | ${input.ageLabel(inheritedAge)}`])
+        htmlElement("p", "aq-fusion-result-copy success", [`${resultOutcome.label}: ${resultType.name} | ${input.ageLabel(inheritedAge)}`])
       );
       closeButton.textContent = "Close";
       closeButton.disabled = false;
@@ -433,8 +433,8 @@ export function createFishFusionModal(input: FishFusionModalFlow): HTMLDivElemen
       htmlElement("span", "aq-fusion-modal-badge", ["Fusion Lab"]),
       htmlElement("h2", "aq-modal-title aq-fusion-modal-title", ["Preview Results"])
     ]),
-    htmlElement("div", "aq-modal-body aq-fusion-modal-body", [
-      htmlElement("p", "aq-modal-line", ["Cost is shown on the Fuse button. Fusion always succeeds. Close-age fish have better Premium chance."]),
+    htmlElement("div", "aq-modal-body aq-fusion-modal-body aq-panel aq-kids-panel-groove", [
+      htmlElement("p", "aq-modal-line", ["Pick 2 fish. Close ages boost Premium!"]),
       selectedLabel,
       sourceGrid,
       resultStage

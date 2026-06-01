@@ -118,16 +118,16 @@ export function createHtmlHudOverlay(input: {
   const wallet = document.createElement("div");
   wallet.className = "aq-game-wallet-grid";
   const commonText = createHudChip(wallet, "/assets/ui/shop/coin_icon_common.png", "Common", input.prepareInfoTarget, [
-    "Common coins are the basic money used for early fish, food, medicine, decorations, and starter tank items.",
-    "Most young fish produce common coins."
+    "Common coins buy fish, food, medicine, decorations, and starter tank stuff.",
+    "Most little fish make common coins."
   ]);
   const rareText = createHudChip(wallet, "/assets/ui/shop/coin_icon_rare.png", "Rare", input.prepareInfoTarget, [
-    "Rare currency is used for stronger rare fish and higher-value shop items.",
-    "It comes from quests, ads, events, and later reward systems."
+    "Rare coins buy special fish and shiny shop goodies.",
+    "Get them from quests, ads, events, and level-up prizes."
   ]);
   const superRareText = createHudChip(wallet, "/assets/ui/shop/coin_icon_super_rare.png", "Super Rare", input.prepareInfoTarget, [
-    "Super rare diamonds are premium progression currency for the most valuable fish and items.",
-    "They come from special quests, ads, events, and late progression rewards."
+    "Super rare diamonds are bonus coins for very special fish and goodies.",
+    "Get them from special quests, ads, events, and big level-up prizes."
   ]);
 
   const timeCurrent = createTimeCurrentIndicator(input.timeCurrentIconPath, input.prepareInfoTarget);

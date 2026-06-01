@@ -5,13 +5,13 @@ import type { FishFusionSource } from "../game/fish-fusion";
 import type { FishType } from "../types/mechanics";
 
 export function createFusionPageRoot(): HTMLElement {
-  const root = htmlElement("div", "aq-fusion-page");
+  const root = htmlElement("div", "aq-fusion-page aq-panel aq-kids-panel-groove");
   root.append(createFusionHero());
   return root;
 }
 
 export function createFusionHero(): HTMLElement {
-  return htmlElement("section", "aq-fusion-hero", [
+  return htmlElement("section", "aq-fusion-hero aq-kids-card-groove border-t-2 border-t-amber-300/80", [
     htmlElement("div", "aq-fusion-hero-art", [
       htmlImage("/assets/fish/goldfish.png", "", "aq-fusion-hero-fish left"),
       htmlImage("/assets/fish/guppy.png", "", "aq-fusion-hero-fish right"),
@@ -19,7 +19,7 @@ export function createFusionHero(): HTMLElement {
     ]),
     htmlElement("div", "aq-fusion-hero-copy", [
       htmlElement("h2", "aq-fusion-hero-title", ["Select 2 Fish for Fusion"]),
-      htmlElement("p", "aq-fusion-hero-meta", ["Guaranteed fusion. Premium chance rewards close ages."])
+      htmlElement("p", "aq-fusion-hero-meta", ["Pick 2 fish. Close ages boost Special!"])
     ])
   ]);
 }
@@ -30,7 +30,7 @@ export function createFusionMachine(input: {
   previewButton: HTMLButtonElement;
 }): HTMLElement[] {
   return [
-    htmlElement("section", "aq-fusion-machine", [
+    htmlElement("section", "aq-fusion-machine aq-panel aq-kids-panel-groove border-t-2 border-t-amber-300/80", [
       input.selectedDock,
       htmlElement("div", "aq-fusion-result-divider", [
         htmlElement("span", "aq-fusion-result-divider-line"),
@@ -39,8 +39,8 @@ export function createFusionMachine(input: {
       ]),
       input.outputStage,
       htmlElement("div", "aq-fusion-stat-strip", [
-        htmlElement("span", "aq-fusion-stat-pill", ["Always succeeds"]),
-        htmlElement("span", "aq-fusion-stat-pill", ["Premium rewards close ages"])
+        htmlElement("span", "aq-fusion-stat-pill", ["Always works"]),
+        htmlElement("span", "aq-fusion-stat-pill", ["Close ages = bonus"])
       ])
     ]),
     htmlElement("div", "aq-fusion-action-bar", [input.previewButton])
@@ -48,8 +48,8 @@ export function createFusionMachine(input: {
 }
 
 export function createFusionOutputStage(): HTMLElement {
-  return htmlElement("div", "aq-fusion-machine-output", [
-    createFusionMachinePlaceholder("Choose two fish to reveal Normal and Premium outcomes.")
+  return htmlElement("div", "aq-fusion-machine-output aq-panel aq-glowing", [
+    createFusionMachinePlaceholder("Pick 2 fish to see prizes.")
   ]);
 }
 
@@ -66,7 +66,7 @@ export function createFusionSelectedDockChildren(input: {
 }): HTMLElement[] {
   return [0, 1].flatMap((slotIndex) => {
     const source = input.selected[slotIndex];
-    const slotButton = createHtmlButton("", `aq-fusion-selected-slot ${source ? "filled" : ""}`, () => {
+    const slotButton = createHtmlButton("", `aq-fusion-selected-slot aq-kids-card-groove border-t-2 border-t-amber-300/80 ${source ? "filled" : ""}`, () => {
       input.onPickSlot(slotIndex as 0 | 1, input.sources);
     }, { attachTouchFeedback: input.attachTouchFeedback });
     slotButton.append(...(source
@@ -97,11 +97,11 @@ export function createFusionFinalResult(input: {
   ageSeconds: number;
   ageLabel: (seconds: number) => string;
 }): HTMLElement {
-  return htmlElement("div", "aq-fusion-final-result", [
+  return htmlElement("div", "aq-fusion-final-result aq-glowing", [
     htmlElement("span", "aq-fusion-result-tier", [input.label]),
     htmlImage(`/assets/fish/${input.fishType.id}.png`, "", "aq-fusion-result-image"),
     htmlElement("p", "aq-fusion-result-name", [input.fishType.name]),
-    htmlElement("p", "aq-fusion-result-copy success", [`Inventory | ${input.ageLabel(input.ageSeconds)}`])
+    htmlElement("p", "aq-fusion-result-copy success", [`Ready! ${input.ageLabel(input.ageSeconds)}`])
   ]);
 }
 
@@ -110,18 +110,18 @@ export function createFusionResultCandidate(input: {
   fishType: FishType;
   chance: number;
 }): HTMLElement {
-  return htmlElement("div", "aq-fusion-result-card", [
+  return htmlElement("div", "aq-fusion-result-card aq-kids-card-groove border-t-2 border-t-amber-300/80", [
     htmlElement("span", "aq-fusion-result-tier", [input.label]),
     htmlImage(`/assets/fish/${input.fishType.id}.png`, "", "aq-fusion-result-image"),
     htmlElement("p", "aq-fusion-result-name", [input.fishType.name]),
-    htmlElement("p", "aq-fusion-result-copy", [`Chance ${fusionChanceLabel(input.chance)}`])
+    htmlElement("p", "aq-fusion-result-copy", [`Odds ${fusionChanceLabel(input.chance)}`])
   ]);
 }
 
 export function createUnavailablePremiumFusionResult(): HTMLElement {
-  return htmlElement("div", "aq-fusion-result-card unavailable", [
-    htmlElement("span", "aq-fusion-result-tier", ["Premium"]),
-    htmlElement("p", "aq-fusion-result-copy", ["No premium fish available"])
+  return htmlElement("div", "aq-fusion-result-card unavailable aq-kids-card-groove border-t-2 border-t-amber-300/80", [
+    htmlElement("span", "aq-fusion-result-tier", ["Special"]),
+    htmlElement("p", "aq-fusion-result-copy", ["No Special yet"])
   ]);
 }
 
@@ -138,10 +138,10 @@ export function createFusionResultList(input: {
     htmlElement("div", "aq-fusion-machine-results", [
       createFusionResultCandidate({ label: "Normal", fishType: input.normal, chance: input.normalChance }),
       input.premium
-        ? createFusionResultCandidate({ label: "Premium", fishType: input.premium, chance: input.premiumChance })
+        ? createFusionResultCandidate({ label: "Special", fishType: input.premium, chance: input.premiumChance })
         : createUnavailablePremiumFusionResult()
     ]),
-    htmlElement("p", "aq-fusion-machine-meta", [`Result age ${input.ageLabel(input.ageSeconds)} | Cost C${formatNumber(input.costAmount)}`])
+    htmlElement("p", "aq-fusion-machine-meta", [`Age ${input.ageLabel(input.ageSeconds)} | Price C${formatNumber(input.costAmount)}`])
   ];
 }
 
@@ -149,22 +149,22 @@ export function createFusionLoadingChamber(input: {
   leftFishType: FishType;
   rightFishType: FishType;
 }): HTMLElement {
-  return htmlElement("div", "aq-fusion-chamber", [
+  return htmlElement("div", "aq-fusion-chamber aq-glowing", [
     htmlElement("div", "aq-fusion-chamber-window", [
       htmlImage(`/assets/fish/${input.leftFishType.id}.png`, "", "aq-fusion-chamber-fish left"),
       htmlElement("div", "aq-fusion-chamber-core"),
       htmlImage(`/assets/fish/${input.rightFishType.id}.png`, "", "aq-fusion-chamber-fish right")
     ]),
     htmlElement("div", "aq-fusion-chamber-status", [
-      htmlElement("span", "", ["Mixing DNA"]),
+      htmlElement("span", "", ["Mixing..."]),
       htmlElement("span", "", ["Growing fins"]),
       htmlElement("span", "", ["Final shine"])
     ]),
     htmlElement("div", "aq-fusion-chamber-progress", [
       htmlElement("span")
     ]),
-    htmlElement("p", "aq-fusion-loading-title", ["Fusion in progress"]),
-    htmlElement("p", "aq-fusion-result-copy", ["Preparing your new inventory fish"])
+    htmlElement("p", "aq-fusion-loading-title", ["Fusing!"]),
+    htmlElement("p", "aq-fusion-result-copy", ["New fish coming!"])
   ]);
 }
 
@@ -188,7 +188,7 @@ export function createFusionFishPickerShell(input: {
   const grid = htmlElement("div", "aq-fusion-picker-grid");
   input.sources.forEach((source) => {
     const selected = input.selectedKeys.has(source.key);
-    const sourceButton = createHtmlButton("", `aq-fusion-preview-card ${selected ? "selected" : ""}`, () => input.onChoose(source), {
+    const sourceButton = createHtmlButton("", `aq-fusion-preview-card aq-kids-card-groove border-t-2 border-t-amber-300/80 ${selected ? "selected" : ""}`, () => input.onChoose(source), {
       attachTouchFeedback: input.attachTouchFeedback
     });
     sourceButton.append(
@@ -206,7 +206,7 @@ export function createFusionFishPickerShell(input: {
     htmlElement("section", "aq-modal aq-fusion-picker-modal", [
       htmlElement("div", "aq-fusion-modal-header", [
         htmlElement("span", "aq-fusion-modal-badge", [`Slot ${formatNumber(input.slotIndex + 1)}`]),
-        htmlElement("h2", "aq-modal-title aq-fusion-modal-title", ["Choose Fish"])
+        htmlElement("h2", "aq-modal-title aq-fusion-modal-title", ["Pick Fish"])
       ]),
       htmlElement("div", "aq-modal-body aq-fusion-picker-body", [grid]),
       htmlElement("div", "aq-modal-actions single", [closeButton])

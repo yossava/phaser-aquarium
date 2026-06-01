@@ -20,8 +20,7 @@ export function createStarterProtectedSellModalContent(input: {
   return {
     title: "Starter Protected",
     lines: [
-      "Keep at least one fish in the tank.",
-      "Buy another fish before selling this one."
+      "Keep one fish in the tank."
     ],
     actions: [{ label: "OK", fill: 0x356a35, action: input.onClose }]
   };
@@ -217,13 +216,12 @@ export function createResetConfirmationModalContent(input: {
   onCancel: () => void;
 }): ModalContent {
   return {
-    title: "Reset Save",
+    title: "Start Over",
     lines: [
-      "This clears the local aquarium save on this device.",
-      "The page will return to the starter wallet."
+      "Clear your aquarium and start fresh?"
     ],
     actions: [
-      { label: "Reset", fill: 0x76512d, action: input.onReset },
+      { label: "Start Over", fill: 0x76512d, action: input.onReset },
       { label: "Cancel", fill: 0x254d68, action: input.onCancel }
     ]
   };

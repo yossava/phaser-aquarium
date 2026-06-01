@@ -7,7 +7,7 @@ type Point = {
 
 export function createMakeupOverlay(onOutsidePointerDown: () => void): HTMLDivElement {
   const overlay = document.createElement("div");
-  overlay.className = "aq-makeup-overlay";
+  overlay.className = "aq-makeup-overlay aq-texture-noise";
   overlay.addEventListener("pointerdown", onOutsidePointerDown);
   document.body.appendChild(overlay);
   return overlay;

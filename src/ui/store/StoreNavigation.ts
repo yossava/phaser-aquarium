@@ -40,7 +40,7 @@ export function createStoreDrillHeader(title: string, subtitle: string, onBack: 
     button("← BACK", "aq-store-back-button", onBack),
     htmlElement("div", "min-w-0 flex-1", [
       htmlElement("div", "truncate text-sm font-black leading-tight text-white", [title]),
-      htmlElement("div", "truncate text-[10px] font-bold text-cyan-100/70", [subtitle])
+    htmlElement("div", "truncate text-xs font-bold text-cyan-100/70", [subtitle])
     ])
   );
   return row;
@@ -70,22 +70,22 @@ export function storeProductTitle(activeTab: StoreTab, tankCategory: TankStoreCa
 
 function storeCategoryDescription(tab: StoreTab): string {
   const descriptions: Record<StoreTab, string> = {
-    fish: "Collect fish for this tank",
-    food: "Food for each fish size",
-    supply: "Medicine and growth tonic",
-    tank: "Themes, tools, and decor for your tank",
+    fish: "New fish friends!",
+    food: "Feed your fish",
+    supply: "Medicine & potions",
+    tank: "Tank stuff & tools",
     decor: "Tank decorations",
-    creature: "Helper pets and cleaners"
+    creature: "Helper pets"
   };
   return descriptions[tab];
 }
 
 function tankCategoryDescription(category: TankStoreCategory): string {
   const descriptions: Record<TankStoreCategory, string> = {
-    background: "Change the rear aquarium scene",
-    seabed: "Change the sand and floor",
-    tools: "Functional aquarium utilities",
-    decorations: "Plants, rocks, air stones, and ornaments"
+    background: "Tank backgrounds",
+    seabed: "Sand & floor",
+    tools: "Tank tools",
+    decorations: "Plants & ornaments"
   };
   return descriptions[category];
 }

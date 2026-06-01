@@ -43,8 +43,8 @@ export type AlbumPageOptions<Tab extends string> = {
 
 export type InventoryCategoryGridOptions<Tab extends string> = {
   items: Array<InventoryCategoryItem<Tab>>;
-  createDrillMenuCard: (icon: string, label: string, description: string, action: () => void) => HTMLButtonElement;
-  createFusionDrillMenuCard: (description: string, action: () => void) => HTMLButtonElement;
+  createDrillMenuCard: (icon: string, label: string, action: () => void) => HTMLButtonElement;
+  createFusionDrillMenuCard: (action: () => void) => HTMLButtonElement;
   onSelectTab: (tab: Tab) => void;
 };
 
@@ -85,21 +85,20 @@ export function createInventoryCategoryGrid<Tab extends string>(options: Invento
   options.items.forEach((item) => {
     const action = () => options.onSelectTab(item.tab);
     grid.append(item.tab === "fusion"
-      ? options.createFusionDrillMenuCard(item.description, action)
-      : options.createDrillMenuCard(item.icon, item.label, item.description, action));
+      ? options.createFusionDrillMenuCard(action)
+      : options.createDrillMenuCard(item.icon, item.label, action));
   });
   return grid;
 }
 
 export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
-  const { fish, index, happinessPercent, rarityLabel, sellValue, createButton, onStore, onSell } = options;
-  const growthStatus = fish.isGrowthLimitedByTank() ? "Max screen size" : "Growing";
+  const { fish, index, rarityLabel, sellValue, createButton, onStore, onSell } = options;
+  const growthStatus = fish.isGrowthLimitedByTank() ? "Fullscreen" : "Growing";
   const row = htmlElement("article", "aq-album-row fish");
   const fullnessValue = Math.round(clampPercent(fish.fullnessRatio() * 100));
   const stats = htmlElement("div", "aq-album-stat-grid", [
     createAlbumTextStat("Power", `Lv ${formatNumber(fish.powerLevel())}`),
-    createAlbumBarStat("Full", fullnessValue, albumPositiveTone(fullnessValue)),
-    createAlbumBarStat("Happy", happinessPercent, albumPositiveTone(happinessPercent))
+    createAlbumBarStat("Full", fullnessValue, albumPositiveTone(fullnessValue))
   ]);
   const status = fish.hudStatusLabel();
   const imageWrap = htmlElement("div", `aq-album-fish-avatar is-${status}`, [
@@ -109,8 +108,8 @@ export function createFishAlbumRow(options: FishAlbumRowOptions): HTMLElement {
   imageWrap.title = `${fish.type.name}: ${status}`;
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [fish.type.name]),
-    htmlElement("p", "aq-album-row-meta", [`${fish.gender} | Power Lv ${formatNumber(fish.powerLevel())} | ${rarityLabel} | ${fish.state}`]),
-    htmlElement("p", "aq-album-row-copy", [`${growthStatus} | ${fish.lengthLabel()} | ${fish.weightLabel()} | ${fish.productionSummary()}`]),
+    htmlElement("p", "aq-album-row-meta", [`${rarityLabel} · ${fish.gender}`]),
+    htmlElement("p", "aq-album-row-copy", [growthStatus]),
     stats
   ]);
   row.append(
@@ -131,7 +130,7 @@ export function createHelperAlbumRow(options: HelperAlbumRowOptions): HTMLElemen
   const body = htmlElement("div", "aq-album-row-body", [
     htmlElement("h3", "aq-album-row-title", [helper.type.name]),
     htmlElement("p", "aq-album-row-meta", [`${rarityLabel} | ${role}`]),
-    htmlElement("p", "aq-album-row-copy", [`Speed ${formatNumber(helper.type.speed)} | Sell ${formatPrice(sellPrice)}`])
+    htmlElement("p", "aq-album-row-copy", [role])
   ]);
   row.append(
     htmlImage(`/assets/helpers/${helper.type.id}.png`, "", "aq-album-row-image helper"),

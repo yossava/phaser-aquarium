@@ -15,10 +15,10 @@ export function createMakeupCostElement(input: {
   coinAssetPathByType: Record<CoinType, string>;
 }): HTMLElement {
   if (input.priceWealth(input.price) <= 0) {
-    return htmlElement("div", "aq-makeup-cost", ["Cost Free"]);
+    return htmlElement("div", "aq-makeup-cost", ["Free"]);
   }
 
-  const row = htmlElement("div", "aq-makeup-cost aq-makeup-cost-icons", [htmlElement("span", "", ["Cost"])]);
+  const row = htmlElement("div", "aq-makeup-cost aq-makeup-cost-icons", [htmlElement("span", "", ["Price"])]);
   for (const [coinType, amount] of priceComponents(input.price)) {
     row.append(createCostChip(input.coinAssetPathByType, coinType, amount));
   }
@@ -31,7 +31,7 @@ export function createPriceIconRow(input: {
   priceWealth: (price: Price) => number;
   coinAssetPathByType: Record<CoinType, string>;
 }): HTMLElement {
-  const label = input.label ?? "Total price";
+  const label = input.label ?? "Price";
   if (input.priceWealth(input.price) <= 0) {
     return htmlElement("p", "aq-modal-line", [`${label}: Free`]);
   }

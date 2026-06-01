@@ -1,6 +1,5 @@
 import { foodAssetPath } from "../data/content";
 import { canAfford, formatNumber, formatPrice } from "../game/economy";
-import { fishPowerLevelForPrice } from "../game/economy-model";
 import { foodCssFilterFor } from "../game/visuals";
 import { isPhaseOneStoreFish, isPhaseOneStoreFood } from "../game/store-catalog";
 import type { FishType, FoodType, HelperCreatureType, StoreTab } from "../types/mechanics";
@@ -333,10 +332,9 @@ export class StoreOverlay {
           div("aq-card-title", [fish.name]),
           createStorePriceBadge(fish.price)
         ]),
-        div("aq-fish-power-inline", [`PWR ${formatNumber(powerLevel)}`]),
-        div("aq-card-meta", [`Power Lv ${formatNumber(powerLevel)} | baby size`]),
+        div("aq-fish-power-inline", [`Power ${formatNumber(powerLevel)}`]),
         button(
-          phaseLocked ? "Locked in Phase 1" : levelLocked ? `Need Tank L${formatNumber(requiredLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
+          phaseLocked ? "Coming Soon" : levelLocked ? `Tank Level ${formatNumber(requiredLevel)}` : hourlyLimitReached ? state.fishPurchaseRestockLabel : affordable ? "Buy Fish" : `Need ${formatPrice(fish.price)}`,
           "aq-buy w-full",
           () => this.actions.buyFish(fish),
           disabled
@@ -363,7 +361,7 @@ export class StoreOverlay {
       card.classList.add("opacity-70");
     }
     const buttonLabel = phaseLocked
-      ? "Locked in Phase 1"
+      ? "Coming Soon"
       : blockedByCooldown
       ? state.ageBoostRestockLabel
       : blockedByProductionBoostCooldown
@@ -404,16 +402,16 @@ export class StoreOverlay {
 
   private foodSupplyExplanation(foodId: string): string | undefined {
     if (foodId === "medicine") {
-      return "Heals sick fish when dropped in the tank.";
+      return "Heals sick fish";
     }
     if (foodId === "ageBoost") {
-      return "Speeds up one fish's growth after it eats the tonic.";
+      return "Speeds up growth";
     }
     if (foodId === "productionBoost") {
-      return "Pick a fish to boost coin production for 30s.";
+      return "Boosts coins 30s";
     }
     if (foodId === "timeCurrent") {
-      return "Doubles tank speed for 10 minutes. Age, production, hunger, and care move faster.";
+      return "2x speed · 10 min";
     }
     return undefined;
   }
@@ -434,9 +432,9 @@ export class StoreOverlay {
           div("aq-card-title", [creature.name]),
           createStorePriceBadge(creature.price)
         ]),
-        div("aq-card-meta", [`Owned ${formatNumber(owned)} · ${helperRole(creature)}`]),
+        div("aq-card-meta", [helperRole(creature)]),
         div("aq-card-copy", [creature.description]),
-        button(phaseLocked ? "Locked in Phase 1" : affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy w-full", () => this.actions.buyHelper(creature), phaseLocked || !affordable)
+        button(phaseLocked ? "Coming Soon" : owned > 0 ? `Owned: ${formatNumber(owned)}` : affordable ? "Hire Helper" : `Need ${formatPrice(creature.price)}`, "aq-buy w-full", () => this.actions.buyHelper(creature), phaseLocked || !affordable)
       ])
     );
     return card;
@@ -467,9 +465,8 @@ export class StoreOverlay {
           div("min-w-0 truncate text-sm font-black leading-tight", [cosmetic.name]),
           cosmetic.owned ? div("aq-chip text-xs", [cosmetic.active ? "Active" : "Owned"]) : createStorePriceBadge(cosmetic.price)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", [cosmetic.category === "background" ? "Tank Background" : "Tank Seabed"]),
-        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [cosmetic.owned ? "Install this look on the active tank." : "Buy and install on the active tank."]),
-        button(phaseLocked ? "Locked in Phase 1" : cosmetic.active ? "Current Look" : cosmetic.owned ? "Use Look" : affordable ? "Buy Look" : `Need ${formatPrice(cosmetic.price)}`, "aq-buy mt-auto w-full", () => {
+  div("mt-0.5 truncate text-xs font-bold text-cyan-100/80", [cosmetic.category === "background" ? "Tank Background" : "Tank Seabed"]),
+        button(phaseLocked ? "Coming Soon" : cosmetic.active ? "Current Look" : cosmetic.owned ? "Use Look" : affordable ? "Buy Look" : `Need ${formatPrice(cosmetic.price)}`, "aq-buy mt-auto w-full", () => {
           cosmetic.owned ? this.actions.switchTankCosmetic(cosmetic.category, cosmetic.id) : this.actions.buyTankCosmetic(cosmetic.category, cosmetic.id);
         }, phaseLocked || (!cosmetic.owned && !affordable))
       ])
@@ -511,9 +508,10 @@ export class StoreOverlay {
     const phaseLocked = state.phaseOneShopLimitActive && !utility.owned;
     const timed = Boolean(utility.durationLabel);
     const description = timed
-      ? `${utility.description} Duration: ${utility.durationLabel}.`
+      ? `${utility.description} Lasts: ${utility.durationLabel}.`
       : utility.description;
-    const purchaseLabel = timed ? "Rent Utility" : "Buy Utility";
+    const shortDescription = description.length > 40 ? `${description.slice(0, 37).trimEnd()}...` : description;
+    const purchaseLabel = timed ? "Rent" : "Buy";
     const card = createStoreBaseCard(storeItemTier("common", utility.price));
     if (phaseLocked) {
       card.classList.add("opacity-70");
@@ -525,9 +523,9 @@ export class StoreOverlay {
           div("min-w-0 truncate text-sm font-black leading-tight", [utility.name]),
           utility.owned ? div("aq-chip text-xs", ["Owned"]) : createStorePriceBadge(utility.price)
         ]),
-        div("mt-0.5 truncate text-[10px] font-bold text-cyan-100/80", ["Tank Utility"]),
-        div("mt-0.5 line-clamp-2 text-[10px] leading-tight text-cyan-50/90", [description]),
-        button(phaseLocked ? "Locked in Phase 1" : utility.owned ? utility.id === "food-dispenser" ? "Installed" : "Active" : affordable ? purchaseLabel : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
+  div("mt-0.5 truncate text-xs font-bold text-cyan-100/80", ["Tool"]),
+  div("mt-0.5 line-clamp-2 text-xs leading-tight text-cyan-50/90", [shortDescription]),
+        button(phaseLocked ? "Coming Soon" : utility.owned ? "Active" : affordable ? purchaseLabel : `Need ${formatPrice(utility.price)}`, "aq-buy mt-auto w-full", () => {
           if (!utility.owned) {
             this.actions.buyTankUtility(utility.id);
           }

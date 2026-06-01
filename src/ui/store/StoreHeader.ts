@@ -53,7 +53,7 @@ function createCurrencyChip(kind: CoinType | "wealth", amount: number): HTMLElem
   chip.append(
     htmlImage(iconByKind[kind], labelByKind[kind], "h-5 w-5 object-contain"),
     htmlElement("div", "min-w-0", [
-      htmlElement("div", "text-[10px] leading-none text-cyan-100/65", [labelByKind[kind]]),
+    htmlElement("div", "text-xs leading-none text-cyan-100/65", [labelByKind[kind]]),
       htmlElement("div", "text-sm leading-tight", [formatNumber(amount)])
     ])
   );

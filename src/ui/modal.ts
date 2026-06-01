@@ -75,16 +75,16 @@ export function createRewardedAdModalShell(options: {
 
   const panel = htmlElement("section", "aq-modal aq-ad-modal");
   panel.append(
-    htmlElement("h2", "aq-modal-title", ["Rewarded Ad"]),
+    htmlElement("h2", "aq-modal-title", ["Video Reward"]),
     htmlElement("div", "aq-ad-video", [
       htmlElement("div", "aq-ad-video-screen", [
         htmlImage(options.icon, "", "aq-ad-video-icon"),
-        htmlElement("span", "aq-ad-video-label", ["Sponsored Break"])
+        htmlElement("span", "aq-ad-video-label", ["Short Break"])
       ])
     ]),
     htmlElement("div", "aq-modal-body aq-ad-modal-body", [
       htmlElement("p", "aq-modal-line", [`Reward: ${options.rewardDetail}`]),
-      htmlElement("p", "aq-modal-line", ["Please wait until the ad finishes."])
+      htmlElement("p", "aq-modal-line", ["Almost done!"])
     ]),
     htmlElement("div", "aq-ad-countdown-wrap", [
       countdownText,
