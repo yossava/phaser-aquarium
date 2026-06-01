@@ -308,6 +308,9 @@ export class AquariumWalletController {
       ease: "Sine.easeInOut",
       onComplete: () => {
         this.host.magnetCollectingCoins.delete(coinToCollect);
+        if (!this.host.coinDrops.includes(coinToCollect)) {
+          return;
+        }
         this.host.recordDailyQuestAction("magnet-coin");
         this.collectCoin(coinToCollect, false);
       }

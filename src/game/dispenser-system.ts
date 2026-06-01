@@ -110,7 +110,11 @@ export function utilityExpiresAt(inventory: Map<string, number>, inventoryKey: s
 }
 
 export function activeUtilityRemainingMinutes(expiresAt: number, now = Date.now()): number {
-  return Math.max(1, Math.ceil(Math.max(0, expiresAt - now) / 60_000));
+  if (expiresAt <= now) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil((expiresAt - now) / 60_000));
 }
 
 export function tankUtilityStoreDefinitions(input: {

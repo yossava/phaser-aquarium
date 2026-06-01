@@ -314,6 +314,11 @@ function applyOfflineFishProduction(
 
 function applyOfflineFishCare(currentFish: Fish, elapsedSeconds: number, offlineDeaths: Fish[]): void {
   const hungerBeforeOffline = currentFish.hunger;
+  currentFish.hunger = Phaser.Math.Clamp(
+    currentFish.hunger + currentFish.hungerPerSecond() * elapsedSeconds,
+    0,
+    100
+  );
   currentFish.setAgeSeconds(currentFish.ageSeconds + elapsedSeconds);
 
   if (currentFish.hunger > 68) {

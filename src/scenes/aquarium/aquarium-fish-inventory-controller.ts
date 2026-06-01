@@ -457,7 +457,6 @@ export class AquariumFishInventoryController {
     this.host.recordDailyQuestAction("sell-fish");
     this.host.recordDailyQuestAction("sell-active-fish");
     this.host.floatText(`Sold ${fishToSell.type.name} +C${formatNumber(commonSellValue)}`, toastX, toastY, "#ffe67a");
-    fishToSell.destroy();
     this.host.closeModal();
     this.host.refreshUi();
     this.host.saveNow();

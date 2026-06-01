@@ -376,6 +376,9 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
       targetFish.destroy();
       scene.refreshUi();
     },
+    recordDailyQuestAction: (action: string) => {
+      scene.recordDailyQuestAction(action);
+    },
     forceCoinReady: (index: number) => {
       const targetFish = scene.fish[index];
       if (!targetFish) {
@@ -498,6 +501,19 @@ export function installAquariumTestHooks(scene: AquariumTestScene, config: Aquar
         scene.buyDecoration(decorationType);
         scene.selectDecoration(decorationType.id, "m");
       }
+    },
+    placeDecorationForTest: (decorationTypeId: string, x: number, y: number) => {
+      const decorationType = decorationTypes.find((item) => item.id === decorationTypeId);
+      if (!decorationType) {
+        return;
+      }
+
+      scene.placeDecorationFromInventory(
+        decorationType,
+        "m",
+        Phaser.Math.Clamp(x, tankBounds.left + 24, tankBounds.right - 24),
+        Phaser.Math.Clamp(y, tankBounds.top + 24, tankBounds.bottom - 24)
+      );
     },
     addFoodDispenserForTest: () => {
       scene.decorationInventory.set(foodDispenserInventoryKey, 1);

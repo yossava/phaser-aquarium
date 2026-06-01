@@ -214,6 +214,7 @@ export type AquariumTestApi = {
   addFoodBuyQuantity: (foodTypeId: FoodTypeId, quantity: number) => void;
   resetFoodBuyQuantity: (foodTypeId: FoodTypeId) => void;
   buyDecoration: (decorationTypeId: string) => void;
+  placeDecorationForTest: (decorationTypeId: string, x: number, y: number) => void;
   addFoodDispenserForTest: () => void;
   removeFoodDispenserForTest: () => void;
   buyHelperCreature: (creatureTypeId: string) => void;
@@ -233,6 +234,7 @@ export type AquariumTestApi = {
   clearCoins: () => void;
   clearFoods: () => void;
   setCleanliness: (cleanliness: number) => void;
+  recordDailyQuestAction: (action: string) => void;
 };
 
 declare global {

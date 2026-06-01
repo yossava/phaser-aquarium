@@ -4231,6 +4231,10 @@ export class AquariumSceneCore extends Phaser.Scene {
     return activeUtilityRemainingMinutes(this.autoFoodBuyerExpiresAt());
   }
 
+  private resolveCoinCombo(): void {
+    this.aquariumWalletController().resolveCoinCombo();
+  }
+
   private tankUtilityInfo(utilityId: TankUtilityId): { name: string; price: Price; inventoryKey: string; owned: () => boolean } | undefined {
     return this.aquariumTankController().tankUtilityInfo(utilityId);
   }

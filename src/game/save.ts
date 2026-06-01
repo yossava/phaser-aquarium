@@ -256,7 +256,7 @@ function recoverPartialSave(rawSave: string): SavedGame | undefined {
     }
     const wallet = sanitizeWallet(candidate.wallet);
     const fish = candidate.fish.map(sanitizeFish).filter((f): f is SavedFish => Boolean(f));
-    return {
+    const recovered: SavedGame = {
       version: SAVE_VERSION,
       savedAt: sanitizeNumber(candidate.savedAt, Date.now()),
       wallet,
@@ -297,6 +297,8 @@ function recoverPartialSave(rawSave: string): SavedGame | undefined {
       },
       prizeMachine: normalizePrizeMachineState(candidate.prizeMachine)
     };
+
+    return buildSanitizedSave(recovered);
   } catch (err) {
     console.warn("[Save] Failed to recover partial save", err);
     return undefined;
@@ -307,7 +309,7 @@ function migrateSave(
   parsed: Partial<SavedGame> & { version?: number; foodInventory?: number | Record<FoodTypeId, number> }
 ): SavedGame | undefined {
   if (parsed.version === SAVE_VERSION) {
-    return parsed as SavedGame;
+    return buildSanitizedSave(parsed as SavedGame);
   }
 
   if (parsed.version && parsed.version >= 2 && parsed.version < SAVE_VERSION) {
