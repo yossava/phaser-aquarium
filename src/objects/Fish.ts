@@ -141,6 +141,10 @@ export class Fish {
   private lastAppliedWorldScale = 0;
   private lastAppliedStretchX = 0;
   private lastAppliedStretchY = 0;
+  private lastTailScale = -1;
+  private lastTailTint = -1;
+  private lastTailAlpha = -1;
+  private lastTailFacing: 1 | -1 | 0 = 0;
 
   public constructor(
     private scene: Phaser.Scene,
@@ -1704,13 +1708,35 @@ export class Fish {
 
     this.tailMark.setVisible(true);
     const scale = Math.max(0.01, Math.abs(this.sprite.scaleX));
-    const tailSide = this.facing >= 0 ? -1 : 1;
-    const tailEdgeInset = this.usesCustomTexture ? 4 : 1;
-    const tailJoinInset = this.usesCustomTexture ? 18 : 13;
+    const tint = this.tailTint();
+    const alpha = this.state === "ill" ? 0.58 : 0.95;
+    const facing: 1 | -1 = this.facing >= 0 ? 1 : -1;
+
+    this.tailMark.setPosition(this.sprite.x, this.sprite.y);
+    this.tailMark.setRotation(this.sprite.rotation);
+    this.tailMark.setAlpha(alpha);
+
+    if (
+      scale === this.lastTailScale &&
+      tint === this.lastTailTint &&
+      alpha === this.lastTailAlpha &&
+      facing === this.lastTailFacing
+    ) {
+      return;
+    }
+
+    this.lastTailScale = scale;
+    this.lastTailTint = tint;
+    this.lastTailAlpha = alpha;
+    this.lastTailFacing = facing;
+
+    const tailSide = facing;
+    const tailEdgeInset = 1;
+    const tailJoinInset = 13;
     const tailEdgeX = tailSide * (this.sprite.displayWidth / 2 - tailEdgeInset * scale);
     const tailJoinX = tailSide * (this.sprite.displayWidth / 2 - tailJoinInset * scale);
-    const tailCenterX = tailSide * (this.sprite.displayWidth / 2 - (this.usesCustomTexture ? 7 : 3) * scale);
-    const tailHalfHeight = (this.usesCustomTexture ? 10.5 : 13) * scale;
+    const tailCenterX = tailSide * (this.sprite.displayWidth / 2 - 3 * scale);
+    const tailHalfHeight = 13 * scale;
     const tailWag = 0;
     const points = [
       new Phaser.Math.Vector2(tailJoinX, 0),
@@ -1720,16 +1746,11 @@ export class Fish {
     ];
 
     this.tailMark.clear();
-    this.tailMark.setPosition(this.sprite.x, this.sprite.y);
-    this.tailMark.setRotation(this.sprite.rotation);
-    this.tailMark.setAlpha(this.state === "ill" ? 0.58 : this.usesCustomTexture ? 0.72 : 0.95);
-    this.tailMark.fillStyle(this.tailTint(), 1);
+    this.tailMark.fillStyle(tint, 1);
     this.tailMark.fillPoints(points, true);
     this.tailMark.lineStyle(1, 0x061725, 0.24);
     this.tailMark.strokePoints(points, true);
-
-    const ribAlpha = this.usesCustomTexture ? 0.22 : 0.34;
-    this.tailMark.lineStyle(1, 0xf7fbff, ribAlpha);
+    this.tailMark.lineStyle(1, 0xf7fbff, 0.34);
     this.tailMark.lineBetween(tailJoinX, 0, tailEdgeX, tailWag);
   }
 

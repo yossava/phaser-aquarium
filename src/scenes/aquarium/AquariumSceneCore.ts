@@ -521,8 +521,10 @@ export class AquariumSceneCore extends Phaser.Scene {
   private creatureInventory = new Map<string, number>();
   private fish: Fish[] = [];
   private foods: FoodPellet[] = [];
+  private foodPelletPool: FoodPellet[] = [];
   private reusableFoodAssignments = new Map<Fish, FoodPellet[]>();
   private coinDrops: CoinDrop[] = [];
+  private coinDropPool: CoinDrop[] = [];
   private questPresents: Array<{ drop: QuestPresentDrop; reward: DailyQuestReward }> = [];
   private airStoneBubblePool: Phaser.GameObjects.Arc[] = [];
   private activeAirStoneBubbles = new Set<Phaser.GameObjects.Arc>();
@@ -545,6 +547,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private selectedFoodTypeId: FoodTypeId = basicFood.id;
   private inventoryDockPage = 0;
   private recentInventoryDockItemKey?: string;
+  private lastDockStateKey = "";
   private placedDecorations: PlacedDecoration[] = [];
   private offlineProgress: OfflineProgress = { elapsedSeconds: 0, earned: createEmptyWallet() };
   private pausedTankEarningsStartedAt?: number;
@@ -1416,7 +1419,6 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.syncFoodDockPosition();
       return;
     }
-    this.htmlFoodDock.replaceChildren();
 
     const allItems = this.visibleInventoryDockItems();
     const pinnedFishMenuItem = allItems.find((item) => item.kind === "fish-menu");
@@ -1425,10 +1427,17 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.focusRecentInventoryDockItem(pagedItems, pageSize);
     const pageCount = inventoryDockPageCount(pagedItems.length, pageSize);
     this.inventoryDockPage = clampInventoryDockPage(this.inventoryDockPage, pageCount);
+    const visibleItems = inventoryDockPageItems(pagedItems, this.inventoryDockPage, pageSize);
+    const dockKey = `${this.inventoryDockPage}:${visibleItems.map((item) => this.inventoryDockItemKey(item)).join("|")}`;
+    if (dockKey === this.lastDockStateKey) {
+      return;
+    }
+    this.lastDockStateKey = dockKey;
+
+    this.htmlFoodDock.replaceChildren();
     if (pinnedFishMenuItem) {
       this.htmlFoodDock.append(this.createHtmlInventoryDockButton(pinnedFishMenuItem));
     }
-    const visibleItems = inventoryDockPageItems(pagedItems, this.inventoryDockPage, pageSize);
     for (const item of visibleItems) {
       this.htmlFoodDock.append(this.createHtmlInventoryDockButton(item));
     }
@@ -3878,7 +3887,16 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private removeFood(food: FoodPellet): void {
     this.foods = this.foods.filter((item) => item !== food);
-    food.destroy();
+    this.recycleFoodPellet(food);
+  }
+
+  private recycleFoodPellet(food: FoodPellet): void {
+    food.deactivate();
+    if (this.foodPelletPool.length < maxFoodDrops) {
+      this.foodPelletPool.push(food);
+    } else {
+      food.destroy();
+    }
   }
 
   private assignFoodsToFish(tankFish: Fish[]): Map<Fish, FoodPellet[]> {
@@ -3914,7 +3932,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.foods = this.foods.filter((food) => !food.isExpired());
     for (const food of expiredFoods) {
       this.refundUnusedFood(food);
-      food.destroy();
+      this.recycleFoodPellet(food);
     }
     this.saveNow();
   }
@@ -4281,7 +4299,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private clearTankDrops(): void {
     for (const food of this.foods) {
       this.refundUnusedFood(food);
-      food.destroy();
+      this.recycleFoodPellet(food);
     }
     this.clearCoinDrops();
     for (const drop of this.pendingHelperCreatureDrops) {

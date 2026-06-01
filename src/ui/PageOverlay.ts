@@ -120,8 +120,8 @@ export function syncPageOverlay(input: PageOverlaySyncInput): PageOverlaySyncRes
   const nextKey = input.getRenderKey();
   overlay.className = "aq-page-shell";
   overlay.classList.remove("hidden");
-  overlay.replaceChildren(input.createPage());
   if (input.forceTransition || wasHidden || previousKey !== nextKey) {
+    overlay.replaceChildren(input.createPage());
     playHtmlPageTransition(overlay, input.reducedMotion);
   }
   installHtmlInputShield(overlay);

@@ -64,11 +64,14 @@ export class CoinDrop {
   public shimmer: Phaser.GameObjects.Sprite;
   public hitZone: Phaser.GameObjects.Zone;
   public valueText: Phaser.GameObjects.Text;
-  public bottomY: number;
-  public readonly visual: CoinVisual;
-  public readonly sinkSpeed: number;
-  public landingX: number;
-  public hasTouchedSand: boolean;
+  public bottomY = 0;
+  public visual: CoinVisual;
+  public sinkSpeed = 82;
+  public landingX = 0;
+  public hasTouchedSand = false;
+  public value = 0;
+  public coinType: CoinType = "common";
+  public isMega = false;
   private tankViewScale = 1;
   private shimmerTime = Phaser.Math.FloatBetween(0, 1.8);
 
@@ -76,12 +79,16 @@ export class CoinDrop {
     scene: Phaser.Scene,
     x: number,
     y: number,
-    public readonly value: number,
-    public readonly coinType: CoinType,
-    public readonly isMega = false,
+    value: number,
+    coinType: CoinType,
+    isMega = false,
     options: { landingX?: number; bottomY?: number; sinkSpeed?: number } = {}
   ) {
     const horizontalPadding = coinTapTargetSize * 0.5;
+    this.value = value;
+    this.coinType = coinType;
+    this.isMega = isMega;
+    this.visual = coinVisualsByType[coinType];
     this.landingX = options.landingX ?? Phaser.Math.Between(
       Math.round(tankBounds.left + horizontalPadding),
       Math.round(tankBounds.right - horizontalPadding)
@@ -92,7 +99,6 @@ export class CoinDrop {
     );
     this.sinkSpeed = Math.max(1, options.sinkSpeed ?? 82);
     this.hasTouchedSand = y >= this.bottomY - 0.5;
-    this.visual = coinVisualsByType[coinType];
     ensureCoinShimmerTexture(scene);
     const customTextureKey = coinTextureKeyByType[coinType];
     const textureKey = scene.textures.exists(customTextureKey) ? customTextureKey : "coin";
@@ -172,14 +178,68 @@ export class CoinDrop {
   }
 
   public destroy(): void {
-    this.hitZone.removeAllListeners();
-    this.sprite.removeAllListeners();
-    this.hitZone.disableInteractive();
-    this.sprite.disableInteractive();
+    this.deactivate();
     this.hitZone.destroy();
     this.shimmer.destroy();
     this.sprite.destroy();
     this.valueText.destroy();
+  }
+
+  public deactivate(): void {
+    this.hitZone.disableInteractive();
+    this.sprite.disableInteractive();
+    this.sprite.setVisible(false);
+    this.shimmer.setVisible(false);
+    this.hitZone.setVisible(false);
+    this.valueText.setVisible(false);
+  }
+
+  public reset(
+    x: number,
+    y: number,
+    value: number,
+    coinType: CoinType,
+    isMega = false,
+    options: { landingX?: number; bottomY?: number; sinkSpeed?: number } = {}
+  ): void {
+    const horizontalPadding = coinTapTargetSize * 0.5;
+    this.value = value;
+    this.coinType = coinType;
+    this.isMega = isMega;
+    this.visual = coinVisualsByType[coinType];
+    this.landingX = options.landingX ?? Phaser.Math.Between(
+      Math.round(tankBounds.left + horizontalPadding),
+      Math.round(tankBounds.right - horizontalPadding)
+    );
+    this.bottomY = options.bottomY ?? Phaser.Math.Between(
+      Math.round(tankBounds.bottom - coinBottomPadding - coinSeabedDepthBand),
+      Math.round(tankBounds.bottom - coinBottomPadding)
+    );
+    this.sinkSpeed = Math.max(1, options.sinkSpeed ?? 82);
+    this.hasTouchedSand = y >= this.bottomY - 0.5;
+    this.shimmerTime = Phaser.Math.FloatBetween(0, 1.8);
+    const customTextureKey = coinTextureKeyByType[coinType];
+    const textureKey = this.sprite.scene.textures.exists(customTextureKey) ? customTextureKey : "coin";
+    this.sprite.setTexture(textureKey);
+    this.sprite.setTint(isMega ? 0x7bffdf : textureKey === "coin" ? this.visual.tint : 0xffffff);
+    this.sprite.setPosition(x, y);
+    this.shimmer.setPosition(x, y).setTint(isMega ? 0xa8fff0 : 0xffffff);
+    this.hitZone.setPosition(x, y);
+    this.valueText.setPosition(x, y + coinValueTextOffset);
+    this.valueText.setText(`${isMega ? "mega coin " : ""}+${formatNumber(value)}`);
+    this.valueText.setStyle({
+      fontFamily: gameFontFamily,
+      color: isMega ? "#a8fff0" : this.visual.textColor,
+      stroke: isMega ? "#064b4d" : this.visual.strokeColor,
+      strokeThickness: isMega ? 3 : 2,
+      fontSize: `${coinValueFontSize * (isMega ? 0.82 : 1)}px`
+    });
+    this.tankViewScale = 1;
+    this.sprite.setDisplaySize(coinDisplaySize, coinDisplaySize);
+    this.sprite.setVisible(true);
+    this.shimmer.setVisible(true);
+    this.hitZone.setVisible(true);
+    this.valueText.setVisible(true);
   }
 
   private updateShimmer(deltaSeconds: number): void {

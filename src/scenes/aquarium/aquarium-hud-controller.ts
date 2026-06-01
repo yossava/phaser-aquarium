@@ -109,6 +109,8 @@ export type AquariumHudControllerHost = {
 };
 
 export class AquariumHudController {
+  private lastQuestState = "";
+
   constructor(private readonly host: AquariumHudControllerHost) {}
 
   // ─── HUD Overlay ───
@@ -179,6 +181,12 @@ export class AquariumHudController {
     }
 
     const quests = this.host.visibleDailyQuestItems().slice(0, 3);
+    const currentState = quests.map((q) => q.id + ":" + q.complete).join(",");
+    if (currentState === this.lastQuestState) {
+      return;
+    }
+    this.lastQuestState = currentState;
+
     this.host.gameHudQuestChecklist.replaceChildren();
     if (quests.length === 0) {
       this.host.gameHudQuestChecklist.classList.add("hidden");

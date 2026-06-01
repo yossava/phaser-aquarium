@@ -1,0 +1,18 @@
+# workflow
+- Commit and push changes frequently after each fix or feature. Confidence: 0.90
+- Do not run full build tests or browser regression tests unless explicitly asked; run `tsc` (TypeScript check) only after fixes. Confidence: 0.85
+- Do not revert changes made by other agents/contributors in the same codebase. Confidence: 0.85
+
+# code-style
+- Use lowercase snake_case for asset filenames. Confidence: 0.90
+- Keep mini-game code isolated from the main game loop to avoid performance impact. Confidence: 0.70
+
+# assets
+- Source/generated game assets should use flat solid #ff00ff magenta chroma-key background (not transparency) before key-out. Confidence: 0.90
+- Fish sprites: side-view facing right, neutral horizontal swim pose, #ff00ff background, no white/pale/silver fish. Confidence: 0.80
+- Never use SVG, procedural drawing, canvas, or code-generated placeholder art for game assets — use actual image generation only. Confidence: 0.75
+- Always include a manifest JSON listing every generated asset with dimensions, transparency notes, and intended in-game use. Confidence: 0.75
+
+# architecture
+- Prefer individual isolated pages over stacked HTML overlays to avoid touch event conflicts. Confidence: 0.75
+- Fish in inventory should not accumulate statistics (hunger, age, health) — only active tank fish should change state. Confidence: 0.70

@@ -12,6 +12,7 @@ import { QuestPresentDrop } from "../../objects/QuestPresentDrop";
 type WalletAdapterScene = Phaser.Scene & {
   wallet: Wallet;
   coinDrops: CoinDrop[];
+  coinDropPool: CoinDrop[];
   magnetCollectingCoins: Set<CoinDrop>;
   coinMagnetPreviousCoinY: Map<CoinDrop, number>;
   coinMagnetY: number;
@@ -80,6 +81,7 @@ export function createAquariumWalletControllerHost(scene: AquariumSceneCore): Wa
     scene: s,
     wallet: s.wallet,
     coinDrops: s.coinDrops,
+    coinDropPool: s.coinDropPool,
     magnetCollectingCoins: s.magnetCollectingCoins,
     coinMagnetPreviousCoinY: s.coinMagnetPreviousCoinY,
     coinMagnetY: s.coinMagnetY,

@@ -46,6 +46,7 @@ export type WalletControllerHost = {
   scene: Phaser.Scene;
   wallet: Wallet;
   coinDrops: CoinDrop[];
+  coinDropPool: CoinDrop[];
   magnetCollectingCoins: Set<CoinDrop>;
   coinMagnetPreviousCoinY: Map<CoinDrop, number>;
   coinMagnetY: number;
@@ -136,6 +137,18 @@ export class AquariumWalletController {
     );
     const visibleX = clampedVisibleX(x);
     const visibleY = Phaser.Math.Clamp(y, visibleBounds.top + 24, maxBottomY);
+    const poolOptions = { ...options, landingX, bottomY };
+
+    const pooledCoin = this.host.coinDropPool.pop();
+    if (pooledCoin) {
+      pooledCoin.reset(visibleX, visibleY, value, coinType, isMega, poolOptions);
+      pooledCoin.setWorldScaleCompensation(this.host.tankViewScaleForLevel());
+      this.host.coinDrops.push(pooledCoin);
+      this.host.coinMagnetPreviousCoinY.set(pooledCoin, pooledCoin.sprite.y);
+      const visible = this.host.getActiveScreen() !== "makeup";
+      this.setCoinDropVisible(pooledCoin, visible);
+      return pooledCoin;
+    }
 
     return createCoinDropModel({
       scene: this.host.scene,
@@ -175,7 +188,7 @@ export class AquariumWalletController {
     }
     this.host.coinMagnetPreviousCoinY.delete(overflowCoin);
     this.host.magnetCollectingCoins.delete(overflowCoin);
-    overflowCoin.destroy();
+    this.recycleCoin(overflowCoin);
   }
 
   public setCoinDropVisible(coin: CoinDrop, visible: boolean): void {
@@ -230,9 +243,19 @@ export class AquariumWalletController {
       setCoinDrops: (coinDrops) => {
         this.host.coinDrops = coinDrops;
       },
+      recycleCoin: (coin) => this.recycleCoin(coin),
       refreshUi: () => this.host.refreshUi(false),
       saveNow: () => this.host.saveNow()
     });
+  }
+
+  private recycleCoin(coin: CoinDrop): void {
+    coin.deactivate();
+    if (this.host.coinDropPool.length < maxCoinDrops) {
+      this.host.coinDropPool.push(coin);
+    } else {
+      coin.destroy();
+    }
   }
 
   public coinCollectDetune(coinType: CoinType): number {

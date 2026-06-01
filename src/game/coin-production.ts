@@ -116,6 +116,7 @@ export function collectCoin(input: {
   setCoinDrops: (coinDrops: CoinDrop[]) => void;
   refreshUi: () => void;
   saveNow: () => void;
+  recycleCoin?: (coin: CoinDrop) => void;
 }): void {
   if (!input.coinDrops.includes(input.coin)) {
     return;
@@ -144,7 +145,11 @@ export function collectCoin(input: {
   }
   input.setCoinDrops(input.coinDrops.filter((drop) => drop !== input.coin));
   input.coinMagnetPreviousCoinY.delete(input.coin);
-  input.coin.destroy();
+  if (input.recycleCoin) {
+    input.recycleCoin(input.coin);
+  } else {
+    input.coin.destroy();
+  }
   input.refreshUi();
   input.saveNow();
 }

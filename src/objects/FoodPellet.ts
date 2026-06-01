@@ -19,19 +19,22 @@ const foodPelletSizeByDensity: Record<number, number> = {
 
 export class FoodPellet {
   public sprite: Phaser.GameObjects.Image;
-  public readonly sinkSpeed = 18;
-  private readonly baseDisplaySize: number;
-  private velocityX: number;
-  private velocityY: number;
+  public sinkSpeed = 18;
+  public source: "manual" | "dispenser" = "manual";
+  public targetFish?: Fish;
+  public medicineActsAsFood = false;
+  private baseDisplaySize = defaultPelletDisplaySize;
+  private velocityX = 0;
+  private velocityY = 18;
   private ageSeconds = 0;
   private expired = false;
-  private reservedCalories: number;
+  private reservedCalories = 0;
 
   public constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
-    public readonly foodType: FoodType,
+    public foodType: FoodType,
     options: {
       velocityX?: number;
       velocityY?: number;
@@ -61,10 +64,6 @@ export class FoodPellet {
     this.setWorldScaleCompensation(1);
     this.sprite.setDepth(7);
   }
-
-  public readonly source: "manual" | "dispenser";
-  public readonly targetFish?: Fish;
-  public readonly medicineActsAsFood: boolean;
 
   public get nutrition(): number {
     return this.reservedCalories;
@@ -114,6 +113,49 @@ export class FoodPellet {
 
   public destroy(): void {
     this.sprite.destroy();
+  }
+
+  public deactivate(): void {
+    this.sprite.setVisible(false);
+  }
+
+  public reset(
+    x: number,
+    y: number,
+    foodType: FoodType,
+    options: {
+      velocityX?: number;
+      velocityY?: number;
+      displayScale?: number;
+      reservedCalories?: number;
+      source?: "manual" | "dispenser";
+      targetFish?: Fish;
+      medicineActsAsFood?: boolean;
+    } = {}
+  ): void {
+    (this as { foodType: FoodType }).foodType = foodType;
+    const textureKey = this.textureKey(this.sprite.scene);
+    this.sprite.setTexture(textureKey);
+    this.sprite.setPosition(x, y);
+    this.velocityX = options.velocityX ?? 0;
+    this.velocityY = options.velocityY ?? this.sinkSpeed;
+    this.reservedCalories = Phaser.Math.Clamp(options.reservedCalories ?? foodType.calories, 0, foodType.calories);
+    this.source = options.source ?? "manual";
+    this.targetFish = options.targetFish;
+    this.medicineActsAsFood = options.medicineActsAsFood ?? false;
+    this.ageSeconds = 0;
+    this.expired = false;
+    if (foodType.id !== "medicine") {
+      this.sprite.setTint(this.tintForFood());
+    }
+    const displayScale = options.displayScale ?? 1;
+    this.baseDisplaySize =
+      (foodType.id === "medicine" || foodType.id === "ageBoost" || foodType.id === "productionBoost"
+        ? pillPelletDisplaySize
+        : foodPelletSizeByDensity[foodType.densityLevel] ?? defaultPelletDisplaySize) * displayScale;
+    this.setWorldScaleCompensation(1);
+    this.sprite.setDepth(7);
+    this.sprite.setVisible(true);
   }
 
   private textureKey(scene: Phaser.Scene): string {

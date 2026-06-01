@@ -10,6 +10,7 @@ type AquariumFoodAdapterScene = Phaser.Scene & {
   wallet: Wallet;
   developerGodMode: boolean;
   foods: FoodPellet[];
+  foodPelletPool: FoodPellet[];
   foodInventory: Map<FoodTypeId, number>;
   careFoodTargetFish: Map<FoodTypeId, Fish>;
   selectedFoodTypeId: FoodTypeId;
@@ -55,6 +56,7 @@ export function createAquariumFoodControllerHost(scene: AquariumSceneCore): Aqua
     getWallet: () => aquariumScene.wallet,
     isDeveloperGodMode: () => aquariumScene.developerGodMode,
     getFoods: () => aquariumScene.foods,
+    getFoodPelletPool: () => aquariumScene.foodPelletPool,
     getFoodInventory: (foodTypeId) => aquariumScene.getFoodInventory(foodTypeId),
     setFoodInventory: (foodTypeId, amount) => aquariumScene.foodInventory.set(foodTypeId, amount),
     getTotalFeedableFoodInventory: () => aquariumScene.getTotalFeedableFoodInventory(),

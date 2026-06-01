@@ -36,6 +36,7 @@ export type AquariumFoodControllerHost = {
   getWallet: () => Wallet;
   isDeveloperGodMode: () => boolean;
   getFoods: () => FoodPellet[];
+  getFoodPelletPool: () => FoodPellet[];
   getFoodInventory: (foodTypeId: FoodTypeId) => number;
   setFoodInventory: (foodTypeId: FoodTypeId, amount: number) => void;
   getTotalFeedableFoodInventory: () => number;
@@ -101,19 +102,33 @@ export class AquariumFoodController {
       return;
     }
     const targetFish = this.careFoodTargetForDrop(foodType.id);
-    const pellet = new FoodPellet(
-      this.host.scene,
-      Phaser.Math.Clamp(x, tankBounds.left + 18, tankBounds.right - 18),
-      Phaser.Math.Clamp(y, tankBounds.top + 18, tankBounds.bottom - 18),
-      foodType,
-      { reservedCalories, targetFish, medicineActsAsFood: foodType.id === "medicine" && !this.host.activeFish().some((fish) => fish.state === "ill" || fish.health < 82) }
-    );
+    const dropX = Phaser.Math.Clamp(x, tankBounds.left + 18, tankBounds.right - 18);
+    const dropY = Phaser.Math.Clamp(y, tankBounds.top + 18, tankBounds.bottom - 18);
+    const pool = this.host.getFoodPelletPool();
+    const pooledPellet = pool.pop();
+    let pellet: FoodPellet | undefined;
+    if (pooledPellet) {
+      pooledPellet.reset(dropX, dropY, foodType, {
+        reservedCalories,
+        targetFish,
+        medicineActsAsFood: foodType.id === "medicine" && !this.host.activeFish().some((fish) => fish.state === "ill" || fish.health < 82)
+      });
+    } else {
+      pellet = new FoodPellet(
+        this.host.scene,
+        dropX,
+        dropY,
+        foodType,
+        { reservedCalories, targetFish, medicineActsAsFood: foodType.id === "medicine" && !this.host.activeFish().some((fish) => fish.state === "ill" || fish.health < 82) }
+      );
+    }
     if (targetFish) {
       this.host.clearCareFoodTarget(foodType.id);
     }
-    pellet.setWorldScaleCompensation(this.host.tankViewScaleForLevel());
-    pellet.addToContainer(this.host.getTankLayer());
-    this.host.getFoods().push(pellet);
+    const food = pooledPellet ?? pellet!;
+    food.setWorldScaleCompensation(this.host.tankViewScaleForLevel());
+    food.addToContainer(this.host.getTankLayer());
+    this.host.getFoods().push(food);
     this.host.setCleanliness(Phaser.Math.Clamp(this.host.getCleanliness() - 1.2, 0, 100));
     this.host.recordDailyQuestAction("drop-food");
     this.host.setPlacementMode({ kind: "none" });
@@ -165,16 +180,30 @@ export class AquariumFoodController {
       return;
     }
     const throwVelocity = this.foodDispenserThrowVelocity(outlet);
-    const pellet = new FoodPellet(this.host.scene, outlet.x, outlet.y, plan.foodType, {
-      velocityX: throwVelocity.x,
-      velocityY: throwVelocity.y,
-      displayScale: foodDispenserPelletScale,
-      reservedCalories,
-      source: "dispenser"
-    });
-    pellet.setWorldScaleCompensation(this.host.tankViewScaleForLevel());
-    pellet.addToContainer(this.host.getTankLayer());
-    this.host.getFoods().push(pellet);
+    const pool = this.host.getFoodPelletPool();
+    const pooledPellet = pool.pop();
+    let dispenserPellet: FoodPellet | undefined;
+    if (pooledPellet) {
+      pooledPellet.reset(outlet.x, outlet.y, plan.foodType, {
+        velocityX: throwVelocity.x,
+        velocityY: throwVelocity.y,
+        displayScale: foodDispenserPelletScale,
+        reservedCalories,
+        source: "dispenser"
+      });
+    } else {
+      dispenserPellet = new FoodPellet(this.host.scene, outlet.x, outlet.y, plan.foodType, {
+        velocityX: throwVelocity.x,
+        velocityY: throwVelocity.y,
+        displayScale: foodDispenserPelletScale,
+        reservedCalories,
+        source: "dispenser"
+      });
+    }
+    const dispensedFood = pooledPellet ?? dispenserPellet!;
+    dispensedFood.setWorldScaleCompensation(this.host.tankViewScaleForLevel());
+    dispensedFood.addToContainer(this.host.getTankLayer());
+    this.host.getFoods().push(dispensedFood);
     this.host.setCleanliness(Phaser.Math.Clamp(this.host.getCleanliness() - 0.4, 0, 100));
     this.host.recordDailyQuestAction(plan.isMedicine ? "dispenser-medicine" : "dispenser-food");
     this.host.floatTankText(plan.isMedicine ? "Medicine" : "Food", outlet.x + 18, outlet.y - 10, plan.isMedicine ? "#a8ffb0" : "#f7ff9a");
