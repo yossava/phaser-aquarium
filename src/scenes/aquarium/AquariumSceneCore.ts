@@ -453,6 +453,8 @@ import { AquariumHudController } from "./aquarium-hud-controller";
 import { createAquariumHudControllerHost } from "./aquarium-hud-adapter";
 import { AquariumQuestPhaseController } from "./aquarium-quest-phase-controller";
 import { createAquariumQuestPhaseControllerHost } from "./aquarium-quest-phase-adapter";
+import { AquariumMinigameController } from "./aquarium-minigame-controller";
+import { createAquariumMinigameHost } from "./aquarium-minigame-adapter";
 
 type LevelCompletionBonusReward = {
   coins?: Price;
@@ -508,6 +510,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumDecorationRuntimeController?: AquariumDecorationController;
   private aquariumHudRuntimeController?: AquariumHudController;
   private aquariumQuestPhaseRuntimeController?: AquariumQuestPhaseController;
+  private aquariumMinigameRuntimeController?: AquariumMinigameController;
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -1780,6 +1783,13 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.aquariumQuestPhaseRuntimeController;
   }
 
+  private aquariumMinigameController(): AquariumMinigameController {
+    this.aquariumMinigameRuntimeController ??= new AquariumMinigameController(
+      createAquariumMinigameHost(this)
+    );
+    return this.aquariumMinigameRuntimeController;
+  }
+
   private renderTabControls(): void {
     this.aquariumMenuController().renderTabControls();
   }
@@ -2683,211 +2693,123 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private openPrizeMachineArcade(): void {
-    this.aquariumMenuController().openPrizeMachineArcade();
+    this.aquariumMinigameController().openPrizeMachineArcade();
   }
 
   private openReefDropGame(): void {
-    this.aquariumMenuController().openReefDropGame();
+    this.aquariumMinigameController().openReefDropGame();
   }
 
   private openBubblePopGame(): void {
-    this.aquariumMenuController().openBubblePopGame();
+    this.aquariumMinigameController().openBubblePopGame();
   }
 
   private completeBubblePopGame(result: BubblePopResult): void {
-    this.aquariumMenuController().completeBubblePopGame(result);
+    this.aquariumMinigameController().completeBubblePopGame(result);
   }
 
   private completeReefDropGame(result: ReefDropResult): void {
-    this.aquariumMenuController().completeReefDropGame(result);
+    this.aquariumMinigameController().completeReefDropGame(result);
   }
 
   private activeFishProductionPerMinute(): number {
-    return this.activeFish().reduce((total, fish) => {
-      if (fish.state === "ill" || fish.currentFullnessCalories() <= 0) {
-        return total;
-      }
-      return total + fish.projectedProductionPerMinute();
-    }, 0);
+    return this.aquariumMinigameController().activeFishProductionPerMinute();
   }
 
   private gameTimeLabel(): string {
-    const secondsPerGameHour = 5;
-    const hoursPerGameDay = 24;
-    const daysPerGameYear = 360;
-    const totalGameHours = Math.max(0, Math.floor(this.currentGameTimeSeconds() / secondsPerGameHour));
-    const totalGameDays = Math.floor(totalGameHours / hoursPerGameDay);
-    const years = Math.floor(totalGameDays / daysPerGameYear);
-    const days = totalGameDays % daysPerGameYear;
-    if (years <= 0) {
-      return `${formatNumber(days)} ${days === 1 ? "day" : "days"}`;
-    }
-    return `${formatNumber(years)} ${years === 1 ? "year" : "years"} ${formatNumber(days)} ${days === 1 ? "day" : "days"}`;
+    return this.aquariumMinigameController().gameTimeLabel();
   }
 
   private currentGameTimeSeconds(): number {
-    const activeAges = this.activeFish().map((fish) => fish.ageSeconds);
-    return Math.max(0, ...activeAges);
+    return this.aquariumMinigameController().currentGameTimeSeconds();
   }
 
   private returnFromReefDropGame(): void {
-    this.aquariumMenuController().returnFromReefDropGame();
+    this.aquariumMinigameController().returnFromReefDropGame();
   }
 
   private returnFromBubblePopGame(): void {
-    this.aquariumMenuController().returnFromBubblePopGame();
+    this.aquariumMinigameController().returnFromBubblePopGame();
   }
 
   private hideReefDropSceneImmediately(): void {
-    let reefDropScene: Phaser.Scene;
-    try {
-      reefDropScene = this.scene.get(ReefDropSceneKey);
-    } catch {
-      return;
-    }
-    if (!reefDropScene) {
-      return;
-    }
-    reefDropScene.input.enabled = false;
-    reefDropScene.tweens.killAll();
-    reefDropScene.time.removeAllEvents();
-    [...reefDropScene.children.getChildren()].forEach((child) => {
-      (child as Phaser.GameObjects.GameObject & { setVisible?: (value: boolean) => unknown }).setVisible?.(false);
-      child.destroy();
-    });
-    reefDropScene.children.removeAll(true);
-    reefDropScene.cameras.cameras.forEach((camera) => {
-      camera.visible = false;
-    });
-    reefDropScene.sys.setVisible(false);
-    reefDropScene.sys.setActive(false);
+    this.aquariumMinigameController().hideReefDropSceneImmediately();
   }
 
   private removeReefDropScene(): void {
-    this.reefDropPauseToken += 1;
-    let reefDropScene: Phaser.Scene;
-    try {
-      reefDropScene = this.scene.get(ReefDropSceneKey);
-    } catch {
-      return;
-    }
-    if (!reefDropScene) {
-      return;
-    }
-    this.hideReefDropSceneImmediately();
-    this.scene.setVisible(false, ReefDropSceneKey);
-    this.scene.setActive(false, ReefDropSceneKey);
-    this.scene.sleep(ReefDropSceneKey);
-    this.scene.stop(ReefDropSceneKey);
-    this.scene.remove(ReefDropSceneKey);
+    this.aquariumMinigameController().removeReefDropScene();
   }
 
   private hideBubblePopSceneImmediately(): void {
-    let bubblePopScene: Phaser.Scene;
-    try {
-      bubblePopScene = this.scene.get(BubblePopSceneKey);
-    } catch {
-      return;
-    }
-    if (!bubblePopScene) {
-      return;
-    }
-    bubblePopScene.input.enabled = false;
-    bubblePopScene.tweens.killAll();
-    bubblePopScene.time.removeAllEvents();
-    [...bubblePopScene.children.getChildren()].forEach((child) => {
-      (child as Phaser.GameObjects.GameObject & { setVisible?: (value: boolean) => unknown }).setVisible?.(false);
-      child.destroy();
-    });
-    bubblePopScene.children.removeAll(true);
-    bubblePopScene.cameras.cameras.forEach((camera) => {
-      camera.visible = false;
-    });
-    bubblePopScene.sys.setVisible(false);
-    bubblePopScene.sys.setActive(false);
+    this.aquariumMinigameController().hideBubblePopSceneImmediately();
   }
 
   private removeBubblePopScene(): void {
-    this.bubblePopPauseToken += 1;
-    let bubblePopScene: Phaser.Scene;
-    try {
-      bubblePopScene = this.scene.get(BubblePopSceneKey);
-    } catch {
-      return;
-    }
-    if (!bubblePopScene) {
-      return;
-    }
-    this.hideBubblePopSceneImmediately();
-    this.scene.setVisible(false, BubblePopSceneKey);
-    this.scene.setActive(false, BubblePopSceneKey);
-    this.scene.sleep(BubblePopSceneKey);
-    this.scene.stop(BubblePopSceneKey);
-    this.scene.remove(BubblePopSceneKey);
+    this.aquariumMinigameController().removeBubblePopScene();
   }
 
   private showPrizeMachineSpinner(): void {
-    this.prizeController().showPrizeMachineSpinner();
+    this.aquariumMinigameController().showPrizeMachineSpinner();
   }
 
   private selectPrizeMachineBet(betAmount: PrizeMachineBetAmount): void {
-    this.prizeController().selectPrizeMachineBet(betAmount);
+    this.aquariumMinigameController().selectPrizeMachineBet(betAmount);
   }
 
   private showPrizeBetModal(): void {
-    this.prizeController().showPrizeBetModal();
+    this.aquariumMinigameController().showPrizeBetModal();
   }
 
   private handleNativePrizePointer(designX: number, designY: number): boolean {
-    return this.prizeController().handleNativePrizePointer(designX, designY);
+    return this.aquariumMinigameController().handleNativePrizePointer(designX, designY);
   }
 
   private currentPrizeMachineConfig() {
-    return this.prizeController().currentPrizeMachineConfig();
+    return this.aquariumMinigameController().currentPrizeMachineConfig();
   }
 
   private currentPrizeBetAmounts(): PrizeMachineBetAmount[] {
-    return this.prizeController().currentPrizeBetAmounts();
+    return this.aquariumMinigameController().currentPrizeBetAmounts();
   }
 
   private currentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {
-    return this.prizeController().currentPrizeBetAmount(betAmounts);
+    return this.aquariumMinigameController().currentPrizeBetAmount(betAmounts);
   }
 
   private syncCurrentPrizeBetAmount(betAmounts = this.currentPrizeBetAmounts()): PrizeMachineBetAmount {
-    return this.prizeController().syncCurrentPrizeBetAmount(betAmounts);
+    return this.aquariumMinigameController().syncCurrentPrizeBetAmount(betAmounts);
   }
 
   private spinPrizeMachine(): void {
-    this.prizeController().spinPrizeMachine();
+    this.aquariumMinigameController().spinPrizeMachine();
   }
 
   private createPrizeWheelPlanner() {
-    return this.prizeController().createPrizeWheelPlanner();
+    return this.aquariumMinigameController().createPrizeWheelPlanner();
   }
 
   private createPrizeWheelSegments() {
-    return this.prizeController().createPrizeWheelSegments();
+    return this.aquariumMinigameController().createPrizeWheelSegments();
   }
 
   private ensurePrizeWheelFishTexturesLoaded(): void {
-    this.prizeController().ensurePrizeWheelFishTexturesLoaded();
+    this.aquariumMinigameController().ensurePrizeWheelFishTexturesLoaded();
   }
 
   private destroyPrizeSpinContainer(): void {
-    this.prizeController().destroyPrizeSpinContainer();
+    this.aquariumMinigameController().destroyPrizeSpinContainer();
   }
 
   private nextPrizeRareFish(): FishType {
-    return this.prizeController().nextPrizeRareFish();
+    return this.aquariumMinigameController().nextPrizeRareFish();
   }
 
   private nextPrizeFish(rarity: Rarity): FishType {
-    return this.prizeController().nextPrizeFish(rarity);
+    return this.aquariumMinigameController().nextPrizeFish(rarity);
   }
 
   private rewardedAdFishReward(): FishType {
-    return this.aquariumDailyGoalsController().rewardedAdFishReward();
+    return this.aquariumMinigameController().rewardedAdFishReward();
   }
 
   private appendSettingsPage(content: HTMLElement): void {
