@@ -243,7 +243,6 @@ import {
   formatDailyQuestReward,
   fishPurchaseWindowMs,
   growthTonicPurchaseWindowMs,
-  isRewardedAdReady,
   normalizeDailyGoals as normalizeDailyGoalsModel,
   oldestRecentFishPurchase,
   oldestRecentGrowthTonicPurchase,
@@ -260,10 +259,6 @@ import {
   recordGrowthTonicPurchase as recordGrowthTonicPurchaseModel,
   recordProductionBoostPurchase as recordProductionBoostPurchaseModel,
   recordTimeCurrentPurchase as recordTimeCurrentPurchaseModel,
-  rewardedAdCoinReward as questRewardedAdCoinReward,
-  rewardedAdCooldownMs,
-  rewardedAdDurationMs,
-  rewardedAdRemainingSeconds,
   superRareQuestReward as questSuperRareReward,
   timeCurrentPurchaseWindowMs,
   todayFishPurchaseCount as questTodayFishPurchaseCount,
@@ -271,17 +266,8 @@ import {
   type DailyGoalsState,
   type DailyQuestItem,
   type DailyQuestReward,
-  type RewardedAdKind,
-  type RewardedAdOption,
   type RewardedAdState
 } from "../../game/quest-system";
-import {
-  buildRewardedAdRewardSet,
-  rewardedAdOptionsForRewards,
-  selectRewardedAdFishReward,
-  selectRewardedAdFoodReward,
-  selectRewardedAdHelperReward
-} from "../../game/rewarded-ad-rewards";
 import {
   createDefaultPrizeMachineState,
   type PrizeMachineBetAmount,
@@ -341,7 +327,6 @@ import {
 import { createCommonCoinValueRow, createMakeupCostElement, createPriceIconRow, createWalletIconRow } from "../../ui/PriceRows";
 import { appendGoalsPageContent } from "../../ui/GoalsPage";
 import { createLevelCompletionRewardShell, createPrizeCelebrationShell, type LevelCompletionRewardCard } from "../../ui/RewardModals";
-import { createRewardedAdModalView, syncRewardedAdModalView } from "../../ui/RewardedAdFlow";
 import {
   createActiveFishSellConfirmationContent,
   createCoinSellConfirmationContent,
@@ -2631,10 +2616,6 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.aquariumFishInventoryController().createFishTransferStatusBar(label, value, tone);
   }
 
-  private fishPowerLevelForAgeSeconds(ageSeconds: number): number {
-    return this.aquariumFishInventoryController().fishPowerLevelForAgeSeconds(ageSeconds);
-  }
-
   private moveStoredFishToTankFromInventoryPage(fishTypeId: string | undefined): void {
     this.aquariumFishInventoryController().moveStoredFishToTankFromInventoryPage(fishTypeId);
   }
@@ -2709,10 +2690,6 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private createDecorationInventoryRow(decorationType: DecorationType, size: DecorationSize): HTMLElement {
     return this.aquariumDecorationController().createDecorationInventoryRow(decorationType, size);
-  }
-
-  private compactDurationLabel(seconds: number): string {
-    return compactDurationLabelModel(seconds, formatNumber);
   }
 
   private appendGoalsPage(content: HTMLElement): void {
@@ -2931,24 +2908,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.prizeController().nextPrizeFish(rarity);
   }
 
-  private rewardedAdOptions(): RewardedAdOption[] {
-    return this.aquariumDailyGoalsController().rewardedAdOptions();
-  }
-
-  private rewardedAdRewards() {
-    return this.aquariumDailyGoalsController().rewardedAdRewards();
-  }
-
-  private rewardedAdFoodReward(): FoodType {
-    return this.aquariumDailyGoalsController().rewardedAdFoodReward();
-  }
-
   private rewardedAdFishReward(): FishType {
     return this.aquariumDailyGoalsController().rewardedAdFishReward();
-  }
-
-  private rewardedAdHelperReward(): HelperCreatureType {
-    return this.aquariumDailyGoalsController().rewardedAdHelperReward();
   }
 
   private appendSettingsPage(content: HTMLElement): void {
@@ -4899,269 +4860,139 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private currentProductionMinuteQuestReward(): Price {
-    return { coinType: "common", amount: Math.max(0, Math.round(this.activeFishProductionPerMinute() * 1000) / 1000) };
+    return this.aquariumDailyGoalsController().currentProductionMinuteQuestReward();
   }
 
   private fishQuestReward(): DailyQuestReward {
-    return { kind: "fish", fishTypeId: this.rewardedAdFishReward().id, quantity: 1 };
+    return this.aquariumDailyGoalsController().fishQuestReward();
   }
 
   private rareQuestReward(): Price {
-    return questRareReward(this.wallet);
+    return this.aquariumDailyGoalsController().rareQuestReward();
   }
 
   private superRareQuestReward(): Price {
-    return questSuperRareReward(this.wallet);
-  }
-
-  private rewardedAdCoinReward(coinType: CoinType): Price {
-    return questRewardedAdCoinReward(coinType, this.tankDisplayLevel(), this.wallet, this.calculateTotalWealth());
-  }
-
-  private clearExpiredRewardedAdCooldown(): void {
-    if (this.rewardedAd?.cooldown === true && isRewardedAdReady(this.rewardedAd)) {
-      this.rewardedAd = undefined;
-    }
-  }
-
-  private startRewardedAd(kind: RewardedAdKind): void {
-    this.clearExpiredRewardedAdCooldown();
-    if (this.rewardedAd) {
-      if (this.rewardedAd.cooldown === true) {
-        const remainingSeconds = rewardedAdRemainingSeconds(this.rewardedAd);
-        this.floatText(`Ad cooldown ${formatNumber(remainingSeconds)}s`, toastX, toastY, "#d7f4ff");
-      }
-      return;
-    }
-
-    this.rewardedAd = { kind, readyAt: serverNow() + rewardedAdDurationMs };
-    this.recordDailyQuestAction("watch-ad");
-    this.ensureRewardedAdRefreshTimer();
-    this.showRewardedAdModal(kind);
-  }
-
-  private ensureRewardedAdRefreshTimer(): void {
-    if (this.rewardedAdRefreshTimer) {
-      return;
-    }
-
-    this.rewardedAdRefreshTimer = this.time.addEvent({
-      delay: 1000,
-      loop: true,
-      callback: () => {
-        if (!this.rewardedAd) {
-          this.rewardedAdRefreshTimer?.remove(false);
-          this.rewardedAdRefreshTimer = undefined;
-          return;
-        }
-        this.updateRewardedAdModal();
-        if (this.activeScreen === "goals") {
-          this.syncHtmlPageOverlay();
-        }
-        if (isRewardedAdReady(this.rewardedAd)) {
-          if (this.rewardedAd.cooldown === true) {
-            this.rewardedAd = undefined;
-            if (this.activeScreen === "goals") {
-              this.syncHtmlPageOverlay();
-            }
-          }
-          this.rewardedAdRefreshTimer?.remove(false);
-          this.rewardedAdRefreshTimer = undefined;
-        }
-      }
-    });
-  }
-
-  private showRewardedAdModal(kind: RewardedAdKind): void {
-    const option = this.rewardedAdOptions().find((item) => item.kind === kind);
-    this.closeModal();
-    this.modalTitle = "Rewarded Ad";
-
-    const modal = createRewardedAdModalView({
-      option,
-      onClaim: () => this.claimRewardedAd(kind),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button)
-    });
-    this.rewardedAdCountdownText = modal.countdownText;
-    this.rewardedAdModalButton = modal.claimButton;
-    document.body.appendChild(modal.shell);
-    this.modal = modal.shell;
-    this.updateRewardedAdModal();
-  }
-
-  private updateRewardedAdModal(): void {
-    syncRewardedAdModalView({
-      ad: this.rewardedAd,
-      countdownText: this.rewardedAdCountdownText,
-      claimButton: this.rewardedAdModalButton
-    });
-  }
-
-  private claimRewardedAd(kind: RewardedAdKind): void {
-    if (!this.rewardedAd || this.rewardedAd.kind !== kind || this.rewardedAd.cooldown === true || !isRewardedAdReady(this.rewardedAd)) {
-      return;
-    }
-
-    if (kind === "common") {
-      const reward = this.rewardedAdCoinReward(kind);
-      earn(this.wallet, reward.coinType, reward.amount);
-      this.floatText(`+${formatPrice(reward)} ad`, toastX, toastY, "#ffe67a");
-    } else if (kind === "food") {
-      const foodType = this.rewardedAdFoodReward();
-      const inventoryAmount = this.isCalorieTrackedFood(foodType.id) ? foodType.calories : 1;
-      this.foodInventory.set(foodType.id, this.getFoodInventory(foodType.id) + inventoryAmount);
-      this.recentInventoryDockItemKey = `food:${foodType.id}`;
-      if (this.isDroppableFood(foodType.id)) {
-        this.selectedFoodTypeId = foodType.id;
-      }
-      this.floatText(`+${foodType.name}`, toastX, toastY, "#ffe67a");
-    } else if (kind === "fish") {
-      const fishType = this.rewardedAdFishReward();
-      this.addFishToInventory(fishType);
-      this.floatText(`${fishType.name} in inventory`, toastX, toastY, "#a8ffb0");
-    } else if (kind === "helper") {
-      const creatureType = this.rewardedAdHelperReward();
-      this.creatureInventory.set(creatureType.id, this.getCreatureInventory(creatureType.id) + 1);
-      this.recentInventoryDockItemKey = `helper:${creatureType.id}`;
-      this.floatText(`+${creatureType.name}`, toastX, toastY, "#a8ffb0");
-    }
-
-    this.recordDailyQuestAction("claim-ad");
-    this.recordDailyQuestAction(kind === "common" ? "claim-coin-ad" : `claim-${kind}-ad`);
-    this.rewardedAd = { kind, readyAt: serverNow() + rewardedAdCooldownMs, cooldown: true };
-    this.ensureRewardedAdRefreshTimer();
-    this.closeModal();
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
+    return this.aquariumDailyGoalsController().superRareQuestReward();
   }
 
   private dailyQuestActionCount(action: string): number {
-    return questActionCount(this.dailyGoals, action);
+    return this.aquariumDailyGoalsController().dailyQuestActionCount(action);
   }
 
   private todayFishPurchaseCount(coinType?: CoinType): number {
-    return questTodayFishPurchaseCount(this.dailyGoals, coinType);
+    return this.aquariumDailyGoalsController().todayFishPurchaseCount(coinType);
   }
 
   private recentFishPurchaseCount(coinType?: CoinType, now = serverNow()): number {
-    return questRecentFishPurchaseCount(this.dailyGoals, coinType, now);
+    return this.aquariumDailyGoalsController().recentFishPurchaseCount(coinType, now);
   }
 
   private hourlyFishPurchaseLimit(): number {
-    const level = this.tankDisplayLevel();
-    if (level <= 1) {
-      return 5;
-    }
-    if (level <= 2) {
-      return 4;
-    }
-    if (level <= 4) {
-      return 6;
-    }
-    return 9999;
+    return this.aquariumDailyGoalsController().hourlyFishPurchaseLimit();
   }
 
   private canBuyAnotherFishThisHour(): boolean {
-    return this.recentFishPurchaseCount() < this.hourlyFishPurchaseLimit();
+    return this.aquariumDailyGoalsController().canBuyAnotherFishThisHour();
   }
 
   private fishPurchaseRestockLabel(now = serverNow()): string {
-    const oldestRecentPurchase = oldestRecentFishPurchase(this.dailyGoals, now);
-
-    if (!oldestRecentPurchase) {
-      return "Hourly Limit";
-    }
-
-    const remainingSeconds = Math.ceil((oldestRecentPurchase + fishPurchaseWindowMs - now) / 1000);
-    return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+    return this.aquariumDailyGoalsController().fishPurchaseRestockLabel(now);
   }
 
   private recentGrowthTonicPurchaseCount(now = serverNow()): number {
-    return questRecentGrowthTonicPurchaseCount(this.dailyGoals, now);
+    return this.aquariumDailyGoalsController().recentGrowthTonicPurchaseCount(now);
   }
 
   private canBuyGrowthTonicThisHour(): boolean {
-    return this.recentGrowthTonicPurchaseCount() === 0;
+    return this.aquariumDailyGoalsController().canBuyGrowthTonicThisHour();
   }
 
   private growthTonicPurchaseRestockLabel(now = serverNow()): string {
-    const oldestRecentPurchase = oldestRecentGrowthTonicPurchase(this.dailyGoals, now);
-
-    if (!oldestRecentPurchase) {
-      return "1 per hour";
-    }
-
-    const remainingSeconds = Math.ceil((oldestRecentPurchase + growthTonicPurchaseWindowMs - now) / 1000);
-    return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+    return this.aquariumDailyGoalsController().growthTonicPurchaseRestockLabel(now);
   }
 
   private recordGrowthTonicPurchase(): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals = recordGrowthTonicPurchaseModel(this.dailyGoals);
+    this.aquariumDailyGoalsController().recordGrowthTonicPurchase();
   }
 
   private recentProductionBoostPurchaseCount(now = serverNow()): number {
-    return questRecentProductionBoostPurchaseCount(this.dailyGoals, now);
+    return this.aquariumDailyGoalsController().recentProductionBoostPurchaseCount(now);
   }
 
   private canBuyProductionBoostNow(): boolean {
-    return this.recentProductionBoostPurchaseCount() === 0;
+    return this.aquariumDailyGoalsController().canBuyProductionBoostNow();
   }
 
   private productionBoostPurchaseRestockLabel(now = serverNow()): string {
-    const oldestRecentPurchase = oldestRecentProductionBoostPurchase(this.dailyGoals, now);
-
-    if (!oldestRecentPurchase) {
-      return "30m restock";
-    }
-
-    const remainingSeconds = Math.ceil((oldestRecentPurchase + productionBoostPurchaseWindowMs - now) / 1000);
-    return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+    return this.aquariumDailyGoalsController().productionBoostPurchaseRestockLabel(now);
   }
 
   private recordProductionBoostPurchase(): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals = recordProductionBoostPurchaseModel(this.dailyGoals);
+    this.aquariumDailyGoalsController().recordProductionBoostPurchase();
   }
 
   private recentTimeCurrentPurchaseCount(now = serverNow()): number {
-    return questRecentTimeCurrentPurchaseCount(this.dailyGoals, now);
+    return this.aquariumDailyGoalsController().recentTimeCurrentPurchaseCount(now);
   }
 
   private canBuyTimeCurrentNow(): boolean {
-    return this.recentTimeCurrentPurchaseCount() === 0;
+    return this.aquariumDailyGoalsController().canBuyTimeCurrentNow();
   }
 
   private timeCurrentPurchaseRestockLabel(now = serverNow()): string {
-    const oldestRecentPurchase = oldestRecentTimeCurrentPurchase(this.dailyGoals, now);
-
-    if (!oldestRecentPurchase) {
-      return "1h restock";
-    }
-
-    const remainingSeconds = Math.ceil((oldestRecentPurchase + timeCurrentPurchaseWindowMs - now) / 1000);
-    return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
+    return this.aquariumDailyGoalsController().timeCurrentPurchaseRestockLabel(now);
   }
 
   private recordTimeCurrentPurchase(): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals = recordTimeCurrentPurchaseModel(this.dailyGoals);
+    this.aquariumDailyGoalsController().recordTimeCurrentPurchase();
   }
 
   private recordFishPurchase(fishType: FishType): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals = recordFishPurchaseModel(this.dailyGoals, fishType.rarity);
-    this.autoDropCompletedDailyQuestPresents();
+    this.aquariumDailyGoalsController().recordFishPurchase(fishType);
   }
 
   private recordDailyQuestAction(action: string): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, action);
-    if (action === "clean" && this.phaseThreeCleanQuestActive() && this.dailyQuestActionCount("phase-3-clean") <= 0) {
-      this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "phase-3-clean");
-    }
-    this.autoDropCompletedDailyQuestPresents();
+    this.aquariumDailyGoalsController().recordDailyQuestAction(action);
+  }
+
+  private claimDailyGoal(id: string, complete: boolean): void {
+    this.aquariumDailyGoalsController().claimDailyGoal(id, complete);
+  }
+
+  private showQuestRewardModal(quest: DailyQuestItem): void {
+    this.aquariumDailyGoalsController().showQuestRewardModal(quest);
+  }
+
+  private finishClaimDailyGoal(quest: DailyQuestItem): void {
+    this.aquariumDailyGoalsController().finishClaimDailyGoal(quest);
+  }
+
+  private claimAllDailyGoals(): void {
+    this.aquariumDailyGoalsController().claimAllDailyGoals();
+  }
+
+  private autoDropCompletedDailyQuestPresents(): void {
+    this.aquariumDailyGoalsController().autoDropCompletedDailyQuestPresents();
+  }
+
+  private dropDailyQuestPresent(quest: DailyQuestItem, notify = true): void {
+    this.aquariumDailyGoalsController().dropDailyQuestPresent(quest, notify);
+  }
+
+  private markDailyGoalClaimed(quest: DailyQuestItem): boolean {
+    return this.aquariumDailyGoalsController().markDailyGoalClaimed(quest);
+  }
+
+  private grantDailyQuestReward(reward: DailyQuestReward): void {
+    this.aquariumDailyGoalsController().grantDailyQuestReward(reward);
+  }
+
+  private questRewardImageUrl(reward: DailyQuestReward): string {
+    return this.aquariumDailyGoalsController().questRewardImageUrl(reward);
+  }
+
+  private dailyQuestRewardLabel(reward: DailyQuestReward): string {
+    return this.aquariumDailyGoalsController().dailyQuestRewardLabel(reward);
   }
 
   private localDateKey(): string {
@@ -5172,190 +5003,10 @@ export class AquariumSceneCore extends Phaser.Scene {
     return `${year}-${month}-${day}`;
   }
 
-  private claimDailyGoal(id: string, complete: boolean): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    const quest = this.dailyQuestItems().find((item) => item.id === id);
-    if (this.dailyGoals.claimed.includes(id)) {
-      this.floatText("Already claimed", toastX, toastY, "#d7f4ff");
-      return;
-    }
-
-    if (!complete) {
-      this.floatText("Quest not done", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    if (!quest) {
-      return;
-    }
-
-    this.dropDailyQuestPresent(quest);
-  }
-
-  private showQuestRewardModal(quest: DailyQuestItem): void {
-    this.showPrizeCelebration(
-      "Quest Reward!",
-      this.questRewardImageUrl(quest.reward),
-      this.dailyQuestRewardLabel(quest.reward),
-      "Claim",
-      () => this.finishClaimDailyGoal(quest)
-    );
-  }
-
-  private finishClaimDailyGoal(quest: DailyQuestItem): void {
-    if (!this.markDailyGoalClaimed(quest)) {
-      return;
-    }
-
-    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
-    this.grantDailyQuestReward(quest.reward);
-    this.floatText(`+${this.dailyQuestRewardLabel(quest.reward)} quest`, toastX, toastY, "#ffe67a");
-    this.refreshUi();
-    this.createFoodDock();
-    this.saveNow();
-  }
-
-  private claimAllDailyGoals(): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    const readyQuests = this.dailyQuestItems().filter((quest) => quest.complete && !this.dailyGoals.claimed.includes(quest.id));
-    if (readyQuests.length === 0) {
-      this.floatText("No quests ready", toastX, toastY, "#d7f4ff");
-      return;
-    }
-
-    readyQuests.forEach((quest) => this.dropDailyQuestPresent(quest, false));
-    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
-    this.floatText(`${formatNumber(readyQuests.length)} prizes dropped`, toastX, toastY, "#ffe67a");
-    this.refreshUi();
-    this.saveNow();
-  }
-
-  private autoDropCompletedDailyQuestPresents(): void {
-    this.dailyGoals = this.normalizeDailyGoals(this.dailyGoals);
-    const readyQuests = this.dailyQuestItems().filter((quest) => quest.complete && !this.dailyGoals.claimed.includes(quest.id));
-    if (readyQuests.length === 0) {
-      return;
-    }
-
-    readyQuests.forEach((quest) => this.dropDailyQuestPresent(quest, false));
-    this.dailyGoals = ensureActiveDailyQuestItemsModel(this.dailyGoals, this.dailyQuestItems());
-    this.refreshUi(false);
-    this.saveNow();
-  }
-
-  private dropDailyQuestPresent(quest: DailyQuestItem, notify = true): void {
-    if (this.questPresents.some((present) => present.drop.questId === quest.id)) {
-      this.markDailyGoalClaimed(quest);
-      return;
-    }
-    const label = this.dailyQuestRewardLabel(quest.reward);
-    const present = this.createQuestPresentDrop(quest.id, quest.reward, label);
-    if (!present) {
-      return;
-    }
-    if (!this.markDailyGoalClaimed(quest)) {
-      present.destroy();
-      this.questPresents = this.questPresents.filter((candidate) => candidate.drop !== present);
-      return;
-    }
-    this.playSfx(prizeHighlightSoundKey, { volume: 0.16 });
-    if (notify) {
-      this.floatText("Prize dropped in tank", toastX, toastY, "#ffe67a");
-    }
-    this.saveNow();
-  }
-
-  private markDailyGoalClaimed(quest: DailyQuestItem): boolean {
-    if (this.dailyGoals.claimed.includes(quest.id)) {
-      return false;
-    }
-
-    this.dailyGoals.claimed.push(quest.id);
-    return true;
-  }
-
-  private grantDailyQuestReward(reward: DailyQuestReward): void {
-    if (reward.kind === "coins") {
-      earn(this.wallet, reward.price.coinType, reward.price.amount);
-      if (reward.price.rareAmount) {
-        earn(this.wallet, "rare", reward.price.rareAmount);
-      }
-      if (reward.price.superRareAmount) {
-        earn(this.wallet, "superRare", reward.price.superRareAmount);
-      }
-      return;
-    }
-
-    if (reward.kind === "fish") {
-      const fishType = fishTypes.find((candidate) => candidate.id === reward.fishTypeId) ?? fishTypes[0];
-      if (fishType) {
-        this.addFishToInventory(fishType, Math.max(1, Math.floor(reward.quantity)));
-      }
-      return;
-    }
-
-    if (reward.kind === "utility") {
-      const utility = tankUtilityInfoModel(reward.utilityId);
-      if (!utility) {
-        return;
-      }
-      const quantity = Math.max(1, Math.floor(reward.quantity));
-      if (utility.id === "coin-magnet") {
-        this.decorationInventory.set(utility.inventoryKey, Math.max(this.coinMagnetExpiresAt(), serverNow()) + coinMagnetDurationMs * quantity);
-        this.coinMagnetWasActive = false;
-      } else if (utility.id === "auto-food-buyer") {
-        this.decorationInventory.set(utility.inventoryKey, Math.max(this.autoFoodBuyerExpiresAt(), serverNow()) + autoFoodBuyerDurationMs * quantity);
-        this.autoFoodBuyerWasActive = false;
-      } else {
-        this.decorationInventory.set(utility.inventoryKey, 1);
-      }
-      this.recentInventoryDockItemKey = `utility:${utility.id}`;
-      return;
-    }
-
-    const quantity = Math.max(1, Math.floor(reward.quantity));
-    this.foodInventory.set(reward.foodTypeId, this.getFoodInventory(reward.foodTypeId) + quantity);
-    this.recentInventoryDockItemKey = `food:${reward.foodTypeId}`;
-    if (reward.foodTypeId === ageBoostFoodTypeId && reward.assignTo === "oldest-active-fish") {
-      const oldestFish = this.oldestActiveFish();
-      if (oldestFish) {
-        this.careFoodTargetFish.set(reward.foodTypeId, oldestFish);
-      }
-    }
-    if (this.isDroppableFood(reward.foodTypeId)) {
-      this.selectedFoodTypeId = reward.foodTypeId;
-    }
-  }
-
   private oldestActiveFish(): Fish | undefined {
     return this.activeFish().reduce<Fish | undefined>(
       (oldest, fish) => (!oldest || fish.ageSeconds > oldest.ageSeconds ? fish : oldest),
       undefined
-    );
-  }
-
-  private questRewardImageUrl(reward: DailyQuestReward): string {
-    if (reward.kind === "coins") {
-      return coinAssetPathByType[reward.price.coinType];
-    }
-
-    if (reward.kind === "fish") {
-      return `/assets/fish/${reward.fishTypeId}.png`;
-    }
-
-    if (reward.kind === "utility") {
-      return this.tankUtilityIconPath(reward.utilityId);
-    }
-
-    return foodAssetPath(reward.foodTypeId);
-  }
-
-  private dailyQuestRewardLabel(reward: DailyQuestReward): string {
-    return formatDailyQuestReward(
-      reward,
-      (foodTypeId) => this.foodTypeById(foodTypeId)?.name ?? "Reward",
-      (fishTypeId) => fishTypes.find((fishType) => fishType.id === fishTypeId)?.name ?? "Fish",
-      (utilityId) => tankUtilityInfoModel(utilityId)?.name ?? "Tool"
     );
   }
 

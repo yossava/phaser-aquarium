@@ -3,6 +3,7 @@
 - Do not run full build tests or browser regression tests unless explicitly asked; run `tsc` (TypeScript check) only after fixes. Confidence: 0.85
 - Do not revert changes made by other agents/contributors in the same codebase. Confidence: 0.85
 - Store credentials and secrets in `.env` file rather than asking for them interactively. Confidence: 0.70
+- Create a comprehensive task list and plan before executing individual steps — do not offer one-off actions without broader context. Confidence: 0.80
 
 # code-style
 - Use lowercase snake_case for asset filenames. Confidence: 0.90
