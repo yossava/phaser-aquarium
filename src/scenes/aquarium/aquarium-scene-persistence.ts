@@ -130,8 +130,10 @@ export function applyAquariumSceneOfflineProgress(scene: AquariumScenePersistenc
   const offlineDeaths: Fish[] = [];
 
   for (const currentFish of scene.fish) {
-    applyOfflineFishProduction(scene, currentFish, elapsedSeconds, earned, earnedByTank);
+    // Apply care first to update hunger/health state
     applyOfflineFishCare(currentFish, elapsedSeconds, offlineDeaths);
+    // Then calculate production based on updated state
+    applyOfflineFishProduction(scene, currentFish, elapsedSeconds, earned, earnedByTank);
   }
 
   for (const deadFish of offlineDeaths) {
@@ -256,7 +258,8 @@ function restoreCoinDrops(scene: AquariumScenePersistenceTarget, coinDrops: Save
       savedCoin.coinType,
       savedCoin.isMega,
       {
-        landingX
+        landingX,
+        bottomY: savedCoin.bottomY
       }
     );
   }
@@ -338,6 +341,7 @@ function applyOfflineFishCare(currentFish: Fish, elapsedSeconds: number, offline
     offlineDeaths.push(currentFish);
   }
 
+  currentFish.updateCareState();
   currentFish.nextCoinDropAt = 0;
   currentFish.resumeAfterOfflineProgress();
 }

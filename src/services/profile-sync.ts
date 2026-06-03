@@ -15,17 +15,28 @@ export async function ensureCurrentUserProfile(displayName?: string): Promise<bo
     return false;
   }
 
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', user.id)
+    .maybeSingle();
+
   const fallbackName =
     sanitizeDisplayName(displayName) ??
     sanitizeDisplayName(user.user_metadata?.username) ??
     sanitizeDisplayName(user.email?.split('@')[0]);
 
+  const profileData: { id: string; display_name?: string | null } = {
+    id: user.id,
+  };
+
+  if (!existingProfile?.display_name) {
+    profileData.display_name = fallbackName;
+  }
+
   const { error } = await supabase
     .from('profiles')
-    .upsert({
-      id: user.id,
-      display_name: fallbackName,
-    }, { onConflict: 'id' });
+    .upsert(profileData, { onConflict: 'id' });
 
   if (error) {
     console.error('[Auth] Failed to sync profile:', error);

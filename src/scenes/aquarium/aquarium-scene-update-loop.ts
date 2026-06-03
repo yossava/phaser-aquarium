@@ -140,7 +140,7 @@ function updateFish(
     handleEatenFood(scene, currentFish, eatenFood);
   }
 
-  if (scene.cleanliness < 35 && currentFish.hunger > 72) {
+  if (scene.cleanliness < 35 && currentFish.hunger > 72 && currentFish.hunger <= 94) {
     currentFish.health = Phaser.Math.Clamp(currentFish.health - 1.8 * progressDeltaSeconds, 0, 100);
   }
 
@@ -213,7 +213,6 @@ function removeDeadFish(scene: AquariumSceneUpdateTarget, fishToRemove: Fish[]):
     scene.removeFishAt(index);
     scene.floatTankText(`${name} died`, x, y - 30, "#ff8f9a");
   }
-  scene.closeModal();
   scene.renderTabControls();
   scene.refreshUi();
   scene.saveNow();

@@ -1101,7 +1101,7 @@ export class Fish {
     return this.hunger > hungryStateThreshold;
   }
 
-  private updateCareState(): void {
+  public updateCareState(): void {
     this.state = this.canBecomeSickFromHunger()
       ? "ill"
       : this.hunger > hungryStateThreshold

@@ -300,6 +300,7 @@ export class AquariumEntityController {
     this.adapter.setCreatureInventory(creatureType.id, Math.max(0, this.adapter.getCreatureInventory(creatureType.id) - 1));
     this.adapter.recordDailyQuestAction("place-helper");
     this.createPendingHelperCreatureDrop(creatureType, x, y);
+    this.adapter.saveNow();
     this.adapter.floatTankText(`${creatureType.name} dropped`, x, y - 24, "#d7f4ff");
     this.adapter.setPlacementMode({ kind: "none" });
     this.adapter.refreshUi();

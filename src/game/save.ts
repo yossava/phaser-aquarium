@@ -66,6 +66,7 @@ export type SavedQuestPresent = {
 export type SavedGame = {
   version: typeof SAVE_VERSION;
   savedAt: number;
+  syncVersion?: number;
   wallet: Wallet;
   foodInventory: Record<FoodTypeId, number>;
   fishInventory: Record<string, number>;
@@ -270,7 +271,9 @@ function recoverPartialSave(rawSave: string): SavedGame | undefined {
       decorations: Array.isArray(candidate.decorations)
         ? candidate.decorations.map(sanitizeDecoration).filter((d): d is SavedDecoration => Boolean(d))
         : [],
-      helperCreatures: [],
+      helperCreatures: Array.isArray(candidate.helperCreatures)
+        ? candidate.helperCreatures.map(sanitizeHelperCreature).filter((creature): creature is SavedHelperCreature => Boolean(creature))
+        : [],
       coinDrops: [],
       questPresents: [],
       tank: {

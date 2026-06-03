@@ -735,16 +735,24 @@ export class AquariumSceneCore extends Phaser.Scene {
     }
   }
 
+  private pagePersistenceHandlersInstalled = false;
+
   private installPagePersistenceHandlers(): void {
+    if (this.pagePersistenceHandlersInstalled) return;
+    
     window.addEventListener("beforeunload", this.handlePagePersistence);
     window.addEventListener("pagehide", this.handlePagePersistence);
     document.addEventListener("visibilitychange", this.handleVisibilityPersistence);
+    this.pagePersistenceHandlersInstalled = true;
   }
 
   private removePagePersistenceHandlers(): void {
+    if (!this.pagePersistenceHandlersInstalled) return;
+    
     window.removeEventListener("beforeunload", this.handlePagePersistence);
     window.removeEventListener("pagehide", this.handlePagePersistence);
     document.removeEventListener("visibilitychange", this.handleVisibilityPersistence);
+    this.pagePersistenceHandlersInstalled = false;
   }
 
   private createFishAnimations(): void {
@@ -3134,6 +3142,9 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private switchTank(level: number): void {
+    this.coinComboCount = 0;
+    this.coinComboCollectedValue = 0;
+    this.coinComboLastClaimedAt = 0;
     this.aquariumTankController().switchTank(level);
   }
 
@@ -3807,6 +3818,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
   private saveNow(savedAt = serverNow(), immediate = false): void {
     this.lastKnownSaveAt = savedAt;
+    this.autosaveElapsed = 0;
     saveAquariumSceneNow(this as unknown as AquariumScenePersistenceTarget, savedAt, immediate);
   }
 

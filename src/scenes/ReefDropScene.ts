@@ -634,6 +634,8 @@ export class ReefDropScene extends Phaser.Scene {
       this.scoreCount += 1;
       this.playSfx(coinCollectSoundKey, { volume: 0.22 });
       this.showScorePop(hitX, hitY);
+    } else {
+      this.mismatchCount += 1;
     }
     this.flashBrick(brick, isMatch ? brickCorrectFlashColor : brickWrongFlashColor);
     this.clearActivePiece();

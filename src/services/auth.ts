@@ -7,13 +7,17 @@ export function getUserId(): string | undefined {
   return userId;
 }
 
-const SALT = 'coralhaven-v1';
-
 function deriveEmail(username: string): string {
   return `${username}@coralhaven.game`;
 }
 
-function derivePassword(username: string): string {
+function generateRandomPassword(): string {
+  const array = new Uint8Array(24);
+  crypto.getRandomValues(array);
+  return Array.from(array, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 48);
+}
+
+function deriveLegacyPassword(username: string): string {
   return `coralhaven-${username}-v1`;
 }
 
@@ -140,11 +144,11 @@ export async function initAuth(): Promise<void> {
       submit.textContent = 'Connecting...';
 
       const email = deriveEmail(username);
-      const password = derivePassword(username);
+      const legacyPassword = deriveLegacyPassword(username);
 
       try {
-        // Try signing in first
-        const signInResult = await supabase.auth.signInWithPassword({ email, password });
+        // Try signing in with legacy deterministic password (existing users)
+        const signInResult = await supabase.auth.signInWithPassword({ email, password: legacyPassword });
 
         if (signInResult.data.user) {
           userId = signInResult.data.user.id;
@@ -154,8 +158,9 @@ export async function initAuth(): Promise<void> {
           return;
         }
 
-        // Sign in failed — try creating a new account
-        const signUpResult = await supabase.auth.signUp({ email, password });
+        // Legacy login failed — try creating a new account with random password
+        const randomPassword = generateRandomPassword();
+        const signUpResult = await supabase.auth.signUp({ email, password: randomPassword });
 
         if (signUpResult.data.user) {
           userId = signUpResult.data.user.id;
