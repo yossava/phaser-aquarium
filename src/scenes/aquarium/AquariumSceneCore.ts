@@ -243,7 +243,6 @@ import {
   formatDailyQuestReward,
   fishPurchaseWindowMs,
   growthTonicPurchaseWindowMs,
-  isQuestComplete as isQuestCompleteModel,
   isRewardedAdReady,
   normalizeDailyGoals as normalizeDailyGoalsModel,
   oldestRecentFishPurchase,
@@ -489,6 +488,8 @@ import { AquariumDecorationController } from "./aquarium-decoration-controller";
 import { createAquariumDecorationControllerHost } from "./aquarium-decoration-adapter";
 import { AquariumHudController } from "./aquarium-hud-controller";
 import { createAquariumHudControllerHost } from "./aquarium-hud-adapter";
+import { AquariumQuestPhaseController } from "./aquarium-quest-phase-controller";
+import { createAquariumQuestPhaseControllerHost } from "./aquarium-quest-phase-adapter";
 
 type LevelCompletionBonusReward = {
   coins?: Price;
@@ -543,6 +544,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumDailyGoalsRuntimeController?: AquariumDailyGoalsController;
   private aquariumDecorationRuntimeController?: AquariumDecorationController;
   private aquariumHudRuntimeController?: AquariumHudController;
+  private aquariumQuestPhaseRuntimeController?: AquariumQuestPhaseController;
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -1806,6 +1808,13 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumHudController(): AquariumHudController {
     this.aquariumHudRuntimeController ??= new AquariumHudController(createAquariumHudControllerHost(this));
     return this.aquariumHudRuntimeController;
+  }
+
+  private aquariumQuestPhaseController(): AquariumQuestPhaseController {
+    this.aquariumQuestPhaseRuntimeController ??= new AquariumQuestPhaseController(
+      createAquariumQuestPhaseControllerHost(this)
+    );
+    return this.aquariumQuestPhaseRuntimeController;
   }
 
   private renderTabControls(): void {
@@ -4798,166 +4807,79 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private prepareQuestPhaseState(): void {
-    if (this.phaseOneComplete() && !this.phaseTwoStarted()) {
-      const targetFish = this.activeFish()[0];
-      if (targetFish) {
-        targetFish.state = "ill";
-        targetFish.health = Math.min(targetFish.health, 24);
-        targetFish.hunger = Math.max(targetFish.hunger, 92);
-        targetFish.continuousHungrySeconds = Math.max(targetFish.continuousHungrySeconds, 10 * 60);
-        this.grantPhaseTwoStarterItems();
-        this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "phase-2-start");
-      }
-    }
-
-    if (this.phaseTwoComplete() && !this.phaseThreeStarted()) {
-      this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "phase-3-start");
-    }
-
-    if (
-      this.phaseThreeStarted() &&
-      this.dailyQuestActionCount("phase-3-five-fish-in-tank") <= 0 &&
-      (this.activeFish().length >= 5 || this.dailyGoals.claimed.includes("phase-3-five-fish-in-tank"))
-    ) {
-      this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "phase-3-five-fish-in-tank");
-    }
-
-    if (
-      this.phaseThreeStarted() &&
-      this.dailyQuestActionCount("phase-3-reach-1k-coins") <= 0 &&
-      (this.wallet.common >= 1000 || this.dailyGoals.claimed.includes("phase-3-reach-1k-coins"))
-    ) {
-      this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "phase-3-reach-1k-coins");
-    }
-
-    if (
-      this.phaseThreeStarted() &&
-      this.dailyQuestActionCount("fuse-fish") <= 0 &&
-      this.dailyGoals.claimed.includes("phase-3-five-fish-in-tank") &&
-      this.dailyGoals.activeQuestIds?.includes("phase-3-fuse-fish") &&
-      this.activeFish().length < 5 &&
-      this.totalStoredFishCount() > 0
-    ) {
-      this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "fuse-fish");
-    }
-
-    if (this.phaseThreeStarted() && this.dailyQuestActionCount("buy-dispenser") > 0 && this.dailyQuestActionCount("phase-3-dirty-tank") <= 0) {
-      this.cleanliness = Math.min(this.cleanliness, 35);
-      this.cleanedAt = serverNow();
-      this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "phase-3-dirty-tank");
-    }
+    this.aquariumQuestPhaseController().prepareQuestPhaseState();
   }
 
   private phaseOneComplete(): boolean {
-    const requiredQuestIds = [
-      "phase-1-buy-fish",
-      "phase-1-buy-food",
-      "phase-1-feed-fish",
-      "phase-1-tap-coin",
-      "phase-1-combo",
-      "phase-1-buy-another-fish"
-    ];
-    return requiredQuestIds.every((questId) => this.dailyGoals.claimed.includes(questId));
+    return this.aquariumQuestPhaseController().phaseOneComplete();
   }
 
   private phaseTwoStarted(): boolean {
-    return this.dailyQuestActionCount("phase-2-start") > 0;
+    return this.aquariumQuestPhaseController().phaseTwoStarted();
   }
 
   private phaseTwoComplete(): boolean {
-    const requiredQuestIds = [
-      "phase-2-buy-medicine",
-      "phase-2-heal-fish",
-      "phase-2-change-background",
-      "phase-2-change-sand",
-      "phase-2-place-decor"
-    ];
-    return requiredQuestIds.every((questId) => this.dailyGoals.claimed.includes(questId));
+    return this.aquariumQuestPhaseController().phaseTwoComplete();
   }
 
   private phaseThreeStarted(): boolean {
-    return this.dailyQuestActionCount("phase-3-start") > 0;
+    return this.aquariumQuestPhaseController().phaseThreeStarted();
   }
 
   private canSellFish(): boolean {
-    return this.phaseThreeStarted();
+    return this.aquariumQuestPhaseController().canSellFish();
   }
 
   private phaseThreeCleanQuestActive(): boolean {
-    return this.phaseThreeStarted() &&
-      this.dailyQuestActionCount("phase-3-dirty-tank") > 0 &&
-      !this.dailyGoals.claimed.includes("phase-3-clean-tank");
+    return this.aquariumQuestPhaseController().phaseThreeCleanQuestActive();
   }
 
   private sickFishCount(): number {
-    return this.activeFish().filter((fish) => fish.state === "ill" || fish.health < 82).length;
+    return this.aquariumQuestPhaseController().sickFishCount();
   }
 
   private phaseTwoBackground(): TankCosmetic | undefined {
-    return this.tankCosmetics("background").find((asset) => asset.id !== this.defaultTankCosmeticId(this.tankLevel));
+    return this.aquariumQuestPhaseController().phaseTwoBackground();
   }
 
   private phaseTwoSeabed(): TankCosmetic | undefined {
-    return this.tankCosmetics("seabed").find((asset) => asset.id !== this.defaultTankCosmeticId(this.tankLevel));
+    return this.aquariumQuestPhaseController().phaseTwoSeabed();
   }
 
   private phaseTwoDecoration(): DecorationType | undefined {
-    return this.aquariumDecorationController().phaseTwoDecoration();
+    return this.aquariumQuestPhaseController().phaseTwoDecoration();
   }
 
   private ownsPhaseTwoDecoration(): boolean {
-    return this.aquariumDecorationController().ownsPhaseTwoDecoration();
+    return this.aquariumQuestPhaseController().ownsPhaseTwoDecoration();
   }
 
   private ownsPhaseTwoBackground(): boolean {
-    const asset = this.phaseTwoBackground();
-    return Boolean(asset && this.ownsTankCosmetic(asset));
+    return this.aquariumQuestPhaseController().ownsPhaseTwoBackground();
   }
 
   private ownsPhaseTwoSeabed(): boolean {
-    const asset = this.phaseTwoSeabed();
-    return Boolean(asset && this.ownsTankCosmetic(asset));
+    return this.aquariumQuestPhaseController().ownsPhaseTwoSeabed();
   }
 
   private grantPhaseTwoStarterItems(): void {
-    const background = this.phaseTwoBackground();
-    if (background) {
-      this.tankCosmeticInventory("background").set(background.id, Math.max(1, this.tankCosmeticInventory("background").get(background.id) ?? 0));
-    }
-
-    const seabed = this.phaseTwoSeabed();
-    if (seabed) {
-      this.tankCosmeticInventory("seabed").set(seabed.id, Math.max(1, this.tankCosmeticInventory("seabed").get(seabed.id) ?? 0));
-    }
-
-    const decoration = this.phaseTwoDecoration();
-    if (decoration) {
-      const key = this.decorationInventoryKey(decoration.id, "m");
-      this.decorationInventory.set(key, Math.max(1, this.decorationInventory.get(key) ?? 0));
-    }
+    this.aquariumQuestPhaseController().grantPhaseTwoStarterItems();
   }
 
   private dailyGoalUnclaimedCount(): number {
-    return this.dailyQuestItems().filter((quest) => quest.complete && !this.dailyGoals.claimed.includes(quest.id)).length;
+    return this.aquariumQuestPhaseController().dailyGoalUnclaimedCount();
   }
 
   private phaseOneShopLimitActive(): boolean {
-    return this.dailyQuestItems().some((quest) => quest.id.startsWith("phase-1-") && !this.isDailyQuestComplete(quest));
+    return this.aquariumQuestPhaseController().phaseOneShopLimitActive();
   }
 
   private phaseTwoTankMenuLimitActive(): boolean {
-    const cosmeticQuestIds = [
-      "phase-2-change-background",
-      "phase-2-change-sand",
-      "phase-2-place-decor"
-    ];
-    return this.phaseTwoStarted() &&
-      this.dailyQuestActionCount("medicine") > 0 &&
-      this.dailyQuestItems().some((quest) => cosmeticQuestIds.includes(quest.id) && !this.isDailyQuestComplete(quest));
+    return this.aquariumQuestPhaseController().phaseTwoTankMenuLimitActive();
   }
 
   private isDailyQuestComplete(quest: DailyQuestItem): boolean {
-    return isQuestCompleteModel(this.dailyGoals, quest);
+    return this.aquariumQuestPhaseController().isDailyQuestComplete(quest);
   }
 
   private visibleDailyQuestItems(): DailyQuestItem[] {
