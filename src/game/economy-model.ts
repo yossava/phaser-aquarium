@@ -1,5 +1,6 @@
 import { priceComponents } from "./economy";
 import type { CoinProduction, CoinType, FishType, Price } from "../types/mechanics";
+import { clamp } from "./math";
 
 export const baselineCommonFishPrice = 60;
 export const commonPerCalorie = 0.03;
@@ -172,8 +173,4 @@ export function fishCoinDropPlan(input: FishCoinDropPlanInput): FishCoinDropPlan
     nextPendingValueIfNoDrop: availableValue,
     nextPendingValueAfterDropBase: availableValue
   };
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }

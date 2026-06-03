@@ -26,9 +26,9 @@ export function queueServerSave(snapshot: SavedGame): void {
   const elapsed = serverNow() - lastServerSaveAt;
   const delay = Math.max(0, SAVE_DEBOUNCE_MS - elapsed);
 
-  saveTimer = setTimeout(async () => {
+  saveTimer = setTimeout(() => {
     saveTimer = null;
-    await flushServerSave();
+    flushServerSave().catch((err) => console.error('[Sync] Flush failed:', err));
   }, delay);
 }
 

@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../../data/content";
 import { serverNow } from "../../services/server-time";
 import { getBootstrappedSave, isFreshStart } from "../../services/bootstrap";
-import { subscribeToRemoteSaves } from "../../services/sync-service";
+import { setVersionConflictHandler, subscribeToRemoteSaves } from "../../services/sync-service";
 import {
   gameHeight,
   gameWidth,
@@ -722,6 +722,8 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.installNativeCanvasInputFallback();
     this.installPagePersistenceHandlers();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.unsubscribeRemote?.();
+      this.unsubscribeRemote = undefined;
       this.input.off("pointerdown");
       this.input.off("pointermove");
       this.input.off("pointerup");
@@ -3803,10 +3805,19 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private setupRealtimeSubscription(): void {
-    this.unsubscribeRemote = subscribeToRemoteSaves((remoteSave: SavedGame) => {
+    subscribeToRemoteSaves((remoteSave: SavedGame) => {
       if (remoteSave.savedAt > (this.lastKnownSaveAt ?? 0) + 1000) {
         this.applyRemoteSave(remoteSave);
       }
+    }).then((unsubscribe) => {
+      this.unsubscribeRemote = unsubscribe;
+    }).catch((err) => {
+      console.warn("[Scene] Failed to set up realtime subscription", err);
+    });
+
+    setVersionConflictHandler(() => {
+      console.warn("[Scene] Version conflict detected, reloading server save");
+      this.restoreServerSave();
     });
   }
 

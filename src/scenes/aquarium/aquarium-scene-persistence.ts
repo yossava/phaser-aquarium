@@ -188,7 +188,7 @@ export function saveAquariumSceneNow(scene: AquariumScenePersistenceTarget, save
   saveGame(snapshot);
 
   if (immediate) {
-    void saveServerSaveNow(snapshot);
+    saveServerSaveNow(snapshot).catch((err) => console.error('[Save] Immediate save failed:', err));
     return;
   }
 

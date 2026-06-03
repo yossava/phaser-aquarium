@@ -55,6 +55,7 @@ type FishInventoryAdapterScene = Phaser.Scene & {
 
 export function createAquariumFishInventoryControllerHost(scene: AquariumSceneCore): AquariumFishInventoryControllerHost {
   const s = scene as unknown as FishInventoryAdapterScene;
+  const fusion = createAquariumFusionAdapter(scene);
   return {
     scene: s,
 
@@ -117,13 +118,13 @@ export function createAquariumFishInventoryControllerHost(scene: AquariumSceneCo
     htmlButton: (label, className, action, disabled) => s.htmlButton(label, className, action, disabled),
 
     // Fusion adapter methods
-    showFishFusionModal: (preselectedKeys) => createAquariumFusionAdapter(scene).showFishFusionModal(preselectedKeys),
-    fishFusionSources: () => createAquariumFusionAdapter(scene).fishFusionSources(),
-    fishFusionResultTypes: (sources) => createAquariumFusionAdapter(scene).fishFusionResultTypes(sources),
-    fishFusionSourceSellValue: (source) => createAquariumFusionAdapter(scene).fishFusionSourceSellValue(source),
-    fishFusionCostFor: (sources) => createAquariumFusionAdapter(scene).fishFusionCostFor(sources),
-    areFishFusionSourcesAvailable: (sources) => createAquariumFusionAdapter(scene).areFishFusionSourcesAvailable(sources),
-    fishFusionChancesFor: (sources, hasPremium) => createAquariumFusionAdapter(scene).fishFusionChancesFor(sources, hasPremium),
-    consumeFishFusionSources: (sources) => createAquariumFusionAdapter(scene).consumeFishFusionSources(sources)
+    showFishFusionModal: (preselectedKeys) => fusion.showFishFusionModal(preselectedKeys),
+    fishFusionSources: () => fusion.fishFusionSources(),
+    fishFusionResultTypes: (sources) => fusion.fishFusionResultTypes(sources),
+    fishFusionSourceSellValue: (source) => fusion.fishFusionSourceSellValue(source),
+    fishFusionCostFor: (sources) => fusion.fishFusionCostFor(sources),
+    areFishFusionSourcesAvailable: (sources) => fusion.areFishFusionSourcesAvailable(sources),
+    fishFusionChancesFor: (sources, hasPremium) => fusion.fishFusionChancesFor(sources, hasPremium),
+    consumeFishFusionSources: (sources) => fusion.consumeFishFusionSources(sources)
   };
 }

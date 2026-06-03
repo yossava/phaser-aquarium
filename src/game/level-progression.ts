@@ -1,3 +1,5 @@
+import { clamp } from "./math";
+
 export const baseFishProductionLevelThreshold = 250;
 export const minTargetActiveLevelHours = 0.5;
 export const maxTargetActiveLevelHours = 2.5;
@@ -8,10 +10,6 @@ export type LevelProgress = {
   ratio: number;
   percent: number;
 };
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
 
 export function rawTankDisplayLevelFromProduction(production: number): number {
   const totalProduction = Math.max(0, Math.floor(production));

@@ -17,6 +17,24 @@ function generateRandomPassword(): string {
   return Array.from(array, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 48);
 }
 
+const STORED_PASSWORD_KEY = "coralhaven-auth-password";
+
+function getStoredPassword(): string | null {
+  try {
+    return localStorage.getItem(STORED_PASSWORD_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storePassword(password: string): void {
+  try {
+    localStorage.setItem(STORED_PASSWORD_KEY, password);
+  } catch {
+    // Non-fatal — user will re-authenticate via sign-up flow on next visit
+  }
+}
+
 function deriveLegacyPassword(username: string): string {
   return `coralhaven-${username}-v1`;
 }
@@ -144,14 +162,26 @@ export async function initAuth(): Promise<void> {
       submit.textContent = 'Connecting...';
 
       const email = deriveEmail(username);
-      const legacyPassword = deriveLegacyPassword(username);
+      const storedPassword = getStoredPassword();
 
       try {
-        // Try signing in with legacy deterministic password (existing users)
-        const signInResult = await supabase.auth.signInWithPassword({ email, password: legacyPassword });
+        if (storedPassword) {
+          const signInResult = await supabase.auth.signInWithPassword({ email, password: storedPassword });
+          if (signInResult.data.user) {
+            userId = signInResult.data.user.id;
+            await ensureCurrentUserProfile(username);
+            overlay.remove();
+            resolve();
+            return;
+          }
+        }
 
+        // Try legacy deterministic password for existing accounts without stored password
+        const legacyPassword = deriveLegacyPassword(username);
+        const signInResult = await supabase.auth.signInWithPassword({ email, password: legacyPassword });
         if (signInResult.data.user) {
           userId = signInResult.data.user.id;
+          storePassword(legacyPassword);
           await ensureCurrentUserProfile(username);
           overlay.remove();
           resolve();
@@ -164,6 +194,7 @@ export async function initAuth(): Promise<void> {
 
         if (signUpResult.data.user) {
           userId = signUpResult.data.user.id;
+          storePassword(randomPassword);
           await ensureCurrentUserProfile(username);
           overlay.remove();
           resolve();

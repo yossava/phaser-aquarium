@@ -3,6 +3,7 @@ import { serverNow } from "../services/server-time";
 import { createDefaultPrizeMachineState, normalizePrizeMachineState, type PrizeMachineState } from "./prize-machine";
 import type { DailyQuestReward } from "./quest-system";
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
+import { clamp } from "./math";
 
 export const SAVE_VERSION = 13;
 export const SAVE_KEY = "phaser-aquarium-save-v1";
@@ -684,10 +685,6 @@ function sanitizeDailyQuestReward(reward: unknown): DailyQuestReward | undefined
 
 function sanitizeNumber(value: unknown, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function storageAvailable(): boolean {

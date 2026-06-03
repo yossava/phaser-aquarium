@@ -2,6 +2,7 @@ import { serverNow } from "../services/server-time";
 import { tankUtilityInfo, type TankUtilityId } from "./dispenser-system";
 import type { CoinType, FoodTypeId, Price, Rarity, Wallet } from "../types/mechanics";
 import { formatNumber, formatPrice } from "./economy";
+import { clamp } from "./math";
 
 export type DailyQuestReward =
   | { kind: "coins"; price: Price }
@@ -72,8 +73,6 @@ export const productionBoostPurchaseWindowMs = 30 * 60 * 1000;
 export const timeCurrentPurchaseWindowMs = 60 * 60 * 1000;
 export const rewardedAdDurationMs = 30_000;
 export const rewardedAdCooldownMs = 10 * 60 * 1000;
-
-const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
 
 function randomId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

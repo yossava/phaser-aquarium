@@ -2,6 +2,7 @@ import { createWallet } from "./economy";
 import { createEmptyWallet, mapToRecord, recordToMap, type SavedGame } from "./save";
 import { serverNow } from "../services/server-time";
 import type { FoodTypeId, Wallet } from "../types/mechanics";
+import { clamp } from "./math";
 
 export type TankCosmeticCategory = "background" | "seabed";
 
@@ -279,8 +280,4 @@ export function ageMapToRecord(source: Map<string, number[]>): Record<string, nu
     }
   }
   return result;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }

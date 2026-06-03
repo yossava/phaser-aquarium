@@ -1,3 +1,5 @@
+import { clamp } from "../game/math";
+
 export type HtmlDragCleanup = () => void;
 
 export function capturePointerSafely(element: HTMLElement, pointerId: number): void {
@@ -195,8 +197,4 @@ export function bindTankSideToolDrag(element: HTMLElement, input: {
   element.addEventListener("pointerup", end);
   element.addEventListener("pointercancel", end);
   element.addEventListener("lostpointercapture", () => cleanup());
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }

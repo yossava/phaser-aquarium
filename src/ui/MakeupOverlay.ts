@@ -1,4 +1,5 @@
 import type { MakeupPanelResult } from "./MakeupPanel";
+import { clamp } from "../game/math";
 
 type Point = {
   x: number;
@@ -56,8 +57,4 @@ export function positionMakeupDecorationSettings(input: {
   input.settings.style.left = `${leftPercent}%`;
   input.settings.style.top = `${topPercent}%`;
   return true;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
