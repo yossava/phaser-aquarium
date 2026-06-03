@@ -1,5 +1,8 @@
 import Phaser from "phaser";
 import { basicFood, decorationTypes, fishTypes, foodAssetPath, foodTypes, helperCreatureTypes } from "../../data/content";
+import { serverNow } from "../../services/server-time";
+import { getBootstrappedSave, isFreshStart } from "../../services/bootstrap";
+import { subscribeToRemoteSaves } from "../../services/sync-service";
 import {
   gameHeight,
   gameWidth,
@@ -498,13 +501,13 @@ type LevelCompletionBonusReward = {
 };
 
 export class AquariumSceneCore extends Phaser.Scene {
-  private readonly prizeMachineRuntimeSessionId = Date.now();
+  private readonly prizeMachineRuntimeSessionId = serverNow();
   private readonly handlePagePersistence = (): void => {
-    this.saveNow();
+    this.saveNow(serverNow(), true);
   };
   private readonly handleVisibilityPersistence = (): void => {
     if (document.visibilityState === "hidden") {
-      this.saveNow();
+      this.saveNow(serverNow(), true);
     }
   };
   private wallet = createWallet(500, 0, 0);
@@ -555,6 +558,8 @@ export class AquariumSceneCore extends Phaser.Scene {
   private activeProductionPaceMultiplierFrame = -1;
   private activeProductionPaceMultiplierValue = 1;
   private autosaveElapsed = 0;
+  private lastKnownSaveAt = 0;
+  private unsubscribeRemote?: () => void;
   private hudStatusSyncElapsed = 0;
   private storeRefreshElapsed = 0;
   private storeCooldownStateKey = "";
@@ -688,6 +693,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   public create(): void {
+    this.setupRealtimeSubscription();
     this.refreshVisibleTankViewport();
     this.configureCameraForHighDpi();
     createFallbackTextures(this, decorationTypes, helperCreatureTypes);
@@ -696,7 +702,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.loadCoinMagnetY();
     this.loadAutoFoodBuyerY();
     this.createWorld();
-    this.restoreSavedGame();
+    this.restoreServerSave();
     this.createUi();
     this.syncBackgroundMusic();
     this.updateDirtyTankOverlay();
@@ -770,7 +776,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.activeScreen === "tank";
   }
 
-  private startPausedTankEarnings(now = Date.now()): void {
+  private startPausedTankEarnings(now = serverNow()): void {
     if (this.pausedTankEarningsStartedAt !== undefined) {
       return;
     }
@@ -782,7 +788,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       60;
   }
 
-  private settlePausedTankEarnings(now = Date.now()): void {
+  private settlePausedTankEarnings(now = serverNow()): void {
     const startedAt = this.pausedTankEarningsStartedAt;
     const productionPerSecond = this.pausedTankEarningsRatePerSecond;
     this.pausedTankEarningsStartedAt = undefined;
@@ -1234,6 +1240,24 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private pointerDesignPoint(pointer: Phaser.Input.Pointer): Phaser.Math.Vector2 {
+    const sourceEvent = pointer.event;
+    if (sourceEvent instanceof MouseEvent || sourceEvent instanceof PointerEvent) {
+      const point = this.clientPointToDesignPoint(sourceEvent.clientX, sourceEvent.clientY);
+      if (point) {
+        return point;
+      }
+    }
+
+    if (typeof TouchEvent !== "undefined" && sourceEvent instanceof TouchEvent) {
+      const touch = sourceEvent.changedTouches[0] ?? sourceEvent.touches[0];
+      if (touch) {
+        const point = this.clientPointToDesignPoint(touch.clientX, touch.clientY);
+        if (point) {
+          return point;
+        }
+      }
+    }
+
     const renderScale = this.currentRenderScale();
     return new Phaser.Math.Vector2(pointer.x / renderScale, pointer.y / renderScale);
   }
@@ -3532,6 +3556,8 @@ export class AquariumSceneCore extends Phaser.Scene {
       screenToTankPoint: (designX, designY) => this.screenToTankPoint(designX, designY),
       coinAtPointer: (designX, designY) => this.coinAtPointer(designX, designY),
       collectCoin: (coin, automated) => this.collectCoin(coin, automated),
+      questPresentAtPointer: (designX, designY) => this.questPresentAtPointer(designX, designY),
+      collectQuestPresent: (present) => this.collectQuestPresent(present),
       fishTypeById: (id) => fishTypes.find((fishType) => fishType.id === id),
       decorationTypeById: (id) => decorationTypes.find((item) => item.id === id),
       fishInventory: (id) => this.getFishInventory(id),
@@ -3552,7 +3578,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
     const tankPoint = this.screenToTankPoint(designX, designY);
     const scale = this.tankViewScaleForLevel();
-    const minimumTapRadius = 44 / Math.max(0.01, scale);
+    const minimumTapRadius = 78 / Math.max(0.01, scale);
     let nearestCoin: CoinDrop | undefined;
     let nearestDistance = Number.POSITIVE_INFINITY;
 
@@ -3566,6 +3592,38 @@ export class AquariumSceneCore extends Phaser.Scene {
     }
 
     return nearestCoin;
+  }
+
+  private questPresentAtPointer(designX: number, designY: number): QuestPresentDrop | undefined {
+    if (!this.canManuallyCollectTankPresents() || this.questPresents.length === 0) {
+      return undefined;
+    }
+
+    const tankPoint = this.screenToTankPoint(designX, designY);
+    const scale = this.tankViewScaleForLevel();
+    const minimumTapRadius = 44 / Math.max(0.01, scale);
+    let nearestPresent: QuestPresentDrop | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const present of this.questPresents) {
+      const tapRadius = Math.max(
+        minimumTapRadius,
+        present.drop.hitZone.width * 0.62,
+        present.drop.sprite.displayWidth * 0.82
+      );
+      const distance = Phaser.Math.Distance.Between(
+        tankPoint.x,
+        tankPoint.y,
+        present.drop.sprite.x,
+        present.drop.sprite.y
+      );
+      if (distance <= tapRadius && distance < nearestDistance) {
+        nearestPresent = present.drop;
+        nearestDistance = distance;
+      }
+    }
+
+    return nearestPresent;
   }
 
   private fishAtPointer(designX: number, designY: number): Fish | undefined {
@@ -3722,16 +3780,34 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.entityController().fitPendingHelperCreatureDrop(drop, tankViewScale);
   }
 
-  private restoreSavedGame(): void {
-    restoreAquariumSceneSave(this as unknown as AquariumScenePersistenceTarget);
+  private restoreServerSave(): void {
+    const saved = getBootstrappedSave();
+    if (!saved) {
+      if (!isFreshStart()) {
+        console.warn("[Save] No saved game found on server; starting fresh.");
+      }
+      return;
+    }
+    restoreAquariumSceneSave(this as unknown as AquariumScenePersistenceTarget, saved, serverNow());
   }
 
-  private applyOfflineProgress(elapsedSeconds: number): OfflineProgress {
-    return applyAquariumSceneOfflineProgress(this as unknown as AquariumScenePersistenceTarget, elapsedSeconds);
+  private setupRealtimeSubscription(): void {
+    this.unsubscribeRemote = subscribeToRemoteSaves((remoteSave: SavedGame) => {
+      if (remoteSave.savedAt > (this.lastKnownSaveAt ?? 0) + 1000) {
+        this.applyRemoteSave(remoteSave);
+      }
+    });
   }
 
-  private saveNow(savedAt = Date.now()): void {
-    saveAquariumSceneNow(this as unknown as AquariumScenePersistenceTarget, savedAt);
+  private applyRemoteSave(save: SavedGame): void {
+    this.scene.pause();
+    restoreAquariumSceneSave(this as unknown as AquariumScenePersistenceTarget, save, serverNow());
+    this.scene.resume();
+  }
+
+  private saveNow(savedAt = serverNow(), immediate = false): void {
+    this.lastKnownSaveAt = savedAt;
+    saveAquariumSceneNow(this as unknown as AquariumScenePersistenceTarget, savedAt, immediate);
   }
 
   private updateFrameKey(): number {
@@ -4228,7 +4304,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private hasAutoFoodBuyer(): boolean {
-    return this.autoFoodBuyerExpiresAt() > Date.now();
+    return this.autoFoodBuyerExpiresAt() > serverNow();
   }
 
   private coinMagnetExpiresAt(): number {
@@ -4641,7 +4717,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
       if (action.kind === "tankClean" && this.cleanliness < 100) {
         this.cleanliness = Phaser.Math.Clamp(this.cleanliness + 1, 0, 100);
-        this.cleanedAt = Date.now();
+        this.cleanedAt = serverNow();
         this.recordDailyQuestAction("helper-clean");
         this.floatTankText("+1% Clean", helper.sprite.x, helper.sprite.y - 20, "#a8ffb0");
         this.refreshUi(false);
@@ -4744,7 +4820,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
     if (this.phaseThreeStarted() && this.dailyQuestActionCount("buy-dispenser") > 0 && this.dailyQuestActionCount("phase-3-dirty-tank") <= 0) {
       this.cleanliness = Math.min(this.cleanliness, 35);
-      this.cleanedAt = Date.now();
+      this.cleanedAt = serverNow();
       this.dailyGoals = recordDailyQuestActionModel(this.dailyGoals, "phase-3-dirty-tank");
     }
   }
@@ -4913,7 +4989,7 @@ export class AquariumSceneCore extends Phaser.Scene {
       return;
     }
 
-    this.rewardedAd = { kind, readyAt: Date.now() + rewardedAdDurationMs };
+    this.rewardedAd = { kind, readyAt: serverNow() + rewardedAdDurationMs };
     this.recordDailyQuestAction("watch-ad");
     this.ensureRewardedAdRefreshTimer();
     this.showRewardedAdModal(kind);
@@ -5007,7 +5083,7 @@ export class AquariumSceneCore extends Phaser.Scene {
 
     this.recordDailyQuestAction("claim-ad");
     this.recordDailyQuestAction(kind === "common" ? "claim-coin-ad" : `claim-${kind}-ad`);
-    this.rewardedAd = { kind, readyAt: Date.now() + rewardedAdCooldownMs, cooldown: true };
+    this.rewardedAd = { kind, readyAt: serverNow() + rewardedAdCooldownMs, cooldown: true };
     this.ensureRewardedAdRefreshTimer();
     this.closeModal();
     this.refreshUi();
@@ -5023,7 +5099,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return questTodayFishPurchaseCount(this.dailyGoals, coinType);
   }
 
-  private recentFishPurchaseCount(coinType?: CoinType, now = Date.now()): number {
+  private recentFishPurchaseCount(coinType?: CoinType, now = serverNow()): number {
     return questRecentFishPurchaseCount(this.dailyGoals, coinType, now);
   }
 
@@ -5045,7 +5121,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.recentFishPurchaseCount() < this.hourlyFishPurchaseLimit();
   }
 
-  private fishPurchaseRestockLabel(now = Date.now()): string {
+  private fishPurchaseRestockLabel(now = serverNow()): string {
     const oldestRecentPurchase = oldestRecentFishPurchase(this.dailyGoals, now);
 
     if (!oldestRecentPurchase) {
@@ -5056,7 +5132,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return `Restock ${this.compactDurationLabel(remainingSeconds)}`;
   }
 
-  private recentGrowthTonicPurchaseCount(now = Date.now()): number {
+  private recentGrowthTonicPurchaseCount(now = serverNow()): number {
     return questRecentGrowthTonicPurchaseCount(this.dailyGoals, now);
   }
 
@@ -5064,7 +5140,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.recentGrowthTonicPurchaseCount() === 0;
   }
 
-  private growthTonicPurchaseRestockLabel(now = Date.now()): string {
+  private growthTonicPurchaseRestockLabel(now = serverNow()): string {
     const oldestRecentPurchase = oldestRecentGrowthTonicPurchase(this.dailyGoals, now);
 
     if (!oldestRecentPurchase) {
@@ -5080,7 +5156,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.dailyGoals = recordGrowthTonicPurchaseModel(this.dailyGoals);
   }
 
-  private recentProductionBoostPurchaseCount(now = Date.now()): number {
+  private recentProductionBoostPurchaseCount(now = serverNow()): number {
     return questRecentProductionBoostPurchaseCount(this.dailyGoals, now);
   }
 
@@ -5088,7 +5164,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.recentProductionBoostPurchaseCount() === 0;
   }
 
-  private productionBoostPurchaseRestockLabel(now = Date.now()): string {
+  private productionBoostPurchaseRestockLabel(now = serverNow()): string {
     const oldestRecentPurchase = oldestRecentProductionBoostPurchase(this.dailyGoals, now);
 
     if (!oldestRecentPurchase) {
@@ -5104,7 +5180,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     this.dailyGoals = recordProductionBoostPurchaseModel(this.dailyGoals);
   }
 
-  private recentTimeCurrentPurchaseCount(now = Date.now()): number {
+  private recentTimeCurrentPurchaseCount(now = serverNow()): number {
     return questRecentTimeCurrentPurchaseCount(this.dailyGoals, now);
   }
 
@@ -5112,7 +5188,7 @@ export class AquariumSceneCore extends Phaser.Scene {
     return this.recentTimeCurrentPurchaseCount() === 0;
   }
 
-  private timeCurrentPurchaseRestockLabel(now = Date.now()): string {
+  private timeCurrentPurchaseRestockLabel(now = serverNow()): string {
     const oldestRecentPurchase = oldestRecentTimeCurrentPurchase(this.dailyGoals, now);
 
     if (!oldestRecentPurchase) {
@@ -5227,12 +5303,16 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.markDailyGoalClaimed(quest);
       return;
     }
-    if (!this.markDailyGoalClaimed(quest)) {
+    const label = this.dailyQuestRewardLabel(quest.reward);
+    const present = this.createQuestPresentDrop(quest.id, quest.reward, label);
+    if (!present) {
       return;
     }
-
-    const label = this.dailyQuestRewardLabel(quest.reward);
-    this.createQuestPresentDrop(quest.id, quest.reward, label);
+    if (!this.markDailyGoalClaimed(quest)) {
+      present.destroy();
+      this.questPresents = this.questPresents.filter((candidate) => candidate.drop !== present);
+      return;
+    }
     this.playSfx(prizeHighlightSoundKey, { volume: 0.16 });
     if (notify) {
       this.floatText("Prize dropped in tank", toastX, toastY, "#ffe67a");
@@ -5276,10 +5356,10 @@ export class AquariumSceneCore extends Phaser.Scene {
       }
       const quantity = Math.max(1, Math.floor(reward.quantity));
       if (utility.id === "coin-magnet") {
-        this.decorationInventory.set(utility.inventoryKey, Math.max(this.coinMagnetExpiresAt(), Date.now()) + coinMagnetDurationMs * quantity);
+        this.decorationInventory.set(utility.inventoryKey, Math.max(this.coinMagnetExpiresAt(), serverNow()) + coinMagnetDurationMs * quantity);
         this.coinMagnetWasActive = false;
       } else if (utility.id === "auto-food-buyer") {
-        this.decorationInventory.set(utility.inventoryKey, Math.max(this.autoFoodBuyerExpiresAt(), Date.now()) + autoFoodBuyerDurationMs * quantity);
+        this.decorationInventory.set(utility.inventoryKey, Math.max(this.autoFoodBuyerExpiresAt(), serverNow()) + autoFoodBuyerDurationMs * quantity);
         this.autoFoodBuyerWasActive = false;
       } else {
         this.decorationInventory.set(utility.inventoryKey, 1);

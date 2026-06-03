@@ -45,3 +45,4 @@ Thumbs.db
 .pnpm-store/
 .omo/*
 tests/*
+.commandcode/*

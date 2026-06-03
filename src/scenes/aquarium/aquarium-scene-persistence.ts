@@ -14,8 +14,6 @@ import {
 import {
   calculateOfflineSeconds,
   createEmptyWallet,
-  loadGame,
-  SAVE_KEY,
   saveGame,
   type OfflineProgress,
   type SavedCoinDrop,
@@ -26,6 +24,7 @@ import {
   type SavedQuestPresent,
   type SavedTankState
 } from "../../game/save";
+import { queueServerSave, saveServerSaveNow } from "../../services/sync-service";
 import type { TankRuntimeState } from "../../game/tank-state";
 import type { CoinDrop } from "../../objects/CoinDrop";
 import type { Fish } from "../../objects/Fish";
@@ -90,18 +89,7 @@ export type AquariumScenePersistenceTarget = {
   ensureTankState: (level: number) => TankRuntimeState;
 };
 
-export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget): void {
-  const saved = loadGame();
-  if (!saved) {
-    const rawSave = localStorage.getItem(SAVE_KEY);
-    console.warn(
-      rawSave
-        ? "[Save] Found saved game data but could not restore it; starting fresh."
-        : "[Save] No saved game found; starting fresh."
-    );
-    return;
-  }
-
+export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget, saved: SavedGame, serverTime: number): void {
   scene.tankStates = scene.tankStatesFromSave(saved);
   scene.ownedTankLevels = new Set((saved.tank.ownedLevels ?? [1]).filter((level: number) => level >= 1 && level <= maxOwnedTanks));
   scene.ownedTankLevels.add(1);
@@ -127,13 +115,12 @@ export function restoreAquariumSceneSave(scene: AquariumScenePersistenceTarget):
   scene.refreshHelperTankVisibility();
   scene.refreshDecorationTankVisibility();
 
-  const elapsedSeconds = calculateOfflineSeconds(saved.savedAt);
+  const elapsedSeconds = calculateOfflineSeconds(saved.savedAt, serverTime);
   if (elapsedSeconds > 0) {
     scene.offlineProgress = applyAquariumSceneOfflineProgress(scene, elapsedSeconds);
     if (elapsedSeconds >= 60) {
       scene.showOfflineSummary();
     }
-    scene.saveNow();
   }
 }
 
@@ -166,12 +153,13 @@ export function applyAquariumSceneOfflineProgress(scene: AquariumScenePersistenc
   return { elapsedSeconds, earned };
 }
 
-export function saveAquariumSceneNow(scene: AquariumScenePersistenceTarget, savedAt = Date.now()): void {
+export function saveAquariumSceneNow(scene: AquariumScenePersistenceTarget, savedAt: number, immediate = false): void {
   scene.captureActiveTankState();
-  saveGame(createAquariumSaveSnapshot({
+  const activeTankState = scene.ensureTankState(scene.tankLevel);
+  const snapshot = createAquariumSaveSnapshot({
     savedAt,
     currentTime: scene.time.now,
-    wallet: scene.wallet,
+    wallet: activeTankState.wallet,
     foodInventory: scene.foodInventoryRecord(),
     fishInventory: scene.fishInventory,
     fishInventoryAges: scene.fishInventoryAges,
@@ -194,7 +182,15 @@ export function saveAquariumSceneNow(scene: AquariumScenePersistenceTarget, save
     settings: scene.settings,
     dailyGoals: scene.dailyGoals,
     prizeMachine: scene.prizeMachine
-  }));
+  });
+  saveGame(snapshot);
+
+  if (immediate) {
+    void saveServerSaveNow(snapshot);
+    return;
+  }
+
+  queueServerSave(snapshot);
 }
 
 function restoreDecorations(scene: AquariumScenePersistenceTarget, decorations: SavedDecoration[]): void {
@@ -251,15 +247,16 @@ function restoreCoinDrops(scene: AquariumScenePersistenceTarget, coinDrops: Save
     if ((savedCoin.tankLevel ?? scene.tankLevel) !== scene.tankLevel || scene.coinDrops.length >= maxCoinDrops) {
       continue;
     }
+
+    const landingX = savedCoin.landingX ?? savedCoin.x;
     scene.createCoinDrop(
-      savedCoin.x,
-      savedCoin.y,
+      landingX,
+      Number.MAX_SAFE_INTEGER,
       savedCoin.value,
       savedCoin.coinType,
       savedCoin.isMega,
       {
-        landingX: savedCoin.landingX,
-        bottomY: savedCoin.bottomY
+        landingX
       }
     );
   }
@@ -270,12 +267,13 @@ function restoreQuestPresents(scene: AquariumScenePersistenceTarget, questPresen
     if ((savedPresent.tankLevel ?? scene.tankLevel) !== scene.tankLevel) {
       continue;
     }
+
+    const landingX = savedPresent.landingX ?? savedPresent.x;
     scene.createQuestPresentDrop(savedPresent.questId, savedPresent.reward, savedPresent.rewardLabel, {
       id: savedPresent.id,
-      x: savedPresent.x,
-      y: savedPresent.y,
-      landingX: savedPresent.landingX,
-      bottomY: savedPresent.bottomY
+      x: landingX,
+      y: Number.MAX_SAFE_INTEGER,
+      landingX
     });
   }
 }

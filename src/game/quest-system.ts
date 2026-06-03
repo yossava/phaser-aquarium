@@ -1,3 +1,4 @@
+import { serverNow } from "../services/server-time";
 import { tankUtilityInfo, type TankUtilityId } from "./dispenser-system";
 import type { CoinType, FoodTypeId, Price, Rarity, Wallet } from "../types/mechanics";
 import { formatNumber, formatPrice } from "./economy";
@@ -256,11 +257,11 @@ export function rewardedAdOptions(input: RewardedAdCatalogInput): RewardedAdOpti
   ];
 }
 
-export function rewardedAdRemainingSeconds(ad: RewardedAdState, now = Date.now()): number {
+export function rewardedAdRemainingSeconds(ad: RewardedAdState, now = serverNow()): number {
   return Math.max(0, Math.ceil((ad.readyAt - now) / 1000));
 }
 
-export function isRewardedAdReady(ad: RewardedAdState, now = Date.now()): boolean {
+export function isRewardedAdReady(ad: RewardedAdState, now = serverNow()): boolean {
   return now >= ad.readyAt;
 }
 
@@ -273,54 +274,54 @@ export function todayFishPurchaseCount(goals: DailyGoalsState, coinType?: CoinTy
   return goals.claimed.filter((entry) => entry.startsWith(prefix)).length;
 }
 
-export function recentFishPurchaseCount(goals: DailyGoalsState, coinType?: CoinType, now = Date.now()): number {
+export function recentFishPurchaseCount(goals: DailyGoalsState, coinType?: CoinType, now = serverNow()): number {
   return timestampsForPrefix(goals, coinType ? `fish-buy:${coinType}:` : "fish-buy:", 2, now, fishPurchaseWindowMs).length;
 }
 
-export function oldestRecentFishPurchase(goals: DailyGoalsState, now = Date.now()): number | undefined {
+export function oldestRecentFishPurchase(goals: DailyGoalsState, now = serverNow()): number | undefined {
   return timestampsForPrefix(goals, "fish-buy:", 2, now, fishPurchaseWindowMs)[0];
 }
 
-export function recentGrowthTonicPurchaseCount(goals: DailyGoalsState, now = Date.now()): number {
+export function recentGrowthTonicPurchaseCount(goals: DailyGoalsState, now = serverNow()): number {
   return timestampsForPrefix(goals, "growth-tonic-buy:", 1, now, growthTonicPurchaseWindowMs).length;
 }
 
-export function oldestRecentGrowthTonicPurchase(goals: DailyGoalsState, now = Date.now()): number | undefined {
+export function oldestRecentGrowthTonicPurchase(goals: DailyGoalsState, now = serverNow()): number | undefined {
   return timestampsForPrefix(goals, "growth-tonic-buy:", 1, now, growthTonicPurchaseWindowMs)[0];
 }
 
-export function recordGrowthTonicPurchase(goals: DailyGoalsState, now = Date.now()): DailyGoalsState {
+export function recordGrowthTonicPurchase(goals: DailyGoalsState, now = serverNow()): DailyGoalsState {
   return { ...goals, claimed: [...goals.claimed, `growth-tonic-buy:${now}:${randomId()}`] };
 }
 
-export function recentProductionBoostPurchaseCount(goals: DailyGoalsState, now = Date.now()): number {
+export function recentProductionBoostPurchaseCount(goals: DailyGoalsState, now = serverNow()): number {
   return timestampsForPrefix(goals, "production-boost-buy:", 1, now, productionBoostPurchaseWindowMs).length;
 }
 
-export function oldestRecentProductionBoostPurchase(goals: DailyGoalsState, now = Date.now()): number | undefined {
+export function oldestRecentProductionBoostPurchase(goals: DailyGoalsState, now = serverNow()): number | undefined {
   return timestampsForPrefix(goals, "production-boost-buy:", 1, now, productionBoostPurchaseWindowMs)[0];
 }
 
-export function recordProductionBoostPurchase(goals: DailyGoalsState, now = Date.now()): DailyGoalsState {
+export function recordProductionBoostPurchase(goals: DailyGoalsState, now = serverNow()): DailyGoalsState {
   return { ...goals, claimed: [...goals.claimed, `production-boost-buy:${now}:${randomId()}`] };
 }
 
-export function recentTimeCurrentPurchaseCount(goals: DailyGoalsState, now = Date.now()): number {
+export function recentTimeCurrentPurchaseCount(goals: DailyGoalsState, now = serverNow()): number {
   return timestampsForPrefix(goals, "time-current-buy:", 1, now, timeCurrentPurchaseWindowMs).length;
 }
 
-export function oldestRecentTimeCurrentPurchase(goals: DailyGoalsState, now = Date.now()): number | undefined {
+export function oldestRecentTimeCurrentPurchase(goals: DailyGoalsState, now = serverNow()): number | undefined {
   return timestampsForPrefix(goals, "time-current-buy:", 1, now, timeCurrentPurchaseWindowMs)[0];
 }
 
-export function recordTimeCurrentPurchase(goals: DailyGoalsState, now = Date.now()): DailyGoalsState {
+export function recordTimeCurrentPurchase(goals: DailyGoalsState, now = serverNow()): DailyGoalsState {
   return { ...goals, claimed: [...goals.claimed, `time-current-buy:${now}:${randomId()}`] };
 }
 
-export function recordFishPurchase(goals: DailyGoalsState, rarity: Rarity, now = Date.now()): DailyGoalsState {
+export function recordFishPurchase(goals: DailyGoalsState, rarity: Rarity, now = serverNow()): DailyGoalsState {
   return { ...goals, claimed: [...goals.claimed, `fish-buy:${rarity}:${now}:${randomId()}`] };
 }
 
-export function recordDailyQuestAction(goals: DailyGoalsState, action: string, now = Date.now()): DailyGoalsState {
+export function recordDailyQuestAction(goals: DailyGoalsState, action: string, now = serverNow()): DailyGoalsState {
   return { ...goals, claimed: [...goals.claimed, `action:${action}:${now}:${randomId()}`] };
 }

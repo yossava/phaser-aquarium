@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { tankViewportBounds, toastX, toastY } from "../game/constants";
 import type { DecorationSize } from "../game/tank-catalog";
 import type { CoinDrop } from "../objects/CoinDrop";
+import type { QuestPresentDrop } from "../objects/QuestPresentDrop";
 import type { DecorationType, FishType } from "../types/mechanics";
 
 type TankPointerPlacementMode =
@@ -19,6 +20,8 @@ export function handleTankPointer(input: {
   screenToTankPoint: (designX: number, designY: number) => Phaser.Math.Vector2;
   coinAtPointer: (designX: number, designY: number) => CoinDrop | undefined;
   collectCoin: (coin: CoinDrop, automated: boolean) => void;
+  questPresentAtPointer: (designX: number, designY: number) => QuestPresentDrop | undefined;
+  collectQuestPresent: (present: QuestPresentDrop) => void;
   fishTypeById: (id: string) => FishType | undefined;
   decorationTypeById: (id: string) => DecorationType | undefined;
   fishInventory: (id: string) => number;
@@ -36,6 +39,12 @@ export function handleTankPointer(input: {
 
   const pointerPoint = input.pointerDesignPoint(input.pointer);
   if (!tankViewportBounds.contains(pointerPoint.x, pointerPoint.y)) {
+    return;
+  }
+
+  const tappedPresent = input.questPresentAtPointer(pointerPoint.x, pointerPoint.y);
+  if (tappedPresent) {
+    input.collectQuestPresent(tappedPresent);
     return;
   }
 

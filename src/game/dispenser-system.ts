@@ -1,4 +1,5 @@
 import type { FoodType, Price } from "../types/mechanics";
+import { serverNow } from "../services/server-time";
 import {
   findFoodDispenserTarget,
   findMedicineDispenserTarget,
@@ -109,7 +110,7 @@ export function utilityExpiresAt(inventory: Map<string, number>, inventoryKey: s
   return Math.max(0, inventory.get(inventoryKey) ?? 0);
 }
 
-export function activeUtilityRemainingMinutes(expiresAt: number, now = Date.now()): number {
+export function activeUtilityRemainingMinutes(expiresAt: number, now = serverNow()): number {
   if (expiresAt <= now) {
     return 0;
   }

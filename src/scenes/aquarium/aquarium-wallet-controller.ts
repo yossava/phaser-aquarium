@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { CoinDrop } from "../../objects/CoinDrop";
 import { QuestPresentDrop, type QuestPresentDropOptions } from "../../objects/QuestPresentDrop";
+import { serverNow } from "../../services/server-time";
 import {
   coinCollectDetune as coinCollectDetuneModel,
   collectCoin as collectCoinModel,
@@ -82,7 +83,7 @@ export type WalletControllerHost = {
   floatTankText(message: string, x: number, y: number, color: string): void;
   floatText(message: string, x: number, y: number, color: string): void;
   playSfx(key: string, config: Phaser.Types.Sound.SoundConfig): void;
-  saveNow(): void;
+  saveNow(savedAt?: number, immediate?: boolean): void;
   refreshUi(renderControls?: boolean): void;
   refreshStatus(): void;
   syncHtmlGameInterface(): void;
@@ -245,7 +246,7 @@ export class AquariumWalletController {
       },
       recycleCoin: (coin) => this.recycleCoin(coin),
       refreshUi: () => this.host.refreshUi(false),
-      saveNow: () => this.host.saveNow()
+      saveNow: () => this.host.saveNow(serverNow(), true)
     });
   }
 
@@ -375,7 +376,7 @@ export class AquariumWalletController {
   }
 
   public hasCoinMagnet(): boolean {
-    return this.coinMagnetExpiresAt() > Date.now();
+    return this.coinMagnetExpiresAt() > serverNow();
   }
 
   public coinMagnetExpiresAt(): number {
@@ -484,22 +485,23 @@ export class AquariumWalletController {
     const clampedVisibleX = (targetX: number) => (minVisibleX <= maxVisibleX ? Phaser.Math.Clamp(targetX, minVisibleX, maxVisibleX) : fallbackX);
     const maxBottomY = this.visibleCoinBottomDesignY();
     const bottomBand = Math.round(gameWidth * 0.08);
+    const presentBottomY = Math.max(tankBounds.top + 80, maxBottomY - Math.round(gameWidth * 0.18));
     const randomX = minVisibleX <= maxVisibleX
       ? Phaser.Math.Between(Math.round(minVisibleX), Math.round(maxVisibleX))
       : fallbackX;
     const x = clampedVisibleX(options.x ?? randomX);
-    const y = Phaser.Math.Clamp(options.y ?? tankViewportBounds.top + 36, visibleBounds.top + 24, maxBottomY);
     const landingX = clampedVisibleX(options.landingX ?? x);
     const bottomY = Phaser.Math.Clamp(
-      options.bottomY ?? Phaser.Math.Between(Math.round(maxBottomY - bottomBand), Math.round(maxBottomY)),
+      options.bottomY ?? Phaser.Math.Between(Math.round(presentBottomY - bottomBand), Math.round(presentBottomY)),
       tankBounds.top + 80,
-      maxBottomY
+      presentBottomY
     );
+    const y = Phaser.Math.Clamp(options.y ?? bottomY, visibleBounds.top + 24, maxBottomY);
     const drop = new QuestPresentDrop(
       this.host.scene,
       x,
       y,
-      options.id ?? `quest-present:${questId}:${Date.now()}:${Phaser.Math.Between(1000, 9999)}`,
+      options.id ?? `quest-present:${questId}:${serverNow()}:${Phaser.Math.Between(1000, 9999)}`,
       questId,
       rewardLabel,
       { ...options, landingX, bottomY }
@@ -507,6 +509,9 @@ export class AquariumWalletController {
     drop.setWorldScaleCompensation(this.host.tankViewScaleForLevel());
     drop.addToContainer(this.host.tankLayer);
     const collect = (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event: Phaser.Types.Input.EventData) => {
+      if (!this.canManuallyCollectTankPresents()) {
+        return;
+      }
       event.stopPropagation();
       this.collectQuestPresent(drop);
     };
@@ -561,7 +566,7 @@ export class AquariumWalletController {
     this.host.questPresents = this.host.questPresents.filter((candidate) => candidate !== present);
     this.host.refreshUi();
     this.host.createFoodDock();
-    this.host.saveNow();
+    this.host.saveNow(serverNow(), true);
   }
 
   public setQuestPresentVisible(present: QuestPresentDrop, visible: boolean): void {

@@ -75,7 +75,7 @@ type DailyGoalsAdapterScene = {
   saveNow: () => void;
   attachTouchFeedback: (button: HTMLButtonElement) => void;
   htmlButton: (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
-  createQuestPresentDrop: (questId: string, reward: DailyQuestReward, label: string) => void;
+  createQuestPresentDrop: (questId: string, reward: DailyQuestReward, label: string) => QuestPresentDrop | undefined;
   showPrizeCelebration: (title: string, imageUrl: string, detail: string, buttonLabel?: string, onClose?: () => void) => void;
   tankUtilityIconPath: (utilityId: string) => string;
   addFishToInventory: (fishType: FishType, quantity?: number) => void;

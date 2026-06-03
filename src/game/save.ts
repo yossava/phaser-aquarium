@@ -1,4 +1,5 @@
 import { foodTypes } from "../data/content";
+import { serverNow } from "../services/server-time";
 import { createDefaultPrizeMachineState, normalizePrizeMachineState, type PrizeMachineState } from "./prize-machine";
 import type { DailyQuestReward } from "./quest-system";
 import type { CoinType, FishGender, FoodTypeId, Wallet } from "../types/mechanics";
@@ -195,7 +196,7 @@ export function loadGame(): SavedGame | undefined {
 function buildSanitizedSave(migrated: SavedGame): SavedGame {
   return {
     version: SAVE_VERSION,
-    savedAt: sanitizeNumber(migrated.savedAt, Date.now()),
+    savedAt: sanitizeNumber(migrated.savedAt, serverNow()),
     wallet: sanitizeWallet(migrated.wallet),
     foodInventory: sanitizeFoodInventory(migrated.foodInventory),
     fishInventory: sanitizeCountRecord(migrated.fishInventory),
@@ -217,7 +218,7 @@ function buildSanitizedSave(migrated: SavedGame): SavedGame {
       : [],
     tank: {
       cleanliness: clamp(sanitizeNumber(migrated.tank?.cleanliness, 100), 0, 100),
-      cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, Date.now()),
+      cleanedAt: sanitizeNumber(migrated.tank?.cleanedAt, serverNow()),
       level: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.level, 1))),
       ownedLevels: sanitizeOwnedTankLevels(migrated.tank?.ownedLevels, migrated.tank?.level).slice(0, 5),
       activeLevel: Math.max(1, Math.floor(sanitizeNumber(migrated.tank?.activeLevel, migrated.tank?.level ?? 1))),
@@ -258,7 +259,7 @@ function recoverPartialSave(rawSave: string): SavedGame | undefined {
     const fish = candidate.fish.map(sanitizeFish).filter((f): f is SavedFish => Boolean(f));
     const recovered: SavedGame = {
       version: SAVE_VERSION,
-      savedAt: sanitizeNumber(candidate.savedAt, Date.now()),
+      savedAt: sanitizeNumber(candidate.savedAt, serverNow()),
       wallet,
       foodInventory: sanitizeFoodInventory(candidate.foodInventory),
       fishInventory: sanitizeCountRecord(candidate.fishInventory),
@@ -274,7 +275,7 @@ function recoverPartialSave(rawSave: string): SavedGame | undefined {
       questPresents: [],
       tank: {
         cleanliness: clamp(sanitizeNumber(candidate.tank?.cleanliness, 100), 0, 100),
-        cleanedAt: sanitizeNumber(candidate.tank?.cleanedAt, Date.now()),
+        cleanedAt: sanitizeNumber(candidate.tank?.cleanedAt, serverNow()),
         level: Math.max(1, Math.floor(sanitizeNumber(candidate.tank?.level, 1))),
         ownedLevels: sanitizeOwnedTankLevels(candidate.tank?.ownedLevels, candidate.tank?.level),
         activeLevel: Math.max(1, Math.floor(sanitizeNumber(candidate.tank?.activeLevel, candidate.tank?.level ?? 1))),
@@ -320,9 +321,9 @@ function migrateSave(
       helperCreatures: Array.isArray(parsed.helperCreatures) ? parsed.helperCreatures : [],
       prizeMachine: normalizePrizeMachineState(parsed.prizeMachine),
       tank: {
-        ...(parsed.tank ?? { cleanliness: 100, cleanedAt: Date.now(), level: 1 }),
+        ...(parsed.tank ?? { cleanliness: 100, cleanedAt: serverNow(), level: 1 }),
         cleanliness: sanitizeNumber(parsed.tank?.cleanliness, 100),
-        cleanedAt: sanitizeNumber(parsed.tank?.cleanedAt, Date.now()),
+        cleanedAt: sanitizeNumber(parsed.tank?.cleanedAt, serverNow()),
         level: Math.max(1, Math.floor(sanitizeNumber(parsed.tank?.level, 1)))
       }
     };
@@ -333,7 +334,7 @@ function migrateSave(
     const foodCount = Math.max(0, Math.floor(sanitizeNumber(parsed.foodInventory, 0)));
     return migrateFoodCountsToCalories({
       version: SAVE_VERSION,
-      savedAt: sanitizeNumber(parsed.savedAt, Date.now()),
+      savedAt: sanitizeNumber(parsed.savedAt, serverNow()),
       wallet: sanitizeWallet(parsed.wallet ?? {}),
       foodInventory: { basic: foodCount } as Record<FoodTypeId, number>,
       fishInventory: sanitizeCountRecord(parsed.fishInventory),
@@ -345,7 +346,7 @@ function migrateSave(
       helperCreatures: [],
       coinDrops: [],
       questPresents: [],
-      tank: { cleanliness: 100, cleanedAt: Date.now(), level: 1 },
+      tank: { cleanliness: 100, cleanedAt: serverNow(), level: 1 },
       settings: { sound: true, music: true, musicVolume: 16, reducedMotion: false, notifications: false },
       dailyGoals: { date: localDateKey(), claimed: [] },
       prizeMachine: createDefaultPrizeMachineState()
@@ -361,7 +362,7 @@ export function clearSave(): void {
   }
 }
 
-export function calculateOfflineSeconds(savedAt: number, now = Date.now()): number {
+export function calculateOfflineSeconds(savedAt: number, now: number): number {
   const elapsedSeconds = Math.floor((now - savedAt) / 1000);
   return Math.max(0, Math.min(elapsedSeconds, MAX_OFFLINE_SECONDS));
 }
@@ -534,7 +535,7 @@ function sanitizeTankStates(source: Record<string, SavedTankState> | undefined):
       selectedBackgroundId: typeof value.selectedBackgroundId === "string" ? value.selectedBackgroundId : undefined,
       selectedSeabedId: typeof value.selectedSeabedId === "string" ? value.selectedSeabedId : undefined,
       cleanliness: clamp(sanitizeNumber(value.cleanliness, 100), 0, 100),
-      cleanedAt: sanitizeNumber(value.cleanedAt, Date.now()),
+      cleanedAt: sanitizeNumber(value.cleanedAt, serverNow()),
       maxDisplayLevel: Math.max(1, Math.floor(sanitizeNumber(value.maxDisplayLevel, 1))),
       fishProductionTotal: Math.max(0, Math.round(sanitizeNumber(value.fishProductionTotal, 0) * 10) / 10),
       timeCurrentRemainingSeconds: Math.max(0, sanitizeNumber(value.timeCurrentRemainingSeconds, 0))
@@ -698,9 +699,9 @@ function storageAvailable(): boolean {
 }
 
 function localDateKey(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
+  const date = new Date(serverNow());
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }

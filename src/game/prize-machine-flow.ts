@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { Fish } from "../objects/Fish";
 import type { DecorationType, FishType, FoodType, FoodTypeId, Price, Rarity } from "../types/mechanics";
 import { fishTypes } from "../data/content";
+import { serverNow } from "../services/server-time";
 import { formatNumber } from "./economy";
 import { coinWealthValue } from "./economy-values";
 import {
@@ -169,7 +170,7 @@ export function setPrizeMachineResultState(
   kind: PrizeSpinPrize,
   title: string,
   detail: string,
-  at = Date.now()
+  at = serverNow()
 ): PrizeMachineState {
   return {
     ...state,

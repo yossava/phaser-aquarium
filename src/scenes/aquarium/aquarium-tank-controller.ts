@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { basicFood } from "../../data/content";
+import { serverNow } from "../../services/server-time";
 import { formatNumber } from "../../game/economy";
 import {
   rawTankDisplayLevelFromProduction
@@ -110,7 +111,7 @@ export class AquariumTankController {
   public tankNames = new Map<number, string>([[1, "Home Reef"]]);
   public tankStates = new Map<number, TankRuntimeState>();
   public cleanliness = 100;
-  public cleanedAt = Date.now();
+  public cleanedAt = serverNow();
   public cleaningTank = false;
   public tankMenuTab: TankMenuTab = "background";
   public tankMenuDrillOpen = false;

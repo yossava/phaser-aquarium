@@ -3,7 +3,7 @@ import { gameWidth, tankBounds } from "../game/constants";
 import { gameFontFamily } from "../game/fonts";
 
 const presentDisplaySize = Math.round(gameWidth * 0.14);
-const presentTapTargetSize = Math.round(gameWidth * 0.19);
+const presentTapTargetSize = Math.round(gameWidth * 0.32);
 const presentLabelOffset = Math.round(gameWidth * 0.055);
 const presentLabelFontSize = Math.round(gameWidth * 0.028);
 const presentBottomPadding = Math.round(gameWidth * 0.18);

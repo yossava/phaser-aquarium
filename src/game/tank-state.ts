@@ -1,5 +1,6 @@
 import { createWallet } from "./economy";
 import { createEmptyWallet, mapToRecord, recordToMap, type SavedGame } from "./save";
+import { serverNow } from "../services/server-time";
 import type { FoodTypeId, Wallet } from "../types/mechanics";
 
 export type TankCosmeticCategory = "background" | "seabed";
@@ -59,7 +60,7 @@ export function tankNamesRecord(names: Map<number, string>): Record<string, stri
   return Object.fromEntries([...names.entries()].map(([level, name]) => [String(level), name]));
 }
 
-export function createDefaultTankState(level: number, config: TankStateConfig, now = Date.now()): TankRuntimeState {
+export function createDefaultTankState(level: number, config: TankStateConfig, now = serverNow()): TankRuntimeState {
   const cosmeticId = config.defaultCosmeticId(level);
   return {
     wallet: level === 1 ? createWallet(500, 0, 0) : createEmptyWallet(),
@@ -191,7 +192,7 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
       selectedBackgroundId: config.validCosmeticId("background", value.selectedBackgroundId, level),
       selectedSeabedId: config.validCosmeticId("seabed", value.selectedSeabedId, level),
       cleanliness: clamp(value.cleanliness ?? 100, 0, 100),
-      cleanedAt: value.cleanedAt ?? Date.now(),
+      cleanedAt: value.cleanedAt ?? serverNow(),
       maxDisplayLevel: Math.max(1, Math.floor(value.maxDisplayLevel ?? 1)),
       fishProductionTotal: sanitizeProductionTotal(value.fishProductionTotal),
       timeCurrentRemainingSeconds: Math.max(0, value.timeCurrentRemainingSeconds ?? 0)
@@ -201,9 +202,10 @@ export function tankStatesFromSave(saved: SavedGame, config: TankStateConfig): M
   const activeLevel = Math.max(1, Math.floor(saved.tank.activeLevel ?? saved.tank.level ?? 1));
   if (activeLevel <= config.maxOwnedTanks) {
     const previousState = ensureTankState(states, activeLevel, config);
+    const savedActiveState = savedStates[String(activeLevel)];
     states.set(activeLevel, {
       ...previousState,
-      wallet: { ...saved.wallet },
+      wallet: savedActiveState?.wallet ? previousState.wallet : { ...saved.wallet },
       foodInventory: recordToMap(saved.foodInventory) as Map<FoodTypeId, number>,
       fishInventory: recordToMap(saved.fishInventory),
       fishInventoryAges: ageRecordToMap(saved.fishInventoryAges),

@@ -3,6 +3,7 @@ import {
   tankUtilityInfo as tankUtilityInfoModel,
   tankUtilityStoreDefinitions
 } from "../../game/dispenser-system";
+import { serverNow } from "../../services/server-time";
 import { toastX, toastY } from "../../game/constants";
 import { canAfford, formatNumber, formatPrice } from "../../game/economy";
 import { fishPowerAgeSecondsForLevel, fishPowerLevelForPrice } from "../../game/economy-model";
@@ -536,7 +537,7 @@ export class AquariumSceneStoreController {
     }, {
       utilityId,
       utilityPrice: utility.price,
-      now: Date.now(),
+      now: serverNow(),
       coinMagnetDurationMs,
       autoFoodBuyerDurationMs
     });

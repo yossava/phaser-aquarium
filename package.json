@@ -13,6 +13,7 @@
     "test:regression": "node scripts/regression-test.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/vite": "^4.2.4",
     "phaser": "^4.1.0",
     "tailwindcss": "^4.2.4"

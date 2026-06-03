@@ -1,4 +1,5 @@
 import { formatNumber } from "../../game/economy";
+import { serverNow } from "../../services/server-time";
 import {
   calculateTankHappiness as calculateTankHappinessModel,
   isTankDirty as isTankDirtyModel,
@@ -81,7 +82,7 @@ export class AquariumCareController {
       }
       if (this.scene.cleanliness >= 100) {
         this.scene.cleaningTank = false;
-        this.scene.cleanedAt = Date.now();
+        this.scene.cleanedAt = serverNow();
         this.scene.updateDirtyTankOverlay();
         this.scene.floatText("Tank cleaned", toastX, toastY, "#a8ffb0");
         this.scene.syncCleanlinessUi();
@@ -106,7 +107,7 @@ export class AquariumCareController {
   public finishTankCleaning(): void {
     this.scene.cleanliness = 100;
     this.scene.cleaningTank = false;
-    this.scene.cleanedAt = Date.now();
+    this.scene.cleanedAt = serverNow();
     this.scene.updateDirtyTankOverlay();
     this.scene.syncCleanlinessUi();
     this.scene.refreshUi(false);

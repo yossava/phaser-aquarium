@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { fishTypes } from "../../data/content";
+import { serverNow } from "../../services/server-time";
 import { earn, formatNumber } from "../../game/economy";
 import { foodAssetPath } from "../../data/content";
 import {
@@ -119,7 +120,7 @@ export type AquariumDailyGoalsControllerHost = {
   saveNow: () => void;
   attachTouchFeedback: (button: HTMLButtonElement) => void;
   htmlButton: (label: string, className: string, onClick: () => void, disabled?: boolean) => HTMLButtonElement;
-  createQuestPresentDrop: (questId: string, reward: DailyQuestReward, label: string) => void;
+  createQuestPresentDrop: (questId: string, reward: DailyQuestReward, label: string) => QuestPresentDrop | undefined;
   showPrizeCelebration: (title: string, imageUrl: string, detail: string, buttonLabel?: string, onClose?: () => void) => void;
   tankUtilityIconPath: (utilityId: TankUtilityId) => string;
   addFishToInventory: (fishType: FishType, quantity?: number) => void;
@@ -254,7 +255,7 @@ export class AquariumDailyGoalsController {
       }
       return;
     }
-    this.host.setRewardedAd({ kind, readyAt: Date.now() + rewardedAdDurationMs });
+    this.host.setRewardedAd({ kind, readyAt: serverNow() + rewardedAdDurationMs });
     this.recordDailyQuestAction("watch-ad");
     this.ensureRewardedAdRefreshTimer();
     this.showRewardedAdModal(kind);
@@ -342,7 +343,7 @@ export class AquariumDailyGoalsController {
 
     this.recordDailyQuestAction("claim-ad");
     this.recordDailyQuestAction(kind === "common" ? "claim-coin-ad" : `claim-${kind}-ad`);
-    this.host.setRewardedAd({ kind, readyAt: Date.now() + rewardedAdCooldownMs, cooldown: true });
+    this.host.setRewardedAd({ kind, readyAt: serverNow() + rewardedAdCooldownMs, cooldown: true });
     this.ensureRewardedAdRefreshTimer();
     this.host.closeModal();
     this.host.refreshUi();
@@ -358,7 +359,7 @@ export class AquariumDailyGoalsController {
     return todayFishPurchaseCount(this.normalizeGoals(), coinType);
   }
 
-  public recentFishPurchaseCount(coinType?: "common" | "rare" | "superRare", now = Date.now()): number {
+  public recentFishPurchaseCount(coinType?: "common" | "rare" | "superRare", now = serverNow()): number {
     return recentFishPurchaseCount(this.normalizeGoals(), coinType, now);
   }
 
@@ -374,14 +375,14 @@ export class AquariumDailyGoalsController {
     return this.recentFishPurchaseCount() < this.hourlyFishPurchaseLimit();
   }
 
-  public fishPurchaseRestockLabel(now = Date.now()): string {
+  public fishPurchaseRestockLabel(now = serverNow()): string {
     const oldest = oldestRecentFishPurchase(this.normalizeGoals(), now);
     if (!oldest) return "Hourly Limit";
     const remainingSeconds = Math.ceil((oldest + fishPurchaseWindowMs - now) / 1000);
     return `Restock ${formatNumber(remainingSeconds)}`;
   }
 
-  public recentGrowthTonicPurchaseCount(now = Date.now()): number {
+  public recentGrowthTonicPurchaseCount(now = serverNow()): number {
     return recentGrowthTonicPurchaseCount(this.normalizeGoals(), now);
   }
 
@@ -389,7 +390,7 @@ export class AquariumDailyGoalsController {
     return this.recentGrowthTonicPurchaseCount() === 0;
   }
 
-  public growthTonicPurchaseRestockLabel(now = Date.now()): string {
+  public growthTonicPurchaseRestockLabel(now = serverNow()): string {
     const oldest = oldestRecentGrowthTonicPurchase(this.normalizeGoals(), now);
     if (!oldest) return "1 per hour";
     const remainingSeconds = Math.ceil((oldest + growthTonicPurchaseWindowMs - now) / 1000);
@@ -400,7 +401,7 @@ export class AquariumDailyGoalsController {
     this.host.setDailyGoals(recordGrowthTonicPurchase(this.normalizeGoals()));
   }
 
-  public recentProductionBoostPurchaseCount(now = Date.now()): number {
+  public recentProductionBoostPurchaseCount(now = serverNow()): number {
     return recentProductionBoostPurchaseCount(this.normalizeGoals(), now);
   }
 
@@ -408,7 +409,7 @@ export class AquariumDailyGoalsController {
     return this.recentProductionBoostPurchaseCount() === 0;
   }
 
-  public productionBoostPurchaseRestockLabel(now = Date.now()): string {
+  public productionBoostPurchaseRestockLabel(now = serverNow()): string {
     const oldest = oldestRecentProductionBoostPurchase(this.normalizeGoals(), now);
     if (!oldest) return "30m restock";
     const remainingSeconds = Math.ceil((oldest + productionBoostPurchaseWindowMs - now) / 1000);
@@ -419,7 +420,7 @@ export class AquariumDailyGoalsController {
     this.host.setDailyGoals(recordProductionBoostPurchase(this.normalizeGoals()));
   }
 
-  public recentTimeCurrentPurchaseCount(now = Date.now()): number {
+  public recentTimeCurrentPurchaseCount(now = serverNow()): number {
     return recentTimeCurrentPurchaseCount(this.normalizeGoals(), now);
   }
 
@@ -427,7 +428,7 @@ export class AquariumDailyGoalsController {
     return this.recentTimeCurrentPurchaseCount() === 0;
   }
 
-  public timeCurrentPurchaseRestockLabel(now = Date.now()): string {
+  public timeCurrentPurchaseRestockLabel(now = serverNow()): string {
     const oldest = oldestRecentTimeCurrentPurchase(this.normalizeGoals(), now);
     if (!oldest) return "1h restock";
     const remainingSeconds = Math.ceil((oldest + timeCurrentPurchaseWindowMs - now) / 1000);
@@ -522,11 +523,20 @@ export class AquariumDailyGoalsController {
       this.markDailyGoalClaimed(quest);
       return;
     }
-    if (!this.markDailyGoalClaimed(quest)) {
+    const label = this.dailyQuestRewardLabel(quest.reward);
+    const present = this.host.createQuestPresentDrop(quest.id, quest.reward, label);
+    if (!present) {
       return;
     }
-    const label = this.dailyQuestRewardLabel(quest.reward);
-    this.host.createQuestPresentDrop(quest.id, quest.reward, label);
+    if (!this.markDailyGoalClaimed(quest)) {
+      present.destroy();
+      const pendingPresents = this.host.getQuestPresents();
+      const index = pendingPresents.findIndex((candidate) => candidate.drop === present);
+      if (index >= 0) {
+        pendingPresents.splice(index, 1);
+      }
+      return;
+    }
     this.host.playSfx(prizeHighlightSoundKey, { volume: 0.16 });
     if (notify) {
       this.host.floatText("Prize dropped in tank", 420, 120, "#ffe67a");
@@ -569,11 +579,11 @@ export class AquariumDailyGoalsController {
       }
       const quantity = Math.max(1, Math.floor(reward.quantity));
       if (utility.id === "coin-magnet") {
-        this.host.setDecorationInventory(utility.inventoryKey, Math.max(this.host.coinMagnetExpiresAt(), Date.now()) + coinMagnetDurationMs * quantity);
+        this.host.setDecorationInventory(utility.inventoryKey, Math.max(this.host.coinMagnetExpiresAt(), serverNow()) + coinMagnetDurationMs * quantity);
         this.host.setCoinMagnetWasActive(false);
       }
       if (utility.id === "auto-food-buyer") {
-        this.host.setDecorationInventory(utility.inventoryKey, Math.max(this.host.autoFoodBuyerExpiresAt(), Date.now()) + autoFoodBuyerDurationMs * quantity);
+        this.host.setDecorationInventory(utility.inventoryKey, Math.max(this.host.autoFoodBuyerExpiresAt(), serverNow()) + autoFoodBuyerDurationMs * quantity);
         this.host.setAutoFoodBuyerWasActive(false);
       } else if (utility.id !== "coin-magnet") {
         this.host.setDecorationInventory(utility.inventoryKey, 1);
