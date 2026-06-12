@@ -91,9 +91,7 @@ import { gameFontFamily } from "../../game/fonts";
 import {
   fishProductionThresholdForLevel,
   levelProgressToNext,
-  maxDynamicProductionPaceMultiplier,
-  rawTankDisplayLevelFromProduction,
-  targetActiveHoursForDisplayLevel,
+  maxDynamicProductionPaceMultiplier,  targetActiveHoursForDisplayLevel,
   targetProductionPerMinuteForLevel
 } from "../../game/level-progression";
 import {
@@ -196,11 +194,7 @@ import {
   randomFishPlacement as randomFishPlacementModel,
   tankDecorationDepthFromOrder as tankDecorationDepthFromOrderModel
 } from "../../game/tank-placement";
-import {
-  aquariumBackgroundAssetPath,
-  aquariumBackgroundTextureKey,
-  aquariumFloorAssetPath,
-  aquariumFloorTextureKey,
+import {  aquariumBackgroundTextureKey,  aquariumFloorTextureKey,
   decorationSizeOrder,
   decorationSizes,
   currentTankTheme as currentTankThemeModel,
@@ -389,9 +383,7 @@ import {
   tankCosmeticBlueTintColor,
   tankFallbackBaseColor,
   tankMenuButtonY,
-  tankMenuVersion,
-  tankUpgradePrices,
-  timeCurrentDurationSeconds,
+  tankMenuVersion,  timeCurrentDurationSeconds,
   timeCurrentSpeedMultiplier,
   type AdjustableSound,
   type AppScreen,
@@ -451,16 +443,8 @@ import { AquariumMinigameController } from "./aquarium-minigame-controller";
 import { createAquariumMinigameHost } from "./aquarium-minigame-adapter";
 import { AquariumSellController } from "./aquarium-sell-controller";
 import { createAquariumSellControllerHost } from "./aquarium-sell-adapter";
-
-type LevelCompletionBonusReward = {
-  coins?: Price;
-  background?: TankCosmetic;
-  seabed?: TankCosmetic;
-  decoration?: {
-    decorationType: DecorationType;
-    size: DecorationSize;
-  };
-};
+import { AquariumLevelRewardController, type LevelCompletionBonusReward } from "./aquarium-level-reward-controller";
+import { createAquariumLevelRewardControllerHost } from "./aquarium-level-reward-adapter";
 
 export class AquariumSceneCore extends Phaser.Scene {
   private readonly prizeMachineRuntimeSessionId = serverNow();
@@ -508,6 +492,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumQuestPhaseRuntimeController?: AquariumQuestPhaseController;
   private aquariumMinigameRuntimeController?: AquariumMinigameController;
   private aquariumSellRuntimeController?: AquariumSellController;
+  private aquariumLevelRewardRuntimeController?: AquariumLevelRewardController;
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -1790,6 +1775,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumSellController(): AquariumSellController {
     this.aquariumSellRuntimeController ??= new AquariumSellController(createAquariumSellControllerHost(this));
     return this.aquariumSellRuntimeController;
+  }
+
+  private aquariumLevelRewardController(): AquariumLevelRewardController {
+    this.aquariumLevelRewardRuntimeController ??= new AquariumLevelRewardController(createAquariumLevelRewardControllerHost(this));
+    return this.aquariumLevelRewardRuntimeController;
   }
 
   private renderTabControls(): void {
@@ -4314,155 +4304,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private awardLevelCompletionRewards(level: number, previousProduction: number, nextProduction: number): boolean {
-    const previousLevel = rawTankDisplayLevelFromProduction(previousProduction);
-    const nextLevel = rawTankDisplayLevelFromProduction(nextProduction);
-    if (nextLevel <= previousLevel) {
-      return false;
-    }
-
-    const rewardFish: FishType[] = [];
-    for (let completedLevel = previousLevel + 1; completedLevel <= nextLevel; completedLevel += 1) {
-      const completedThreshold = fishProductionThresholdForLevel(completedLevel);
-      rewardFish.push(this.levelRewardFishFor(completedLevel, Math.max(1, Math.floor(completedThreshold * 0.3))));
-    }
-
-    if (rewardFish.length === 0) {
-      return false;
-    }
-
-    const state = this.ensureTankState(level);
-    const bonusRewards = this.levelCompletionBonusRewards(previousLevel, nextLevel, state);
-    if (level === this.tankLevel) {
-      this.moveActiveFishToInventory();
-      this.clearCoinDrops();
-      this.grantLevelCompletionBonusRewards(state, bonusRewards);
-      rewardFish.forEach((fishType) => this.addFishToInventory(fishType));
-      this.showLevelCompletionRewardModal(previousLevel, nextLevel, rewardFish, bonusRewards);
-      this.refreshUi();
-      this.storeOverlay?.refresh();
-      this.saveNow();
-    } else {
-      this.grantLevelCompletionBonusRewards(state, bonusRewards);
-      for (const fishType of rewardFish) {
-        state.fishInventory.set(fishType.id, (state.fishInventory.get(fishType.id) ?? 0) + 1);
-      }
-    }
-    return true;
-  }
-
-  private levelRewardFishFor(completedLevel: number, targetValue: number): FishType {
-    const unlockedLevel = Math.max(1, completedLevel + 1);
-    const ownedIds = this.ownedFishTypeIds();
-    const unlockedFish = fishTypes.filter((fishType) => fishType.tankLevel <= unlockedLevel);
-    const unownedFish = unlockedFish.filter((fishType) => !ownedIds.has(fishType.id));
-    const pool = unownedFish.length > 0 ? unownedFish : unlockedFish.length > 0 ? unlockedFish : fishTypes;
-    return [...pool].sort((first, second) => {
-      const firstDelta = Math.abs(this.priceWealth(first.price) - targetValue);
-      const secondDelta = Math.abs(this.priceWealth(second.price) - targetValue);
-      return firstDelta - secondDelta || first.tankLevel - second.tankLevel || this.priceWealth(first.price) - this.priceWealth(second.price);
-    })[0];
-  }
-
-  private levelCompletionBonusRewards(previousLevel: number, nextLevel: number, state: TankRuntimeState): LevelCompletionBonusReward {
-    if (previousLevel !== 1 || nextLevel < 2) {
-      return {};
-    }
-
-    return {
-      coins: tankUpgradePrices[2],
-      background: this.cheapestUnownedTankCosmetic("background", state),
-      seabed: this.cheapestUnownedTankCosmetic("seabed", state),
-      decoration: this.cheapestDecorationReward()
-    };
-  }
-
-  private grantLevelCompletionBonusRewards(state: TankRuntimeState, rewards: LevelCompletionBonusReward): void {
-    if (rewards.coins) {
-      earn(state.wallet, rewards.coins.coinType, rewards.coins.amount);
-      if (rewards.coins.rareAmount !== undefined) {
-        earn(state.wallet, "rare", rewards.coins.rareAmount);
-      }
-      if (rewards.coins.superRareAmount !== undefined) {
-        earn(state.wallet, "superRare", rewards.coins.superRareAmount);
-      }
-    }
-
-    if (rewards.background) {
-      state.backgroundInventory.set(rewards.background.id, (state.backgroundInventory.get(rewards.background.id) ?? 0) + 1);
-    }
-    if (rewards.seabed) {
-      state.seabedInventory.set(rewards.seabed.id, (state.seabedInventory.get(rewards.seabed.id) ?? 0) + 1);
-    }
-    if (rewards.decoration) {
-      const key = this.decorationInventoryKey(rewards.decoration.decorationType.id, rewards.decoration.size);
-      state.decorationInventory.set(key, (state.decorationInventory.get(key) ?? 0) + 1);
-    }
-  }
-
-  private cheapestUnownedTankCosmetic(category: TankCosmeticCategory, state: TankRuntimeState): TankCosmetic | undefined {
-    const inventory = category === "background" ? state.backgroundInventory : state.seabedInventory;
-    return [...this.tankCosmetics(category)]
-      .filter((cosmetic) => this.priceWealth(cosmetic.price) > 0 && (inventory.get(cosmetic.id) ?? 0) <= 0)
-      .sort((first, second) => this.priceWealth(first.price) - this.priceWealth(second.price) || first.name.localeCompare(second.name))[0];
-  }
-
-  private cheapestDecorationReward(): LevelCompletionBonusReward["decoration"] {
-    const candidates = decorationTypes.flatMap((decorationType) =>
-      decorationSizeOrder.map((size) => ({
-        decorationType,
-        size,
-        price: this.decorationVariantPrice(decorationType, size)
-      }))
-    );
-    const cheapest = candidates.sort((first, second) =>
-      this.priceWealth(first.price) - this.priceWealth(second.price) ||
-      first.decorationType.name.localeCompare(second.decorationType.name) ||
-      decorationSizeOrder.indexOf(first.size) - decorationSizeOrder.indexOf(second.size)
-    )[0];
-    return cheapest ? { decorationType: cheapest.decorationType, size: cheapest.size } : undefined;
+    return this.aquariumLevelRewardController().awardLevelCompletionRewards(level, previousProduction, nextProduction);
   }
 
   private levelCompletionBonusRewardCards(rewards: LevelCompletionBonusReward): LevelCompletionRewardCard[] {
-    const cards: LevelCompletionRewardCard[] = [];
-    if (rewards.coins) {
-      cards.push({
-        title: formatPrice(rewards.coins),
-        detail: "Coins",
-        imageUrl: coinAssetPathByType[rewards.coins.coinType],
-        imageClassName: "coin"
-      });
-    }
-    if (rewards.background) {
-      cards.push({
-        title: rewards.background.name,
-        detail: "Background",
-        imageUrl: this.tankCosmeticImageUrl(rewards.background) ?? aquariumBackgroundAssetPath,
-        imageClassName: "background"
-      });
-    }
-    if (rewards.seabed) {
-      cards.push({
-        title: rewards.seabed.name,
-        detail: "Sand",
-        imageUrl: this.tankCosmeticImageUrl(rewards.seabed) ?? aquariumFloorAssetPath,
-        imageClassName: "sand"
-      });
-    }
-    if (rewards.decoration) {
-      cards.push({
-        title: `${rewards.decoration.decorationType.name} ${decorationSizes[rewards.decoration.size].label}`,
-        detail: "Decor",
-        imageUrl: `/assets/decorations/${rewards.decoration.decorationType.id}.png`,
-        imageClassName: "decor"
-      });
-    }
-    return cards;
-  }
-
-  private moveActiveFishToInventory(): void {
-    for (const fish of [...this.activeFish()]) {
-      this.storeFish(fish);
-    }
+    return this.aquariumLevelRewardController().levelCompletionBonusRewardCards(rewards);
   }
 
   private getTankNeedIndicator(): string {
