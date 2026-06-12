@@ -89,12 +89,6 @@ import {
 } from "../../game/fish-inventory";
 import { gameFontFamily } from "../../game/fonts";
 import {
-  fishProductionThresholdForLevel,
-  levelProgressToNext,
-  maxDynamicProductionPaceMultiplier,  targetActiveHoursForDisplayLevel,
-  targetProductionPerMinuteForLevel
-} from "../../game/level-progression";
-import {
   addPriceToWallet as addPriceToWalletModel,
   clearSelectedMakeupDecoration,
   createMakeupDraft as createMakeupDraftModel,
@@ -342,9 +336,7 @@ import {
   coinAssetPathByType,
   coinCollectSoundKey,
   coinCollectSoundPath,
-  coinComboMaxCount,
-  coinComboMaxProductionMultiplier,
-  coinComboRewardPercentPerCount,
+  coinComboMaxCount,  coinComboRewardPercentPerCount,
   coinComboRewardTextDurationMs,
   coinGlowAssetPath,
   coinGlowTextureKey,
@@ -445,6 +437,8 @@ import { AquariumSellController } from "./aquarium-sell-controller";
 import { createAquariumSellControllerHost } from "./aquarium-sell-adapter";
 import { AquariumLevelRewardController, type LevelCompletionBonusReward } from "./aquarium-level-reward-controller";
 import { createAquariumLevelRewardControllerHost } from "./aquarium-level-reward-adapter";
+import { AquariumProductionController } from "./aquarium-production-controller";
+import { createAquariumProductionControllerHost } from "./aquarium-production-adapter";
 
 export class AquariumSceneCore extends Phaser.Scene {
   private readonly prizeMachineRuntimeSessionId = serverNow();
@@ -493,6 +487,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumMinigameRuntimeController?: AquariumMinigameController;
   private aquariumSellRuntimeController?: AquariumSellController;
   private aquariumLevelRewardRuntimeController?: AquariumLevelRewardController;
+  private aquariumProductionRuntimeController?: AquariumProductionController;
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -504,10 +499,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private placedDecorations: PlacedDecoration[] = [];
   private offlineProgress: OfflineProgress = { elapsedSeconds: 0, earned: createEmptyWallet() };
   private pausedTankEarningsStartedAt?: number;
-  private pausedTankEarningsRatePerSecond = 0;
-  private activeProductionPaceMultiplierFrame = -1;
-  private activeProductionPaceMultiplierValue = 1;
-  private autosaveElapsed = 0;
+  private pausedTankEarningsRatePerSecond = 0;  private autosaveElapsed = 0;
   private lastKnownSaveAt = 0;
   private unsubscribeRemote?: () => void;
   private hudStatusSyncElapsed = 0;
@@ -1780,6 +1772,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumLevelRewardController(): AquariumLevelRewardController {
     this.aquariumLevelRewardRuntimeController ??= new AquariumLevelRewardController(createAquariumLevelRewardControllerHost(this));
     return this.aquariumLevelRewardRuntimeController;
+  }
+
+  private aquariumProductionController(): AquariumProductionController {
+    this.aquariumProductionRuntimeController ??= new AquariumProductionController(createAquariumProductionControllerHost(this));
+    return this.aquariumProductionRuntimeController;
   }
 
   private renderTabControls(): void {
@@ -4234,23 +4231,15 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private addFishProductionTotal(level: number, amount: number): boolean {
-    const production = Math.max(0, Math.round(amount * 10) / 10);
-    if (production <= 0) {
-      return false;
-    }
-    const state = this.ensureTankState(level);
-    const previousProduction = Math.max(0, state.fishProductionTotal ?? 0);
-    const nextProduction = Math.round((previousProduction + production) * 10) / 10;
-    state.fishProductionTotal = nextProduction;
-    return this.awardLevelCompletionRewards(level, previousProduction, nextProduction);
+    return this.aquariumProductionController().addFishProductionTotal(level, amount);
   }
 
   private fishProductionTotal(level = this.tankLevel): number {
-    return Math.max(0, this.ensureTankState(level).fishProductionTotal ?? 0);
+    return this.aquariumProductionController().fishProductionTotal(level);
   }
 
   private calculateTotalWealth(): number {
-    return this.sortedOwnedTankLevels().reduce((total, level) => total + this.calculateTankNetWorth(level), 0);
+    return this.aquariumProductionController().calculateTotalWealth();
   }
 
   private calculateTankNetWorth(level = this.tankLevel): number {
@@ -4262,45 +4251,11 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private projectedActiveProductionPerMinute(): number {
-    return this.activeFish()
-      .filter((fish) => fish.state !== "ill" && fish.health >= 35 && fish.currentFullnessCalories() > 0)
-      .reduce((total, fish) => total + fish.projectedProductionPerMinute(), 0);
+    return this.aquariumProductionController().projectedActiveProductionPerMinute();
   }
 
   private activeProductionPaceMultiplier(): number {
-    const frame = this.updateFrameKey();
-    if (this.activeProductionPaceMultiplierFrame === frame) {
-      return this.activeProductionPaceMultiplierValue;
-    }
-
-    const projectedPerMinute = this.projectedActiveProductionPerMinute();
-    if (projectedPerMinute <= 0) {
-      this.activeProductionPaceMultiplierFrame = frame;
-      this.activeProductionPaceMultiplierValue = 1;
-      return 1;
-    }
-
-    const displayLevel = this.tankDisplayLevel();
-    const targetPerMinute = targetProductionPerMinuteForLevel(displayLevel);
-    const baseMultiplier = targetPerMinute / (projectedPerMinute * coinComboMaxProductionMultiplier);
-    const currentThreshold = fishProductionThresholdForLevel(displayLevel);
-    const nextThreshold = fishProductionThresholdForLevel(displayLevel + 1);
-    const productionRatio = Phaser.Math.Clamp(
-      (this.fishProductionTotal(this.tankLevel) - currentThreshold) / Math.max(1, nextThreshold - currentThreshold),
-      0,
-      1
-    );
-    const targetSeconds = targetActiveHoursForDisplayLevel(displayLevel) * 3600;
-    const oldestActiveAgeSeconds = this.activeFish().reduce((oldest, fish) => Math.max(oldest, fish.ageSeconds), 0);
-    const activeAgeWithinLevelSeconds = targetSeconds > 0 ? oldestActiveAgeSeconds % targetSeconds : 0;
-    const expectedRatio = Phaser.Math.Clamp(activeAgeWithinLevelSeconds / Math.max(1, targetSeconds), 0, 1);
-    const catchUpMultiplier = expectedRatio > productionRatio
-      ? Phaser.Math.Clamp(expectedRatio / Math.max(0.02, productionRatio), 1, maxDynamicProductionPaceMultiplier)
-      : 1;
-    const multiplier = Phaser.Math.Clamp(baseMultiplier * catchUpMultiplier, 1, maxDynamicProductionPaceMultiplier);
-    this.activeProductionPaceMultiplierFrame = frame;
-    this.activeProductionPaceMultiplierValue = multiplier;
-    return multiplier;
+    return this.aquariumProductionController().activeProductionPaceMultiplier();
   }
 
   private awardLevelCompletionRewards(level: number, previousProduction: number, nextProduction: number): boolean {
