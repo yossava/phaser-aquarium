@@ -268,8 +268,6 @@ import {
 import {
   clampSellQuantity,
   decorationSaleValue as decorationSaleValueModel,
-  planCoinInventorySale,
-  planFoodInventorySale,
   planStoredFishSale,
   utilitySaleValue
 } from "../../game/store-transactions";
@@ -307,15 +305,11 @@ import { appendGoalsPageContent } from "../../ui/GoalsPage";
 import { createLevelCompletionRewardShell, createPrizeCelebrationShell, type LevelCompletionRewardCard } from "../../ui/RewardModals";
 import {
   createActiveFishSellConfirmationContent,
-  createCoinSellConfirmationContent,
   createDecorationSellConfirmationContent,
-  createFoodSellConfirmationContent,
-  createHelperSellConfirmationContent,
   createOfflineSummaryContent,
   createResetConfirmationModalContent,
   createStarterProtectedSellModalContent,
   createStoredFishSellConfirmationContent,
-  createTankUtilitySellConfirmationContent,
   type ModalContent
 } from "../../ui/SellConfirmationModals";
 import { appendSettingsPageContent } from "../../ui/SettingsPage";
@@ -455,6 +449,8 @@ import { AquariumQuestPhaseController } from "./aquarium-quest-phase-controller"
 import { createAquariumQuestPhaseControllerHost } from "./aquarium-quest-phase-adapter";
 import { AquariumMinigameController } from "./aquarium-minigame-controller";
 import { createAquariumMinigameHost } from "./aquarium-minigame-adapter";
+import { AquariumSellController } from "./aquarium-sell-controller";
+import { createAquariumSellControllerHost } from "./aquarium-sell-adapter";
 
 type LevelCompletionBonusReward = {
   coins?: Price;
@@ -511,6 +507,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   private aquariumHudRuntimeController?: AquariumHudController;
   private aquariumQuestPhaseRuntimeController?: AquariumQuestPhaseController;
   private aquariumMinigameRuntimeController?: AquariumMinigameController;
+  private aquariumSellRuntimeController?: AquariumSellController;
   private placementMode: PlacementMode = { kind: "none" };
   private activeScreen: AppScreen = "tank";
   private activeTab: StoreTab = "fish";
@@ -1788,6 +1785,11 @@ export class AquariumSceneCore extends Phaser.Scene {
       createAquariumMinigameHost(this)
     );
     return this.aquariumMinigameRuntimeController;
+  }
+
+  private aquariumSellController(): AquariumSellController {
+    this.aquariumSellRuntimeController ??= new AquariumSellController(createAquariumSellControllerHost(this));
+    return this.aquariumSellRuntimeController;
   }
 
   private renderTabControls(): void {
@@ -3259,32 +3261,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private sellFoodInventory(foodTypeId: FoodTypeId, quantity?: number): void {
-    const foodType = foodTypes.find((item) => item.id === foodTypeId);
-    const current = this.getFoodInventory(foodTypeId);
-    if (!foodType || current <= 0) {
-      this.floatText("No food to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const salePlan = planFoodInventorySale({
-      foodType,
-      current,
-      requestedQuantity: quantity ?? this.foodInventoryDisplayCount(foodType),
-      maxDisplayQuantity: this.foodInventoryDisplayCount(foodType),
-      isCalorieTrackedFood: (itemId) => this.isCalorieTrackedFood(itemId)
-    });
-    if (salePlan.nextInventoryAmount <= 0) {
-      this.foodInventory.delete(foodTypeId);
-    } else {
-      this.foodInventory.set(foodTypeId, salePlan.nextInventoryAmount);
-    }
-    earn(this.wallet, "common", salePlan.sellValue);
-    this.recordDailyQuestAction("sell-food");
-    this.floatText(`Sold ${foodType.name} x${formatNumber(salePlan.sellQuantity)} +C${formatNumber(salePlan.sellValue)}`, toastX, toastY, "#ffe67a");
-    this.closeModal();
-    this.createFoodDock();
-    this.refreshUi();
-    this.saveNow();
+    this.aquariumSellController().sellFoodInventory(foodTypeId, quantity);
   }
 
   private decorationSellValue(decorationType: DecorationType, size: DecorationSize, count?: number): number {
@@ -3300,14 +3277,10 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private sellTankUtility(utilityId: TankUtilityId): void {
-    const utility = this.tankUtilityInfo(utilityId);
-    if (!utility || !utility.owned()) {
-      this.floatText("No tool to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
+    this.aquariumSellController().sellTankUtility(utilityId);
+  }
 
-    const sellValue = this.tankUtilitySellValue(utility.price);
-    this.decorationInventory.delete(utility.inventoryKey);
+  private deactivateSoldUtility(utilityId: TankUtilityId): void {
     if (utilityId === "coin-magnet") {
       this.coinMagnetWasActive = false;
       this.coinMagnetDisplayedMinutes = 0;
@@ -3317,34 +3290,10 @@ export class AquariumSceneCore extends Phaser.Scene {
       this.autoFoodBuyerWasActive = false;
       this.autoFoodBuyerDisplayedMinutes = 0;
     }
-    earn(this.wallet, "common", sellValue);
-    this.recordDailyQuestAction("sell-tool");
-    this.floatText(`Sold ${utility.name} +C${formatNumber(sellValue)}`, toastX, toastY, "#ffe67a");
-    this.closeModal();
-    this.createFoodDock();
-    this.refreshUi(false);
-    this.syncFoodDispenserPosition();
-    this.syncCoinMagnetPosition();
-    this.syncAutoFoodBuyerPosition();
-    this.syncHtmlPageOverlay();
-    this.saveNow();
   }
 
   private sellCoinInventory(coinType: "rare" | "superRare", quantity?: number): void {
-    if (this.wallet[coinType] <= 0) {
-      this.floatText("No coins to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const count = this.wallet[coinType];
-    const salePlan = planCoinInventorySale(coinType, count, quantity);
-    this.wallet[coinType] = salePlan.nextCount;
-    earn(this.wallet, "common", salePlan.sellValue);
-    this.recordDailyQuestAction(coinType === "rare" ? "sell-rare-coins" : "sell-super-rare-coins");
-    this.floatText(`Converted x${formatNumber(salePlan.sellQuantity)} +C${formatNumber(salePlan.sellValue)}`, toastX, toastY, "#ffe67a");
-    this.closeModal();
-    this.refreshUi();
-    this.saveNow();
+    this.aquariumSellController().sellCoinInventory(coinType, quantity);
   }
 
   private coinSellValue(coinType: "rare" | "superRare", count = 1): number {
@@ -3356,21 +3305,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private sellHelperCreatureByIndex(index: number): void {
-    const helperToSell = this.helperCreatures[index];
-    if (!helperToSell) {
-      this.floatText("No helper to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const sellPrice = this.helperSellPrice(helperToSell.type);
-    this.removeHelperCreatureAt(index);
-    earn(this.wallet, sellPrice.coinType, sellPrice.amount);
-    this.recordDailyQuestAction("sell-helper");
-    this.floatTankText(`Sold ${helperToSell.type.name}`, helperToSell.sprite.x, helperToSell.sprite.y - 24, "#ffe67a");
-    this.closeModal();
-    this.renderTabControls();
-    this.refreshUi();
-    this.saveNow();
+    this.aquariumSellController().sellHelperCreatureByIndex(index);
   }
 
   private removeHelperCreatureAt(index: number): HelperCreature | undefined {
@@ -5020,29 +4955,7 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private showFoodSellConfirmation(foodTypeId: FoodTypeId): void {
-    const foodType = foodTypes.find((item) => item.id === foodTypeId);
-    const storedAmount = this.getFoodInventory(foodTypeId);
-    if (!foodType || storedAmount <= 0) {
-      this.floatText("No food to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const maxQuantity = this.foodInventoryDisplayCount(foodType);
-    this.showModalContent(createFoodSellConfirmationContent({
-      foodType,
-      ownedLabel: `Owned x${this.foodInventoryBadgeLabel(foodType)}`,
-      maxQuantity,
-      valueForQuantity: (quantity) => {
-        const sellAmount = this.isCalorieTrackedFood(foodType.id)
-          ? Math.min(storedAmount, quantity * Math.max(1, foodType.calories))
-          : Math.min(storedAmount, quantity);
-        return this.foodSellValue(foodType, sellAmount);
-      },
-      createValueRow: (label, amount) => this.commonCoinValueRow(label, amount),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      onSell: (quantity) => this.sellFoodInventory(foodTypeId, quantity),
-      onCancel: () => this.closeModal()
-    }));
+    this.aquariumSellController().showFoodSellConfirmation(foodTypeId);
   }
 
   private showDecorationSellConfirmation(decorationTypeId: string, size: DecorationSize): void {
@@ -5050,57 +4963,15 @@ export class AquariumSceneCore extends Phaser.Scene {
   }
 
   private showTankUtilitySellConfirmation(utilityId: TankUtilityId): void {
-    const utility = this.tankUtilityInfo(utilityId);
-    if (!utility || !utility.owned()) {
-      this.floatText("No tool to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    this.showModalContent(createTankUtilitySellConfirmationContent({
-      name: utility.name,
-      iconPath: this.tankUtilityIconPath(utilityId),
-      sellValue: this.tankUtilitySellValue(utility.price),
-      createValueRow: (label, amount) => this.commonCoinValueRow(label, amount),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      onSell: () => this.sellTankUtility(utilityId),
-      onCancel: () => this.closeModal()
-    }));
+    this.aquariumSellController().showTankUtilitySellConfirmation(utilityId);
   }
 
   private showCoinSellConfirmation(coinType: "rare" | "superRare"): void {
-    const count = this.wallet[coinType];
-    if (count <= 0) {
-      this.floatText("No coins to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    this.showModalContent(createCoinSellConfirmationContent({
-      coinType,
-      count,
-      coinAssetPath: coinAssetPathByType[coinType],
-      valueForQuantity: (quantity) => this.coinSellValue(coinType, quantity),
-      createValueRow: (label, amount) => this.commonCoinValueRow(label, amount),
-      attachTouchFeedback: (button) => this.attachTouchFeedback(button),
-      onSell: (quantity) => this.sellCoinInventory(coinType, quantity),
-      onCancel: () => this.closeModal()
-    }));
+    this.aquariumSellController().showCoinSellConfirmation(coinType);
   }
 
   private showHelperSellConfirmation(index: number): void {
-    const targetHelper = this.helperCreatures[index];
-    if (!targetHelper) {
-      this.floatText("No helper to sell", toastX, toastY, "#ffb0a8");
-      return;
-    }
-
-    const sellPrice = this.helperSellPrice(targetHelper.type);
-    this.showModalContent(createHelperSellConfirmationContent({
-      helperType: targetHelper.type,
-      sellPrice,
-      createPriceRow: (price, label) => this.priceIconRow(price, label),
-      onSell: () => this.sellHelperCreatureByIndex(index),
-      onCancel: () => this.closeModal()
-    }));
+    this.aquariumSellController().showHelperSellConfirmation(index);
   }
 
   private showOfflineSummary(): void {
